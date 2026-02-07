@@ -45,23 +45,29 @@
     <section class="voting-section">
       <h2>Votar</h2>
       <div class="voting-buttons">
+        <button class="vote-btn accumulative" 
+                *ngFor="let v of accumulativeVotes" 
+                (click)="addVote(v)"
+                [disabled]="showVotes">
+          +{{ v }}
+        </button>
+        
         <button class="vote-btn" 
-                *ngFor="let v of numberVotes" 
-                (click)="vote(v)"
+                (click)="replaceVote(0)"
                 [disabled]="showVotes"
-                [class.selected]="hasVoted && voteBreakdown.numbers === v && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
-          {{ v }}
+                [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
+          0
         </button>
         
         <button class="vote-btn special coffee" 
-                (click)="vote('coffee')"
+                (click)="replaceVote('coffee')"
                 [disabled]="showVotes"
                 [class.selected]="hasVoted && voteBreakdown.coffee > 0">
           ☕
         </button>
         
         <button class="vote-btn special joint" 
-                (click)="vote('joint')"
+                (click)="replaceVote('joint')"
                 [disabled]="showVotes"
                 [class.selected]="hasVoted && voteBreakdown.joint > 0">
           🚬

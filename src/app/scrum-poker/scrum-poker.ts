@@ -28,7 +28,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   players: Player[] = [];
   
   // Voting state
-  numberVotes = [0, 1, 2, 3, 5, 8, 13, 20, 40, 100];
+  accumulativeVotes = [1, 2, 3, 5, 10, 20];
   showVotes = false;
   hasVoted = false;
   customVoteInput = '';
@@ -142,11 +142,28 @@ export class ScrumPoker implements OnInit, OnDestroy {
     this.calculateResults();
   }
 
-  // Single vote: replaces any previous vote
-  vote(value: number | string): void {
+  // Accumulative vote: adds to current number total
+  addVote(value: number): void {
     if (this.showVotes) return;
 
-    // Reset breakdown completely
+    // Clear special votes, accumulate numbers
+    this.voteBreakdown.coffee = 0;
+    this.voteBreakdown.joint = 0;
+    this.voteBreakdown.numbers += value;
+    this.hasVoted = true;
+
+    this.firebaseService.updatePlayerVote(
+      this.roomId,
+      this.playerId,
+      this.voteBreakdown.numbers,
+      this.voteBreakdown
+    );
+  }
+
+  // Replace vote: sets value directly (0, coffee, joint, custom text)
+  replaceVote(value: number | string): void {
+    if (this.showVotes) return;
+
     this.voteBreakdown = { numbers: 0, coffee: 0, joint: 0 };
 
     if (typeof value === 'number') {
@@ -157,13 +174,12 @@ export class ScrumPoker implements OnInit, OnDestroy {
       this.voteBreakdown.joint = 1;
     }
 
-    // 0 means "voted 0" (clear), but still counts as voted if it's an explicit action
     this.hasVoted = true;
 
     this.firebaseService.updatePlayerVote(
-      this.roomId, 
-      this.playerId, 
-      this.voteBreakdown.numbers, 
+      this.roomId,
+      this.playerId,
+      this.voteBreakdown.numbers,
       this.voteBreakdown
     );
   }
@@ -172,7 +188,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
     if (this.showVotes) return;
     const val = parseFloat(this.customVoteInput);
     if (!isNaN(val) && val >= 0) {
-      this.vote(val);
+      this.replaceVote(val);
       this.customVoteInput = '';
     }
   }
