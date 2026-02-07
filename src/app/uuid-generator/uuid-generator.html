@@ -1,0 +1,41 @@
+<app-terminal-layout title="UUID Generator">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('uuid.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('uuid.subtitle') }}</p>
+
+      <div class="options-row">
+        <div class="option-group">
+          <label>{{ i18n.t('common.amount') }}</label>
+          <input type="number" [(ngModel)]="amount" min="1" max="100" class="amount-input">
+        </div>
+
+        <div class="option-group checkboxes">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="uppercase">
+            <span>{{ i18n.t('uuid.uppercase') }}</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="noDashes">
+            <span>{{ i18n.t('uuid.noDashes') }}</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
+        <button class="btn btn-secondary" (click)="copyAll()" *ngIf="uuids.length > 1">
+          {{ copied ? i18n.t('uuid.copiedAll') : i18n.t('uuid.copyAll') }}
+        </button>
+      </div>
+
+      <div class="uuid-list" *ngIf="uuids.length">
+        <div class="uuid-item" *ngFor="let uuid of uuids; let i = index" (click)="copySingle(uuid, i)">
+          <span class="uuid-index">#{{ i + 1 }}</span>
+          <span class="uuid-value">{{ uuid }}</span>
+          <span class="uuid-copy">{{ copiedIndex === i ? '✓' : '📋' }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

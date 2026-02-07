@@ -1,0 +1,134 @@
+/* ===== SHARED TOOL LAYOUT ===== */
+.tool-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100%;
+}
+
+.tool-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 32px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.tool-title {
+  color: #0f0;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.tool-subtitle {
+  color: #666;
+  font-size: 12px;
+  margin: 0 0 24px 0;
+}
+
+/* Input */
+.input-group {
+  margin-bottom: 16px;
+}
+
+.input-group label {
+  display: block;
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.input-group textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group textarea:focus {
+  border-color: #0f0;
+}
+
+/* Buttons */
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-primary { background: #0f0; color: #000; }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 0 12px rgba(0, 255, 0, 0.3); }
+
+.btn-secondary { background: #333; color: #ccc; }
+.btn-secondary:hover { background: #444; }
+
+.btn-action {
+  background: #222;
+  color: #ccc;
+  border: 1px solid #444;
+}
+.btn-action:hover { border-color: #0f0; color: #0f0; }
+
+/* Error */
+.error { color: #ff5f57; font-size: 13px; margin-bottom: 12px; }
+
+/* QR Result */
+.qr-result {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.qr-image-wrapper {
+  background: #fff;
+  display: inline-block;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.qr-image {
+  display: block;
+  max-width: 240px;
+  width: 100%;
+  height: auto;
+}
+
+.result-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .tool-content { padding: 20px 12px; }
+  .tool-card { padding: 24px 16px; }
+  .tool-title { font-size: 16px; }
+  .result-actions { flex-direction: column; }
+  .qr-image { max-width: 180px; }
+}

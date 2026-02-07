@@ -1,0 +1,711 @@
+.scrum-poker-container {
+  color: #ccc;
+  padding: 20px;
+  min-height: 100%;
+}
+
+/* Header */
+.poker-header {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.poker-header h1 {
+  color: #0f0;
+  font-size: 20px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.room-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.room-id {
+  color: #0f0;
+  font-weight: bold;
+  font-size: 12px;
+  background: rgba(0, 255, 0, 0.08);
+  padding: 6px 10px;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.copy-link-btn, .leave-btn {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 12px;
+  color: #ccc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.copy-link-btn:hover {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+}
+
+.leave-btn:hover {
+  background: #ff5f57;
+  color: #fff;
+  border-color: #ff5f57;
+}
+
+/* Main Content */
+.poker-main {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Players Section */
+.players-section {
+  margin-bottom: 20px;
+}
+
+.players-section h2 {
+  color: #0f0;
+  font-size: 15px;
+  margin-bottom: 14px;
+  text-align: center;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.player-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.player-card.current-player {
+  border-color: #0f0;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.15);
+}
+
+.player-card.has-voted {
+  background: rgba(0, 255, 0, 0.1);
+  border-color: #0f0;
+}
+
+.player-avatar {
+  width: 48px;
+  height: 48px;
+  background: #0f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #000;
+}
+
+.player-info h3 {
+  color: #e8e8e8;
+  font-size: 13px;
+  margin: 0 0 10px 0;
+  font-weight: normal;
+}
+
+.vote-display {
+  display: flex;
+  justify-content: center;
+}
+
+.vote-card {
+  width: 56px;
+  height: 72px;
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.vote-card.revealed {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+}
+
+.vote-card.special-vote {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  border-color: #ff6b6b;
+}
+
+.vote-hidden {
+  color: #555;
+  font-size: 24px;
+}
+
+/* Voting Section */
+.voting-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.voting-section h2 {
+  color: #0f0;
+  font-size: 14px;
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.voting-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  justify-content: center;
+}
+
+.vote-btn {
+  padding: 12px 16px;
+  border: 1px solid #444;
+  border-radius: 6px;
+  background: #222;
+  color: #ccc;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  min-width: 52px;
+  text-align: center;
+}
+
+.vote-btn:hover:not(:disabled) {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 255, 0, 0.2);
+}
+
+.vote-btn:disabled {
+  background: #1a1a1a;
+  color: #444;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  border-color: #333;
+}
+
+.vote-btn.selected {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
+}
+
+.vote-btn.special {
+  font-size: 20px;
+}
+
+.vote-btn.coffee {
+  background: #8b4513;
+  border-color: #8b4513;
+  color: #fff;
+}
+
+.vote-btn.coffee:hover:not(:disabled) {
+  background: #d2691e;
+  border-color: #d2691e;
+}
+
+.vote-btn.coffee.selected {
+  background: #d2691e;
+  border-color: #fff;
+  box-shadow: 0 0 12px rgba(210, 105, 30, 0.4);
+}
+
+.vote-btn.joint {
+  background: #2e7d32;
+  border-color: #2e7d32;
+  color: #fff;
+}
+
+.vote-btn.joint:hover:not(:disabled) {
+  background: #66bb6a;
+  border-color: #66bb6a;
+}
+
+.vote-btn.joint.selected {
+  background: #66bb6a;
+  border-color: #fff;
+  box-shadow: 0 0 12px rgba(102, 187, 106, 0.4);
+}
+
+/* Custom vote input */
+.custom-vote {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.custom-vote input {
+  width: 120px;
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e8e8e8;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  text-align: center;
+}
+
+.custom-vote input:focus {
+  border-color: #0f0;
+}
+
+.custom-vote input:disabled {
+  opacity: 0.4;
+}
+
+.vote-custom-btn {
+  background: #0f0;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.vote-custom-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.vote-custom-btn:hover:not(:disabled) {
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+}
+
+/* Current vote display */
+.current-vote {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px;
+  background: rgba(0, 255, 0, 0.06);
+  border-radius: 4px;
+  border: 1px solid #333;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.current-vote strong {
+  color: #0f0;
+  font-size: 16px;
+}
+
+.clear-vote-btn {
+  background: none;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.clear-vote-btn:hover:not(:disabled) {
+  border-color: #ff5f57;
+  color: #ff5f57;
+}
+
+.clear-vote-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Results Section */
+.results-section {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.results-header h2 {
+  color: #0f0;
+  font-size: 15px;
+  margin: 0;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.statistics {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background: rgba(0, 255, 0, 0.04);
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 80px;
+}
+
+.stat-label {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #0f0;
+}
+
+.vote-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  background: rgba(0, 255, 0, 0.02);
+  border-radius: 4px;
+}
+
+.vote-number {
+  background: #0f0;
+  color: #000;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-weight: bold;
+  min-width: 36px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.vote-count {
+  color: #ccc;
+  min-width: 70px;
+  font-size: 13px;
+}
+
+.vote-bar {
+  flex: 1;
+  height: 16px;
+  background: #111;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #333;
+}
+
+.vote-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0f0 0%, #0a0 100%);
+  transition: width 0.5s ease;
+}
+
+/* Controls Section */
+.controls-section {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+}
+
+.control-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.control-btn.reveal {
+  background: #0f0;
+  color: #000;
+}
+
+.control-btn.reveal:hover {
+  box-shadow: 0 4px 16px rgba(0, 255, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.control-btn.reveal:disabled {
+  background: #333;
+  color: #666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.control-btn.reset {
+  background: #569cd6;
+  color: #000;
+}
+
+.control-btn.reset:hover {
+  box-shadow: 0 4px 16px rgba(86, 156, 214, 0.3);
+  transform: translateY(-2px);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .scrum-poker-container {
+    padding: 12px 10px;
+  }
+
+  .poker-header {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    padding: 14px;
+    gap: 10px;
+  }
+
+  .poker-header h1 {
+    font-size: 16px;
+  }
+
+  .room-info {
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .room-id {
+    font-size: 11px;
+    padding: 5px 8px;
+  }
+
+  .copy-link-btn, .leave-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .players-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+  }
+
+  .player-card {
+    padding: 12px;
+  }
+
+  .player-avatar {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .player-info h3 {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .vote-card {
+    width: 48px;
+    height: 60px;
+    font-size: 16px;
+  }
+
+  .vote-hidden {
+    font-size: 20px;
+  }
+
+  .voting-section {
+    padding: 14px;
+  }
+
+  .voting-section h2 {
+    font-size: 12px;
+  }
+
+  .voting-buttons {
+    gap: 6px;
+  }
+
+  .vote-btn {
+    min-width: 44px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .vote-btn.special {
+    font-size: 16px;
+  }
+
+  .custom-vote {
+    flex-direction: column;
+  }
+
+  .custom-vote input {
+    width: 100%;
+  }
+
+  .results-section {
+    padding: 14px;
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .statistics {
+    justify-content: center;
+  }
+
+  .stat-card {
+    min-width: 70px;
+    padding: 6px 10px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+  }
+
+  .stat-value {
+    font-size: 14px;
+  }
+
+  .summary-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    padding: 6px;
+  }
+
+  .vote-bar {
+    width: 100%;
+    height: 12px;
+  }
+
+  .controls-section {
+    gap: 8px;
+  }
+
+  .control-btn {
+    padding: 10px 16px;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .scrum-poker-container {
+    padding: 8px 6px;
+  }
+
+  .poker-header h1 {
+    font-size: 14px;
+  }
+
+  .players-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .player-card {
+    padding: 10px;
+  }
+
+  .player-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+
+  .vote-card {
+    width: 42px;
+    height: 54px;
+    font-size: 14px;
+  }
+
+  .vote-btn {
+    min-width: 40px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .vote-btn.special {
+    font-size: 14px;
+  }
+
+  .control-btn {
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+}

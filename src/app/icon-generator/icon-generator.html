@@ -1,0 +1,82 @@
+<app-terminal-layout title="App Icon Generator">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('icon.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('icon.subtitle') }}</p>
+
+      <!-- Upload -->
+      <div class="upload-zone"
+           (drop)="onDrop($event)"
+           (dragover)="onDragOver($event)"
+           *ngIf="!imageLoaded">
+        <div class="upload-content">
+          <span class="upload-icon">🖼</span>
+          <p>{{ i18n.t('icon.dragHere') }}</p>
+          <label class="upload-btn">
+            {{ i18n.t('icon.selectFile') }}
+            <input type="file" accept="image/*" (change)="onFileSelected($event)" hidden>
+          </label>
+          <span class="upload-hint">{{ i18n.t('icon.hint') }}</span>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div class="preview-section" *ngIf="imageLoaded">
+        <div class="preview-header">
+          <div class="preview-image-wrap">
+            <img [src]="imageSrc" alt="Preview" class="preview-image">
+          </div>
+          <div class="preview-info">
+            <span class="file-name">{{ fileName }}</span>
+            <button class="btn btn-secondary btn-sm" (click)="clear()">{{ i18n.t('icon.changeImage') }}</button>
+          </div>
+        </div>
+
+        <!-- Generate buttons -->
+        <div class="generate-actions" *ngIf="!generating">
+          <button class="btn btn-primary btn-lg" (click)="generateAll()">
+            {{ i18n.t('icon.generateAll') }}
+          </button>
+          <div class="generate-row">
+            <button class="btn btn-ios" (click)="generateIOS()">
+              {{ i18n.t('icon.iosOnly') }}
+            </button>
+            <button class="btn btn-android" (click)="generateAndroid()">
+              {{ i18n.t('icon.androidOnly') }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-section" *ngIf="generating">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progress"></div>
+          </div>
+          <span class="progress-text">{{ progressText }} ({{ progress }}%)</span>
+        </div>
+
+        <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+        <div class="done-message" *ngIf="!generating && progress === 100">
+          {{ i18n.t('icon.doneMsg') }}
+        </div>
+
+        <!-- Size reference -->
+        <div class="size-reference">
+          <div class="ref-section">
+            <h3> iOS — AppIcon.appiconset</h3>
+            <div class="ref-grid">
+              <span class="ref-item" *ngFor="let s of iosSummary">{{ s }}</span>
+            </div>
+          </div>
+          <div class="ref-section">
+            <h3> Android — mipmap</h3>
+            <div class="ref-list">
+              <span class="ref-item" *ngFor="let s of androidSummary">{{ s }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

@@ -1,0 +1,41 @@
+<app-terminal-layout title="QR Generator">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('qr.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('qr.subtitle') }}</p>
+
+      <div class="input-group">
+        <label for="qrInput">{{ i18n.t('qr.placeholder') }}</label>
+        <textarea
+          id="qrInput"
+          [(ngModel)]="inputText"
+          [placeholder]="i18n.t('qr.placeholder')"
+          rows="3"
+          (keydown.enter)="generateQR(); $event.preventDefault()"></textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" (click)="generateQR()" [disabled]="isGenerating || !inputText.trim()">
+          {{ isGenerating ? i18n.t('dni.generating') : i18n.t('qr.generate') }}
+        </button>
+        <button class="btn btn-secondary" (click)="clear()" *ngIf="qrDataUrl">{{ i18n.t('common.clear') }}</button>
+      </div>
+
+      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <div class="qr-result" *ngIf="qrDataUrl">
+        <div class="qr-image-wrapper">
+          <img [src]="qrDataUrl" alt="QR Code" class="qr-image">
+        </div>
+        <div class="result-actions">
+          <button class="btn btn-action" (click)="downloadQR()">
+            {{ i18n.t('qr.download') }}
+          </button>
+          <button class="btn btn-action" (click)="copyQR()">
+            {{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

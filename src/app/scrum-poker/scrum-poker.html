@@ -1,0 +1,130 @@
+<app-terminal-layout title="Scrum Poker">
+<div class="scrum-poker-container">
+  <!-- Header -->
+  <header class="poker-header">
+    <h1>Scrum Poker</h1>
+    <div class="room-info">
+      <span class="room-id">{{ roomId }}</span>
+      <button (click)="copyRoomLink()" class="copy-link-btn">📋 Invitar</button>
+      <button (click)="leaveRoom()" class="leave-btn">Salir</button>
+    </div>
+  </header>
+
+  <main class="poker-main">
+    <!-- Players Grid -->
+    <section class="players-section">
+      <h2>Jugadores</h2>
+      <div class="players-grid">
+        <div class="player-card" 
+             *ngFor="let player of players" 
+             [class.current-player]="player.isCurrentPlayer"
+             [class.has-voted]="player.hasVoted">
+          <div class="player-avatar">
+            {{ player.name.charAt(0).toUpperCase() }}
+          </div>
+          <div class="player-info">
+            <h3>{{ player.name }}</h3>
+            <div class="vote-display">
+              <div class="vote-card" 
+                   [class.revealed]="showVotes" 
+                   [class.special-vote]="isSpecialVote(player)">
+                <span class="vote-value" *ngIf="showVotes || player.isCurrentPlayer">
+                  {{ getVoteDisplay(player) }}
+                </span>
+                <span class="vote-hidden" *ngIf="!showVotes && !player.isCurrentPlayer">
+                  {{ player.hasVoted ? '✓' : '?' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Voting Section -->
+    <section class="voting-section">
+      <h2>Votar</h2>
+      <div class="voting-buttons">
+        <button class="vote-btn" 
+                *ngFor="let v of numberVotes" 
+                (click)="vote(v)"
+                [disabled]="showVotes"
+                [class.selected]="hasVoted && voteBreakdown.numbers === v && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
+          {{ v }}
+        </button>
+        
+        <button class="vote-btn special coffee" 
+                (click)="vote('coffee')"
+                [disabled]="showVotes"
+                [class.selected]="hasVoted && voteBreakdown.coffee > 0">
+          ☕
+        </button>
+        
+        <button class="vote-btn special joint" 
+                (click)="vote('joint')"
+                [disabled]="showVotes"
+                [class.selected]="hasVoted && voteBreakdown.joint > 0">
+          🚬
+        </button>
+      </div>
+
+      <!-- Custom vote input -->
+      <div class="custom-vote">
+        <input type="number" 
+               [(ngModel)]="customVoteInput" 
+               placeholder="Otro valor..."
+               (keydown.enter)="submitCustomVote()"
+               [disabled]="showVotes"
+               min="0">
+        <button class="vote-custom-btn" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
+          Votar
+        </button>
+      </div>
+
+      <div class="current-vote" *ngIf="hasVoted">
+        <span>Tu voto: <strong>{{ myVoteDisplay }}</strong></span>
+        <button class="clear-vote-btn" (click)="clearMyVote()" [disabled]="showVotes">✕</button>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section" *ngIf="showVotes">
+      <div class="results-header">
+        <h2>Resultados</h2>
+        <div class="statistics">
+          <div class="stat-card">
+            <span class="stat-label">Media</span>
+            <span class="stat-value">{{ average }}</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Votos</span>
+            <span class="stat-value">{{ totalVotes }}</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="vote-summary">
+        <div class="summary-item" *ngFor="let summary of voteSummary">
+          <span class="vote-number">{{ summary.vote }}</span>
+          <span class="vote-count">{{ summary.count }}</span>
+          <div class="vote-bar">
+            <div class="vote-fill" [style.width.%]="summary.percentage"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Control Buttons -->
+    <section class="controls-section">
+      <button class="control-btn reveal" 
+              (click)="revealVotes()" 
+              [disabled]="showVotes">
+        Revelar
+      </button>
+      <button class="control-btn reset" (click)="resetVotes()">
+        Nueva Ronda
+      </button>
+    </section>
+  </main>
+</div>
+</app-terminal-layout>

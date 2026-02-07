@@ -1,0 +1,80 @@
+<app-terminal-layout title="Timestamp Converter">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('ts.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('ts.subtitle') }}</p>
+
+      <!-- Date/Time Picker -->
+      <div class="picker-section">
+        <h2>{{ i18n.t('ts.pickDateTime') }}</h2>
+        <div class="picker-row">
+          <div class="picker-field">
+            <label>{{ i18n.t('common.date') }}</label>
+            <input type="date" [(ngModel)]="pickerDate" (change)="convertPicker()">
+          </div>
+          <div class="picker-field">
+            <label>{{ i18n.t('common.time') }}</label>
+            <input type="time" [(ngModel)]="pickerTime" (change)="convertPicker()">
+          </div>
+          <button class="btn btn-secondary btn-now" (click)="setPickerNow()">{{ i18n.t('common.now') }}</button>
+        </div>
+
+        <div class="format-table" *ngIf="pickerFormats.length">
+          <div class="format-row" *ngFor="let f of pickerFormats" (click)="copyValue(f.value, 'p_' + f.label)">
+            <span class="format-label">{{ f.label }}</span>
+            <span class="format-value">{{ f.value }}</span>
+            <span class="format-copy">{{ copiedLabel === 'p_' + f.label ? '✓' : '📋' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text Converter -->
+      <div class="converter-section">
+        <h2>{{ i18n.t('ts.convertValue') }}</h2>
+
+        <div class="type-selector">
+          <button *ngFor="let t of inputTypes"
+                  class="type-btn"
+                  [class.active]="inputType === t.value"
+                  (click)="inputType = t.value; onTypeChange()">
+            {{ t.label }}
+          </button>
+        </div>
+
+        <div class="input-row">
+          <input type="text"
+                 [(ngModel)]="inputValue"
+                 [placeholder]="inputType === 'unix' ? 'Ej: 1700000000' :
+                                inputType === 'millis' ? 'Ej: 1700000000000' :
+                                inputType === 'ticks' ? 'Ej: 638363520000000000' :
+                                'Ej: 2024-01-15T12:30:00Z'"
+                 (keydown.enter)="convert()"
+                 class="converter-input">
+          <button class="btn btn-primary" (click)="convert()">{{ i18n.t('common.convert') }}</button>
+        </div>
+
+        <div class="quick-buttons">
+          <button *ngFor="let q of quickTimestamps"
+                  class="quick-btn"
+                  (click)="useQuick(q.offset)">
+            {{ q.label }}
+          </button>
+        </div>
+
+        <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+        <div class="format-table result-table" *ngIf="convertedFormats.length">
+          <div class="format-row" *ngFor="let f of convertedFormats" (click)="copyValue(f.value, 'r_' + f.label)">
+            <span class="format-label">{{ f.label }}</span>
+            <span class="format-value">{{ f.value }}</span>
+            <span class="format-copy">{{ copiedLabel === 'r_' + f.label ? '✓' : '📋' }}</span>
+          </div>
+        </div>
+
+        <div class="actions" *ngIf="inputValue">
+          <button class="btn btn-secondary" (click)="clear()">{{ i18n.t('common.clear') }}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

@@ -1,0 +1,51 @@
+<app-terminal-layout title="Lorem Ipsum Generator">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('lorem.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('lorem.subtitle') }}</p>
+
+      <div class="options-row">
+        <div class="option-group">
+          <label>{{ i18n.t('common.type') }}</label>
+          <div class="type-buttons">
+            <button *ngFor="let t of types"
+                    class="type-btn"
+                    [class.active]="type === t.value"
+                    (click)="type = t.value; onTypeChange()">
+              {{ t.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label>{{ i18n.t('common.amount') }}</label>
+          <input type="number" [(ngModel)]="amount" min="1" max="100" class="amount-input">
+        </div>
+      </div>
+
+      <div class="checkbox-row">
+        <label class="checkbox-label">
+          <input type="checkbox" [(ngModel)]="startWithLorem">
+          <span>{{ i18n.t('lorem.startWith') }}</span>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
+        <button class="btn btn-secondary" (click)="clear()" *ngIf="outputText">{{ i18n.t('common.clear') }}</button>
+      </div>
+
+      <div class="output-section" *ngIf="outputText">
+        <div class="output-header">
+          <label>{{ i18n.t('common.result') }}</label>
+          <div class="output-stats">
+            <span class="stat">{{ wordCount }} {{ i18n.t('common.words') }}</span>
+            <span class="stat">{{ charCount }} {{ i18n.t('common.characters') }}</span>
+          </div>
+          <button class="copy-btn" (click)="copyOutput()">{{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}</button>
+        </div>
+        <div class="output-box">{{ outputText }}</div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

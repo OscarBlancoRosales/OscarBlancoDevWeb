@@ -1,0 +1,72 @@
+<app-terminal-layout title="Color Picker">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('color.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('color.subtitle') }}</p>
+
+      <div class="color-preview-row">
+        <input type="color" [value]="hexInput" (input)="onPickerChange($event)" class="native-picker">
+        <div class="color-preview" [style.background]="hexInput"></div>
+        <button class="btn btn-secondary" (click)="randomColor()">{{ i18n.t('color.random') }}</button>
+      </div>
+
+      <div class="format-group">
+        <label>HEX</label>
+        <div class="input-row">
+          <input type="text" [(ngModel)]="hexInput" (input)="onHexChange()" maxlength="7" class="format-input">
+          <button class="copy-btn" (click)="copyValue(hexInput)">{{ copied ? '✓' : '📋' }}</button>
+        </div>
+      </div>
+
+      <div class="format-group">
+        <label>RGB</label>
+        <div class="input-row rgb-row">
+          <div class="rgb-field">
+            <span class="rgb-label">R</span>
+            <input type="number" [(ngModel)]="r" (input)="onRgbChange()" min="0" max="255">
+          </div>
+          <div class="rgb-field">
+            <span class="rgb-label">G</span>
+            <input type="number" [(ngModel)]="g" (input)="onRgbChange()" min="0" max="255">
+          </div>
+          <div class="rgb-field">
+            <span class="rgb-label">B</span>
+            <input type="number" [(ngModel)]="b" (input)="onRgbChange()" min="0" max="255">
+          </div>
+          <button class="copy-btn" (click)="copyValue(rgbString)">{{ copied ? '✓' : '📋' }}</button>
+        </div>
+      </div>
+
+      <div class="format-group">
+        <label>HSL</label>
+        <div class="input-row rgb-row">
+          <div class="rgb-field">
+            <span class="rgb-label">H</span>
+            <input type="number" [(ngModel)]="h" (input)="onHslChange()" min="0" max="360">
+          </div>
+          <div class="rgb-field">
+            <span class="rgb-label">S</span>
+            <input type="number" [(ngModel)]="s" (input)="onHslChange()" min="0" max="100">
+          </div>
+          <div class="rgb-field">
+            <span class="rgb-label">L</span>
+            <input type="number" [(ngModel)]="l" (input)="onHslChange()" min="0" max="100">
+          </div>
+          <button class="copy-btn" (click)="copyValue(hslString)">{{ copied ? '✓' : '📋' }}</button>
+        </div>
+      </div>
+
+      <div class="palette-section">
+        <label>Paleta de luminosidad</label>
+        <div class="palette-row">
+          <div *ngFor="let color of palette"
+               class="palette-swatch"
+               [style.background]="color"
+               (click)="copyValue(color)"
+               [title]="color">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

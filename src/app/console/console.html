@@ -1,0 +1,143 @@
+<div class="terminal-window" (click)="closeMenuIfOpen()">
+  <!-- Barra de título de la terminal -->
+  <div class="terminal-titlebar">
+    <div class="titlebar-buttons">
+      <span class="btn-close"></span>
+      <span class="btn-minimize"></span>
+      <span class="btn-maximize"></span>
+    </div>
+    <div class="titlebar-title">Oscar Blanco — Terminal</div>
+    <div class="titlebar-menu">
+      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español" *ngIf="showMenu">🇪🇸</button>
+      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English" *ngIf="showMenu">🇬🇧</button>
+      <button class="menu-btn" (click)="toggleMenu(); $event.stopPropagation()" *ngIf="showMenu" title="Menu">
+        <span>≡</span>
+      </button>
+      <div class="menu-dropdown" *ngIf="menuOpen" (click)="$event.stopPropagation()">
+        <div class="menu-item" (click)="navigate('/auth', $event)">
+          <span class="menu-icon">&gt;</span> scrum-poker
+        </div>
+        <div class="menu-item" (click)="navigate('/dni-generator', $event)">
+          <span class="menu-icon">&gt;</span> dni-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/qr-generator', $event)">
+          <span class="menu-icon">&gt;</span> qr-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/decoder', $event)">
+          <span class="menu-icon">&gt;</span> encoder-decoder
+        </div>
+        <div class="menu-item" (click)="navigate('/formatter', $event)">
+          <span class="menu-icon">&gt;</span> code-formatter
+        </div>
+        <div class="menu-item" (click)="navigate('/color-picker', $event)">
+          <span class="menu-icon">&gt;</span> color-picker
+        </div>
+        <div class="menu-item" (click)="navigate('/regex-tester', $event)">
+          <span class="menu-icon">&gt;</span> regex-tester
+        </div>
+        <div class="menu-item" (click)="navigate('/lorem-generator', $event)">
+          <span class="menu-icon">&gt;</span> lorem-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/timestamp', $event)">
+          <span class="menu-icon">&gt;</span> timestamp-converter
+        </div>
+        <div class="menu-item" (click)="navigate('/uuid-generator', $event)">
+          <span class="menu-icon">&gt;</span> uuid-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/icon-generator', $event)">
+          <span class="menu-icon">&gt;</span> icon-generator
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cuerpo de la terminal -->
+  <div class="terminal-body" [class.visible]="terminalOn" #terminalBody>
+    <!-- Línea de comando inicial con cursor parpadeando -->
+    <div class="line" *ngIf="showPrompt && !typingCommand">
+      <span class="prompt">PS C:\git\Oscar&gt;</span>
+      <span class="cursor blinking">█</span>
+    </div>
+
+    <!-- Comando que se escribe automáticamente -->
+    <div class="line" *ngIf="typingCommand">
+      <span class="prompt">PS C:\git\Oscar&gt;</span>
+      <span class="cmd">{{ typedText }}</span>
+      <span class="cursor blinking">█</span>
+    </div>
+
+    <!-- Resultado del comando data -->
+    <div class="line" *ngIf="showData">
+      <span class="prompt">PS C:\git\Oscar&gt;</span>
+      <span class="cmd">{{ fullCommand }}</span>
+    </div>
+
+    <!-- Datos personales estilo ipconfig -->
+    <div class="data-block" *ngIf="showData">
+      <div class="data-line" *ngFor="let line of displayedLines"
+           [class.section-title]="line && !line.startsWith('   ') && line.trim().length > 0">{{ line }}</div>
+    </div>
+
+    <!-- Redes sociales como comandos con links clicables -->
+    <div *ngIf="showSocial" class="social-block">
+      <div class="line">
+        <span class="prompt">PS C:\git\Oscar&gt;</span>
+        <span class="cmd">social --links</span>
+      </div>
+      <div class="social-row">
+        <span class="social-label">  GitHub</span>
+        <a href="https://github.com/oscarblanco-dev" target="_blank" class="social-value">https://github.com/oscarblanco-dev</a>
+      </div>
+      <div class="social-row">
+        <span class="social-label">  LinkedIn</span>
+        <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="social-value">https://linkedin.com/in/oscar-blanco</a>
+      </div>
+      <div class="social-row">
+        <span class="social-label">  Email</span>
+        <a href="mailto:oscar.blanco.r@gmail.com" class="social-value">oscar.blanco.r&#64;gmail.com</a>
+      </div>
+    </div>
+
+    <!-- Mensaje de bienvenida a terminal interactiva -->
+    <div class="line" *ngIf="showInteractiveTerminal">
+      <span class="prompt">PS C:\git\Oscar&gt;</span>
+      <span class="cmd">terminal --interactive</span>
+    </div>
+    <div class="line success" *ngIf="showInteractiveTerminal">
+      {{ i18n.t('console.interactiveOn') }}
+    </div>
+
+    <!-- Output de comandos del usuario -->
+    <div class="line output" *ngFor="let line of terminalOutput">{{ line }}</div>
+
+    <!-- Input de terminal interactiva -->
+    <div class="input-line" *ngIf="showInteractiveTerminal">
+      <span class="prompt">PS C:\git\Oscar&gt;</span>
+      <span class="input-wrapper">
+        <span class="input-mirror">{{ currentCommand }}</span>
+        <span class="cursor blinking">█</span>
+      </span>
+      <input
+        type="text"
+        class="cmd-input"
+        [(ngModel)]="currentCommand"
+        (keydown)="onCommandInput($event)"
+        [placeholder]="i18n.t('console.typeCommand')"
+        autofocus>
+    </div>
+  </div>
+
+  <!-- Barra inferior de la terminal -->
+  <div class="terminal-statusbar">
+    <div class="status-left">
+      <a href="https://github.com/oscarblanco-dev" target="_blank" class="status-link" title="GitHub">[GitHub]</a>
+      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="status-link" title="LinkedIn">[LinkedIn]</a>
+      <a href="mailto:oscar.blanco.r@gmail.com" class="status-link" title="Email">[Email]</a>
+    </div>
+    <div class="status-right">
+      <span class="status-item">UTF-8</span>
+      <span class="status-item">LF</span>
+      <span class="status-item">PowerShell</span>
+    </div>
+  </div>
+</div>

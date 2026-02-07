@@ -1,0 +1,75 @@
+<app-terminal-layout title="Regex Tester">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('regex.title') }}</h1>
+      <p class="tool-subtitle">{{ i18n.t('regex.subtitle') }}</p>
+
+      <div class="common-patterns">
+        <span class="patterns-label">{{ i18n.t('regex.commonPatterns') }}</span>
+        <button *ngFor="let p of commonPatterns"
+                class="pattern-btn"
+                (click)="usePattern(p.pattern)">
+          {{ p.label }}
+        </button>
+      </div>
+
+      <div class="input-group">
+        <label>{{ i18n.t('regex.expression') }}</label>
+        <div class="regex-input-row">
+          <span class="regex-delim">/</span>
+          <input type="text"
+                 [(ngModel)]="regexInput"
+                 (input)="test()"
+                 [placeholder]="i18n.t('regex.placeholder')"
+                 class="regex-field">
+          <span class="regex-delim">/</span>
+          <div class="flags-row">
+            <button *ngFor="let f of flagOptions"
+                    class="flag-btn"
+                    [class.active]="f.active"
+                    (click)="toggleFlag(f)"
+                    [title]="f.label">
+              {{ f.flag }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <div class="input-group">
+        <label>{{ i18n.t('regex.testInput') }}</label>
+        <textarea
+          [(ngModel)]="testInput"
+          (input)="test()"
+          [placeholder]="i18n.t('regex.testPlaceholder')"
+          rows="5"></textarea>
+      </div>
+
+      <div class="highlighted-output" *ngIf="highlightedHtml">
+        <label>{{ i18n.t('common.result') }} <span class="match-count" *ngIf="matchCount">{{ matchCount }} {{ matchCount !== 1 ? i18n.t('regex.matchPlural') : i18n.t('regex.match') }}</span></label>
+        <div class="highlight-box" [innerHTML]="highlightedHtml"></div>
+      </div>
+
+      <div class="matches-section" *ngIf="matches.length">
+        <div class="matches-header">
+          <label>{{ i18n.t('regex.matches') }}</label>
+          <button class="copy-btn" (click)="copyMatches()">{{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}</button>
+        </div>
+        <div class="matches-list">
+          <div class="match-item" *ngFor="let m of groupMatches; let i = index">
+            <span class="match-index">#{{ i + 1 }}</span>
+            <span class="match-value">{{ m.match }}</span>
+            <span class="match-groups" *ngIf="m.groups.length">
+              <span *ngFor="let g of m.groups; let j = index" class="group-tag">G{{ j + 1 }}: {{ g }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" *ngIf="regexInput || testInput">
+        <button class="btn btn-secondary" (click)="clear()">{{ i18n.t('common.clear') }}</button>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

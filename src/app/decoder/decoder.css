@@ -1,0 +1,178 @@
+/* ===== SHARED TOOL LAYOUT ===== */
+.tool-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100%;
+}
+
+.tool-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 32px;
+  width: 100%;
+  max-width: 560px;
+}
+
+.tool-title {
+  color: #0f0;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.tool-subtitle {
+  color: #666;
+  font-size: 12px;
+  margin: 0 0 24px 0;
+}
+
+/* Mode selector */
+.mode-selector {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  padding: 6px 12px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #888;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mode-btn:hover { border-color: #666; color: #ccc; }
+
+.mode-btn.active {
+  background: #0f0;
+  color: #000;
+  border-color: #0f0;
+  font-weight: bold;
+}
+
+/* Direction toggle */
+.direction-toggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.dir-btn {
+  padding: 6px 14px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #888;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dir-btn:hover { color: #ccc; }
+.dir-btn.active { border-color: #569cd6; color: #569cd6; }
+
+/* Input */
+.input-group { margin-bottom: 12px; }
+
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.label-row label {
+  color: #888;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.copy-inline {
+  background: none;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 8px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.copy-inline:hover { border-color: #0f0; color: #0f0; }
+
+.input-group textarea {
+  width: 100%;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #e8e8e8;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group textarea:focus { border-color: #0f0; }
+
+/* Error */
+.error { color: #ff5f57; font-size: 13px; margin-bottom: 12px; }
+
+/* Output */
+.output-group { margin-bottom: 16px; }
+
+.output-box {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #4caf50;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+}
+
+/* Buttons */
+.actions { display: flex; gap: 10px; }
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary { background: #333; color: #ccc; }
+.btn-secondary:hover { background: #444; }
+
+/* Scrollbar */
+.output-box::-webkit-scrollbar { width: 6px; }
+.output-box::-webkit-scrollbar-track { background: #1a1a1a; }
+.output-box::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .tool-content { padding: 20px 12px; }
+  .tool-card { padding: 24px 16px; }
+  .tool-title { font-size: 16px; }
+  .mode-btn { padding: 5px 8px; font-size: 11px; }
+}

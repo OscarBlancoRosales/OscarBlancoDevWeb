@@ -1,0 +1,222 @@
+/* Estilos generales */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Contenedor principal */
+.console-container {
+  width: 100vw;
+  height: 100vh;
+  background: #0c0c0c;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Menú hamburguesa */
+.menu-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.menu-button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.menu-button span {
+  width: 28px;
+  height: 3px;
+  background: #666;
+  display: block;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.menu-button:hover span {
+  background: #0f0;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 4px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+}
+
+.dropdown-menu a {
+  display: block;
+  padding: 14px 18px;
+  color: #0f0;
+  text-decoration: none;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.dropdown-menu a:hover {
+  background: #333;
+}
+
+/* Consola */
+.console {
+  flex: 1;
+  padding: 40px;
+  color: #ccc;
+  font-size: 16px;
+  line-height: 1.8;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  overflow-y: auto;
+}
+
+.console.terminal-on {
+  opacity: 1;
+}
+
+.console-content {
+  max-width: 900px;
+}
+
+/* Líneas de comando */
+.command-line, .command-line-result {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.prompt {
+  color: #0f0;
+  margin-right: 8px;
+  font-weight: bold;
+}
+
+.cursor {
+  color: #0f0;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+.cursor.blinking {
+  animation: blink 0.8s infinite;
+}
+
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.typed-command {
+  color: #fff;
+}
+
+/* Salida de datos */
+.data-output {
+  margin-top: 10px;
+}
+
+.config-section {
+  margin-bottom: 25px;
+  margin-left: 20px;
+}
+
+.section-title {
+  color: #0f0;
+  font-weight: bold;
+  margin-bottom: 8px;
+  font-size: 14px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 5px;
+}
+
+.data-item {
+  display: flex;
+  padding: 4px 10px;
+  margin-bottom: 2px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.data-item:hover,
+.data-item.hovered {
+  background: rgba(0, 255, 0, 0.1);
+  transform: translateX(5px);
+}
+
+.data-label {
+  color: #888;
+  min-width: 180px;
+}
+
+.data-value {
+  color: #fff;
+}
+
+/* Footer social */
+.social-footer {
+  position: fixed;
+  bottom: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 20px;
+  z-index: 100;
+}
+
+.social-link {
+  color: #555;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid #333;
+  border-radius: 50%;
+  background: #111;
+}
+
+.social-link:hover {
+  color: #0f0;
+  border-color: #0f0;
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+  transform: translateY(-3px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .console {
+    padding: 20px;
+    font-size: 14px;
+  }
+  
+  .data-label {
+    min-width: 120px;
+  }
+  
+  .social-footer {
+    bottom: 20px;
+    gap: 15px;
+  }
+  
+  .social-link {
+    width: 38px;
+    height: 38px;
+  }
+}

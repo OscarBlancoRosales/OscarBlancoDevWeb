@@ -1,0 +1,57 @@
+<app-terminal-layout title="Code Formatter">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h1 class="tool-title">{{ i18n.t('formatter.title') }}</h1>
+    <p class="tool-subtitle">{{ i18n.t('formatter.subtitle') }}</p>
+
+    <div class="mode-selector">
+      <button *ngFor="let m of modes"
+              class="mode-btn"
+              [class.active]="mode === m.value"
+              (click)="mode = m.value; onModeChange()">
+        {{ m.label }}
+      </button>
+    </div>
+
+    <div class="input-group">
+      <div class="label-row">
+        <label for="formatterInput">Input</label>
+        <div class="indent-control">
+          <label>Indent:</label>
+          <select [(ngModel)]="indentSize">
+            <option [ngValue]="2">2</option>
+            <option [ngValue]="4">4</option>
+          </select>
+        </div>
+      </div>
+      <textarea
+        id="formatterInput"
+        [(ngModel)]="inputText"
+        [placeholder]="i18n.t('formatter.inputPlaceholder')"
+        rows="8"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" (click)="format()" [disabled]="!inputText.trim()">
+        {{ i18n.t('formatter.format') }}
+      </button>
+      <button class="btn btn-accent" (click)="minify()" [disabled]="!inputText.trim()">
+        {{ i18n.t('formatter.minify') }}
+      </button>
+      <button class="btn btn-secondary" (click)="clear()" *ngIf="inputText">{{ i18n.t('common.clear') }}</button>
+    </div>
+
+    <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="output-group" *ngIf="outputText">
+      <div class="label-row">
+        <label>Output</label>
+        <button class="copy-inline" (click)="copyOutput()">
+          {{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}
+        </button>
+      </div>
+      <pre class="output-box">{{ outputText }}</pre>
+    </div>
+    </div>
+  </div>
+</app-terminal-layout>

@@ -1,0 +1,44 @@
+<app-terminal-layout title="Scrum Poker — Join">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h2 class="tool-title">&gt; Join Room</h2>
+      <p class="tool-subtitle">Ingresa tu nombre para unirte a la sala</p>
+      
+      <form (ngSubmit)="joinRoom()" [formGroup]="nameForm">
+        <div class="form-group">
+          <label for="playerName">Tu nombre</label>
+          <input 
+            id="playerName"
+            type="text" 
+            formControlName="playerName"
+            placeholder="Ej: Juan, María, etc."
+            [class.input-error]="playerName?.invalid && playerName?.touched"
+            maxlength="20"
+          >
+          <div class="error" *ngIf="playerName?.invalid && playerName?.touched">
+            El nombre es requerido (mínimo 2 caracteres)
+          </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary btn-full" [disabled]="nameForm.invalid || isLoading">
+          {{ isLoading ? 'Uniéndose...' : 'Unirse a la sala' }}
+        </button>
+      </form>
+      
+      <div class="room-info">
+        <p><strong>Sala:</strong> {{ roomId }}</p>
+        <p><strong>Código de invitación:</strong></p>
+        <div class="invite-code">
+          <code>{{ inviteCode }}</code>
+          <button (click)="copyInviteLink()" class="btn-copy" title="Copiar enlace">
+            📋
+          </button>
+        </div>
+      </div>
+      
+      <div class="success-message" *ngIf="showSuccess">
+        ✓ Nombre guardado. Redirigiendo a la sala...
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

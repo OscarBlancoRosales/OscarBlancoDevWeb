@@ -1,0 +1,51 @@
+<app-terminal-layout title="Encoder / Decoder">
+  <div class="tool-content">
+    <div class="tool-card">
+    <h1 class="tool-title">{{ i18n.t('decoder.title') }}</h1>
+    <p class="tool-subtitle">{{ i18n.t('decoder.subtitle') }}</p>
+
+    <div class="mode-selector">
+      <button *ngFor="let m of modes"
+              class="mode-btn"
+              [class.active]="mode === m.value"
+              (click)="mode = m.value; onModeChange()">
+        {{ m.label }}
+      </button>
+    </div>
+
+    <div class="direction-toggle" *ngIf="mode !== 'jwt'">
+      <button class="dir-btn" [class.active]="direction === 'encode'" (click)="direction = 'encode'; clear()">{{ i18n.t('decoder.encode') }}</button>
+      <button class="dir-btn" [class.active]="direction === 'decode'" (click)="direction = 'decode'; clear()">{{ i18n.t('decoder.decode') }}</button>
+    </div>
+
+    <div class="input-group">
+      <div class="label-row">
+        <label for="decoderInput">Input</label>
+        <button class="copy-inline" (click)="copyInput()" *ngIf="inputText">📋</button>
+      </div>
+      <textarea
+        id="decoderInput"
+        [(ngModel)]="inputText"
+        [placeholder]="i18n.t('decoder.inputPlaceholder')"
+        rows="5"
+        (input)="process()"></textarea>
+    </div>
+
+    <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+    <div class="output-group" *ngIf="outputText">
+      <div class="label-row">
+        <label>Output</label>
+        <button class="copy-inline" (click)="copyOutput()">
+          {{ copied ? '✓' : '📋' }}
+        </button>
+      </div>
+      <pre class="output-box">{{ outputText }}</pre>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-secondary" (click)="clear()" *ngIf="inputText">{{ i18n.t('common.clear') }}</button>
+    </div>
+    </div>
+  </div>
+</app-terminal-layout>

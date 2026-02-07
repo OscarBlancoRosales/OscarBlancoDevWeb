@@ -1,0 +1,38 @@
+<app-terminal-layout title="DNI Generator">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h2 class="tool-title">{{ i18n.t('dni.title') }}</h2>
+      <p class="tool-subtitle">{{ i18n.t('dni.subtitle') }}</p>
+
+      <div class="dni-display">
+        <div class="dni-label">{{ i18n.t('dni.generated') }}</div>
+        <div class="dni-value" [class.generating]="isGenerating">
+          <span class="dni-number">{{ currentDni || '---------' }}</span>
+          <div class="loading-dots" *ngIf="isGenerating">
+            <span>.</span><span>.</span><span>.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-primary" (click)="generateNewDni()" [disabled]="isGenerating">
+          {{ isGenerating ? i18n.t('dni.generating') : i18n.t('dni.generateNew') }}
+        </button>
+        <button class="btn btn-accent" (click)="copyToClipboard()" [disabled]="!currentDni || isGenerating">
+          {{ i18n.t('common.copy') }}
+        </button>
+      </div>
+
+      <div class="copied-message" *ngIf="showCopiedMessage">
+        {{ i18n.t('dni.copiedMsg') }}
+      </div>
+
+      <div class="info-box">
+        <div class="info-title">{{ i18n.t('dni.info') }}</div>
+        <div class="info-text">
+          {{ i18n.t('dni.infoText') }}
+        </div>
+      </div>
+    </div>
+  </div>
+</app-terminal-layout>

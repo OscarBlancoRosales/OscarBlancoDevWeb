@@ -1,0 +1,17 @@
+<!-- Menú hamburguesa -->
+<div class="menu-container" *ngIf="showMenu">
+  <button class="menu-button" (click)="toggleMenu(); $event.stopPropagation()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="dropdown-menu" *ngIf="menuOpen" (click)="$event.stopPropagation()">
+    <a href="#" (click)="navigateToConsole($event)">💻 Consola</a>
+    <a href="#" (click)="navigateToScrumPoker($event)">🃏 Sala Scrum Poker</a>
+    <a href="#" (click)="navigateToDniGenerator($event)">🆔 Generador DNI</a>
+    <a href="#" (click)="navigateToQrGenerator($event)">📱 QR Generator</a>
+    <a href="#" (click)="navigateToDecoder($event)">🔐 Encoder / Decoder</a>
+    <a href="#" (click)="navigateToFormatter($event)">📝 Code Formatter</a>
+    <a href="#" (click)="clearSession($event)" class="logout-link" *ngIf="isAuthenticated">🗑️ Limpiar Sesión</a>
+  </div>
+</div>

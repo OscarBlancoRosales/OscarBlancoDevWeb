@@ -1,0 +1,72 @@
+<div class="terminal-window" (click)="closeMenuIfOpen()">
+  <div class="terminal-titlebar">
+    <div class="titlebar-buttons">
+      <span class="btn-close"></span>
+      <span class="btn-minimize"></span>
+      <span class="btn-maximize"></span>
+    </div>
+    <div class="titlebar-title">{{ title }}</div>
+    <div class="titlebar-menu">
+      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español">🇪🇸</button>
+      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English">🇬🇧</button>
+      <button class="menu-btn" (click)="toggleMenu(); $event.stopPropagation()" title="Menu">
+        <span>≡</span>
+      </button>
+      <div class="menu-dropdown" *ngIf="menuOpen" (click)="$event.stopPropagation()">
+        <div class="menu-item" (click)="navigate('/', $event)">
+          <span class="menu-icon">&gt;</span> terminal
+        </div>
+        <div class="menu-item" (click)="navigate('/auth', $event)">
+          <span class="menu-icon">&gt;</span> scrum-poker
+        </div>
+        <div class="menu-item" (click)="navigate('/dni-generator', $event)">
+          <span class="menu-icon">&gt;</span> dni-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/qr-generator', $event)">
+          <span class="menu-icon">&gt;</span> qr-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/decoder', $event)">
+          <span class="menu-icon">&gt;</span> encoder-decoder
+        </div>
+        <div class="menu-item" (click)="navigate('/formatter', $event)">
+          <span class="menu-icon">&gt;</span> code-formatter
+        </div>
+        <div class="menu-item" (click)="navigate('/color-picker', $event)">
+          <span class="menu-icon">&gt;</span> color-picker
+        </div>
+        <div class="menu-item" (click)="navigate('/regex-tester', $event)">
+          <span class="menu-icon">&gt;</span> regex-tester
+        </div>
+        <div class="menu-item" (click)="navigate('/lorem-generator', $event)">
+          <span class="menu-icon">&gt;</span> lorem-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/timestamp', $event)">
+          <span class="menu-icon">&gt;</span> timestamp-converter
+        </div>
+        <div class="menu-item" (click)="navigate('/uuid-generator', $event)">
+          <span class="menu-icon">&gt;</span> uuid-generator
+        </div>
+        <div class="menu-item" (click)="navigate('/icon-generator', $event)">
+          <span class="menu-icon">&gt;</span> icon-generator
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="terminal-body">
+    <ng-content></ng-content>
+  </div>
+
+  <div class="terminal-statusbar" *ngIf="showStatusBar">
+    <div class="status-left">
+      <a href="https://github.com/oscarblanco-dev" target="_blank" class="status-link">[GitHub]</a>
+      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="status-link">[LinkedIn]</a>
+      <a href="mailto:oscar.blanco.r@gmail.com" class="status-link">[Email]</a>
+    </div>
+    <div class="status-right">
+      <span class="status-item">UTF-8</span>
+      <span class="status-item">LF</span>
+      <span class="status-item">PowerShell</span>
+    </div>
+  </div>
+</div>

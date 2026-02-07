@@ -1,0 +1,159 @@
+/* ===== SHARED TOOL LAYOUT ===== */
+.tool-content {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 40px 20px;
+  min-height: 100%;
+}
+
+.tool-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 32px;
+  width: 100%;
+  max-width: 500px;
+}
+
+.tool-title {
+  color: #0f0;
+  font-size: 18px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.tool-subtitle {
+  color: #666;
+  font-size: 12px;
+  margin: 0 0 24px 0;
+}
+
+/* ===== DNI SPECIFIC ===== */
+.dni-display {
+  background: rgba(0, 255, 0, 0.04);
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.dni-label {
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dni-value {
+  font-size: 28px;
+  font-weight: bold;
+  color: #e8e8e8;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dni-value.generating { color: #555; }
+
+.dni-number {
+  font-family: inherit;
+  letter-spacing: 2px;
+}
+
+.loading-dots { display: flex; gap: 2px; }
+.loading-dots span { animation: dotBlink 1.4s infinite; }
+.loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+.loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dotBlink {
+  0%, 60%, 100% { opacity: 0; }
+  30% { opacity: 1; }
+}
+
+/* ===== BUTTONS ===== */
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: #0f0;
+  color: #000;
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
+}
+
+.btn-accent {
+  background: #569cd6;
+  color: #000;
+}
+
+.btn-accent:hover:not(:disabled) {
+  box-shadow: 0 0 12px rgba(86, 156, 214, 0.3);
+}
+
+.copied-message {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #0f0;
+  font-size: 13px;
+}
+
+.info-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 16px;
+}
+
+.info-title {
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.info-text {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .tool-content { padding: 20px 12px; }
+  .tool-card { padding: 24px 16px; }
+  .tool-title { font-size: 16px; }
+  .dni-value { font-size: 22px; }
+  .controls { flex-direction: column; }
+}

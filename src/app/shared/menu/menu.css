@@ -1,0 +1,131 @@
+/* Menú hamburguesa */
+.menu-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+}
+
+.menu-button {
+  background: #1a1a1a;
+  border: 2px solid #0f0;
+  border-radius: 6px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 44px;
+  height: 38px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 12px rgba(0, 255, 0, 0.15);
+}
+
+.menu-button:hover {
+  background: #0f0;
+  box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+}
+
+.menu-button span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background: #0f0;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.menu-button:hover span {
+  background: #000;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  min-width: 230px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+}
+
+.dropdown-menu a {
+  display: block;
+  padding: 14px 18px;
+  color: #ccc;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.dropdown-menu a:last-child {
+  border-bottom: none;
+}
+
+.dropdown-menu a:hover {
+  background: #222;
+  color: #0f0;
+  padding-left: 22px;
+}
+
+.dropdown-menu a.logout-link {
+  color: #ff6b6b;
+  border-top: 1px solid #333;
+}
+
+.dropdown-menu a.logout-link:hover {
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff4444;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .menu-container {
+    top: 12px;
+    right: 12px;
+  }
+
+  .menu-button {
+    width: 42px;
+    height: 36px;
+    padding: 10px;
+  }
+
+  .dropdown-menu {
+    min-width: 220px;
+  }
+
+  .dropdown-menu a {
+    padding: 14px 16px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .menu-container {
+    top: 10px;
+    right: 10px;
+  }
+
+  .menu-button {
+    width: 40px;
+    height: 34px;
+    padding: 9px;
+  }
+
+  .dropdown-menu {
+    min-width: 200px;
+    right: 0;
+  }
+
+  .dropdown-menu a {
+    padding: 12px 14px;
+    font-size: 12px;
+  }
+}
