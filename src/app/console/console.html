@@ -8,8 +8,8 @@
     </div>
     <div class="titlebar-title">Oscar Blanco — Terminal</div>
     <div class="titlebar-menu">
-      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español" *ngIf="showMenu">🇪🇸</button>
-      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English" *ngIf="showMenu">🇬🇧</button>
+      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español" *ngIf="showMenu"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#c60b1e"/><rect y="10" width="60" height="20" fill="#ffc400"/></svg></button>
+      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English" *ngIf="showMenu"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#00247d"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4"/><path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6"/></svg></button>
       <button class="menu-btn" (click)="toggleMenu(); $event.stopPropagation()" *ngIf="showMenu" title="Menu">
         <span>≡</span>
       </button>

@@ -62,13 +62,14 @@
 .lang-btn {
   background: none;
   border: 1px solid transparent;
-  font-size: 14px;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 3px;
   opacity: 0.4;
   transition: all 0.2s;
-  line-height: 1;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
 }
 
 .lang-btn:hover {
