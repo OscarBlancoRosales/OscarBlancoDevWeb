@@ -30,7 +30,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npx ng build --configuration production --base-href /OscarBlancoDevWeb/
+        run: npx ng build --configuration production --base-href /
 
       - name: Copy index.html to 404.html for SPA routing
         run: cp dist/DevWeb/browser/index.html dist/DevWeb/browser/404.html
