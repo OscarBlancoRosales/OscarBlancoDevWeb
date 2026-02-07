@@ -1,59 +1,74 @@
-# DevWeb
+# DevWeb — Portfolio & Developer Toolkit
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.2.
+Interactive developer portfolio built with Angular, featuring a retro terminal-style UI and a collection of useful web tools.
 
-## Development server
+**Live:** [oscarblancorosales.github.io/OscarBlancoDevWeb](https://oscarblancorosales.github.io/OscarBlancoDevWeb/)
 
-To start a local development server, run:
+## Features
+
+### Terminal Console
+- Retro-style interactive terminal with typewriter animations
+- Commands: `help`, `about`, `projects`, `contact`, `clear`
+- Personal info displayed in ipconfig-style format
+
+### Developer Tools
+- **DNI Generator** — Generate valid Spanish DNI numbers for testing
+- **QR Generator** — Create QR codes from text, URLs or any content
+- **UUID Generator** — Generate UUID v4 identifiers with formatting options
+- **Encoder / Decoder** — Base64, URL Encode, HTML Entities, Hex, Binary, Unicode, JWT
+- **Code Formatter** — Format and minify JSON, XML, CSS, SQL
+- **Regex Tester** — Test regular expressions in real time with match highlighting
+- **Color Picker** — Convert between HEX, RGB, HSL with palette generation
+- **Lorem Ipsum Generator** — Generate placeholder text (paragraphs, sentences, words)
+- **Timestamp Converter** — Convert between Unix, millis, .NET Ticks, ISO 8601 and more
+- **App Icon Generator** — Generate iOS and Android app icons from a single image
+
+### Scrum Poker
+- Real-time planning poker with Firebase Realtime Database
+- Create rooms, invite players via link, vote and reveal results
+- Firebase Authentication for room creation
+
+### Internationalization (i18n)
+- Full Spanish / English support across all pages
+- Language toggle flags in the titlebar
+- Language preference persisted in localStorage
+
+## Tech Stack
+
+- **Framework:** Angular 21
+- **Styling:** Custom CSS with terminal/retro theme
+- **Backend:** Firebase (Realtime Database + Authentication)
+- **Deployment:** GitHub Pages via GitHub Actions
+- **Libraries:** qrcode, jszip
+
+## Getting Started
 
 ```bash
+# Install dependencies
+npm install
+
+# Development server
 ng serve
+# Open http://localhost:4200
+
+# Production build
+ng build --configuration production
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## Deployment
 
-## Code scaffolding
+The project deploys automatically to GitHub Pages on every push to `main` via GitHub Actions.
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+The workflow (`.github/workflows/deploy.yml`) handles:
+1. Install dependencies
+2. Build with correct base-href
+3. Generate 404.html for SPA routing
+4. Deploy to GitHub Pages
 
-```bash
-ng generate component component-name
-```
+## Author
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+**Oscar Blanco Rosales** — Full Stack Developer
 
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+- [LinkedIn](https://www.linkedin.com/in/oscar-blanco-a5108b349/)
+- [GitHub](https://github.com/OscarBlancoRosales)
+- [Email](mailto:oscar.blanco.r@gmail.com)
