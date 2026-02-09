@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -21,7 +22,8 @@ interface DataSection {
   templateUrl: './console.html',
   styleUrl: './console.css'
 })
-export class Console implements OnInit {
+export class Console implements OnInit, OnDestroy {
+  private langSub?: Subscription;
   // Estados de la consola
   showMenu = false;
   menuOpen = false;
@@ -88,6 +90,18 @@ export class Console implements OnInit {
     // Verificar si el usuario está autenticado
     this.isAuthenticated = this.checkAuthentication();
     this.startConsoleAnimation();
+
+    // Suscribirse a cambios de idioma para refrescar datos
+    this.langSub = this.i18n.langChange$.subscribe(() => {
+      if (this.showData && !this.isTypingData) {
+        this.displayedLines = this.generateDataLines();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.langSub?.unsubscribe();
   }
   
   private checkAuthentication(): boolean {

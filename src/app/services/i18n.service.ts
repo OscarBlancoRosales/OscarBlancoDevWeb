@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { Subject } from 'rxjs';
 
 export type Lang = 'es' | 'en';
 
@@ -181,6 +182,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
 @Injectable({ providedIn: 'root' })
 export class I18nService {
   private currentLang: Lang = 'es';
+  langChange$ = new Subject<Lang>();
 
   constructor() {
     const saved = localStorage.getItem('app_lang') as Lang;
@@ -196,6 +198,7 @@ export class I18nService {
   setLang(lang: Lang): void {
     this.currentLang = lang;
     localStorage.setItem('app_lang', lang);
+    this.langChange$.next(lang);
   }
 
   t(key: string, params?: Record<string, string>): string {
