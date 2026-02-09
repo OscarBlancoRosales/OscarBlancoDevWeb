@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
 import JSZip from 'jszip';
+import Pica from 'pica';
 
 interface IconSize {
   name: string;
@@ -30,6 +31,7 @@ export class IconGenerator {
   errorMessage = '';
 
   private sourceImage: HTMLImageElement | null = null;
+  private pica = new Pica({ features: ['js', 'wasm'] });
 
   // iOS icon sizes - complete set
   iosIcons: IconSize[] = [
@@ -133,60 +135,46 @@ export class IconGenerator {
     event.stopPropagation();
   }
 
-  private resizeImage(width: number, height: number, round = false): Promise<Blob> {
-    return new Promise((resolve, reject) => {
-      if (!this.sourceImage) { reject('No image'); return; }
+  private async resizeImage(width: number, height: number, round = false): Promise<Blob> {
+    if (!this.sourceImage) throw new Error('No image');
 
-      // Progressive downscale for quality: halve dimensions step by step
-      let srcW = this.sourceImage.naturalWidth;
-      let srcH = this.sourceImage.naturalHeight;
+    // Draw source image onto a canvas
+    const srcCanvas = document.createElement('canvas');
+    srcCanvas.width = this.sourceImage.naturalWidth;
+    srcCanvas.height = this.sourceImage.naturalHeight;
+    const srcCtx = srcCanvas.getContext('2d')!;
+    srcCtx.drawImage(this.sourceImage, 0, 0);
 
-      // Start with the source image drawn onto a temp canvas
-      let current = document.createElement('canvas');
-      current.width = srcW;
-      current.height = srcH;
-      let ctx = current.getContext('2d')!;
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(this.sourceImage, 0, 0, srcW, srcH);
+    // Target canvas
+    const destCanvas = document.createElement('canvas');
+    destCanvas.width = width;
+    destCanvas.height = height;
 
-      // Step down by halves until we're within 2x of target
-      while (srcW / 2 > width && srcH / 2 > height) {
-        const halfW = Math.round(srcW / 2);
-        const halfH = Math.round(srcH / 2);
-        const step = document.createElement('canvas');
-        step.width = halfW;
-        step.height = halfH;
-        const stepCtx = step.getContext('2d')!;
-        stepCtx.imageSmoothingEnabled = true;
-        stepCtx.imageSmoothingQuality = 'high';
-        stepCtx.drawImage(current, 0, 0, halfW, halfH);
-        current = step;
-        srcW = halfW;
-        srcH = halfH;
-      }
-
-      // Final resize to exact target
-      const final = document.createElement('canvas');
-      final.width = width;
-      final.height = height;
-      const finalCtx = final.getContext('2d')!;
-      finalCtx.imageSmoothingEnabled = true;
-      finalCtx.imageSmoothingQuality = 'high';
-
-      if (round) {
-        finalCtx.beginPath();
-        finalCtx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2);
-        finalCtx.closePath();
-        finalCtx.clip();
-      }
-
-      finalCtx.drawImage(current, 0, 0, width, height);
-      final.toBlob((blob) => {
-        if (blob) resolve(blob);
-        else reject('Failed to create blob');
-      }, 'image/png');
+    // Resize with pica (Lanczos3 filter, high quality)
+    await this.pica.resize(srcCanvas, destCanvas, {
+      filter: 'lanczos3',
+      unsharpAmount: 80,
+      unsharpRadius: 0.6,
+      unsharpThreshold: 2
     });
+
+    // Apply round mask if needed
+    if (round) {
+      const ctx = destCanvas.getContext('2d')!;
+      const imageData = ctx.getImageData(0, 0, width, height);
+      const roundCanvas = document.createElement('canvas');
+      roundCanvas.width = width;
+      roundCanvas.height = height;
+      const roundCtx = roundCanvas.getContext('2d')!;
+      roundCtx.beginPath();
+      roundCtx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2);
+      roundCtx.closePath();
+      roundCtx.clip();
+      roundCtx.putImageData(imageData, 0, 0);
+      return this.pica.toBlob(roundCanvas, 'image/png');
+    }
+
+    return this.pica.toBlob(destCanvas, 'image/png');
   }
 
   private buildContentsJson(): string {
