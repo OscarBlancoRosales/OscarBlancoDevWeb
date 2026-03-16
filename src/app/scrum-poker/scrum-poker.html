@@ -59,74 +59,64 @@
 
     <!-- Right Panel: Voting & Results -->
     <section class="main-panel">
-      <!-- Compact Voting Section -->
-      <div class="voting-card compact">
-        <div class="voting-row">
-          <div class="voting-numbers">
-            <button class="vote-btn-sm" 
-                    *ngFor="let v of accumulativeVotes" 
-                    (click)="addVote(v)"
-                    [disabled]="showVotes">
-              +{{ v }}
-            </button>
-          </div>
-          <div class="voting-special-row">
-            <button class="vote-btn-sm zero" 
-                    (click)="replaceVote(0)"
-                    [disabled]="showVotes"
-                    [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
-              0
-            </button>
-            <button class="vote-btn-sm coffee" 
-                    (click)="replaceVote('coffee')"
-                    [disabled]="showVotes"
-                    [class.selected]="hasVoted && voteBreakdown.coffee > 0">
-              ☕
-            </button>
-            <button class="vote-btn-sm joint" 
-                    (click)="replaceVote('joint')"
-                    [disabled]="showVotes"
-                    [class.selected]="hasVoted && voteBreakdown.joint > 0">
-              🚬
-            </button>
-            <button class="vote-btn-sm clear-vote" 
-                    (click)="clearMyVote()"
-                    [disabled]="showVotes || !hasVoted"
-                    [class.active]="hasVoted">
-              ✕
-            </button>
-          </div>
-        </div>
-        
-        <div class="voting-bottom-row">
-          <div class="current-vote-display" *ngIf="hasVoted">
-            <span class="vote-label">Tu voto:</span>
-            <span class="vote-value">{{ myVoteDisplay }}</span>
-          </div>
-          <div class="custom-vote-inline">
-            <input type="number" 
-                   [(ngModel)]="customVoteInput" 
-                   placeholder="Personalizado"
-                   (keydown.enter)="submitCustomVote()"
-                   [disabled]="showVotes"
-                   min="0">
-            <button class="vote-custom-btn-sm" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
-              OK
-            </button>
-          </div>
+      <!-- Ultra Compact Voting - Single Row -->
+      <div class="voting-card ultra-compact">
+        <div class="voting-unified-row">
+          <button class="vote-btn-unified" 
+                  *ngFor="let v of accumulativeVotes" 
+                  (click)="addVote(v)"
+                  [disabled]="showVotes">
+            +{{ v }}
+          </button>
+          <span class="vote-separator">|</span>
+          <button class="vote-btn-unified zero" 
+                  (click)="replaceVote(0)"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
+            0
+          </button>
+          <button class="vote-btn-unified coffee" 
+                  (click)="replaceVote('coffee')"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.coffee > 0">
+            ☕
+          </button>
+          <button class="vote-btn-unified joint" 
+                  (click)="replaceVote('joint')"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.joint > 0">
+            🚬
+          </button>
+          <button class="vote-btn-unified clear-vote" 
+                  (click)="clearMyVote()"
+                  [disabled]="showVotes || !hasVoted"
+                  [class.active]="hasVoted">
+            ✕
+          </button>
+          <span class="vote-separator">|</span>
+          <input type="number" 
+                 class="custom-input-unified"
+                 [(ngModel)]="customVoteInput" 
+                 placeholder="#"
+                 (keydown.enter)="submitCustomVote()"
+                 [disabled]="showVotes"
+                 min="0">
+          <button class="vote-btn-unified custom-ok" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
+            OK
+          </button>
         </div>
       </div>
 
-      <!-- Compact Results Section -->
+      <!-- Compact Results Section with Deviation Interpretation -->
       <div class="results-card compact" *ngIf="showVotes">
         <div class="stats-inline">
           <div class="stat-item">
             <span class="stat-num">{{ average }}</span>
             <span class="stat-lbl">Media</span>
           </div>
-          <div class="stat-item">
+          <div class="stat-item deviation-item" [ngClass]="getDeviationLevel().class">
             <span class="stat-num">{{ standardDeviation }}</span>
-            <span class="stat-lbl">σ</span>
+            <span class="stat-lbl">σ {{ getDeviationLevel().level }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ totalVotes }}</span>
@@ -136,6 +126,12 @@
             <span class="stat-num">{{ validVoters }}</span>
             <span class="stat-lbl">Num.</span>
           </div>
+        </div>
+        
+        <!-- Deviation Alert -->
+        <div class="deviation-alert" [ngClass]="getDeviationLevel().class" *ngIf="standardDeviation > 1">
+          <span class="alert-icon">⚠️</span>
+          <span class="alert-text">{{ getDeviationLevel().message }}</span>
         </div>
         
         <div class="distribution-compact" *ngIf="voteSummary.length > 0">

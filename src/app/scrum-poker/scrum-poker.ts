@@ -310,6 +310,22 @@ export class ScrumPoker implements OnInit, OnDestroy {
     return deviation > this.standardDeviation;
   }
 
+  getDeviationLevel(): { level: string; class: string; message: string } {
+    if (this.standardDeviation === 0) {
+      return { level: 'Perfecto', class: 'perfect', message: 'Consenso total' };
+    } else if (this.standardDeviation <= 0.5) {
+      return { level: 'Excelente', class: 'excellent', message: 'Muy buen acuerdo' };
+    } else if (this.standardDeviation <= 1) {
+      return { level: 'Bueno', class: 'good', message: 'Acuerdo razonable' };
+    } else if (this.standardDeviation <= 2) {
+      return { level: 'Moderado', class: 'moderate', message: 'Hay discrepancias' };
+    } else if (this.standardDeviation <= 3) {
+      return { level: 'Alto', class: 'high', message: 'Discusión recomendada' };
+    } else {
+      return { level: 'Crítico', class: 'critical', message: '¡Revisar estimaciones!' };
+    }
+  }
+
   copyRoomLink(): void {
     const inviteLink = `${window.location.origin}/scrum-poker?room=${this.roomId}`;
     navigator.clipboard.writeText(inviteLink);
