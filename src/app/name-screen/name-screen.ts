@@ -62,6 +62,8 @@ export class NameScreen implements OnInit {
     if (this.isAuthenticated()) {
       this.roomId = this.generateRoomId();
       localStorage.setItem('current_room_id', this.roomId);
+      // Marcar que este usuario es el creador de la sala
+      localStorage.setItem('is_room_creator', 'true');
     }
 
     // Generar código de invitación

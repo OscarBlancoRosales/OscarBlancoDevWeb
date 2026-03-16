@@ -23,6 +23,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   roomId = '';
   playerId = '';
   currentPlayerName = '';
+  isRoomCreator = false;
   
   // Players
   players: Player[] = [];
@@ -75,6 +76,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
     this.roomId = localStorage.getItem('current_room_id') || '';
     this.playerId = localStorage.getItem('player_id') || '';
     this.currentPlayerName = localStorage.getItem('player_name') || '';
+    this.isRoomCreator = localStorage.getItem('is_room_creator') === 'true';
     
     // Si no tiene nombre, necesita autenticarse primero
     if (!this.currentPlayerName) {

@@ -59,49 +59,41 @@
 
     <!-- Right Panel: Voting & Results -->
     <section class="main-panel">
-      <!-- Ultra Compact Voting - Single Row -->
+      <!-- Ultra Compact Voting - Full Width -->
       <div class="voting-card ultra-compact">
-        <div class="voting-unified-row">
-          <button class="vote-btn-unified" 
+        <div class="voting-unified-row full-width">
+          <button class="vote-btn-unified flex-grow" 
                   *ngFor="let v of accumulativeVotes" 
                   (click)="addVote(v)"
                   [disabled]="showVotes">
             +{{ v }}
           </button>
-          <span class="vote-separator">|</span>
-          <button class="vote-btn-unified zero" 
-                  (click)="replaceVote(0)"
-                  [disabled]="showVotes"
-                  [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
-            0
-          </button>
-          <button class="vote-btn-unified coffee" 
+          <button class="vote-btn-unified coffee flex-grow" 
                   (click)="replaceVote('coffee')"
                   [disabled]="showVotes"
                   [class.selected]="hasVoted && voteBreakdown.coffee > 0">
             ☕
           </button>
-          <button class="vote-btn-unified joint" 
+          <button class="vote-btn-unified joint flex-grow" 
                   (click)="replaceVote('joint')"
                   [disabled]="showVotes"
                   [class.selected]="hasVoted && voteBreakdown.joint > 0">
             🚬
           </button>
-          <button class="vote-btn-unified clear-vote" 
+          <button class="vote-btn-unified clear-vote flex-grow" 
                   (click)="clearMyVote()"
                   [disabled]="showVotes || !hasVoted"
                   [class.active]="hasVoted">
             ✕
           </button>
-          <span class="vote-separator">|</span>
           <input type="number" 
-                 class="custom-input-unified"
+                 class="custom-input-unified flex-grow"
                  [(ngModel)]="customVoteInput" 
                  placeholder="#"
                  (keydown.enter)="submitCustomVote()"
                  [disabled]="showVotes"
                  min="0">
-          <button class="vote-btn-unified custom-ok" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
+          <button class="vote-btn-unified custom-ok flex-grow" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
             OK
           </button>
         </div>
@@ -145,8 +137,8 @@
         </div>
       </div>
 
-      <!-- Compact Control Buttons -->
-      <div class="controls-row compact">
+      <!-- Compact Control Buttons - Solo visible para el creador -->
+      <div class="controls-row compact" *ngIf="isRoomCreator">
         <button class="control-btn-sm reveal" 
                 (click)="revealVotes()" 
                 [disabled]="showVotes">
@@ -155,6 +147,10 @@
         <button class="control-btn-sm reset" (click)="resetVotes()">
           Nueva Ronda
         </button>
+      </div>
+      <!-- Mensaje para no-creadores -->
+      <div class="controls-info" *ngIf="!isRoomCreator">
+        <span class="info-text">👑 Solo el moderador puede revelar votos</span>
       </div>
     </section>
   </main>

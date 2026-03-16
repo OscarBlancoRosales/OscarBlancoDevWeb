@@ -21,6 +21,7 @@ export interface RoomData {
   showVotes: boolean;
   createdAt: string;
   lastUpdated: string;
+  creatorId?: string;
 }
 
 @Injectable({
@@ -35,7 +36,7 @@ export class FirebaseRoomService {
   constructor() {}
 
   // Crear una nueva sala
-  createRoom(): string {
+  createRoom(creatorId?: string): string {
     const roomId = 'ROOM-' + Math.random().toString(36).substr(2, 9).toUpperCase();
     const roomRef = ref(database, `rooms/${roomId}`);
     
@@ -43,7 +44,8 @@ export class FirebaseRoomService {
       players: {},
       showVotes: false,
       createdAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      creatorId: creatorId || ''
     };
     
     set(roomRef, initialData);
