@@ -152,12 +152,12 @@
           <div class="polarization-groups">
             <div class="group-low">
               <span class="group-label">⬇ Bajos:</span>
-              <span class="group-value">{{ minVote }}</span>
+              <span class="group-value">{{ getLowVoteRange() }}</span>
               <span class="group-players">({{ getLowVoters().join(', ') }})</span>
             </div>
             <div class="group-high">
               <span class="group-label">⬆ Altos:</span>
-              <span class="group-value">{{ maxVote }}</span>
+              <span class="group-value">{{ getHighVoteRange() }}</span>
               <span class="group-players">({{ getHighVoters().join(', ') }})</span>
             </div>
           </div>

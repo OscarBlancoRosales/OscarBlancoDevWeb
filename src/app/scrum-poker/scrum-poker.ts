@@ -388,7 +388,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
     }
   }
 
-  // Detect voting clusters
+  // Detect voting clusters by proximity (groups votes within threshold)
   private detectClusters(): void {
     const validPlayers = this.players.filter(p => 
       p.hasVoted && p.voteBreakdown && !this.isSpecialVote(p)
@@ -399,43 +399,74 @@ export class ScrumPoker implements OnInit, OnDestroy {
       return;
     }
 
-    // Group votes by value
-    const voteGroups = new Map<number, string[]>();
-    validPlayers.forEach(p => {
-      const vote = p.voteBreakdown!.numbers;
-      if (!voteGroups.has(vote)) {
-        voteGroups.set(vote, []);
-      }
-      voteGroups.get(vote)!.push(p.name);
-    });
+    // Get sorted votes with player names
+    const votes = validPlayers
+      .map(p => ({ vote: p.voteBreakdown!.numbers, name: p.name }))
+      .sort((a, b) => a.vote - b.vote);
 
-    // Convert to array and sort by vote value
-    this.clusters = Array.from(voteGroups.entries())
-      .map(([value, players]) => ({ value, players }))
-      .sort((a, b) => a.value - b.value);
+    // Dynamic threshold: 20% of range or min 2 points
+    const range = votes[votes.length - 1].vote - votes[0].vote;
+    const threshold = Math.max(2, range * 0.2);
+
+    // Group by proximity
+    const groups: { minValue: number; maxValue: number; players: string[] }[] = [];
+    let currentGroup = { minValue: votes[0].vote, maxValue: votes[0].vote, players: [votes[0].name] };
+
+    for (let i = 1; i < votes.length; i++) {
+      const gap = votes[i].vote - votes[i - 1].vote;
+      
+      if (gap <= threshold) {
+        // Same group
+        currentGroup.maxValue = votes[i].vote;
+        currentGroup.players.push(votes[i].name);
+      } else {
+        // New group
+        groups.push(currentGroup);
+        currentGroup = { minValue: votes[i].vote, maxValue: votes[i].vote, players: [votes[i].name] };
+      }
+    }
+    groups.push(currentGroup);
+
+    // Convert to cluster format (use average as representative value)
+    this.clusters = groups.map(g => ({
+      value: Math.round((g.minValue + g.maxValue) / 2 * 10) / 10,
+      players: g.players,
+      range: g.minValue === g.maxValue ? `${g.minValue}` : `${g.minValue}-${g.maxValue}`
+    }));
   }
 
   // Check if there are distinct groups (polarization)
   hasPolarization(): boolean {
     if (this.clusters.length < 2) return false;
     
-    const minCluster = this.clusters[0].value;
-    const maxCluster = this.clusters[this.clusters.length - 1].value;
+    const lowCluster = this.clusters[0];
+    const highCluster = this.clusters[this.clusters.length - 1];
     
-    // Polarization if range > 5 or ratio > 2
-    return (maxCluster - minCluster) > 5 || (minCluster > 0 && maxCluster / minCluster >= 2);
+    // Polarization if gap between groups > 5 or ratio > 2
+    const gap = highCluster.value - lowCluster.value;
+    return gap > 5 || (lowCluster.value > 0 && highCluster.value / lowCluster.value >= 2);
   }
 
-  // Get low voters (for discussion)
+  // Get low voters group info
   getLowVoters(): string[] {
     if (!this.showVotes || this.clusters.length < 2) return [];
     return this.clusters[0].players;
   }
 
-  // Get high voters (for discussion)
+  getLowVoteRange(): string {
+    if (!this.showVotes || this.clusters.length < 2) return '';
+    return (this.clusters[0] as any).range || String(this.clusters[0].value);
+  }
+
+  // Get high voters group info
   getHighVoters(): string[] {
     if (!this.showVotes || this.clusters.length < 2) return [];
     return this.clusters[this.clusters.length - 1].players;
+  }
+
+  getHighVoteRange(): string {
+    if (!this.showVotes || this.clusters.length < 2) return '';
+    return (this.clusters[this.clusters.length - 1] as any).range || String(this.clusters[this.clusters.length - 1].value);
   }
 
   // Legacy method for backward compatibility
