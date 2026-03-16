@@ -59,106 +59,104 @@
 
     <!-- Right Panel: Voting & Results -->
     <section class="main-panel">
-      <!-- Voting Section -->
-      <div class="voting-card">
-        <div class="card-header">
-          <h2>Tu Voto</h2>
-          <div class="current-vote-badge" *ngIf="hasVoted">
-            {{ myVoteDisplay }}
-            <button class="clear-btn" (click)="clearMyVote()" [disabled]="showVotes">✕</button>
+      <!-- Compact Voting Section -->
+      <div class="voting-card compact">
+        <div class="voting-row">
+          <div class="voting-numbers">
+            <button class="vote-btn-sm" 
+                    *ngFor="let v of accumulativeVotes" 
+                    (click)="addVote(v)"
+                    [disabled]="showVotes">
+              +{{ v }}
+            </button>
+          </div>
+          <div class="voting-special-row">
+            <button class="vote-btn-sm zero" 
+                    (click)="replaceVote(0)"
+                    [disabled]="showVotes"
+                    [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
+              0
+            </button>
+            <button class="vote-btn-sm coffee" 
+                    (click)="replaceVote('coffee')"
+                    [disabled]="showVotes"
+                    [class.selected]="hasVoted && voteBreakdown.coffee > 0">
+              ☕
+            </button>
+            <button class="vote-btn-sm joint" 
+                    (click)="replaceVote('joint')"
+                    [disabled]="showVotes"
+                    [class.selected]="hasVoted && voteBreakdown.joint > 0">
+              🚬
+            </button>
+            <button class="vote-btn-sm clear-vote" 
+                    (click)="clearMyVote()"
+                    [disabled]="showVotes || !hasVoted"
+                    [class.active]="hasVoted">
+              ✕
+            </button>
           </div>
         </div>
         
-        <div class="voting-grid">
-          <button class="vote-btn accumulative" 
-                  *ngFor="let v of accumulativeVotes" 
-                  (click)="addVote(v)"
-                  [disabled]="showVotes">
-            +{{ v }}
-          </button>
-        </div>
-        
-        <div class="voting-special">
-          <button class="vote-btn zero" 
-                  (click)="replaceVote(0)"
-                  [disabled]="showVotes"
-                  [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
-            0
-          </button>
-          <button class="vote-btn coffee" 
-                  (click)="replaceVote('coffee')"
-                  [disabled]="showVotes"
-                  [class.selected]="hasVoted && voteBreakdown.coffee > 0">
-            ☕
-          </button>
-          <button class="vote-btn joint" 
-                  (click)="replaceVote('joint')"
-                  [disabled]="showVotes"
-                  [class.selected]="hasVoted && voteBreakdown.joint > 0">
-            🚬
-          </button>
-        </div>
-
-        <div class="custom-vote-row">
-          <input type="number" 
-                 [(ngModel)]="customVoteInput" 
-                 placeholder="Valor personalizado..."
-                 (keydown.enter)="submitCustomVote()"
-                 [disabled]="showVotes"
-                 min="0">
-          <button class="vote-custom-btn" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
-            Votar
-          </button>
+        <div class="voting-bottom-row">
+          <div class="current-vote-display" *ngIf="hasVoted">
+            <span class="vote-label">Tu voto:</span>
+            <span class="vote-value">{{ myVoteDisplay }}</span>
+          </div>
+          <div class="custom-vote-inline">
+            <input type="number" 
+                   [(ngModel)]="customVoteInput" 
+                   placeholder="Personalizado"
+                   (keydown.enter)="submitCustomVote()"
+                   [disabled]="showVotes"
+                   min="0">
+            <button class="vote-custom-btn-sm" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
+              OK
+            </button>
+          </div>
         </div>
       </div>
 
-      <!-- Results Section -->
-      <div class="results-card" *ngIf="showVotes">
-        <div class="card-header">
-          <h2>Resultados</h2>
-        </div>
-        
-        <div class="stats-grid">
-          <div class="stat-box">
-            <span class="stat-value">{{ average }}</span>
-            <span class="stat-label">Media</span>
+      <!-- Compact Results Section -->
+      <div class="results-card compact" *ngIf="showVotes">
+        <div class="stats-inline">
+          <div class="stat-item">
+            <span class="stat-num">{{ average }}</span>
+            <span class="stat-lbl">Media</span>
           </div>
-          <div class="stat-box">
-            <span class="stat-value">{{ standardDeviation }}</span>
-            <span class="stat-label">Desviación</span>
+          <div class="stat-item">
+            <span class="stat-num">{{ standardDeviation }}</span>
+            <span class="stat-lbl">σ</span>
           </div>
-          <div class="stat-box">
-            <span class="stat-value">{{ totalVotes }}</span>
-            <span class="stat-label">Votos</span>
+          <div class="stat-item">
+            <span class="stat-num">{{ totalVotes }}</span>
+            <span class="stat-lbl">Votos</span>
           </div>
-          <div class="stat-box">
-            <span class="stat-value">{{ validVoters }}</span>
-            <span class="stat-label">Numéricos</span>
+          <div class="stat-item">
+            <span class="stat-num">{{ validVoters }}</span>
+            <span class="stat-lbl">Num.</span>
           </div>
         </div>
         
-        <div class="vote-distribution">
-          <h3>Distribución</h3>
-          <div class="distribution-bars">
-            <div class="bar-item" *ngFor="let summary of voteSummary">
-              <span class="bar-label">{{ summary.vote }}</span>
-              <div class="bar-track">
-                <div class="bar-fill" [style.width.%]="summary.percentage"></div>
-              </div>
-              <span class="bar-count">{{ summary.count }}</span>
+        <div class="distribution-compact" *ngIf="voteSummary.length > 0">
+          <div class="dist-item" *ngFor="let summary of voteSummary">
+            <span class="dist-vote">{{ summary.vote }}</span>
+            <div class="dist-bar">
+              <div class="dist-fill" [style.width.%]="summary.percentage"></div>
             </div>
+            <span class="dist-count">{{ summary.count }}</span>
           </div>
         </div>
       </div>
 
-      <!-- Control Buttons -->
-      <div class="controls-row">
-        <button class="control-btn reveal" 
+      <!-- Compact Control Buttons -->
+      <div class="controls-row compact">
+        <button class="control-btn-sm reveal" 
                 (click)="revealVotes()" 
                 [disabled]="showVotes">
-          Revelar Votos
+          Revelar
         </button>
-        <button class="control-btn reset" (click)="resetVotes()">
+        <button class="control-btn-sm reset" (click)="resetVotes()">
           Nueva Ronda
         </button>
       </div>
