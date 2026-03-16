@@ -86,6 +86,8 @@ export class NameScreen implements OnInit {
       // Limpiar datos de jugador anterior para evitar entrar con nombre de otro
       localStorage.removeItem('player_name');
       localStorage.removeItem('player_id');
+      // Los invitados NO son creadores de la sala
+      localStorage.removeItem('is_room_creator');
     }
   }
 

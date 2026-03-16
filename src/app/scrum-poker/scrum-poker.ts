@@ -66,6 +66,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
       // Limpiar datos de sesión anterior para evitar entrar con nombre de otro
       localStorage.removeItem('player_name');
       localStorage.removeItem('player_id');
+      localStorage.removeItem('is_room_creator');
       localStorage.setItem('current_room_id', roomIdParam);
       // Siempre redirigir a name-screen para que elija su nombre
       this.router.navigate(['/name-screen'], { queryParams: { room: roomIdParam } });
