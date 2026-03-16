@@ -2,134 +2,166 @@
 <div class="scrum-poker-container">
   <!-- Header -->
   <header class="poker-header">
-    <h1>Scrum Poker</h1>
-    <div class="room-info">
-      <span class="room-id">{{ roomId }}</span>
-      <button (click)="copyRoomLink()" class="copy-link-btn">📋 Invitar</button>
-      <button (click)="leaveRoom()" class="leave-btn">Salir</button>
+    <div class="header-left">
+      <h1>Scrum Poker</h1>
+      <span class="room-badge">{{ roomId }}</span>
+    </div>
+    <div class="header-actions">
+      <button (click)="copyRoomLink()" class="action-btn invite">
+        <span class="btn-icon">📋</span>
+        <span class="btn-text">Invitar</span>
+      </button>
+      <button (click)="leaveRoom()" class="action-btn leave">
+        <span class="btn-text">Salir</span>
+      </button>
     </div>
   </header>
 
   <main class="poker-main">
-    <!-- Players Grid -->
-    <section class="players-section">
-      <h2>Jugadores</h2>
-      <div class="players-grid">
-        <div class="player-card" 
+    <!-- Left Panel: Players -->
+    <aside class="players-panel">
+      <div class="panel-header">
+        <h2>Jugadores</h2>
+        <span class="player-count">{{ players.length }}</span>
+      </div>
+      
+      <div class="players-list">
+        <div class="player-row" 
              *ngFor="let player of players" 
              [class.current-player]="player.isCurrentPlayer"
-             [class.has-voted]="player.hasVoted">
+             [class.has-voted]="player.hasVoted"
+             [class.high-deviation]="showVotes && isHighDeviation(player)">
           <div class="player-avatar">
             {{ player.name.charAt(0).toUpperCase() }}
           </div>
-          <div class="player-info">
-            <h3>{{ player.name }}</h3>
-            <div class="vote-display">
-              <div class="vote-card" 
-                   [class.revealed]="showVotes" 
-                   [class.special-vote]="isSpecialVote(player)">
-                <span class="vote-value" *ngIf="showVotes || player.isCurrentPlayer">
-                  {{ getVoteDisplay(player) }}
-                </span>
-                <span class="vote-hidden" *ngIf="!showVotes && !player.isCurrentPlayer">
-                  {{ player.hasVoted ? '✓' : '?' }}
-                </span>
-              </div>
+          <div class="player-details">
+            <span class="player-name">{{ player.name }}</span>
+            <span class="player-status" *ngIf="!showVotes">
+              {{ player.hasVoted ? 'Votó' : 'Esperando...' }}
+            </span>
+            <span class="player-deviation" *ngIf="showVotes && isHighDeviation(player)">
+              ⚠️ Alta desviación
+            </span>
+          </div>
+          <div class="player-vote">
+            <div class="vote-chip" 
+                 [class.revealed]="showVotes" 
+                 [class.voted]="player.hasVoted"
+                 [class.special-vote]="showVotes && isSpecialVote(player)"
+                 [class.high-deviation]="showVotes && isHighDeviation(player)">
+              <span *ngIf="showVotes || player.isCurrentPlayer">{{ getVoteDisplay(player) }}</span>
+              <span *ngIf="!showVotes && !player.isCurrentPlayer">{{ player.hasVoted ? '✓' : '?' }}</span>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- Voting Section -->
-    <section class="voting-section">
-      <h2>Votar</h2>
-      <div class="voting-buttons">
-        <button class="vote-btn accumulative" 
-                *ngFor="let v of accumulativeVotes" 
-                (click)="addVote(v)"
-                [disabled]="showVotes">
-          +{{ v }}
-        </button>
+    <!-- Right Panel: Voting & Results -->
+    <section class="main-panel">
+      <!-- Voting Section -->
+      <div class="voting-card">
+        <div class="card-header">
+          <h2>Tu Voto</h2>
+          <div class="current-vote-badge" *ngIf="hasVoted">
+            {{ myVoteDisplay }}
+            <button class="clear-btn" (click)="clearMyVote()" [disabled]="showVotes">✕</button>
+          </div>
+        </div>
         
-        <button class="vote-btn" 
-                (click)="replaceVote(0)"
-                [disabled]="showVotes"
-                [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
-          0
-        </button>
+        <div class="voting-grid">
+          <button class="vote-btn accumulative" 
+                  *ngFor="let v of accumulativeVotes" 
+                  (click)="addVote(v)"
+                  [disabled]="showVotes">
+            +{{ v }}
+          </button>
+        </div>
         
-        <button class="vote-btn special coffee" 
-                (click)="replaceVote('coffee')"
-                [disabled]="showVotes"
-                [class.selected]="hasVoted && voteBreakdown.coffee > 0">
-          ☕
-        </button>
-        
-        <button class="vote-btn special joint" 
-                (click)="replaceVote('joint')"
-                [disabled]="showVotes"
-                [class.selected]="hasVoted && voteBreakdown.joint > 0">
-          🚬
-        </button>
+        <div class="voting-special">
+          <button class="vote-btn zero" 
+                  (click)="replaceVote(0)"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.numbers === 0 && voteBreakdown.coffee === 0 && voteBreakdown.joint === 0">
+            0
+          </button>
+          <button class="vote-btn coffee" 
+                  (click)="replaceVote('coffee')"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.coffee > 0">
+            ☕
+          </button>
+          <button class="vote-btn joint" 
+                  (click)="replaceVote('joint')"
+                  [disabled]="showVotes"
+                  [class.selected]="hasVoted && voteBreakdown.joint > 0">
+            🚬
+          </button>
+        </div>
+
+        <div class="custom-vote-row">
+          <input type="number" 
+                 [(ngModel)]="customVoteInput" 
+                 placeholder="Valor personalizado..."
+                 (keydown.enter)="submitCustomVote()"
+                 [disabled]="showVotes"
+                 min="0">
+          <button class="vote-custom-btn" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
+            Votar
+          </button>
+        </div>
       </div>
 
-      <!-- Custom vote input -->
-      <div class="custom-vote">
-        <input type="number" 
-               [(ngModel)]="customVoteInput" 
-               placeholder="Otro valor..."
-               (keydown.enter)="submitCustomVote()"
-               [disabled]="showVotes"
-               min="0">
-        <button class="vote-custom-btn" (click)="submitCustomVote()" [disabled]="showVotes || !customVoteInput">
-          Votar
-        </button>
-      </div>
-
-      <div class="current-vote" *ngIf="hasVoted">
-        <span>Tu voto: <strong>{{ myVoteDisplay }}</strong></span>
-        <button class="clear-vote-btn" (click)="clearMyVote()" [disabled]="showVotes">✕</button>
-      </div>
-    </section>
-
-    <!-- Results Section -->
-    <section class="results-section" *ngIf="showVotes">
-      <div class="results-header">
-        <h2>Resultados</h2>
-        <div class="statistics">
-          <div class="stat-card">
-            <span class="stat-label">Media</span>
+      <!-- Results Section -->
+      <div class="results-card" *ngIf="showVotes">
+        <div class="card-header">
+          <h2>Resultados</h2>
+        </div>
+        
+        <div class="stats-grid">
+          <div class="stat-box">
             <span class="stat-value">{{ average }}</span>
+            <span class="stat-label">Media</span>
           </div>
-          <div class="stat-card">
-            <span class="stat-label">Votos</span>
+          <div class="stat-box">
+            <span class="stat-value">{{ standardDeviation }}</span>
+            <span class="stat-label">Desviación</span>
+          </div>
+          <div class="stat-box">
             <span class="stat-value">{{ totalVotes }}</span>
+            <span class="stat-label">Votos</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-value">{{ validVoters }}</span>
+            <span class="stat-label">Numéricos</span>
+          </div>
+        </div>
+        
+        <div class="vote-distribution">
+          <h3>Distribución</h3>
+          <div class="distribution-bars">
+            <div class="bar-item" *ngFor="let summary of voteSummary">
+              <span class="bar-label">{{ summary.vote }}</span>
+              <div class="bar-track">
+                <div class="bar-fill" [style.width.%]="summary.percentage"></div>
+              </div>
+              <span class="bar-count">{{ summary.count }}</span>
+            </div>
           </div>
         </div>
       </div>
-      
-      <div class="vote-summary">
-        <div class="summary-item" *ngFor="let summary of voteSummary">
-          <span class="vote-number">{{ summary.vote }}</span>
-          <span class="vote-count">{{ summary.count }}</span>
-          <div class="vote-bar">
-            <div class="vote-fill" [style.width.%]="summary.percentage"></div>
-          </div>
-        </div>
-      </div>
-    </section>
 
-    <!-- Control Buttons -->
-    <section class="controls-section">
-      <button class="control-btn reveal" 
-              (click)="revealVotes()" 
-              [disabled]="showVotes">
-        Revelar
-      </button>
-      <button class="control-btn reset" (click)="resetVotes()">
-        Nueva Ronda
-      </button>
+      <!-- Control Buttons -->
+      <div class="controls-row">
+        <button class="control-btn reveal" 
+                (click)="revealVotes()" 
+                [disabled]="showVotes">
+          Revelar Votos
+        </button>
+        <button class="control-btn reset" (click)="resetVotes()">
+          Nueva Ronda
+        </button>
+      </div>
     </section>
   </main>
 </div>

@@ -42,6 +42,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   
   // Results
   average = 0;
+  standardDeviation = 0;
   totalVotes = 0;
   validVoters = 0;
   voteSummary: VoteSummary[] = [];
@@ -217,6 +218,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   private calculateResults(): void {
     if (!this.showVotes) {
       this.average = 0;
+      this.standardDeviation = 0;
       this.totalVotes = 0;
       this.validVoters = 0;
       this.voteSummary = [];
@@ -233,8 +235,14 @@ export class ScrumPoker implements OnInit, OnDestroy {
     if (validVotes.length > 0) {
       const sum = validVotes.reduce((acc, v) => acc + v, 0);
       this.average = Math.round((sum / validVotes.length) * 100) / 100;
+      
+      // Calcular desviación estándar
+      const squaredDiffs = validVotes.map(v => Math.pow(v - this.average, 2));
+      const avgSquaredDiff = squaredDiffs.reduce((acc, v) => acc + v, 0) / validVotes.length;
+      this.standardDeviation = Math.round(Math.sqrt(avgSquaredDiff) * 100) / 100;
     } else {
       this.average = 0;
+      this.standardDeviation = 0;
     }
 
     this.calculateVoteSummary();
@@ -289,6 +297,17 @@ export class ScrumPoker implements OnInit, OnDestroy {
   isSpecialVote(player: Player): boolean {
     return player.voteBreakdown ? 
       (player.voteBreakdown.coffee > 0 || player.voteBreakdown.joint > 0) : false;
+  }
+
+  isHighDeviation(player: Player): boolean {
+    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
+    if (this.isSpecialVote(player)) return false;
+    if (this.standardDeviation === 0) return false;
+    
+    const playerVote = player.voteBreakdown.numbers;
+    const deviation = Math.abs(playerVote - this.average);
+    // Considerar alta desviación si está a más de 1 desviación estándar de la media
+    return deviation > this.standardDeviation;
   }
 
   copyRoomLink(): void {
