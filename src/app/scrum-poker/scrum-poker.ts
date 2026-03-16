@@ -48,6 +48,13 @@ export class ScrumPoker implements OnInit, OnDestroy {
   validVoters = 0;
   voteSummary: VoteSummary[] = [];
   
+  // PRO Analysis
+  minVote = 0;
+  maxVote = 0;
+  voteRange = 0;
+  clusters: { value: number; players: string[] }[] = [];
+  consensusStatus: 'consensus' | 'light-dispersion' | 'disagreement' = 'consensus';
+  
   // Subscriptions
   private roomSubscription?: Subscription;
 
@@ -225,6 +232,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
       this.totalVotes = 0;
       this.validVoters = 0;
       this.voteSummary = [];
+      this.minVote = 0;
+      this.maxVote = 0;
+      this.voteRange = 0;
+      this.clusters = [];
       return;
     }
 
@@ -243,11 +254,22 @@ export class ScrumPoker implements OnInit, OnDestroy {
       const squaredDiffs = validVotes.map(v => Math.pow(v - this.average, 2));
       const avgSquaredDiff = squaredDiffs.reduce((acc, v) => acc + v, 0) / validVotes.length;
       this.standardDeviation = Math.round(Math.sqrt(avgSquaredDiff) * 100) / 100;
+      
+      // PRO: Calcular min, max y rango
+      this.minVote = Math.min(...validVotes);
+      this.maxVote = Math.max(...validVotes);
+      this.voteRange = this.maxVote - this.minVote;
     } else {
       this.average = 0;
       this.standardDeviation = 0;
+      this.minVote = 0;
+      this.maxVote = 0;
+      this.voteRange = 0;
     }
 
+    // PRO: Detectar clusters
+    this.detectClusters();
+    
     this.calculateVoteSummary();
   }
 
@@ -302,30 +324,28 @@ export class ScrumPoker implements OnInit, OnDestroy {
       (player.voteBreakdown.coffee > 0 || player.voteBreakdown.joint > 0) : false;
   }
 
+  // ===== PRO ANALYSIS SYSTEM =====
+  
+  // Z-score based deviation per player
+  getPlayerZScore(player: Player): number {
+    if (!player.hasVoted || !player.voteBreakdown || this.standardDeviation === 0) return 0;
+    if (this.isSpecialVote(player)) return 0;
+    
+    const playerVote = player.voteBreakdown.numbers;
+    return Math.abs(playerVote - this.average) / this.standardDeviation;
+  }
+
   getPlayerDeviationLevel(player: Player): 'none' | 'light' | 'high' {
     if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return 'none';
     if (this.isSpecialVote(player)) return 'none';
-    if (this.average === 0) return 'none';
+    if (this.standardDeviation === 0) return 'none';
     
-    const playerVote = player.voteBreakdown.numbers;
-    const diffFromAverage = Math.abs(playerVote - this.average);
+    const zScore = this.getPlayerZScore(player);
     
-    // Calcular el porcentaje de diferencia respecto a la media
-    const percentDiff = (diffFromAverage / this.average) * 100;
-    
-    // También considerar la diferencia absoluta para votos bajos
-    // Ej: si la media es 2 y alguien vota 5, es significativo
-    // Pero si la media es 10 y alguien vota 11, no tanto
-    
-    // Alta desviación: >50% de diferencia O más de 2σ
-    if (percentDiff > 50 || (this.standardDeviation > 0 && diffFromAverage > 2 * this.standardDeviation)) {
-      return 'high';
-    }
-    
-    // Desviación ligera: >25% de diferencia O más de 1.5σ
-    if (percentDiff > 25 || (this.standardDeviation > 0 && diffFromAverage > 1.5 * this.standardDeviation)) {
-      return 'light';
-    }
+    // z > 2σ = alta desviación (outlier)
+    if (zScore > 2) return 'high';
+    // z > 1.5σ = desviación ligera
+    if (zScore > 1.5) return 'light';
     
     return 'none';
   }
@@ -338,20 +358,90 @@ export class ScrumPoker implements OnInit, OnDestroy {
     return this.getPlayerDeviationLevel(player) === 'light';
   }
 
-  getDeviationLevel(): { level: string; class: string; message: string } {
-    if (this.standardDeviation === 0) {
-      return { level: 'Perfecto', class: 'perfect', message: 'Consenso total' };
-    } else if (this.standardDeviation <= 0.5) {
-      return { level: 'Excelente', class: 'excellent', message: 'Muy buen acuerdo' };
-    } else if (this.standardDeviation <= 1) {
-      return { level: 'Bueno', class: 'good', message: 'Acuerdo razonable' };
-    } else if (this.standardDeviation <= 2) {
-      return { level: 'Moderado', class: 'moderate', message: 'Hay discrepancias' };
-    } else if (this.standardDeviation <= 3) {
-      return { level: 'Alto', class: 'high', message: 'Discusión recomendada' };
-    } else {
-      return { level: 'Crítico', class: 'critical', message: '¡Revisar estimaciones!' };
+  // Check if player has min or max vote
+  isMinVote(player: Player): boolean {
+    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
+    if (this.isSpecialVote(player)) return false;
+    return player.voteBreakdown.numbers === this.minVote && this.voteRange > 2;
+  }
+
+  isMaxVote(player: Player): boolean {
+    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
+    if (this.isSpecialVote(player)) return false;
+    return player.voteBreakdown.numbers === this.maxVote && this.voteRange > 2;
+  }
+
+  // Global consensus status based on σ
+  getConsensusInfo(): { status: string; class: string; icon: string; message: string } {
+    if (this.validVoters < 2) {
+      return { status: 'Esperando', class: 'waiting', icon: '⏳', message: 'Faltan votos' };
     }
+    
+    if (this.standardDeviation === 0) {
+      return { status: 'Consenso Total', class: 'perfect', icon: '✅', message: 'Todos de acuerdo' };
+    } else if (this.standardDeviation < 1.5) {
+      return { status: 'Consenso', class: 'consensus', icon: '👍', message: 'Buen acuerdo' };
+    } else if (this.standardDeviation < 3) {
+      return { status: 'Dispersión', class: 'dispersion', icon: '📊', message: 'Hay diferencias' };
+    } else {
+      return { status: 'Desacuerdo', class: 'disagreement', icon: '⚠️', message: 'Discutir estimaciones' };
+    }
+  }
+
+  // Detect voting clusters
+  private detectClusters(): void {
+    const validPlayers = this.players.filter(p => 
+      p.hasVoted && p.voteBreakdown && !this.isSpecialVote(p)
+    );
+    
+    if (validPlayers.length < 2) {
+      this.clusters = [];
+      return;
+    }
+
+    // Group votes by value
+    const voteGroups = new Map<number, string[]>();
+    validPlayers.forEach(p => {
+      const vote = p.voteBreakdown!.numbers;
+      if (!voteGroups.has(vote)) {
+        voteGroups.set(vote, []);
+      }
+      voteGroups.get(vote)!.push(p.name);
+    });
+
+    // Convert to array and sort by vote value
+    this.clusters = Array.from(voteGroups.entries())
+      .map(([value, players]) => ({ value, players }))
+      .sort((a, b) => a.value - b.value);
+  }
+
+  // Check if there are distinct groups (polarization)
+  hasPolarization(): boolean {
+    if (this.clusters.length < 2) return false;
+    
+    const minCluster = this.clusters[0].value;
+    const maxCluster = this.clusters[this.clusters.length - 1].value;
+    
+    // Polarization if range > 5 or ratio > 2
+    return (maxCluster - minCluster) > 5 || (minCluster > 0 && maxCluster / minCluster >= 2);
+  }
+
+  // Get low voters (for discussion)
+  getLowVoters(): string[] {
+    if (!this.showVotes || this.clusters.length < 2) return [];
+    return this.clusters[0].players;
+  }
+
+  // Get high voters (for discussion)
+  getHighVoters(): string[] {
+    if (!this.showVotes || this.clusters.length < 2) return [];
+    return this.clusters[this.clusters.length - 1].players;
+  }
+
+  // Legacy method for backward compatibility
+  getDeviationLevel(): { level: string; class: string; message: string } {
+    const info = this.getConsensusInfo();
+    return { level: info.status, class: info.class, message: info.message };
   }
 
   copyRoomLink(): void {

@@ -31,7 +31,9 @@
              [class.current-player]="player.isCurrentPlayer"
              [class.has-voted]="player.hasVoted"
              [class.high-deviation]="showVotes && isHighDeviation(player)"
-             [class.light-deviation]="showVotes && isLightDeviation(player)">
+             [class.light-deviation]="showVotes && isLightDeviation(player)"
+             [class.min-vote]="showVotes && isMinVote(player)"
+             [class.max-vote]="showVotes && isMaxVote(player)">
           <div class="player-avatar">
             {{ player.name.charAt(0).toUpperCase() }}
           </div>
@@ -40,11 +42,17 @@
             <span class="player-status" *ngIf="!showVotes">
               {{ player.hasVoted ? 'Votó' : 'Esperando...' }}
             </span>
+            <span class="player-indicator min" *ngIf="showVotes && isMinVote(player) && !isHighDeviation(player)">
+              ⬇ Voto más bajo
+            </span>
+            <span class="player-indicator max" *ngIf="showVotes && isMaxVote(player) && !isHighDeviation(player)">
+              ⬆ Voto más alto
+            </span>
             <span class="player-deviation high" *ngIf="showVotes && isHighDeviation(player)">
-              ⚠️ Alta desviación
+              ⚠️ Outlier ({{ getPlayerZScore(player).toFixed(1) }}σ)
             </span>
             <span class="player-deviation light" *ngIf="showVotes && isLightDeviation(player)">
-              📊 Desviación ligera
+              📊 Desviación ({{ getPlayerZScore(player).toFixed(1) }}σ)
             </span>
           </div>
           <div class="player-vote">
@@ -53,7 +61,9 @@
                  [class.voted]="player.hasVoted"
                  [class.special-vote]="showVotes && isSpecialVote(player)"
                  [class.high-deviation]="showVotes && isHighDeviation(player)"
-                 [class.light-deviation]="showVotes && isLightDeviation(player)">
+                 [class.light-deviation]="showVotes && isLightDeviation(player)"
+                 [class.min-vote]="showVotes && isMinVote(player)"
+                 [class.max-vote]="showVotes && isMaxVote(player)">
               <span *ngIf="showVotes || player.isCurrentPlayer">{{ getVoteDisplay(player) }}</span>
               <span *ngIf="!showVotes && !player.isCurrentPlayer">{{ player.hasVoted ? '✓' : '?' }}</span>
             </div>
@@ -104,33 +114,56 @@
         </div>
       </div>
 
-      <!-- Compact Results Section with Deviation Interpretation -->
+      <!-- PRO Results Section -->
       <div class="results-card compact" *ngIf="showVotes">
+        <!-- Consensus Status Banner -->
+        <div class="consensus-banner" [ngClass]="getConsensusInfo().class">
+          <span class="consensus-icon">{{ getConsensusInfo().icon }}</span>
+          <span class="consensus-status">{{ getConsensusInfo().status }}</span>
+          <span class="consensus-message">{{ getConsensusInfo().message }}</span>
+        </div>
+
+        <!-- Stats Grid -->
         <div class="stats-inline">
-          <div class="stat-item">
+          <div class="stat-item primary">
             <span class="stat-num">{{ average }}</span>
             <span class="stat-lbl">Media</span>
           </div>
-          <div class="stat-item deviation-item" [ngClass]="getDeviationLevel().class">
+          <div class="stat-item">
             <span class="stat-num">{{ standardDeviation }}</span>
-            <span class="stat-lbl">σ {{ getDeviationLevel().level }}</span>
+            <span class="stat-lbl">σ</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-num">{{ minVote }}-{{ maxVote }}</span>
+            <span class="stat-lbl">Rango</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ totalVotes }}</span>
             <span class="stat-lbl">Votos</span>
           </div>
-          <div class="stat-item">
-            <span class="stat-num">{{ validVoters }}</span>
-            <span class="stat-lbl">Num.</span>
+        </div>
+
+        <!-- Polarization Alert with Groups -->
+        <div class="polarization-alert" *ngIf="hasPolarization()">
+          <div class="polarization-header">
+            <span class="polarization-icon">⚡</span>
+            <span class="polarization-title">Dos visiones detectadas</span>
+          </div>
+          <div class="polarization-groups">
+            <div class="group-low">
+              <span class="group-label">⬇ Bajos:</span>
+              <span class="group-value">{{ minVote }}</span>
+              <span class="group-players">({{ getLowVoters().join(', ') }})</span>
+            </div>
+            <div class="group-high">
+              <span class="group-label">⬆ Altos:</span>
+              <span class="group-value">{{ maxVote }}</span>
+              <span class="group-players">({{ getHighVoters().join(', ') }})</span>
+            </div>
           </div>
         </div>
         
-        <!-- Deviation Alert -->
-        <div class="deviation-alert" [ngClass]="getDeviationLevel().class" *ngIf="standardDeviation > 1">
-          <span class="alert-icon">⚠️</span>
-          <span class="alert-text">{{ getDeviationLevel().message }}</span>
-        </div>
-        
+        <!-- Vote Distribution -->
         <div class="distribution-compact" *ngIf="voteSummary.length > 0">
           <div class="dist-item" *ngFor="let summary of voteSummary">
             <span class="dist-vote">{{ summary.vote }}</span>
