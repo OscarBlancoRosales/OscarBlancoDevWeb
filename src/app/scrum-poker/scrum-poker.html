@@ -30,7 +30,8 @@
              *ngFor="let player of players" 
              [class.current-player]="player.isCurrentPlayer"
              [class.has-voted]="player.hasVoted"
-             [class.high-deviation]="showVotes && isHighDeviation(player)">
+             [class.high-deviation]="showVotes && isHighDeviation(player)"
+             [class.light-deviation]="showVotes && isLightDeviation(player)">
           <div class="player-avatar">
             {{ player.name.charAt(0).toUpperCase() }}
           </div>
@@ -39,8 +40,11 @@
             <span class="player-status" *ngIf="!showVotes">
               {{ player.hasVoted ? 'Votó' : 'Esperando...' }}
             </span>
-            <span class="player-deviation" *ngIf="showVotes && isHighDeviation(player)">
+            <span class="player-deviation high" *ngIf="showVotes && isHighDeviation(player)">
               ⚠️ Alta desviación
+            </span>
+            <span class="player-deviation light" *ngIf="showVotes && isLightDeviation(player)">
+              📊 Desviación ligera
             </span>
           </div>
           <div class="player-vote">
@@ -48,7 +52,8 @@
                  [class.revealed]="showVotes" 
                  [class.voted]="player.hasVoted"
                  [class.special-vote]="showVotes && isSpecialVote(player)"
-                 [class.high-deviation]="showVotes && isHighDeviation(player)">
+                 [class.high-deviation]="showVotes && isHighDeviation(player)"
+                 [class.light-deviation]="showVotes && isLightDeviation(player)">
               <span *ngIf="showVotes || player.isCurrentPlayer">{{ getVoteDisplay(player) }}</span>
               <span *ngIf="!showVotes && !player.isCurrentPlayer">{{ player.hasVoted ? '✓' : '?' }}</span>
             </div>

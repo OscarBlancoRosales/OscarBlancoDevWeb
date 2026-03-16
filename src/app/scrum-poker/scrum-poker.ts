@@ -302,15 +302,40 @@ export class ScrumPoker implements OnInit, OnDestroy {
       (player.voteBreakdown.coffee > 0 || player.voteBreakdown.joint > 0) : false;
   }
 
-  isHighDeviation(player: Player): boolean {
-    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
-    if (this.isSpecialVote(player)) return false;
-    if (this.standardDeviation === 0) return false;
+  getPlayerDeviationLevel(player: Player): 'none' | 'light' | 'high' {
+    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return 'none';
+    if (this.isSpecialVote(player)) return 'none';
+    if (this.average === 0) return 'none';
     
     const playerVote = player.voteBreakdown.numbers;
-    const deviation = Math.abs(playerVote - this.average);
-    // Considerar alta desviación si está a más de 1 desviación estándar de la media
-    return deviation > this.standardDeviation;
+    const diffFromAverage = Math.abs(playerVote - this.average);
+    
+    // Calcular el porcentaje de diferencia respecto a la media
+    const percentDiff = (diffFromAverage / this.average) * 100;
+    
+    // También considerar la diferencia absoluta para votos bajos
+    // Ej: si la media es 2 y alguien vota 5, es significativo
+    // Pero si la media es 10 y alguien vota 11, no tanto
+    
+    // Alta desviación: >50% de diferencia O más de 2σ
+    if (percentDiff > 50 || (this.standardDeviation > 0 && diffFromAverage > 2 * this.standardDeviation)) {
+      return 'high';
+    }
+    
+    // Desviación ligera: >25% de diferencia O más de 1.5σ
+    if (percentDiff > 25 || (this.standardDeviation > 0 && diffFromAverage > 1.5 * this.standardDeviation)) {
+      return 'light';
+    }
+    
+    return 'none';
+  }
+
+  isHighDeviation(player: Player): boolean {
+    return this.getPlayerDeviationLevel(player) === 'high';
+  }
+
+  isLightDeviation(player: Player): boolean {
+    return this.getPlayerDeviationLevel(player) === 'light';
   }
 
   getDeviationLevel(): { level: string; class: string; message: string } {

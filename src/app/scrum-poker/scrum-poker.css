@@ -165,6 +165,11 @@
   animation: pulse-warning 2s infinite;
 }
 
+.player-row.light-deviation {
+  border-color: #ffa500;
+  background: rgba(255, 165, 0, 0.1);
+}
+
 @keyframes pulse-warning {
   0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
   50% { box-shadow: 0 0 8px 1px rgba(255, 107, 107, 0.4); }
@@ -186,6 +191,10 @@
 
 .player-row.high-deviation .player-avatar {
   background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);
+}
+
+.player-row.light-deviation .player-avatar {
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
 }
 
 .player-details {
@@ -215,9 +224,16 @@
 }
 
 .player-deviation {
-  color: #ff6b6b;
   font-size: 9px;
   font-weight: 500;
+}
+
+.player-deviation.high {
+  color: #ff6b6b;
+}
+
+.player-deviation.light {
+  color: #ffa500;
 }
 
 .player-vote {
@@ -261,6 +277,12 @@
   border-color: #ff4757;
   color: #fff;
   animation: shake 0.5s ease-in-out;
+}
+
+.vote-chip.light-deviation {
+  background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+  border-color: #ffa500;
+  color: #fff;
 }
 
 @keyframes shake {
