@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { database } from '../firebase.config';
-import { ref, onValue, remove, Unsubscribe } from 'firebase/database';
+import { ref, get, onValue, remove, Unsubscribe } from 'firebase/database';
 import { ThrowdownWelcome } from './welcome/throwdown-welcome';
 import { ThrowdownList } from './list/throwdown-list';
 import { ThrowdownEdit } from './edit/throwdown-edit';
@@ -74,6 +74,22 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
 
   private subscribeConfigs(): void {
     this.isLoadingConfigs = true;
+
+    // Initial load via get() — fast HTTPS, works reliably on first visit
+    void get(ref(database, 'throwdown-timer/configs')).then((snapshot) => {
+      const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
+      this.configs = raw
+        ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
+        : [];
+      this.isLoadingConfigs = false;
+      this.cdr.detectChanges();
+    }).catch(() => {
+      this.configs = [];
+      this.isLoadingConfigs = false;
+      this.cdr.detectChanges();
+    });
+
+    // Real-time listener — keeps all users in sync after initial load
     this.configsUnsubscribe = onValue(
       ref(database, 'throwdown-timer/configs'),
       (snapshot) => {
