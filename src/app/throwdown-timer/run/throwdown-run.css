@@ -13,6 +13,7 @@
   width: 100%;
   height: 100dvh;
   overflow: hidden;
+  position: relative;
   transition: background-color 1.2s ease;
 }
 .timer-screen--done { background: #030e03; }
@@ -275,6 +276,46 @@
   box-shadow: 0 4px 32px rgba(255, 255, 255, 0.07);
 }
 .ctrl--main:hover { background: #e8e8e8; }
+
+/* Ready overlay */
+.ready-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: #000;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: fade-in 0.3s ease both;
+}
+.ready-overlay:active { opacity: 0.7; }
+.ready-logo {
+  width: min(55vw, 180px);
+  border-radius: 50%;
+  box-shadow: 0 0 70px rgba(61, 122, 58, 0.5), 0 0 140px rgba(61, 122, 58, 0.2);
+  animation: pulse-g 2.5s ease-in-out infinite;
+}
+.ready-title {
+  font-size: clamp(1.1rem, 5vw, 1.7rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #ddd;
+  text-align: center;
+  padding: 0 1.5rem;
+}
+.ready-tap {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: #3d7a3a;
+  text-transform: uppercase;
+  animation: pulse-g 1.4s ease-in-out infinite;
+}
 
 /* Finished */
 .finished-main {

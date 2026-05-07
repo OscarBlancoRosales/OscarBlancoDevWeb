@@ -20,6 +20,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   totalElapsedSeconds = 0;
   totalDurationSeconds = 0;
   isMuted = false;
+  readyToStart = true; // show tap-to-start overlay
 
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
@@ -29,7 +30,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.totalDurationSeconds = this.configTotalSecs(this.config());
     this.loadStep(0);
-    this.resume();
+    // Don't auto-start: wait for explicit tap so iOS audio context can be unlocked
   }
 
   ngOnDestroy(): void {
@@ -156,8 +157,15 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.clearInterval();
     this.isRunning = false;
     this.timerFinished = false;
+    this.readyToStart = false;
     this.totalElapsedSeconds = 0;
     this.loadStep(0);
+    this.resume();
+  }
+
+  startTimer(): void {
+    this.readyToStart = false;
+    this.unlockAudio();
     this.resume();
   }
 

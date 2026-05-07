@@ -32,6 +32,15 @@
     </div>
   </div>
 
+  <!-- TAP TO START overlay -->
+  @if (readyToStart) {
+    <div class="ready-overlay" (click)="startTimer()">
+      <img class="ready-logo" src="/throwdown-logo.png" alt="Logo" />
+      <div class="ready-title">{{ config().name }}</div>
+      <div class="ready-tap">TAP PARA EMPEZAR</div>
+    </div>
+  }
+
   <!-- ACTIVO -->
   @if (!timerFinished) {
     <div class="timer-main">
