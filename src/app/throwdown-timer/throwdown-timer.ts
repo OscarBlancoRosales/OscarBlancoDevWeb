@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { database } from '../firebase.config';
-import { ref, get, remove } from 'firebase/database';
+import { ref, onValue, remove, Unsubscribe } from 'firebase/database';
 import { ThrowdownWelcome } from './welcome/throwdown-welcome';
 import { ThrowdownList } from './list/throwdown-list';
 import { ThrowdownEdit } from './edit/throwdown-edit';
@@ -51,35 +51,45 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
     }
   };
 
+  private configsUnsubscribe: Unsubscribe | null = null;
+
   constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     window.addEventListener('popstate', this.popstateHandler);
     history.replaceState({ throwdownScreen: 'welcome' }, '', window.location.href);
-    void this.loadConfigs();
+    this.subscribeConfigs();
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.popstateHandler);
+    if (this.configsUnsubscribe) {
+      this.configsUnsubscribe();
+      this.configsUnsubscribe = null;
+    }
     if (window.location.pathname.startsWith('/tomelloso-throwdown-timer')) {
       history.replaceState(null, '', '/tomelloso-throwdown-timer');
     }
   }
 
-  private async loadConfigs(): Promise<void> {
+  private subscribeConfigs(): void {
     this.isLoadingConfigs = true;
-    try {
-      const snapshot = await get(ref(database, 'throwdown-timer/configs'));
-      const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
-      this.configs = raw
-        ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
-        : [];
-    } catch {
-      this.configs = [];
-    } finally {
-      this.isLoadingConfigs = false;
-      this.cdr.detectChanges();
-    }
+    this.configsUnsubscribe = onValue(
+      ref(database, 'throwdown-timer/configs'),
+      (snapshot) => {
+        const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
+        this.configs = raw
+          ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
+          : [];
+        this.isLoadingConfigs = false;
+        this.cdr.detectChanges();
+      },
+      () => {
+        this.configs = [];
+        this.isLoadingConfigs = false;
+        this.cdr.detectChanges();
+      }
+    );
   }
 
   onEnter(): void {
