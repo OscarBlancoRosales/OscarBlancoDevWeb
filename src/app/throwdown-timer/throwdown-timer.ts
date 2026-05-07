@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { database } from '../firebase.config';
 import { ref, get, remove } from 'firebase/database';
 import { ThrowdownWelcome } from './welcome/throwdown-welcome';
@@ -35,17 +35,35 @@ function blankConfig(): ThrowdownConfig {
   templateUrl: './throwdown-timer.html',
   styleUrl: './throwdown-timer.css',
 })
-export class ThrowdownTimer implements OnInit {
+export class ThrowdownTimer implements OnInit, OnDestroy {
   screen: Screen = 'welcome';
   editingConfig: ThrowdownConfig = blankConfig();
   activeConfig: ThrowdownConfig = blankConfig();
   configs: ThrowdownConfig[] = [];
   isLoadingConfigs = true;
 
+  private readonly popstateHandler = (event: PopStateEvent) => {
+    const state = event.state as { throwdownScreen?: string } | null;
+    const scr = state?.throwdownScreen as Screen | undefined;
+    if (scr === 'welcome' || scr === 'list' || scr === 'edit' || scr === 'timer') {
+      this.screen = scr;
+      this.cdr.detectChanges();
+    }
+  };
+
   constructor(private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
+    window.addEventListener('popstate', this.popstateHandler);
+    history.replaceState({ throwdownScreen: 'welcome' }, '', window.location.href);
     void this.loadConfigs();
+  }
+
+  ngOnDestroy(): void {
+    window.removeEventListener('popstate', this.popstateHandler);
+    if (window.location.pathname.startsWith('/tomelloso-throwdown-timer')) {
+      history.replaceState(null, '', '/tomelloso-throwdown-timer');
+    }
   }
 
   private async loadConfigs(): Promise<void> {
@@ -66,22 +84,26 @@ export class ThrowdownTimer implements OnInit {
 
   onEnter(): void {
     this.screen = 'list';
+    history.pushState({ throwdownScreen: 'list' }, '', '/tomelloso-throwdown-timer#list');
   }
 
   onNewConfig(): void {
     this.editingConfig = blankConfig();
     this.screen = 'edit';
+    history.pushState({ throwdownScreen: 'edit' }, '', '/tomelloso-throwdown-timer#edit');
   }
 
   onEditConfig(cfg: ThrowdownConfig): void {
     this.editingConfig = JSON.parse(JSON.stringify(cfg)) as ThrowdownConfig;
     this.screen = 'edit';
+    history.pushState({ throwdownScreen: 'edit' }, '', '/tomelloso-throwdown-timer#edit');
   }
 
   onPlayConfig(cfg: ThrowdownConfig): void {
     if (cfg.steps.length === 0) { return; }
     this.activeConfig = JSON.parse(JSON.stringify(cfg)) as ThrowdownConfig;
     this.screen = 'timer';
+    history.pushState({ throwdownScreen: 'timer' }, '', '/tomelloso-throwdown-timer#timer');
   }
 
   onConfigSaved(cfg: ThrowdownConfig): void {
@@ -107,5 +129,6 @@ export class ThrowdownTimer implements OnInit {
 
   goToList(): void {
     this.screen = 'list';
+    history.pushState({ throwdownScreen: 'list' }, '', '/tomelloso-throwdown-timer#list');
   }
 }

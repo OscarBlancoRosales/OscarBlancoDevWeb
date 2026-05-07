@@ -76,29 +76,27 @@
   box-sizing: border-box;
 }
 
-/* Dots */
-.step-dots {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  justify-content: center;
-  max-width: 85vw;
-}
-.dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: #1c1c1c;
-  transition: background-color 0.3s, transform 0.2s;
-}
-.dot--done { background: #1e3d1e; }
-.dot--active { background: #3d7a3a; transform: scale(1.5); }
+/* Dots — kept for backwards compat but unused */
+.step-dots { display: none; }
+.dot, .dot--done, .dot--active { display: none; }
+.timer-step-label { display: none; }
 
-.timer-step-label {
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
+/* Step badge */
+.step-badge {
+  font-size: 0.6rem;
   color: #2a2a2a;
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
   font-weight: 700;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.timer-main-logo {
+  width: min(55vw, 190px);
+  height: auto;
+  border-radius: 50%;
+  box-shadow: 0 0 60px rgba(61, 122, 58, 0.45), 0 0 120px rgba(61, 122, 58, 0.18);
+  flex-shrink: 0;
 }
 .timer-step-name {
   font-size: clamp(1.05rem, 4.5vw, 1.5rem);
@@ -108,13 +106,6 @@
   letter-spacing: 0.04em;
   color: #ddd;
   line-height: 1.2;
-}
-.timer-main-logo {
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  box-shadow: 0 0 28px rgba(61, 122, 58, 0.3);
-  flex-shrink: 0;
 }
 .timer-countdown {
   font-size: clamp(5rem, 26vw, 10rem);
@@ -331,7 +322,7 @@
 
 @media (orientation: landscape) and (max-height: 480px) {
   .timer-bar-logo { width: 30px; height: 30px; }
-  .timer-main-logo { width: 48px; height: 48px; }
+  .timer-main-logo { width: min(28vh, 80px); height: auto; }
   .timer-countdown { font-size: clamp(3.2rem, 20vh, 7rem); }
   .ctrl--main { width: 58px; height: 58px; }
   .ctrl--side { width: 44px; height: 44px; }

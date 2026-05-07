@@ -19,20 +19,13 @@
   <!-- ACTIVO -->
   @if (!timerFinished) {
     <div class="timer-main">
-      <!-- Puntos de progreso -->
-      <div class="step-dots">
-        @for (s of config().steps; track s; let i = $index) {
-          <span
-            class="dot"
-            [class.dot--done]="i < currentStepIndex"
-            [class.dot--active]="i === currentStepIndex"
-          ></span>
-        }
-      </div>
-
-      <div class="timer-step-label">PASO {{ currentStepIndex + 1 }} / {{ config().steps.length }}</div>
-      <div class="timer-step-name">{{ currentStep?.name }}</div>
+      <!-- Logo central grande -->
       <img class="timer-main-logo" src="/throwdown-logo.png" alt="Logo" />
+
+      <!-- Nombre del paso -->
+      <div class="timer-step-name">{{ currentStep?.name }}</div>
+
+      <!-- Cuenta atrás -->
       <div class="timer-countdown" [class.timer-countdown--paused]="!isRunning">
         {{ formattedRemaining }}
       </div>
@@ -44,16 +37,18 @@
         </div>
       </div>
 
-      <!-- Siguiente paso -->
+      <!-- Siguiente paso (con badge de paso) -->
       @if (nextStep) {
         <div class="next-card">
           <span class="next-label">A CONTINUACIÓN</span>
           <span class="next-name">{{ nextStep.name }}</span>
           <span class="next-dur">{{ formatSecs(stepTotalSec(nextStep)) }}</span>
+          <span class="step-badge">{{ currentStepIndex + 1 }}/{{ config().steps.length }}</span>
         </div>
       } @else {
         <div class="next-card next-card--last">
           <span class="next-label">ÚLTIMO PASO</span>
+          <span class="step-badge">{{ currentStepIndex + 1 }}/{{ config().steps.length }}</span>
         </div>
       }
 

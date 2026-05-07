@@ -199,8 +199,34 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   private playCompletion(): void {
-    this.playBeep(1047, 0.4);
-    setTimeout(() => { this.playBeep(1319, 0.4); }, 350);
-    setTimeout(() => { this.playBeep(1568, 0.6); }, 700);
+    try {
+      const ctx = this.getAudioCtx();
+      this.playHornBlast(ctx, ctx.currentTime, 0.85);
+      setTimeout(() => {
+        const c = this.getAudioCtx();
+        this.playHornBlast(c, c.currentTime, 1.1);
+      }, 650);
+    } catch {
+      // Ignore audio policy errors
+    }
+  }
+
+  private playHornBlast(ctx: AudioContext, start: number, duration: number): void {
+    const freqs = [233, 466, 700, 932];
+    const vols  = [0.38, 0.22, 0.13, 0.07];
+    freqs.forEach((freq, i) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(vols[i], start + 0.03);
+      gain.gain.setValueAtTime(vols[i], start + duration - 0.18);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    });
   }
 }

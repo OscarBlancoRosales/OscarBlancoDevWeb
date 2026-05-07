@@ -1,7 +1,7 @@
 :host {
-  display: flex;
+  display: block;
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
 }
 
 .list-screen {
@@ -11,7 +11,8 @@
   color: #fff;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   width: 100%;
-  overflow-y: auto;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Top bar */
@@ -71,6 +72,7 @@
   margin: 0 auto;
   flex: 1;
   box-sizing: border-box;
+  overflow-y: auto;
 }
 
 /* States */
