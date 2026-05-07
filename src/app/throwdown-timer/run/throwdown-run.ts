@@ -28,6 +28,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   private preCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
   private completionBuffer: AudioBuffer | null = null;
+  private whistleBuffer: AudioBuffer | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -174,6 +175,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.readyToStart = false;
     this.unlockAudio();
     void this.preloadCompletionAudio();
+    void this.preloadWhistleAudio();
     this.beginPreCountdown();
   }
 
@@ -257,32 +259,37 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     if (this.isMuted) { return; }
     try {
       const ctx = this.getAudioCtx();
-      // Two short whistle blasts: tweet-tweet — competition change signal
-      [0, 0.30].forEach(offset => {
-        const osc     = ctx.createOscillator();
-        const lfo     = ctx.createOscillator();
-        const lfoGain = ctx.createGain();
-        const gain    = ctx.createGain();
-        const t       = ctx.currentTime + offset;
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(2600, t);
-        osc.frequency.linearRampToValueAtTime(2900, t + 0.02);
-        lfo.type = 'sine';
-        lfo.frequency.value = 20;
-        lfoGain.gain.value = 35;
-        lfo.connect(lfoGain);
-        lfoGain.connect(osc.frequency);
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(0.38, t + 0.015);
-        gain.gain.setValueAtTime(0.38, t + 0.14);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        lfo.start(t);
-        lfo.stop(t + 0.23);
-        osc.start(t);
-        osc.stop(t + 0.23);
-      });
+      if (this.whistleBuffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = this.whistleBuffer;
+        source.connect(ctx.destination);
+        source.start(ctx.currentTime);
+      } else {
+        // Fallback synth whistle if MP3 not loaded
+        [0, 0.30].forEach(offset => {
+          const osc     = ctx.createOscillator();
+          const lfo     = ctx.createOscillator();
+          const lfoGain = ctx.createGain();
+          const gain    = ctx.createGain();
+          const t       = ctx.currentTime + offset;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(2600, t);
+          osc.frequency.linearRampToValueAtTime(2900, t + 0.02);
+          lfo.type = 'sine';
+          lfo.frequency.value = 20;
+          lfoGain.gain.value = 35;
+          lfo.connect(lfoGain);
+          lfoGain.connect(osc.frequency);
+          gain.gain.setValueAtTime(0, t);
+          gain.gain.linearRampToValueAtTime(0.38, t + 0.015);
+          gain.gain.setValueAtTime(0.38, t + 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          lfo.start(t); lfo.stop(t + 0.23);
+          osc.start(t); osc.stop(t + 0.23);
+        });
+      }
     } catch {
       // Ignore audio policy errors
     }
@@ -306,6 +313,17 @@ export class ThrowdownRun implements OnInit, OnDestroy {
       osc.stop(ctx.currentTime + dur);
     } catch {
       // Ignore audio policy errors
+    }
+  }
+
+  private async preloadWhistleAudio(): Promise<void> {
+    try {
+      const ctx      = this.getAudioCtx();
+      const response = await fetch('/referee%20whistle.mp3');
+      const buffer   = await response.arrayBuffer();
+      this.whistleBuffer = await ctx.decodeAudioData(buffer);
+    } catch {
+      // Ignore — fallback to synth if unavailable
     }
   }
 
