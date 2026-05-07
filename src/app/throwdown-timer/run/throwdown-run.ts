@@ -206,20 +206,40 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   private playBeep(freq: number, duration: number): void {
     if (this.isMuted) { return; }
     try {
-      const ctx = this.getAudioCtx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + duration);
+      this.playStepSignal();
     } catch {
       // Ignore audio policy errors
     }
+  }
+
+  private playStepSignal(): void {
+    const ctx = this.getAudioCtx();
+    // Three sharp ascending pips: short, punchy, square wave — athletic "change!" signal
+    const pips = [
+      { freq: 880,  start: 0.00, dur: 0.09 },
+      { freq: 1100, start: 0.13, dur: 0.09 },
+      { freq: 1320, start: 0.26, dur: 0.18 },
+    ];
+    pips.forEach(({ freq, start, dur }) => {
+      const osc   = ctx.createOscillator();
+      const gain  = ctx.createGain();
+      const t     = ctx.currentTime + start;
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      // Soften the harsh square wave with a low-pass filter
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 2200;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.008);
+      gain.gain.setValueAtTime(0.18, t + dur - 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + dur);
+    });
   }
 
   private playCompletion(): void {
