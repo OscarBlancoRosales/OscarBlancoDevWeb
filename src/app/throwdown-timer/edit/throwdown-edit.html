@@ -1,0 +1,160 @@
+<div class="edit-screen">
+  <div class="top-bar">
+    <button class="btn-back" (click)="back.emit()" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <h2 class="top-bar-title">{{ editConfig.name ? 'Editar Timer' : 'Nuevo Timer' }}</h2>
+    <div style="width:38px"></div>
+  </div>
+
+  <div class="edit-body">
+    <!-- Nombre -->
+    <div class="field-block">
+      <label class="field-label">Nombre del timer</label>
+      <input
+        type="text"
+        class="field-input"
+        placeholder="ej. Tabata, AMRAP, WOD..."
+        [(ngModel)]="editConfig.name"
+        maxlength="50"
+      />
+      <span class="field-hint">{{ editConfig.name.length }}/50</span>
+    </div>
+
+    <!-- Pasos -->
+    <div class="field-block">
+      <div class="steps-header">
+        <label class="field-label">Pasos</label>
+        @if (editConfig.steps.length > 0) {
+          <span class="steps-summary">
+            {{ editConfig.steps.length }} paso{{ editConfig.steps.length === 1 ? '' : 's' }} · {{ formatSecs(configTotalSecs()) }}
+          </span>
+        }
+      </div>
+
+      <div class="steps-list">
+        @if (editConfig.steps.length === 0 && !showAddForm) {
+          <p class="steps-empty">Añade pasos a tu timer</p>
+        }
+
+        @for (step of editConfig.steps; track step; let i = $index) {
+          <div
+            class="step-row"
+            [class.step-row--drag-over]="dragOverIndex === i && dragIndex !== i"
+            [class.step-row--dragging]="dragIndex === i"
+            draggable="true"
+            (dragstart)="onDragStart(i)"
+            (dragover)="onDragOver($event, i)"
+            (drop)="onDrop(i)"
+            (dragend)="onDragEnd()"
+            [attr.data-step-index]="i"
+          >
+            <div
+              class="drag-handle"
+              (touchstart)="onTouchStart($event, i)"
+              (touchmove)="onTouchMove($event)"
+              (touchend)="onTouchEnd()"
+              aria-label="Arrastrar"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+                <circle cx="9" cy="5" r="1.5"/><circle cx="15" cy="5" r="1.5"/>
+                <circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/>
+                <circle cx="9" cy="19" r="1.5"/><circle cx="15" cy="19" r="1.5"/>
+              </svg>
+            </div>
+            <span class="step-num">{{ i + 1 }}</span>
+            <div class="step-info">
+              <span class="step-name">{{ step.name }}</span>
+              <span class="step-dur">{{ formatSecs(stepTotalSec(step)) }}</span>
+            </div>
+            <button class="btn-step-del" (click)="removeStep(i)" aria-label="Eliminar paso">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        }
+
+        <!-- Formulario añadir paso -->
+        @if (showAddForm) {
+          <div class="add-form">
+            <div class="add-form-header">
+              <span class="add-form-title">Nuevo paso</span>
+              <button class="btn-close-form" (click)="toggleAddForm()" aria-label="Cerrar">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <input
+              type="text"
+              class="field-input"
+              placeholder="ej. Ejercicio, Descanso, Sprint..."
+              [(ngModel)]="newStepName"
+              maxlength="40"
+            />
+            <div class="dur-row">
+              <div class="dur-col">
+                <label class="dur-label">Min</label>
+                <input type="number" class="dur-input" min="0" max="99" [(ngModel)]="newStepMinutes" />
+              </div>
+              <span class="dur-sep">:</span>
+              <div class="dur-col">
+                <label class="dur-label">Seg</label>
+                <input type="number" class="dur-input" min="0" max="59" [(ngModel)]="newStepSeconds" />
+              </div>
+            </div>
+            <div class="presets-row">
+              @for (p of quickPresets; track p) {
+                <button
+                  class="btn-preset"
+                  [class.btn-preset--on]="newStepMinutes * 60 + newStepSeconds === p"
+                  (click)="applyPreset(p)"
+                >{{ formatSecs(p) }}</button>
+              }
+            </div>
+            <button class="btn-add-confirm" (click)="addStep()">+ Añadir paso</button>
+          </div>
+        }
+      </div>
+
+      @if (!showAddForm) {
+        <button class="btn-add-step" (click)="toggleAddForm()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Añadir paso
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="edit-footer">
+    <button
+      class="btn-save"
+      (click)="onSave()"
+      [disabled]="isSaving || !editConfig.name.trim() || editConfig.steps.length === 0"
+      [class.btn-save--ok]="saveSuccess"
+    >
+      @if (isSaving) {
+        <div class="spinner spinner--sm"></div>Guardando...
+      } @else if (saveSuccess) {
+        ✓ Guardado
+      } @else {
+        Guardar
+      }
+    </button>
+    <button
+      class="btn-start"
+      (click)="onStart()"
+      [disabled]="editConfig.steps.length === 0"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+        <polygon points="5 3 19 12 5 21 5 3"/>
+      </svg>
+      Iniciar
+    </button>
+  </div>
+</div>

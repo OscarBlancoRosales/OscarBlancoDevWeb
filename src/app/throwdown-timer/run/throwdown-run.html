@@ -1,0 +1,124 @@
+<div class="timer-screen" [class.timer-screen--done]="timerFinished">
+
+  <!-- Barra superior -->
+  <div class="timer-bar">
+    <button class="btn-back" (click)="back.emit()" aria-label="Volver">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <div class="timer-bar-center">
+      <img class="timer-bar-logo" src="/throwdown-logo.png" alt="Logo" />
+    </div>
+    <div class="timer-total-pill">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
+        <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+      </svg>
+      {{ formattedTotalRemaining }}
+    </div>
+  </div>
+
+  <!-- ACTIVO -->
+  @if (!timerFinished) {
+    <div class="timer-main">
+      <!-- Puntos de progreso -->
+      <div class="step-dots">
+        @for (s of config().steps; track s; let i = $index) {
+          <span
+            class="dot"
+            [class.dot--done]="i < currentStepIndex"
+            [class.dot--active]="i === currentStepIndex"
+          ></span>
+        }
+      </div>
+
+      <div class="timer-step-label">PASO {{ currentStepIndex + 1 }} / {{ config().steps.length }}</div>
+      <div class="timer-step-name">{{ currentStep?.name }}</div>
+      <div class="timer-countdown" [class.timer-countdown--paused]="!isRunning">
+        {{ formattedRemaining }}
+      </div>
+
+      <!-- Progreso del paso -->
+      <div class="prog-wrap">
+        <div class="prog-track">
+          <div class="prog-fill" [style.width.%]="stepProgress"></div>
+        </div>
+      </div>
+
+      <!-- Siguiente paso -->
+      @if (nextStep) {
+        <div class="next-card">
+          <span class="next-label">A CONTINUACIÓN</span>
+          <span class="next-name">{{ nextStep.name }}</span>
+          <span class="next-dur">{{ formatSecs(stepTotalSec(nextStep)) }}</span>
+        </div>
+      } @else {
+        <div class="next-card next-card--last">
+          <span class="next-label">ÚLTIMO PASO</span>
+        </div>
+      }
+
+      <!-- Progreso total -->
+      <div class="total-prog-row">
+        <span class="total-prog-label">Total</span>
+        <div class="prog-track prog-track--thin">
+          <div class="prog-fill prog-fill--dim" [style.width.%]="totalProgress"></div>
+        </div>
+        <span class="total-prog-pct">{{ totalProgress | number:'1.0-0' }}%</span>
+      </div>
+    </div>
+
+    <!-- Controles -->
+    <div class="timer-controls">
+      <button
+        class="ctrl ctrl--side"
+        (click)="prev()"
+        [disabled]="currentStepIndex === 0"
+        aria-label="Paso anterior"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+          <polygon points="19 20 9 12 19 4 19 20"/>
+          <line x1="5" y1="19" x2="5" y2="5" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        </svg>
+      </button>
+
+      @if (!isRunning) {
+        <button class="ctrl ctrl--main" (click)="resume()" aria-label="Reanudar">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+        </button>
+      } @else {
+        <button class="ctrl ctrl--main" (click)="pause()" aria-label="Pausar">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+          </svg>
+        </button>
+      }
+
+      <button class="ctrl ctrl--side" (click)="skip()" aria-label="Siguiente paso">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+          <polygon points="5 4 15 12 5 20 5 4"/>
+          <line x1="19" y1="5" x2="19" y2="19" stroke="currentColor" stroke-width="2.5" fill="none"/>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- COMPLETADO -->
+  @if (timerFinished) {
+    <div class="finished-main">
+      <img class="finished-logo" src="/throwdown-logo.png" alt="Logo" />
+      <div class="finished-label">¡COMPLETADO!</div>
+      <div class="finished-name">{{ config().name }}</div>
+      <button class="btn-restart" (click)="restart()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="17" height="17">
+          <polyline points="23 4 23 10 17 10"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        Volver a empezar
+      </button>
+    </div>
+  }
+
+</div>

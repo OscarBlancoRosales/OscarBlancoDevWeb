@@ -1,0 +1,61 @@
+<div class="list-screen">
+  <div class="top-bar">
+    <img src="/throwdown-logo.png" alt="Logo" class="top-bar-logo" />
+    <h1 class="top-bar-title">Mis Timers</h1>
+    <button class="btn-new" (click)="newConfig.emit()" aria-label="Nuevo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="list-content">
+    @if (isLoading) {
+      <div class="loading-state">
+        <div class="spinner"></div>
+      </div>
+    } @else if (configs.length === 0) {
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <p>No tienes timers guardados</p>
+        <button class="btn-create-first" (click)="newConfig.emit()">+ Crear timer</button>
+      </div>
+    } @else {
+      @for (cfg of configs; track cfg.id) {
+        <div class="timer-card" (click)="playConfig.emit(cfg)">
+          <div class="timer-card-body">
+            <div class="timer-card-name">{{ cfg.name }}</div>
+            <div class="timer-card-meta">
+              <span class="chip">{{ cfg.steps.length }} pasos</span>
+              <span class="chip chip--green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="11" height="11">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {{ formatSecs(configTotalSecs(cfg)) }}
+              </span>
+            </div>
+          </div>
+          <div class="timer-card-actions">
+            <button class="btn-icon" (click)="editConfig.emit(cfg); $event.stopPropagation()" aria-label="Editar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="btn-icon btn-icon--delete" (click)="onDelete(cfg); $event.stopPropagation()" aria-label="Eliminar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+            <button class="btn-play" (click)="playConfig.emit(cfg); $event.stopPropagation()" aria-label="Iniciar">
+              <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

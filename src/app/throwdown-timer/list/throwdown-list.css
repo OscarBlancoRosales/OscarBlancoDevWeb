@@ -1,0 +1,194 @@
+:host {
+  display: flex;
+  width: 100%;
+  min-height: 100dvh;
+}
+
+.list-screen {
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  width: 100%;
+  overflow-y: auto;
+}
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #0f0f0f;
+  background: #000;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-shrink: 0;
+}
+.top-bar-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.top-bar-title {
+  flex: 1;
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+  color: #fff;
+}
+
+.btn-new {
+  background: #111;
+  border: 1px solid #1e1e1e;
+  color: #fff;
+  width: 36px; height: 36px; min-width: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-new:hover { background: #1e1e1e; }
+.btn-new svg { width: 17px; height: 17px; }
+
+/* Content */
+.list-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 1rem;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  flex: 1;
+  box-sizing: border-box;
+}
+
+/* States */
+.loading-state {
+  display: flex;
+  justify-content: center;
+  padding: 4rem 0;
+}
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid #1e1e1e;
+  border-top-color: #3d7a3a;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: #2a2a2a;
+}
+.empty-state svg { width: 52px; height: 52px; }
+.empty-state p { margin: 0; font-size: 0.95rem; color: #3a3a3a; }
+
+.btn-create-first {
+  background: transparent;
+  border: 1px solid #1e1e1e;
+  color: #666;
+  padding: 0.65rem 1.4rem;
+  border-radius: 9px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-create-first:hover { border-color: #3d7a3a; color: #fff; }
+
+/* Timer card */
+.timer-card {
+  display: flex;
+  align-items: center;
+  background: #0c0c0c;
+  border: 1px solid #141414;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.timer-card:hover { border-color: #1e1e1e; background: #0f0f0f; }
+
+.timer-card-body {
+  flex: 1;
+  padding: 1rem 0.75rem 1rem 1.1rem;
+  min-width: 0;
+}
+.timer-card-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.4rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.timer-card-meta {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #141414;
+  border: 1px solid #1e1e1e;
+  color: #555;
+  font-size: 0.73rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 50px;
+}
+.chip--green { color: #3d7a3a; border-color: #142014; background: #0a120a; }
+
+.timer-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.7rem 0.6rem 0;
+}
+.btn-icon {
+  background: none;
+  border: 1px solid #141414;
+  color: #444;
+  width: 34px; height: 34px;
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-icon svg { width: 14px; height: 14px; }
+.btn-icon:hover { color: #ccc; border-color: #2a2a2a; background: #111; }
+.btn-icon--delete:hover { color: #c00; border-color: #3a0a0a; background: #150000; }
+
+.btn-play {
+  background: #3d7a3a;
+  border: none;
+  color: #fff;
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  padding-left: 2px;
+}
+.btn-play svg { width: 16px; height: 16px; }
+.btn-play:hover { background: #4a9447; }
+.btn-play:active { transform: scale(0.93); }

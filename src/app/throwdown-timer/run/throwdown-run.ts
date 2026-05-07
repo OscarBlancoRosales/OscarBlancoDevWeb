@@ -1,0 +1,206 @@
+import { Component, input, output, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ThrowdownConfig, ThrowdownStep } from '../throwdown-timer';
+
+@Component({
+  selector: 'app-throwdown-run',
+  imports: [CommonModule],
+  templateUrl: './throwdown-run.html',
+  styleUrl: './throwdown-run.css',
+})
+export class ThrowdownRun implements OnInit, OnDestroy {
+  readonly config = input.required<ThrowdownConfig>();
+  readonly back = output<void>();
+
+  currentStepIndex = 0;
+  remainingSeconds = 0;
+  stepTotalSeconds = 0;
+  isRunning = false;
+  timerFinished = false;
+  totalElapsedSeconds = 0;
+  totalDurationSeconds = 0;
+
+  private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private audioCtx: AudioContext | null = null;
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  ngOnInit(): void {
+    this.totalDurationSeconds = this.configTotalSecs(this.config());
+    this.loadStep(0);
+    this.resume();
+  }
+
+  ngOnDestroy(): void {
+    this.clearInterval();
+    if (this.audioCtx) {
+      void this.audioCtx.close();
+      this.audioCtx = null;
+    }
+  }
+
+  // ── HELPERS ───────────────────────────────────────────────────────────────
+
+  formatSecs(secs: number): string {
+    const m = Math.floor(Math.max(0, secs) / 60);
+    const s = Math.max(0, secs) % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  private stepSecs(step: ThrowdownStep): number {
+    return step.minutes * 60 + step.seconds;
+  }
+
+  stepTotalSec(step: ThrowdownStep): number {
+    return this.stepSecs(step);
+  }
+
+  private configTotalSecs(cfg: ThrowdownConfig): number {
+    return cfg.steps.reduce((a, s) => a + this.stepSecs(s), 0);
+  }
+
+  // ── STATE ─────────────────────────────────────────────────────────────────
+
+  get currentStep(): ThrowdownStep | null {
+    return this.config().steps[this.currentStepIndex] ?? null;
+  }
+
+  get nextStep(): ThrowdownStep | null {
+    return this.config().steps[this.currentStepIndex + 1] ?? null;
+  }
+
+  get stepProgress(): number {
+    if (this.stepTotalSeconds === 0) { return 0; }
+    return ((this.stepTotalSeconds - this.remainingSeconds) / this.stepTotalSeconds) * 100;
+  }
+
+  get totalProgress(): number {
+    if (this.totalDurationSeconds === 0) { return 0; }
+    return (this.totalElapsedSeconds / this.totalDurationSeconds) * 100;
+  }
+
+  get formattedRemaining(): string {
+    return this.formatSecs(this.remainingSeconds);
+  }
+
+  get formattedTotalRemaining(): string {
+    return this.formatSecs(Math.max(0, this.totalDurationSeconds - this.totalElapsedSeconds));
+  }
+
+  // ── TIMER ─────────────────────────────────────────────────────────────────
+
+  private loadStep(index: number): void {
+    const step = this.config().steps[index];
+    if (!step) { return; }
+    this.currentStepIndex = index;
+    this.stepTotalSeconds = this.stepSecs(step);
+    this.remainingSeconds = this.stepTotalSeconds;
+  }
+
+  resume(): void {
+    if (this.isRunning || this.timerFinished) { return; }
+    this.isRunning = true;
+    this.cdr.detectChanges();
+    this.timerInterval = setInterval(() => {
+      this.remainingSeconds--;
+      this.totalElapsedSeconds++;
+      if (this.remainingSeconds <= 0) {
+        this.advance();
+      }
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  pause(): void {
+    this.isRunning = false;
+    this.clearInterval();
+    this.cdr.detectChanges();
+  }
+
+  skip(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    this.totalElapsedSeconds += this.remainingSeconds;
+    this.advance();
+  }
+
+  prev(): void {
+    if (this.currentStepIndex === 0) { return; }
+    const wasRunning = this.isRunning;
+    this.clearInterval();
+    this.isRunning = false;
+    const spent = this.stepTotalSeconds - this.remainingSeconds;
+    this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - spent);
+    const prevStep = this.config().steps[this.currentStepIndex - 1];
+    if (prevStep) {
+      this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - this.stepSecs(prevStep));
+    }
+    this.loadStep(this.currentStepIndex - 1);
+    if (wasRunning) { this.resume(); } else { this.cdr.detectChanges(); }
+  }
+
+  restart(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    this.timerFinished = false;
+    this.totalElapsedSeconds = 0;
+    this.loadStep(0);
+    this.resume();
+  }
+
+  private advance(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    if (this.currentStepIndex < this.config().steps.length - 1) {
+      this.playBeep(880, 0.4);
+      this.loadStep(this.currentStepIndex + 1);
+      this.resume();
+    } else {
+      this.remainingSeconds = 0;
+      this.timerFinished = true;
+      this.totalElapsedSeconds = this.totalDurationSeconds;
+      this.playCompletion();
+      this.cdr.detectChanges();
+    }
+  }
+
+  private clearInterval(): void {
+    if (this.timerInterval !== null) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+  }
+
+  // ── AUDIO ─────────────────────────────────────────────────────────────────
+
+  private getAudioCtx(): AudioContext {
+    if (!this.audioCtx) {
+      this.audioCtx = new AudioContext();
+    }
+    return this.audioCtx;
+  }
+
+  private playBeep(freq: number, duration: number): void {
+    try {
+      const ctx = this.getAudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
+    } catch {
+      // Ignore audio policy errors
+    }
+  }
+
+  private playCompletion(): void {
+    this.playBeep(1047, 0.4);
+    setTimeout(() => { this.playBeep(1319, 0.4); }, 350);
+    setTimeout(() => { this.playBeep(1568, 0.6); }, 700);
+  }
+}
