@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { database } from '../firebase.config';
-import { ref, set, get } from 'firebase/database';
+import { ref, set, get, remove } from 'firebase/database';
 
 export interface ThrowdownStep {
   name: string;
@@ -10,7 +10,16 @@ export interface ThrowdownStep {
   seconds: number;
 }
 
-type Screen = 'welcome' | 'config' | 'timer';
+export interface ThrowdownConfig {
+  id: string;
+  name: string;
+  steps: ThrowdownStep[];
+  createdAt: number;
+}
+
+type Screen = 'welcome' | 'list' | 'edit' | 'timer';
+
+const QUICK_PRESETS = [10, 20, 30, 60, 120, 300];
 
 @Component({
   selector: 'app-throwdown-timer',
@@ -21,48 +30,122 @@ type Screen = 'welcome' | 'config' | 'timer';
 export class ThrowdownTimer implements OnInit, OnDestroy {
   screen: Screen = 'welcome';
 
-  steps: ThrowdownStep[] = [];
+  // ── LIST ────────────────────────────────────────────────────────────────
+  configs: ThrowdownConfig[] = [];
+  isLoadingList = true;
+
+  // ── EDIT ─────────────────────────────────────────────────────────────────
+  editConfig: ThrowdownConfig = this.blankConfig();
   showAddForm = false;
   newStepName = '';
   newStepMinutes = 0;
   newStepSeconds = 0;
   isSaving = false;
-  isLoading = true;
+  saveSuccess = false;
 
+  // ── TIMER ────────────────────────────────────────────────────────────────
+  activeConfig: ThrowdownConfig = this.blankConfig();
   currentStepIndex = 0;
   remainingSeconds = 0;
+  stepTotalSeconds = 0;
+  isRunning = false;
   timerFinished = false;
+
+  // Total elapsed for the "total time" counter
+  totalElapsedSeconds = 0;
+  totalDurationSeconds = 0;
 
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
 
+  constructor(private zone: NgZone) {}
+
   ngOnInit(): void {
-    void this.loadConfig();
+    void this.loadList();
   }
 
   ngOnDestroy(): void {
-    this.stopTimer();
+    this.clearInterval();
     if (this.audioCtx) {
       void this.audioCtx.close();
       this.audioCtx = null;
     }
   }
 
-  private async loadConfig(): Promise<void> {
+  // ── HELPERS ─────────────────────────────────────────────────────────────
+
+  private blankConfig(): ThrowdownConfig {
+    return { id: '', name: '', steps: [], createdAt: Date.now() };
+  }
+
+  private generateId(): string {
+    return `tt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  stepTotalSec(step: ThrowdownStep): number {
+    return step.minutes * 60 + step.seconds;
+  }
+
+  formatSecs(secs: number): string {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+
+  configTotalSecs(cfg: ThrowdownConfig): number {
+    return cfg.steps.reduce((a, s) => a + this.stepTotalSec(s), 0);
+  }
+
+  // ── LIST ─────────────────────────────────────────────────────────────────
+
+  private async loadList(): Promise<void> {
+    this.isLoadingList = true;
     try {
-      const snapshot = await get(ref(database, 'throwdown-timer/steps'));
-      const data = snapshot.val();
-      this.steps = Array.isArray(data) ? (data as ThrowdownStep[]) : [];
+      const snapshot = await get(ref(database, 'throwdown-timer/configs'));
+      const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
+      if (raw) {
+        this.configs = Object.values(raw).sort((a, b) => b.createdAt - a.createdAt);
+      } else {
+        this.configs = [];
+      }
     } catch {
-      this.steps = [];
+      this.configs = [];
     } finally {
-      this.isLoading = false;
+      this.isLoadingList = false;
     }
   }
 
   enter(): void {
-    this.screen = 'config';
+    this.screen = 'list';
   }
+
+  openCreate(): void {
+    this.editConfig = this.blankConfig();
+    this.editConfig.id = this.generateId();
+    this.showAddForm = false;
+    this.screen = 'edit';
+  }
+
+  openEdit(cfg: ThrowdownConfig): void {
+    this.editConfig = JSON.parse(JSON.stringify(cfg)) as ThrowdownConfig;
+    this.showAddForm = false;
+    this.screen = 'edit';
+  }
+
+  async deleteConfig(cfg: ThrowdownConfig): Promise<void> {
+    try {
+      await remove(ref(database, `throwdown-timer/configs/${cfg.id}`));
+      this.configs = this.configs.filter(c => c.id !== cfg.id);
+    } catch {
+      // silent
+    }
+  }
+
+  backToList(): void {
+    this.screen = 'list';
+  }
+
+  // ── EDIT ─────────────────────────────────────────────────────────────────
 
   toggleAddForm(): void {
     this.showAddForm = !this.showAddForm;
@@ -73,79 +156,159 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
     }
   }
 
+  applyPreset(totalSecs: number): void {
+    this.newStepMinutes = Math.floor(totalSecs / 60);
+    this.newStepSeconds = totalSecs % 60;
+  }
+
   addStep(): void {
     const name = this.newStepName.trim();
     if (!name) { return; }
-    const minutes = Math.max(0, Math.floor(this.newStepMinutes));
-    const seconds = Math.max(0, Math.min(59, Math.floor(this.newStepSeconds)));
+    const minutes = Math.max(0, Math.floor(Number(this.newStepMinutes)));
+    const seconds = Math.max(0, Math.min(59, Math.floor(Number(this.newStepSeconds))));
     if (minutes === 0 && seconds === 0) { return; }
-    this.steps = [...this.steps, { name, minutes, seconds }];
+    this.editConfig = {
+      ...this.editConfig,
+      steps: [...this.editConfig.steps, { name, minutes, seconds }]
+    };
     this.showAddForm = false;
   }
 
   removeStep(index: number): void {
-    this.steps = this.steps.filter((_, i) => i !== index);
+    this.editConfig = {
+      ...this.editConfig,
+      steps: this.editConfig.steps.filter((_, i) => i !== index)
+    };
   }
 
   async saveConfig(): Promise<void> {
+    const name = this.editConfig.name.trim();
+    if (!name || this.editConfig.steps.length === 0) { return; }
     this.isSaving = true;
+    this.saveSuccess = false;
     try {
-      await set(ref(database, 'throwdown-timer/steps'), this.steps);
+      const toSave: ThrowdownConfig = { ...this.editConfig, name };
+      await set(ref(database, `throwdown-timer/configs/${toSave.id}`), toSave);
+      // Update local list
+      const idx = this.configs.findIndex(c => c.id === toSave.id);
+      if (idx >= 0) {
+        this.configs = this.configs.map(c => c.id === toSave.id ? toSave : c);
+      } else {
+        this.configs = [toSave, ...this.configs];
+      }
+      this.saveSuccess = true;
+      setTimeout(() => { this.saveSuccess = false; }, 2000);
+    } catch {
+      // silent
     } finally {
       this.isSaving = false;
     }
   }
 
-  startTimer(): void {
-    if (this.steps.length === 0) { return; }
+  launchTimer(cfg: ThrowdownConfig): void {
+    if (cfg.steps.length === 0) { return; }
+    this.activeConfig = JSON.parse(JSON.stringify(cfg)) as ThrowdownConfig;
     this.currentStepIndex = 0;
     this.timerFinished = false;
+    this.isRunning = false;
+    this.totalElapsedSeconds = 0;
+    this.totalDurationSeconds = this.configTotalSecs(this.activeConfig);
+    this.loadStep(0);
     this.screen = 'timer';
-    this.startCurrentStep();
+    this.resumeTimer();
   }
 
-  private startCurrentStep(): void {
-    const step = this.steps[this.currentStepIndex];
+  // ── TIMER ────────────────────────────────────────────────────────────────
+
+  private loadStep(index: number): void {
+    const step = this.activeConfig.steps[index];
     if (!step) { return; }
-    this.remainingSeconds = (step.minutes * 60) + step.seconds;
+    this.currentStepIndex = index;
+    this.stepTotalSeconds = this.stepTotalSec(step);
+    this.remainingSeconds = this.stepTotalSeconds;
+  }
+
+  resumeTimer(): void {
+    if (this.isRunning || this.timerFinished) { return; }
+    this.isRunning = true;
     this.timerInterval = setInterval(() => {
-      this.remainingSeconds--;
-      if (this.remainingSeconds <= 0) {
-        this.onStepFinished();
-      }
+      this.zone.run(() => {
+        this.remainingSeconds--;
+        this.totalElapsedSeconds++;
+        if (this.remainingSeconds <= 0) {
+          this.advanceStep();
+        }
+      });
     }, 1000);
   }
 
-  private onStepFinished(): void {
-    this.stopTimer();
-    if (this.currentStepIndex < this.steps.length - 1) {
-      this.playBeep(880, 0.5);
-      this.currentStepIndex++;
-      this.startCurrentStep();
+  pauseTimer(): void {
+    this.isRunning = false;
+    this.clearInterval();
+  }
+
+  skipStep(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    this.totalElapsedSeconds += this.remainingSeconds;
+    this.advanceStep();
+  }
+
+  prevStep(): void {
+    if (this.currentStepIndex === 0) { return; }
+    const wasRunning = this.isRunning;
+    this.clearInterval();
+    this.isRunning = false;
+    // Subtract time already spent on current step
+    const spent = this.stepTotalSeconds - this.remainingSeconds;
+    this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - spent);
+    // Also subtract the full previous step from elapsed, it'll be re-counted
+    const prevStep = this.activeConfig.steps[this.currentStepIndex - 1];
+    if (prevStep) {
+      this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - this.stepTotalSec(prevStep));
+    }
+    this.loadStep(this.currentStepIndex - 1);
+    if (wasRunning) { this.resumeTimer(); }
+  }
+
+  private advanceStep(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    if (this.currentStepIndex < this.activeConfig.steps.length - 1) {
+      this.playBeep(880, 0.4);
+      this.loadStep(this.currentStepIndex + 1);
+      this.resumeTimer();
     } else {
+      this.remainingSeconds = 0;
       this.timerFinished = true;
+      this.totalElapsedSeconds = this.totalDurationSeconds;
       this.playCompletionSound();
     }
   }
 
-  private stopTimer(): void {
+  restartTimer(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    this.timerFinished = false;
+    this.totalElapsedSeconds = 0;
+    this.loadStep(0);
+    this.resumeTimer();
+  }
+
+  backToListFromTimer(): void {
+    this.clearInterval();
+    this.isRunning = false;
+    this.screen = 'list';
+  }
+
+  private clearInterval(): void {
     if (this.timerInterval !== null) {
       clearInterval(this.timerInterval);
       this.timerInterval = null;
     }
   }
 
-  restartTimer(): void {
-    this.stopTimer();
-    this.timerFinished = false;
-    this.currentStepIndex = 0;
-    this.startCurrentStep();
-  }
-
-  backToConfig(): void {
-    this.stopTimer();
-    this.screen = 'config';
-  }
+  // ── AUDIO ────────────────────────────────────────────────────────────────
 
   private getAudioContext(): AudioContext {
     if (!this.audioCtx) {
@@ -157,38 +320,54 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
   private playBeep(freq: number, duration: number): void {
     try {
       const ctx = this.getAudioContext();
-      const oscillator = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      oscillator.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      oscillator.type = 'sine';
-      oscillator.frequency.value = freq;
-      gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
-      oscillator.start(ctx.currentTime);
-      oscillator.stop(ctx.currentTime + duration);
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + duration);
     } catch {
-      // Ignore audio errors (e.g. autoplay policy)
+      // Ignore audio policy errors
     }
   }
 
   private playCompletionSound(): void {
-    this.playBeep(1047, 0.5);
-    setTimeout(() => { this.playBeep(1047, 0.5); }, 400);
-    setTimeout(() => { this.playBeep(1047, 0.5); }, 800);
+    this.playBeep(1047, 0.4);
+    setTimeout(() => { this.playBeep(1319, 0.4); }, 350);
+    setTimeout(() => { this.playBeep(1568, 0.6); }, 700);
   }
+
+  // ── GETTERS ───────────────────────────────────────────────────────────────
+
+  get quickPresets(): number[] { return QUICK_PRESETS; }
 
   get currentStep(): ThrowdownStep | null {
-    return this.steps[this.currentStepIndex] ?? null;
+    return this.activeConfig.steps[this.currentStepIndex] ?? null;
   }
 
-  get formattedTime(): string {
-    const m = Math.floor(this.remainingSeconds / 60);
-    const s = this.remainingSeconds % 60;
-    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  get nextStep(): ThrowdownStep | null {
+    return this.activeConfig.steps[this.currentStepIndex + 1] ?? null;
   }
 
-  formatStepDuration(step: ThrowdownStep): string {
-    return `${String(step.minutes).padStart(2, '0')}:${String(step.seconds).padStart(2, '0')}`;
+  get stepProgress(): number {
+    if (this.stepTotalSeconds === 0) { return 0; }
+    return ((this.stepTotalSeconds - this.remainingSeconds) / this.stepTotalSeconds) * 100;
+  }
+
+  get totalProgress(): number {
+    if (this.totalDurationSeconds === 0) { return 0; }
+    return (this.totalElapsedSeconds / this.totalDurationSeconds) * 100;
+  }
+
+  get formattedRemaining(): string {
+    return this.formatSecs(this.remainingSeconds);
+  }
+
+  get formattedTotalRemaining(): string {
+    return this.formatSecs(Math.max(0, this.totalDurationSeconds - this.totalElapsedSeconds));
   }
 }
