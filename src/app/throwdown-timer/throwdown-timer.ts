@@ -75,7 +75,7 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
   private subscribeConfigs(): void {
     this.isLoadingConfigs = true;
 
-    // Initial load via get() — fast HTTPS, works reliably on first visit
+    // get() controls the loading state — fast HTTPS, resolves reliably on every visit
     void get(ref(database, 'throwdown-timer/configs')).then((snapshot) => {
       const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
       this.configs = raw
@@ -89,22 +89,19 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
       this.cdr.detectChanges();
     });
 
-    // Real-time listener — keeps all users in sync after initial load
+    // onValue() only updates configs AFTER get() has finished (isLoadingConfigs === false)
+    // This prevents the real-time listener from flashing empty state before get() resolves
     this.configsUnsubscribe = onValue(
       ref(database, 'throwdown-timer/configs'),
       (snapshot) => {
+        if (this.isLoadingConfigs) { return; }
         const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
         this.configs = raw
           ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
           : [];
-        this.isLoadingConfigs = false;
         this.cdr.detectChanges();
       },
-      () => {
-        this.configs = [];
-        this.isLoadingConfigs = false;
-        this.cdr.detectChanges();
-      }
+      () => { /* ignore real-time errors, get() already handled initial error */ }
     );
   }
 
