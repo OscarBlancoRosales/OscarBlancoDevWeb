@@ -111,7 +111,7 @@
               @for (p of quickPresets; track p) {
                 <button
                   class="btn-preset"
-                  [class.btn-preset--on]="newStepMinutes * 60 + newStepSeconds === p"
+                  [class.btn-preset--on]="(newStepMinutes ?? 0) * 60 + (newStepSeconds ?? 0) === p"
                   (click)="applyPreset(p)"
                 >{{ formatSecs(p) }}</button>
               }
