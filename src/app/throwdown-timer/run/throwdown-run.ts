@@ -165,6 +165,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.clearInterval();
     this.isRunning = false;
     if (this.currentStepIndex < this.config().steps.length - 1) {
+      this.playStepHorn();
       this.loadStep(this.currentStepIndex + 1);
       this.resume();
     } else {
@@ -207,6 +208,32 @@ export class ThrowdownRun implements OnInit, OnDestroy {
       this.audioCtx = new AudioContext();
     }
     return this.audioCtx;
+  }
+
+  private playStepHorn(): void {
+    if (this.isMuted) { return; }
+    try {
+      const ctx   = this.getAudioCtx();
+      const start = ctx.currentTime;
+      const freqs = [440, 587, 880];
+      const vols  = [0.30, 0.18, 0.10];
+      freqs.forEach((freq, i) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0, start);
+        gain.gain.linearRampToValueAtTime(vols[i], start + 0.02);
+        gain.gain.setValueAtTime(vols[i], start + 0.35);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.55);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + 0.56);
+      });
+    } catch {
+      // Ignore audio policy errors
+    }
   }
 
   private playCountdownPip(isLast: boolean): void {
