@@ -41,6 +41,17 @@
     </div>
   }
 
+  <!-- PRE-COUNTDOWN (10→0 before timer starts) -->
+  @if (isPreCountdown) {
+    <div class="precountdown-overlay">
+      <div class="precountdown-number"
+           [class.precountdown-number--urgent]="preCountdownValue <= 3">
+        {{ preCountdownValue }}
+      </div>
+      <div class="precountdown-label">PREPÁRATE</div>
+    </div>
+  }
+
   <!-- ACTIVO -->
   @if (!timerFinished) {
     <div class="timer-main">

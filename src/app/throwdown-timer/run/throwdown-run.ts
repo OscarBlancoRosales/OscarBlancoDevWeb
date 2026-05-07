@@ -20,9 +20,12 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   totalElapsedSeconds = 0;
   totalDurationSeconds = 0;
   isMuted = false;
-  readyToStart = true; // show tap-to-start overlay
+  readyToStart = true;
+  isPreCountdown = false;
+  preCountdownValue = 10;
 
   private timerInterval: ReturnType<typeof setInterval> | null = null;
+  private preCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {}
@@ -34,6 +37,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearPreCountdown();
     this.clearInterval();
     if (this.audioCtx) {
       void this.audioCtx.close();
@@ -160,13 +164,40 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.readyToStart = false;
     this.totalElapsedSeconds = 0;
     this.loadStep(0);
-    this.resume();
+    this.beginPreCountdown();
   }
 
   startTimer(): void {
     this.readyToStart = false;
     this.unlockAudio();
-    this.resume();
+    this.beginPreCountdown();
+  }
+
+  private beginPreCountdown(): void {
+    this.clearPreCountdown();
+    this.preCountdownValue = 10;
+    this.isPreCountdown = true;
+    this.cdr.detectChanges();
+    this.preCountdownInterval = setInterval(() => {
+      this.preCountdownValue--;
+      if (this.preCountdownValue > 0 && this.preCountdownValue <= 3) {
+        this.playCountdownPip(this.preCountdownValue === 1);
+      }
+      if (this.preCountdownValue <= 0) {
+        this.clearPreCountdown();
+        this.isPreCountdown = false;
+        this.playStepHorn();
+        this.resume();
+      }
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  private clearPreCountdown(): void {
+    if (this.preCountdownInterval !== null) {
+      clearInterval(this.preCountdownInterval);
+      this.preCountdownInterval = null;
+    }
   }
 
   private advance(): void {

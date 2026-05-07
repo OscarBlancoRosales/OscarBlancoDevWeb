@@ -277,6 +277,39 @@
 }
 .ctrl--main:hover { background: #e8e8e8; }
 
+/* Pre-countdown overlay (10 → 0) */
+.precountdown-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  background: #000;
+}
+.precountdown-number {
+  font-size: clamp(7rem, 38vw, 14rem);
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #fff;
+  transition: color 0.25s;
+}
+.precountdown-number--urgent {
+  animation: countdown-urgent 1s ease-in-out infinite;
+  transition: none;
+}
+.precountdown-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: #3d7a3a;
+  text-transform: uppercase;
+}
+
 /* Ready overlay */
 .ready-overlay {
   position: absolute;
