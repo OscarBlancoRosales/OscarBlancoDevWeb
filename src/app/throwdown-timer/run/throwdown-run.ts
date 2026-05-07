@@ -231,9 +231,14 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   private unlockAudio(): void {
     try {
       const ctx = this.getAudioCtx();
-      if (ctx.state === 'suspended') {
-        void ctx.resume();
-      }
+      void ctx.resume();
+      // iOS requires playing an actual buffer (even silent) within the gesture
+      // to fully unlock the AudioContext — resume() alone is not enough
+      const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+      const src = ctx.createBufferSource();
+      src.buffer = buf;
+      src.connect(ctx.destination);
+      src.start(0);
     } catch {
       // Ignore
     }
