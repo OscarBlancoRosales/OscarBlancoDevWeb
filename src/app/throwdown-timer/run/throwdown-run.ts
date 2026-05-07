@@ -27,6 +27,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private preCountdownInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
+  private completionBuffer: AudioBuffer | null = null;
 
   constructor(private cdr: ChangeDetectorRef) {}
 
@@ -172,6 +173,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   startTimer(): void {
     this.readyToStart = false;
     this.unlockAudio();
+    void this.preloadCompletionAudio();
     this.beginPreCountdown();
   }
 
@@ -188,7 +190,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
       if (this.preCountdownValue <= 0) {
         this.clearPreCountdown();
         this.isPreCountdown = false;
-        this.playStepHorn();
+        this.playStepWhistle();
         this.resume();
       }
       this.cdr.detectChanges();
@@ -206,7 +208,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.clearInterval();
     this.isRunning = false;
     if (this.currentStepIndex < this.config().steps.length - 1) {
-      this.playStepHorn();
+      this.playStepWhistle();
       this.loadStep(this.currentStepIndex + 1);
       this.resume();
     } else {
@@ -251,26 +253,35 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     return this.audioCtx;
   }
 
-  private playStepHorn(): void {
+  private playStepWhistle(): void {
     if (this.isMuted) { return; }
     try {
-      const ctx   = this.getAudioCtx();
-      const start = ctx.currentTime;
-      const freqs = [440, 587, 880];
-      const vols  = [0.30, 0.18, 0.10];
-      freqs.forEach((freq, i) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0, start);
-        gain.gain.linearRampToValueAtTime(vols[i], start + 0.02);
-        gain.gain.setValueAtTime(vols[i], start + 0.35);
-        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.55);
+      const ctx = this.getAudioCtx();
+      // Two short whistle blasts: tweet-tweet — competition change signal
+      [0, 0.30].forEach(offset => {
+        const osc     = ctx.createOscillator();
+        const lfo     = ctx.createOscillator();
+        const lfoGain = ctx.createGain();
+        const gain    = ctx.createGain();
+        const t       = ctx.currentTime + offset;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2600, t);
+        osc.frequency.linearRampToValueAtTime(2900, t + 0.02);
+        lfo.type = 'sine';
+        lfo.frequency.value = 20;
+        lfoGain.gain.value = 35;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        gain.gain.setValueAtTime(0, t);
+        gain.gain.linearRampToValueAtTime(0.38, t + 0.015);
+        gain.gain.setValueAtTime(0.38, t + 0.14);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
         osc.connect(gain);
         gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + 0.56);
+        lfo.start(t);
+        lfo.stop(t + 0.23);
+        osc.start(t);
+        osc.stop(t + 0.23);
       });
     } catch {
       // Ignore audio policy errors
@@ -298,75 +309,48 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     }
   }
 
-  private playBeep(freq: number, duration: number): void {
-    if (this.isMuted) { return; }
+  private async preloadCompletionAudio(): Promise<void> {
     try {
-      this.playStepSignal();
+      const ctx      = this.getAudioCtx();
+      const response = await fetch('/trompeta%20final.mp3');
+      const buffer   = await response.arrayBuffer();
+      this.completionBuffer = await ctx.decodeAudioData(buffer);
     } catch {
-      // Ignore audio policy errors
+      // Ignore — fallback to synth if unavailable
     }
-  }
-
-  private playStepSignal(): void {
-    const ctx = this.getAudioCtx();
-    // Three sharp ascending pips: short, punchy, square wave — athletic "change!" signal
-    const pips = [
-      { freq: 880,  start: 0.00, dur: 0.09 },
-      { freq: 1100, start: 0.13, dur: 0.09 },
-      { freq: 1320, start: 0.26, dur: 0.18 },
-    ];
-    pips.forEach(({ freq, start, dur }) => {
-      const osc   = ctx.createOscillator();
-      const gain  = ctx.createGain();
-      const t     = ctx.currentTime + start;
-      osc.type = 'square';
-      osc.frequency.value = freq;
-      // Soften the harsh square wave with a low-pass filter
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 2200;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.008);
-      gain.gain.setValueAtTime(0.18, t + dur - 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      osc.connect(filter);
-      filter.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + dur);
-    });
   }
 
   private playCompletion(): void {
     if (this.isMuted) { return; }
     try {
       const ctx = this.getAudioCtx();
-      this.playHornBlast(ctx, ctx.currentTime, 0.85);
-      setTimeout(() => {
-        const c = this.getAudioCtx();
-        this.playHornBlast(c, c.currentTime, 1.1);
-      }, 650);
+      if (this.completionBuffer) {
+        const source = ctx.createBufferSource();
+        source.buffer = this.completionBuffer;
+        source.connect(ctx.destination);
+        source.start(ctx.currentTime);
+      } else {
+        // Fallback synth horn if MP3 not loaded
+        const freqs = [233, 466, 700, 932];
+        const vols  = [0.38, 0.22, 0.13, 0.07];
+        const start = ctx.currentTime;
+        freqs.forEach((freq, i) => {
+          const osc  = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, start);
+          gain.gain.linearRampToValueAtTime(vols[i], start + 0.03);
+          gain.gain.setValueAtTime(vols[i], start + 0.8);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 1.0);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(start);
+          osc.stop(start + 1.0);
+        });
+      }
     } catch {
       // Ignore audio policy errors
     }
-  }
-
-  private playHornBlast(ctx: AudioContext, start: number, duration: number): void {
-    const freqs = [233, 466, 700, 932];
-    const vols  = [0.38, 0.22, 0.13, 0.07];
-    freqs.forEach((freq, i) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(vols[i], start + 0.03);
-      gain.gain.setValueAtTime(vols[i], start + duration - 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(start);
-      osc.stop(start + duration);
-    });
   }
 }
