@@ -19,6 +19,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   timerFinished = false;
   totalElapsedSeconds = 0;
   totalDurationSeconds = 0;
+  isMuted = false;
 
   private timerInterval: ReturnType<typeof setInterval> | null = null;
   private audioCtx: AudioContext | null = null;
@@ -99,6 +100,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
 
   resume(): void {
     if (this.isRunning || this.timerFinished) { return; }
+    this.unlockAudio();
     this.isRunning = true;
     this.cdr.detectChanges();
     this.timerInterval = setInterval(() => {
@@ -112,12 +114,14 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   pause(): void {
+    this.unlockAudio();
     this.isRunning = false;
     this.clearInterval();
     this.cdr.detectChanges();
   }
 
   skip(): void {
+    this.unlockAudio();
     this.clearInterval();
     this.isRunning = false;
     this.totalElapsedSeconds += this.remainingSeconds;
@@ -125,6 +129,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   prev(): void {
+    this.unlockAudio();
     if (this.currentStepIndex === 0) { return; }
     const wasRunning = this.isRunning;
     this.clearInterval();
@@ -140,6 +145,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   restart(): void {
+    this.unlockAudio();
     this.clearInterval();
     this.isRunning = false;
     this.timerFinished = false;
@@ -164,6 +170,23 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     }
   }
 
+  toggleMute(): void {
+    this.isMuted = !this.isMuted;
+    this.unlockAudio();
+    this.cdr.detectChanges();
+  }
+
+  private unlockAudio(): void {
+    try {
+      const ctx = this.getAudioCtx();
+      if (ctx.state === 'suspended') {
+        void ctx.resume();
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
   private clearInterval(): void {
     if (this.timerInterval !== null) {
       clearInterval(this.timerInterval);
@@ -181,6 +204,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   private playBeep(freq: number, duration: number): void {
+    if (this.isMuted) { return; }
     try {
       const ctx = this.getAudioCtx();
       const osc = ctx.createOscillator();
@@ -199,6 +223,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   private playCompletion(): void {
+    if (this.isMuted) { return; }
     try {
       const ctx = this.getAudioCtx();
       this.playHornBlast(ctx, ctx.currentTime, 0.85);

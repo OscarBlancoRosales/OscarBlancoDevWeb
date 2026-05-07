@@ -46,6 +46,24 @@
   border-radius: 50%;
   box-shadow: 0 0 12px rgba(61, 122, 58, 0.2);
 }
+.timer-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.btn-mute {
+  background: none;
+  border: 1px solid #1a1a1a;
+  color: #555;
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+.btn-mute:hover { border-color: #333; color: #aaa; }
 .timer-total-pill {
   display: flex;
   align-items: center;
