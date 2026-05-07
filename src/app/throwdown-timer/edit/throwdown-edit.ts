@@ -22,8 +22,8 @@ export class ThrowdownEdit implements OnInit {
   editConfig: ThrowdownConfig = this.blank();
   showAddForm = false;
   newStepName = '';
-  newStepMinutes = 0;
-  newStepSeconds = 0;
+  newStepMinutes: number | null = null;
+  newStepSeconds: number | null = null;
   isSaving = false;
   saveSuccess = false;
 
@@ -129,27 +129,30 @@ export class ThrowdownEdit implements OnInit {
     this.showAddForm = !this.showAddForm;
     if (this.showAddForm) {
       this.newStepName = '';
-      this.newStepMinutes = 0;
-      this.newStepSeconds = 0;
+      this.newStepMinutes = null;
+      this.newStepSeconds = null;
     }
   }
 
   applyPreset(totalSecs: number): void {
-    this.newStepMinutes = Math.floor(totalSecs / 60);
-    this.newStepSeconds = totalSecs % 60;
+    this.newStepMinutes = Math.floor(totalSecs / 60) || null;
+    this.newStepSeconds = (totalSecs % 60) || null;
   }
 
   addStep(): void {
     const name = this.newStepName.trim();
     if (!name) { return; }
-    const minutes = Math.max(0, Math.floor(Number(this.newStepMinutes)));
-    const seconds = Math.max(0, Math.min(59, Math.floor(Number(this.newStepSeconds))));
+    const minutes = Math.max(0, Math.floor(Number(this.newStepMinutes ?? 0)));
+    const seconds = Math.max(0, Math.min(59, Math.floor(Number(this.newStepSeconds ?? 0))));
     if (minutes === 0 && seconds === 0) { return; }
     this.editConfig = {
       ...this.editConfig,
       steps: [...this.editConfig.steps, { name, minutes, seconds }]
     };
     this.showAddForm = false;
+    this.newStepName = '';
+    this.newStepMinutes = null;
+    this.newStepSeconds = null;
   }
 
   removeStep(index: number): void {

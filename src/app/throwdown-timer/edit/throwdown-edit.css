@@ -274,6 +274,7 @@
   transition: border-color 0.15s;
 }
 .dur-input:focus { border-color: #3d7a3a; }
+.dur-input::placeholder { color: #333; }
 .dur-sep {
   font-size: 1.6rem;
   font-weight: 800;
