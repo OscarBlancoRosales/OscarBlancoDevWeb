@@ -7,9 +7,7 @@
         <polyline points="15 18 9 12 15 6"/>
       </svg>
     </button>
-    <div class="timer-bar-center">
-      <img class="timer-bar-logo" src="/throwdown-logo.png" alt="Logo" />
-    </div>
+    <img class="timer-bar-logo" src="/throwdown-logo.png" alt="Logo" />
     <div class="timer-total-pill">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12">
         <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
@@ -34,6 +32,7 @@
 
       <div class="timer-step-label">PASO {{ currentStepIndex + 1 }} / {{ config().steps.length }}</div>
       <div class="timer-step-name">{{ currentStep?.name }}</div>
+      <img class="timer-main-logo" src="/throwdown-logo.png" alt="Logo" />
       <div class="timer-countdown" [class.timer-countdown--paused]="!isRunning">
         {{ formattedRemaining }}
       </div>

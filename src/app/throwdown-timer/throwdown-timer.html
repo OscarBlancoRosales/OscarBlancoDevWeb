@@ -1,11 +1,14 @@
-@if (screen === 'welcome') {
+﻿@if (screen === 'welcome') {
   <app-throwdown-welcome (enter)="onEnter()"></app-throwdown-welcome>
 }
 @if (screen === 'list') {
   <app-throwdown-list
+    [configs]="configs"
+    [isLoading]="isLoadingConfigs"
     (newConfig)="onNewConfig()"
     (editConfig)="onEditConfig($event)"
     (playConfig)="onPlayConfig($event)"
+    (deleteConfig)="onDeleteConfig($event)"
   ></app-throwdown-list>
 }
 @if (screen === 'edit') {

@@ -1,4 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { database } from '../firebase.config';
+import { ref, get, remove } from 'firebase/database';
 import { ThrowdownWelcome } from './welcome/throwdown-welcome';
 import { ThrowdownList } from './list/throwdown-list';
 import { ThrowdownEdit } from './edit/throwdown-edit';
@@ -33,10 +35,34 @@ function blankConfig(): ThrowdownConfig {
   templateUrl: './throwdown-timer.html',
   styleUrl: './throwdown-timer.css',
 })
-export class ThrowdownTimer {
+export class ThrowdownTimer implements OnInit {
   screen: Screen = 'welcome';
   editingConfig: ThrowdownConfig = blankConfig();
   activeConfig: ThrowdownConfig = blankConfig();
+  configs: ThrowdownConfig[] = [];
+  isLoadingConfigs = true;
+
+  constructor(private cdr: ChangeDetectorRef) {}
+
+  ngOnInit(): void {
+    void this.loadConfigs();
+  }
+
+  private async loadConfigs(): Promise<void> {
+    this.isLoadingConfigs = true;
+    try {
+      const snapshot = await get(ref(database, 'throwdown-timer/configs'));
+      const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
+      this.configs = raw
+        ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
+        : [];
+    } catch {
+      this.configs = [];
+    } finally {
+      this.isLoadingConfigs = false;
+      this.cdr.detectChanges();
+    }
+  }
 
   onEnter(): void {
     this.screen = 'list';
@@ -60,6 +86,23 @@ export class ThrowdownTimer {
 
   onConfigSaved(cfg: ThrowdownConfig): void {
     this.editingConfig = cfg;
+    const idx = this.configs.findIndex(c => c.id === cfg.id);
+    if (idx >= 0) {
+      this.configs = this.configs.map(c => c.id === cfg.id ? cfg : c);
+    } else {
+      this.configs = [cfg, ...this.configs];
+    }
+    this.cdr.detectChanges();
+  }
+
+  async onDeleteConfig(cfg: ThrowdownConfig): Promise<void> {
+    try {
+      await remove(ref(database, `throwdown-timer/configs/${cfg.id}`));
+    } catch {
+      // silent
+    }
+    this.configs = this.configs.filter(c => c.id !== cfg.id);
+    this.cdr.detectChanges();
   }
 
   goToList(): void {
