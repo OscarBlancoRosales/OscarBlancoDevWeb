@@ -42,7 +42,9 @@
       <div class="timer-step-name">{{ currentStep?.name }}</div>
 
       <!-- Cuenta atrás -->
-      <div class="timer-countdown" [class.timer-countdown--paused]="!isRunning">
+      <div class="timer-countdown"
+           [class.timer-countdown--paused]="!isRunning"
+           [class.timer-countdown--final]="isCountingDown">
         {{ formattedRemaining }}
       </div>
 

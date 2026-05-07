@@ -127,6 +127,11 @@
   color: #ddd;
   line-height: 1.2;
 }
+@keyframes countdown-urgent {
+  0%, 100% { transform: scale(1);    color: #e06000; }
+  45%       { transform: scale(1.1); color: #ffaa44; }
+}
+
 .timer-countdown {
   font-size: clamp(5rem, 26vw, 10rem);
   font-weight: 900;
@@ -137,6 +142,10 @@
   transition: color 0.4s, opacity 0.3s;
 }
 .timer-countdown--paused { color: #2a2a2a; opacity: 0.8; }
+.timer-countdown--final  {
+  animation: countdown-urgent 1s ease-in-out infinite;
+  transition: none;
+}
 
 /* Progress bars */
 .prog-wrap { width: 100%; }

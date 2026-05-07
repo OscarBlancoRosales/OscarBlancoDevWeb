@@ -80,6 +80,10 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     return (this.totalElapsedSeconds / this.totalDurationSeconds) * 100;
   }
 
+  get isCountingDown(): boolean {
+    return this.isRunning && this.remainingSeconds > 0 && this.remainingSeconds <= 3;
+  }
+
   get formattedRemaining(): string {
     return this.formatSecs(this.remainingSeconds);
   }
@@ -106,6 +110,9 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.timerInterval = setInterval(() => {
       this.remainingSeconds--;
       this.totalElapsedSeconds++;
+      if (this.remainingSeconds > 0 && this.remainingSeconds <= 3) {
+        this.playCountdownPip(this.remainingSeconds === 1);
+      }
       if (this.remainingSeconds <= 0) {
         this.advance();
       }
@@ -201,6 +208,27 @@ export class ThrowdownRun implements OnInit, OnDestroy {
       this.audioCtx = new AudioContext();
     }
     return this.audioCtx;
+  }
+
+  private playCountdownPip(isLast: boolean): void {
+    if (this.isMuted) { return; }
+    try {
+      const ctx  = this.getAudioCtx();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const freq = isLast ? 1047 : 880;
+      const dur  = isLast ? 0.55 : 0.12;
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.38, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + dur);
+    } catch {
+      // Ignore audio policy errors
+    }
   }
 
   private playBeep(freq: number, duration: number): void {
