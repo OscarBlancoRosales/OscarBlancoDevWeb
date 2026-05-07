@@ -41,6 +41,7 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
   activeConfig: ThrowdownConfig = blankConfig();
   configs: ThrowdownConfig[] = [];
   isLoadingConfigs = true;
+  loadError = false;
 
   private readonly popstateHandler = (event: PopStateEvent) => {
     const state = event.state as { throwdownScreen?: string } | null;
@@ -74,8 +75,8 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
 
   private subscribeConfigs(): void {
     this.isLoadingConfigs = true;
+    this.loadError = false;
 
-    // get() controls the loading state — fast HTTPS, resolves reliably on every visit
     void get(ref(database, 'throwdown-timer/configs')).then((snapshot) => {
       const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
       this.configs = raw
@@ -84,6 +85,7 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
       this.isLoadingConfigs = false;
       this.cdr.detectChanges();
     }).catch(() => {
+      this.loadError = true;
       this.configs = [];
       this.isLoadingConfigs = false;
       this.cdr.detectChanges();

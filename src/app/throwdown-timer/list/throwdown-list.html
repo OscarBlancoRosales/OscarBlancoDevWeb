@@ -16,6 +16,14 @@
       <div class="loading-state">
         <div class="spinner"></div>
       </div>
+    } @else if (loadError()) {
+      <div class="empty-state error-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" width="48" height="48">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="0.5" fill="currentColor" stroke-width="2"/>
+        </svg>
+        <p>No se pudo cargar la lista</p>
+        <span class="error-hint">Comprueba tu conexión a internet</span>
+      </div>
     } @else if (configs().length === 0) {
       <div class="empty-state">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">

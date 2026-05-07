@@ -5,6 +5,7 @@
   <app-throwdown-list
     [configs]="configs"
     [isLoading]="isLoadingConfigs"
+    [loadError]="loadError"
     (newConfig)="onNewConfig()"
     (editConfig)="onEditConfig($event)"
     (playConfig)="onPlayConfig($event)"

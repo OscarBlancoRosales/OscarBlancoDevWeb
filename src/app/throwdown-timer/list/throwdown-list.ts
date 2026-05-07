@@ -10,6 +10,7 @@ import { ThrowdownConfig, ThrowdownStep } from '../throwdown-timer';
 export class ThrowdownList {
   readonly configs = input.required<ThrowdownConfig[]>();
   readonly isLoading = input<boolean>(false);
+  readonly loadError = input<boolean>(false);
   readonly newConfig = output<void>();
   readonly editConfig = output<ThrowdownConfig>();
   readonly playConfig = output<ThrowdownConfig>();

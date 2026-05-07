@@ -102,6 +102,14 @@
 .empty-state svg { width: 52px; height: 52px; }
 .empty-state p { margin: 0; font-size: 0.95rem; color: #3a3a3a; }
 
+.error-state { color: #8a3a3a; }
+.error-state svg { stroke: #5a2020; }
+.error-state p { color: #7a3a3a; }
+.error-hint {
+  font-size: 0.78rem;
+  color: #3a2020;
+}
+
 .btn-create-first {
   background: transparent;
   border: 1px solid #1e1e1e;
