@@ -1,0 +1,114 @@
+<!-- ===== WELCOME SCREEN ===== -->
+<div *ngIf="screen === 'welcome'" class="screen welcome-screen">
+  <img
+    class="welcome-logo"
+    src="/throwdown-logo.png"
+    alt="Tomelloso Throwdown"
+  />
+  <button class="btn-enter" (click)="enter()">Entrar</button>
+</div>
+
+<!-- ===== CONFIG SCREEN ===== -->
+<div *ngIf="screen === 'config'" class="screen config-screen">
+  <div class="config-header">
+    <h1 class="config-title">Cronómetros</h1>
+  </div>
+
+  <div class="steps-container">
+    <div *ngIf="isLoading" class="empty-state">Cargando...</div>
+
+    <div *ngIf="!isLoading && steps.length === 0 && !showAddForm" class="empty-state">
+      No hay cronómetros configurados.<br />
+      Pulsa <strong>+ Añadir paso</strong> para empezar.
+    </div>
+
+    <div *ngFor="let step of steps; let i = index" class="step-item">
+      <span class="step-number">{{ i + 1 }}</span>
+      <div class="step-info">
+        <span class="step-name">{{ step.name }}</span>
+        <span class="step-duration">{{ formatStepDuration(step) }}</span>
+      </div>
+      <button class="btn-remove" (click)="removeStep(i)" aria-label="Eliminar paso">✕</button>
+    </div>
+
+    <div *ngIf="showAddForm" class="add-form">
+      <input
+        type="text"
+        class="input-field"
+        placeholder="Nombre del paso (ej: Calentamiento)"
+        [(ngModel)]="newStepName"
+        maxlength="40"
+      />
+      <div class="duration-row">
+        <div class="duration-field">
+          <label class="duration-label">Minutos</label>
+          <input
+            type="number"
+            class="input-number"
+            min="0"
+            max="99"
+            [(ngModel)]="newStepMinutes"
+          />
+        </div>
+        <span class="duration-sep">:</span>
+        <div class="duration-field">
+          <label class="duration-label">Segundos</label>
+          <input
+            type="number"
+            class="input-number"
+            min="0"
+            max="59"
+            [(ngModel)]="newStepSeconds"
+          />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-secondary" (click)="toggleAddForm()">Cancelar</button>
+        <button class="btn-primary" (click)="addStep()">Añadir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="config-footer">
+    <button *ngIf="!showAddForm" class="btn-add-step" (click)="toggleAddForm()">
+      + Añadir paso
+    </button>
+    <div class="footer-actions">
+      <button class="btn-save" (click)="saveConfig()" [disabled]="isSaving">
+        {{ isSaving ? 'Guardando...' : 'Guardar' }}
+      </button>
+      <button class="btn-start" (click)="startTimer()" [disabled]="steps.length === 0">
+        ▶ Iniciar
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TIMER SCREEN ===== -->
+<div
+  *ngIf="screen === 'timer'"
+  class="screen timer-screen"
+  [class.screen--finished]="timerFinished"
+>
+  <div class="timer-top">
+    <button class="btn-back" (click)="backToConfig()" aria-label="Volver">&#8592;</button>
+    <img class="timer-logo" src="/throwdown-logo.png" alt="Tomelloso Throwdown" />
+    <div class="timer-top-spacer"></div>
+  </div>
+
+  <div *ngIf="!timerFinished" class="timer-body">
+    <div class="step-progress">{{ currentStepIndex + 1 }} / {{ steps.length }}</div>
+    <div class="step-name-display">{{ currentStep?.name }}</div>
+    <div class="countdown">{{ formattedTime }}</div>
+  </div>
+
+  <div *ngIf="timerFinished" class="finished-body">
+    <div class="finished-icon">
+      <img class="finished-logo" src="/throwdown-logo.png" alt="Tomelloso Throwdown" />
+    </div>
+    <div class="finished-text">¡COMPLETADO!</div>
+    <button class="btn-restart" (click)="restartTimer()">▶ Volver a empezar</button>
+  </div>
+
+  <div class="timer-bottom-spacer"></div>
+</div>

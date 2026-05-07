@@ -13,6 +13,7 @@ import { LoremGenerator } from './lorem-generator/lorem-generator';
 import { TimestampConverter } from './timestamp-converter/timestamp-converter';
 import { UuidGenerator } from './uuid-generator/uuid-generator';
 import { IconGenerator } from './icon-generator/icon-generator';
+import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
 
 export const routes: Routes = [
   { path: '', component: Console },
@@ -29,5 +30,6 @@ export const routes: Routes = [
   { path: 'timestamp', component: TimestampConverter },
   { path: 'uuid-generator', component: UuidGenerator },
   { path: 'icon-generator', component: IconGenerator },
+  { path: 'tomelloso-throwdown-timer', component: ThrowdownTimer },
   { path: '**', redirectTo: '' }
 ];
