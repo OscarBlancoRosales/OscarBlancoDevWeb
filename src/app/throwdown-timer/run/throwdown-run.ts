@@ -165,7 +165,6 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.clearInterval();
     this.isRunning = false;
     if (this.currentStepIndex < this.config().steps.length - 1) {
-      this.playBeep(880, 0.4);
       this.loadStep(this.currentStepIndex + 1);
       this.resume();
     } else {
