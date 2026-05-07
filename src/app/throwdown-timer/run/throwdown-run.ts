@@ -159,12 +159,14 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   restart(): void {
     this.unlockAudio();
     this.clearInterval();
+    this.clearPreCountdown();
     this.isRunning = false;
     this.timerFinished = false;
-    this.readyToStart = false;
+    this.isPreCountdown = false;
     this.totalElapsedSeconds = 0;
     this.loadStep(0);
-    this.beginPreCountdown();
+    this.readyToStart = true;
+    this.cdr.detectChanges();
   }
 
   startTimer(): void {
