@@ -2,9 +2,47 @@
   <div class="top-bar">
     <img src="/throwdown-logo.png" alt="Logo" class="top-bar-logo" />
   </div>
-  <div class="welcome-content">
-    <img class="welcome-logo" src="/throwdown-logo.png" alt="Tomelloso Throwdown" />
-    <p class="welcome-tagline">THROWDOWN TIMER</p>
-    <button class="btn-enter" (click)="onEnter()">Entrar</button>
-  </div>
+
+  @if (!isAuthenticated) {
+    <!-- LOGIN FORM -->
+    <div class="welcome-content">
+      <img class="welcome-logo" src="/throwdown-logo.png" alt="Tomelloso Throwdown" />
+      <p class="welcome-tagline">THROWDOWN TIMER</p>
+
+      <form class="login-form" (ngSubmit)="onLogin()">
+        <input
+          class="login-input"
+          type="email"
+          placeholder="Email"
+          [(ngModel)]="email"
+          name="email"
+          autocomplete="email"
+          required
+        />
+        <input
+          class="login-input"
+          type="password"
+          placeholder="Contraseña"
+          [(ngModel)]="password"
+          name="password"
+          autocomplete="current-password"
+          required
+        />
+        @if (errorMsg) {
+          <p class="login-error">{{ errorMsg }}</p>
+        }
+        <button class="btn-enter" type="submit" [disabled]="isLoading">
+          {{ isLoading ? 'Accediendo...' : 'Acceder' }}
+        </button>
+      </form>
+    </div>
+
+  } @else {
+    <!-- AUTHENTICATED: pantalla de bienvenida normal -->
+    <div class="welcome-content">
+      <img class="welcome-logo" src="/throwdown-logo.png" alt="Tomelloso Throwdown" />
+      <p class="welcome-tagline">THROWDOWN TIMER</p>
+      <button class="btn-enter" (click)="onEnter()">Entrar</button>
+    </div>
+  }
 </div>

@@ -66,11 +66,43 @@
   text-transform: uppercase;
   cursor: pointer;
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-  transition: background-color 0.15s, transform 0.1s;
+  transition: background-color 0.15s, transform 0.1s, opacity 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 .btn-enter:hover { background: #4a9447; }
 .btn-enter:active { transform: scale(0.97); }
+.btn-enter:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+/* Login form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.85rem;
+  width: 100%;
+  max-width: 320px;
+}
+.login-input {
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 1rem;
+  font-family: 'Segui UI', system-ui, -apple-system, sans-serif;
+  padding: 0.85rem 1.1rem;
+  outline: none;
+  transition: border-color 0.15s;
+  -webkit-appearance: none;
+}
+.login-input:focus { border-color: #3d7a3a; }
+.login-input::placeholder { color: #444; }
+.login-error {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #d9534f;
+  text-align: center;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
 
 @media (orientation: landscape) and (max-height: 480px) {
   .welcome-content { flex-direction: row; gap: 2.5rem; padding: 1rem 2rem; }
