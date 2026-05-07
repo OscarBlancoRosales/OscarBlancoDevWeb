@@ -91,6 +91,8 @@
   overflow: hidden;
   min-height: 0;
   width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
   box-sizing: border-box;
 }
 
