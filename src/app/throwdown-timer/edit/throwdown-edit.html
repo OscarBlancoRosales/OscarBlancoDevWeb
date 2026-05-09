@@ -69,6 +69,9 @@
             <div class="step-info">
               <span class="step-name">{{ step.name }}</span>
               <span class="step-dur">{{ formatSecs(stepTotalSec(step)) }}</span>
+              <span class="step-mode-pill" [class.step-mode-pill--down]="step.countdown === true">
+                {{ step.countdown === true ? '↓' : '↑' }}
+              </span>
             </div>
             <button class="btn-step-del" (click)="removeStep(i)" aria-label="Eliminar paso">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
@@ -116,6 +119,14 @@
                 >{{ formatSecs(p) }}</button>
               }
             </div>
+            <button
+              class="btn-countdown-toggle"
+              [class.btn-countdown-toggle--on]="newStepCountdown === true"
+              (click)="newStepCountdown = newStepCountdown === true ? null : true"
+              type="button"
+            >
+              {{ newStepCountdown === true ? '↓ Cuenta atrás' : '↑ Cuenta progresiva' }}
+            </button>
             <button class="btn-add-confirm" (click)="addStep()">+ Añadir paso</button>
           </div>
         }

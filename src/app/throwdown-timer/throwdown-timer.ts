@@ -10,6 +10,7 @@ export interface ThrowdownStep {
   name: string;
   minutes: number;
   seconds: number;
+  countdown: boolean | null;
 }
 
 export interface ThrowdownConfig {

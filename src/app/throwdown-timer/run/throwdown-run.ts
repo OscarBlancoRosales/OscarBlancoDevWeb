@@ -77,8 +77,15 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     return this.config().steps[this.currentStepIndex + 1] ?? null;
   }
 
+  get isCurrentStepCountUp(): boolean {
+    return this.currentStep?.countdown !== true;
+  }
+
   get stepProgress(): number {
     if (this.stepTotalSeconds === 0) { return 0; }
+    if (this.isCurrentStepCountUp) {
+      return (this.remainingSeconds / this.stepTotalSeconds) * 100;
+    }
     return ((this.stepTotalSeconds - this.remainingSeconds) / this.stepTotalSeconds) * 100;
   }
 
@@ -88,7 +95,12 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   get isCountingDown(): boolean {
-    return this.isRunning && this.remainingSeconds > 0 && this.remainingSeconds <= 3;
+    if (!this.isRunning) { return false; }
+    if (this.isCurrentStepCountUp) {
+      const remaining = this.stepTotalSeconds - this.remainingSeconds;
+      return remaining > 0 && remaining <= 3;
+    }
+    return this.remainingSeconds > 0 && this.remainingSeconds <= 3;
   }
 
   get formattedRemaining(): string {
@@ -106,7 +118,8 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     if (!step) { return; }
     this.currentStepIndex = index;
     this.stepTotalSeconds = this.stepSecs(step);
-    this.remainingSeconds = this.stepTotalSeconds;
+    // countdown=true: start from total and count down; null/false: count up from 0
+    this.remainingSeconds = step.countdown === true ? this.stepTotalSeconds : 0;
   }
 
   resume(): void {
@@ -115,13 +128,25 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.isRunning = true;
     this.cdr.detectChanges();
     this.timerInterval = setInterval(() => {
-      this.remainingSeconds--;
-      this.totalElapsedSeconds++;
-      if (this.remainingSeconds > 0 && this.remainingSeconds <= 3) {
-        this.playCountdownPip(this.remainingSeconds === 1);
-      }
-      if (this.remainingSeconds <= 0) {
-        this.advance();
+      if (this.isCurrentStepCountUp) {
+        this.remainingSeconds++;
+        this.totalElapsedSeconds++;
+        const timeLeft = this.stepTotalSeconds - this.remainingSeconds;
+        if (timeLeft > 0 && timeLeft <= 3) {
+          this.playCountdownPip(timeLeft === 1);
+        }
+        if (this.remainingSeconds >= this.stepTotalSeconds) {
+          this.advance();
+        }
+      } else {
+        this.remainingSeconds--;
+        this.totalElapsedSeconds++;
+        if (this.remainingSeconds > 0 && this.remainingSeconds <= 3) {
+          this.playCountdownPip(this.remainingSeconds === 1);
+        }
+        if (this.remainingSeconds <= 0) {
+          this.advance();
+        }
       }
       this.cdr.detectChanges();
     }, 1000);
@@ -138,7 +163,11 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.unlockAudio();
     this.clearInterval();
     this.isRunning = false;
-    this.totalElapsedSeconds += this.remainingSeconds;
+    if (this.isCurrentStepCountUp) {
+      this.totalElapsedSeconds += (this.stepTotalSeconds - this.remainingSeconds);
+    } else {
+      this.totalElapsedSeconds += this.remainingSeconds;
+    }
     this.advance();
   }
 
@@ -148,7 +177,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     const wasRunning = this.isRunning;
     this.clearInterval();
     this.isRunning = false;
-    const spent = this.stepTotalSeconds - this.remainingSeconds;
+    const spent = this.isCurrentStepCountUp ? this.remainingSeconds : (this.stepTotalSeconds - this.remainingSeconds);
     this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - spent);
     const prevStep = this.config().steps[this.currentStepIndex - 1];
     if (prevStep) {

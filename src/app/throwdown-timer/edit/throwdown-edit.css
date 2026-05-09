@@ -304,6 +304,43 @@
 .btn-preset:hover { border-color: #3d7a3a; color: #ccc; }
 .btn-preset--on { background: #0d1e0d; border-color: #3d7a3a; color: #5cb85c; }
 
+.btn-countdown-toggle {
+  background: #0a180a;
+  border: 1px solid #1a3a1a;
+  color: #3d7a3a;
+  padding: 0.6rem;
+  border-radius: 9px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  text-align: center;
+}
+.btn-countdown-toggle--on {
+  background: #1a0e00;
+  border-color: #3a2000;
+  color: #e06000;
+}
+
+.step-mode-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #3d7a3a;
+  background: #0a180a;
+  border: 1px solid #1a3a1a;
+  border-radius: 5px;
+  padding: 0.05rem 0.28rem;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+.step-mode-pill--down {
+  color: #e06000;
+  background: #1a0e00;
+  border-color: #3a2000;
+}
+
 .btn-add-confirm {
   background: #3d7a3a;
   border: none;

@@ -127,6 +127,26 @@
   letter-spacing: 0.04em;
   color: #ddd;
   line-height: 1.2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.step-mode-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #e06000;
+  background: #1a0e00;
+  border: 1px solid #3a2000;
+  border-radius: 6px;
+  padding: 0.05rem 0.3rem;
+  flex-shrink: 0;
+  letter-spacing: 0;
+}
+.step-mode-badge--up {
+  color: #3d7a3a;
+  background: #0a180a;
+  border-color: #1a3a1a;
 }
 @keyframes countdown-urgent {
   0%, 100% { transform: scale(1);    color: #e06000; }
