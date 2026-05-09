@@ -92,6 +92,7 @@
   padding: 0.85rem 1.1rem;
   outline: none;
   transition: border-color 0.15s;
+  appearance: none;
   -webkit-appearance: none;
 }
 .login-input:focus { border-color: #3d7a3a; }

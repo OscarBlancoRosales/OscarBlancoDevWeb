@@ -38,7 +38,7 @@ export class ThrowdownEdit implements OnInit {
   }
 
   private blank(): ThrowdownConfig {
-    return { id: '', name: '', steps: [], createdAt: Date.now() };
+    return { id: '', name: '', countdown: null, steps: [], createdAt: Date.now() };
   }
 
   get quickPresets(): number[] { return QUICK_PRESETS; }

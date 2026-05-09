@@ -15,9 +15,9 @@ export interface ThrowdownStep {
 export interface ThrowdownConfig {
   id: string;
   name: string;
+  countdown: boolean | null;
   steps: ThrowdownStep[];
   createdAt: number;
-  countdown: boolean | null;
 }
 
 type Screen = 'welcome' | 'list' | 'edit' | 'timer';
