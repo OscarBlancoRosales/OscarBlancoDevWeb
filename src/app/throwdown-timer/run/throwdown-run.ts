@@ -78,7 +78,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   }
 
   get isCurrentStepCountUp(): boolean {
-    return this.currentStep?.countdown !== true;
+    return this.config().countdown !== true;
   }
 
   get stepProgress(): number {
@@ -118,8 +118,8 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     if (!step) { return; }
     this.currentStepIndex = index;
     this.stepTotalSeconds = this.stepSecs(step);
-    // countdown=true: start from total and count down; null/false: count up from 0
-    this.remainingSeconds = step.countdown === true ? this.stepTotalSeconds : 0;
+    // countdown=true on config: start from total and count down; null/false: count up from 0
+    this.remainingSeconds = this.config().countdown === true ? this.stepTotalSeconds : 0;
   }
 
   resume(): void {

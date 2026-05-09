@@ -59,12 +59,7 @@
       <img class="timer-main-logo" src="/throwdown-logo.png" alt="Logo" />
 
       <!-- Nombre del paso -->
-      <div class="timer-step-name">
-        {{ currentStep?.name }}
-        <span class="step-mode-badge" [class.step-mode-badge--up]="isCurrentStepCountUp">
-          {{ isCurrentStepCountUp ? '↑' : '↓' }}
-        </span>
-      </div>
+      <div class="timer-step-name">{{ currentStep?.name }}</div>
 
       <!-- Cuenta atrás -->
       <div class="timer-countdown"

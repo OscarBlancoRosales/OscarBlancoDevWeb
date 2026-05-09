@@ -24,7 +24,6 @@ export class ThrowdownEdit implements OnInit {
   newStepName = '';
   newStepMinutes: number | null = null;
   newStepSeconds: number | null = null;
-  newStepCountdown: boolean | null = null;
   isSaving = false;
   saveSuccess = false;
 
@@ -132,7 +131,6 @@ export class ThrowdownEdit implements OnInit {
       this.newStepName = '';
       this.newStepMinutes = null;
       this.newStepSeconds = null;
-      this.newStepCountdown = null;
     }
   }
 
@@ -149,7 +147,7 @@ export class ThrowdownEdit implements OnInit {
     if (minutes === 0 && seconds === 0) { return; }
     this.editConfig = {
       ...this.editConfig,
-      steps: [...this.editConfig.steps, { name, minutes, seconds, countdown: this.newStepCountdown }]
+      steps: [...this.editConfig.steps, { name, minutes, seconds }]
     };
     this.showAddForm = false;
     this.newStepName = '';

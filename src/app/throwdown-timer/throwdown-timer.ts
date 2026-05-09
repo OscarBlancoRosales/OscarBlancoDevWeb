@@ -10,7 +10,6 @@ export interface ThrowdownStep {
   name: string;
   minutes: number;
   seconds: number;
-  countdown: boolean | null;
 }
 
 export interface ThrowdownConfig {
@@ -18,6 +17,7 @@ export interface ThrowdownConfig {
   name: string;
   steps: ThrowdownStep[];
   createdAt: number;
+  countdown: boolean | null;
 }
 
 type Screen = 'welcome' | 'list' | 'edit' | 'timer';
@@ -27,7 +27,7 @@ function generateId(): string {
 }
 
 function blankConfig(): ThrowdownConfig {
-  return { id: generateId(), name: '', steps: [], createdAt: Date.now() };
+  return { id: generateId(), name: '', steps: [], createdAt: Date.now(), countdown: null };
 }
 
 @Component({
