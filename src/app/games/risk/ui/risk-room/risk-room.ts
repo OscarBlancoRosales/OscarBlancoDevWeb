@@ -217,8 +217,19 @@ export class RiskRoom implements OnInit, OnDestroy {
     return this.state ? currentPlayer(this.state) : undefined;
   }
 
+  /**
+   * Es mi turno Y sigo llevando yo mis ejércitos. Si he abandonado, el puesto
+   * lo mueve la IA y no debo ver (ni poder usar) los controles.
+   */
   get isMyTurn(): boolean {
-    return !!this.state && !!this.active && this.active.id === this.seatId;
+    return (
+      !!this.state && !!this.active && this.active.id === this.seatId && !this.handedToAi
+    );
+  }
+
+  /** He abandonado: mi asiento sigue en la mesa pero lo juega la IA. */
+  get handedToAi(): boolean {
+    return this.me?.kind === 'bot';
   }
 
   get freeSeats(): number {
@@ -488,6 +499,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   async surrender(): Promise<void> {
+    this.clearSelection();
     await this.send({ type: 'surrender', playerId: this.seatId });
   }
 

@@ -140,7 +140,10 @@
           <span class="turn-dot" [style.background]="colorOf(active?.id || '')"></span>
           <div class="turn-text">
             <span class="turn-name">
-              {{ isMyTurn ? 'Es tu turno' : (active?.name || '—') }}
+              <ng-container *ngIf="isMyTurn">Es tu turno</ng-container>
+              <ng-container *ngIf="!isMyTurn">
+                {{ handedToAi && active?.id === seatId ? 'La IA juega por ti' : (active?.name || '—') }}
+              </ng-container>
             </span>
             <span class="turn-phase">{{ phaseLabel }}</span>
           </div>
@@ -216,7 +219,12 @@
             <!-- No es mi turno -->
             <div class="action-block waiting-turn" *ngIf="!isMyTurn">
               <span class="spinner"></span>
-              Turno de <b [style.color]="colorOf(active?.id || '')">{{ active?.name }}</b>
+              <ng-container *ngIf="handedToAi && active?.id === seatId">
+                Abandonaste la partida: la IA lleva tus ejércitos
+              </ng-container>
+              <ng-container *ngIf="!(handedToAi && active?.id === seatId)">
+                Turno de <b [style.color]="colorOf(active?.id || '')">{{ active?.name }}</b>
+              </ng-container>
               <span class="muted">· {{ phaseLabel }}</span>
             </div>
 
@@ -520,8 +528,13 @@
             <span>Ver nombres en el mapa</span>
           </label>
 
-          <button class="btn danger wide" type="button" (click)="surrender()">
-            Abandonar (la IA se queda mis ejércitos)
+          <button
+            class="btn danger wide"
+            type="button"
+            (click)="surrender()"
+            [disabled]="handedToAi || !inGame"
+          >
+            {{ handedToAi ? 'Ya has abandonado: juega la IA' : 'Abandonar (la IA se queda mis ejércitos)' }}
           </button>
         </div>
       </aside>

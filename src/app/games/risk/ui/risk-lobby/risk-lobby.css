@@ -1,5 +1,11 @@
 /* ===== LOBBY DE RISK ===== */
 
+/* Los estilos de componente están encapsulados, así que cada uno declara su
+   propio box-sizing: sin esto los paddings se suman a los alto/ancho al 100 %. */
+* {
+  box-sizing: border-box;
+}
+
 .lobby {
   padding: 20px 22px 40px;
   max-width: 1080px;

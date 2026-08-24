@@ -304,6 +304,17 @@ describe('RiskRoom (la mesa)', () => {
       expect(odds).toBeLessThanOrEqual(1);
     });
 
+    it('abandonar entrega el puesto a la IA y retira mis controles', async () => {
+      expect(component.handedToAi).toBe(false);
+      await component.surrender();
+      await wait(5);
+      expect(component.handedToAi).toBe(true);
+      expect(component.isMyTurn).toBe(false);
+      expect(component.selectableTerritories).toEqual([]);
+      expect(component.me!.eliminated).toBe(false);
+      expect(territoriesOf(component.state!, seatId).length).toBeGreaterThan(0);
+    });
+
     it('cancelar la selección la limpia', () => {
       component.onTerritoryClick(component.selectableTerritories[0]);
       component.clearSelection();
@@ -441,6 +452,27 @@ describe('RiskRoom (la mesa)', () => {
       expect(mounted.component.derived?.rejected).toEqual([]);
       expect(mounted.component.state?.phase, 'la partida debería haber terminado').toBe('game-over');
       expect(mounted.component.state?.winnerId).toBeTruthy();
+
+      // El ganador se queda con todo el mapa y la sala pasa a "terminada".
+      const winner = mounted.component.winner!;
+      expect(winner).toBeTruthy();
+      expect(territoriesOf(mounted.component.state!, winner.id)).toHaveLength(
+        mounted.component.map!.territories.length,
+      );
+      expect(mounted.component.meta?.status).toBe('finished');
+
+      // Y la mesa lo anuncia en pantalla.
+      mounted.fixture.detectChanges();
+      const victory = mounted.fixture.nativeElement.querySelector('.action-block.victory');
+      expect(victory).toBeTruthy();
+      expect(victory.textContent).toContain(winner.name);
+      expect(victory.textContent).toContain('ha ganado la partida');
+
+      // Ningún territorio se queda sin dueño ni a cero ejércitos.
+      for (const territory of Object.values(mounted.component.state!.territories)) {
+        expect(territory.ownerId).toBe(winner.id);
+        expect(territory.armies).toBeGreaterThanOrEqual(1);
+      }
       mounted.fixture.destroy();
     }, 60000);
   });

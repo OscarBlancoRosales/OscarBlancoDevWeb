@@ -1,5 +1,11 @@
 /* ===== TABLERO ===== */
 
+/* Los estilos de componente están encapsulados, así que cada uno declara su
+   propio box-sizing: sin esto los paddings se suman a los alto/ancho al 100 %. */
+* {
+  box-sizing: border-box;
+}
+
 .board-wrapper {
   position: relative;
   width: 100%;
