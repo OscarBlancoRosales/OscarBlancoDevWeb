@@ -31,5 +31,19 @@ export const routes: Routes = [
   { path: 'uuid-generator', component: UuidGenerator },
   { path: 'icon-generator', component: IconGenerator },
   { path: 'tomelloso-throwdown-timer', component: ThrowdownTimer },
+  // La seccion de juegos se carga aparte: lleva los mapas, el motor y la IA,
+  // y no tiene por que pesar en la carga inicial del portfolio.
+  {
+    path: 'juegos',
+    loadComponent: () => import('./games/games').then((m) => m.Games),
+  },
+  {
+    path: 'juegos/risk',
+    loadComponent: () => import('./games/risk/ui/risk-lobby/risk-lobby').then((m) => m.RiskLobby),
+  },
+  {
+    path: 'juegos/risk/mesa',
+    loadComponent: () => import('./games/risk/ui/risk-room/risk-room').then((m) => m.RiskRoom),
+  },
   { path: '**', redirectTo: '' }
 ];

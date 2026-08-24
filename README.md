@@ -27,6 +27,16 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 - **Timestamp Converter** — Convierte entre Unix, millis, .NET Ticks, ISO 8601 y mas
 - **App Icon Generator** — Genera iconos para iOS y Android desde una sola imagen
 
+#### Juegos — RISK
+- RISK completo con reglas clasicas: refuerzos, canje de cartas, ataques con dados, reagrupacion y bonificacion por continente
+- Tres mapas: Todo el mundo (42 territorios), Espana por provincias (52) y Espana por comunidades (19)
+- Salas con invitacion por enlace, igual que el Scrum Poker, y bots de IA para rellenar huecos
+- Partidas grabadas jugada a jugada: se pueden pausar y retomar respetando el asiento de cada persona
+- Bots con personalidad que comentan su estrategia en el chat en cada turno, y un estratega que te aconseja a ti
+- IA opcional con modelos gratuitos (OpenRouter, Groq, Google AI Studio u Ollama local); sin clave, la IA local juega igual
+- Modo local sin cuenta ni red: partida contra la IA guardada en el navegador
+- Documentacion completa en [docs/risk.md](docs/risk.md)
+
 #### Scrum Poker
 - Planning poker en tiempo real con Firebase Realtime Database
 - Crea salas, invita jugadores por enlace, vota y revela resultados
@@ -93,6 +103,16 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 - **Lorem Ipsum Generator** — Generate placeholder text (paragraphs, sentences, words)
 - **Timestamp Converter** — Convert between Unix, millis, .NET Ticks, ISO 8601 and more
 - **App Icon Generator** — Generate iOS and Android app icons from a single image
+
+#### Games — RISK
+- Full RISK with classic rules: reinforcements, card trading, dice battles, fortifying and continent bonuses
+- Three maps: World (42 territories), Spain by province (52) and Spain by region (19)
+- Invite-link rooms, just like Scrum Poker, plus AI bots to fill empty seats
+- Games are recorded action by action: pause and resume later, everyone keeps their seat
+- Bots with personality that comment their strategy in chat every turn, plus an advisor for you
+- Optional LLM support with free tiers (OpenRouter, Groq, Google AI Studio or local Ollama); without a key the local AI plays just as well
+- Offline mode with no account and no network: play the AI with the game stored in your browser
+- Full write-up in [docs/risk.md](docs/risk.md)
 
 #### Scrum Poker
 - Real-time planning poker with Firebase Realtime Database

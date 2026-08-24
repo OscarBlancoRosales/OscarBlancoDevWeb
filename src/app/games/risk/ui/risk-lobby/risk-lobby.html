@@ -1,0 +1,213 @@
+<app-terminal-layout title="RISK — Salas">
+  <div class="lobby">
+    <header class="lobby-header">
+      <div>
+        <h1><span class="prompt">&gt;</span> RISK</h1>
+        <p class="subtitle">Conquista el mapa. Con quien quieras y contra quien haga falta.</p>
+      </div>
+      <button class="back-link" type="button" (click)="goToGames()">← todos los juegos</button>
+    </header>
+
+    <!-- ===== INVITACIÓN ===== -->
+    <section class="panel invite-panel" *ngIf="invitedRoomId">
+      <ng-container *ngIf="invitedRoom; else invitedMissing">
+        <div class="panel-title">
+          <span class="tag">INVITACIÓN</span>
+          <h2>{{ invitedRoom.name }}</h2>
+        </div>
+        <div class="invite-meta">
+          <span>🗺 {{ mapName(invitedRoom.mapId) }}</span>
+          <span>👥 hasta {{ invitedRoom.maxPlayers }}</span>
+          <span class="status" [attr.data-status]="invitedRoom.status">
+            {{ statusLabel(invitedRoom) }}
+          </span>
+        </div>
+        <p class="hint">
+          Escribe tu nombre y entras. Si ya jugaste antes en esta sala, recuperarás tus ejércitos.
+        </p>
+        <div class="row">
+          <input
+            class="field"
+            type="text"
+            [(ngModel)]="playerName"
+            placeholder="Tu nombre de general"
+            maxlength="24"
+            (keydown.enter)="joinRoom()"
+          />
+          <button class="primary" type="button" (click)="joinRoom()" [disabled]="busy">
+            {{ busy ? 'Entrando…' : 'Entrar en la sala' }}
+          </button>
+        </div>
+        <p class="error" *ngIf="error">{{ error }}</p>
+      </ng-container>
+
+      <ng-template #invitedMissing>
+        <p class="error big">{{ invitedError || 'Comprobando la invitación…' }}</p>
+      </ng-template>
+    </section>
+
+    <!-- ===== ADMIN: CREAR SALA ===== -->
+    <ng-container *ngIf="!invitedRoomId">
+      <section class="panel">
+        <div class="panel-title">
+          <span class="tag">NUEVA PARTIDA</span>
+          <h2>Monta la mesa</h2>
+        </div>
+
+        <div class="form-grid">
+          <label class="field-label">
+            <span>Nombre de la sala</span>
+            <input class="field" type="text" [(ngModel)]="roomName" maxlength="40" />
+          </label>
+          <label class="field-label">
+            <span>Tu nombre en la mesa</span>
+            <input class="field" type="text" [(ngModel)]="playerName" maxlength="24" placeholder="General…" />
+          </label>
+        </div>
+
+        <div class="subsection">
+          <h3>Mapa</h3>
+          <div class="map-grid">
+            <button
+              type="button"
+              class="map-card"
+              *ngFor="let map of maps"
+              [class.active]="map.id === mapId"
+              (click)="selectMap(map)"
+            >
+              <div class="map-card-top">
+                <span class="map-name">{{ map.name }}</span>
+                <span class="map-count">{{ map.territories.length }} territorios</span>
+              </div>
+              <p class="map-desc">{{ map.description }}</p>
+              <div class="map-continents">
+                <span
+                  class="continent-chip"
+                  *ngFor="let continent of map.continents.slice(0, 6)"
+                  [style.borderColor]="continent.color"
+                  [style.color]="continent.color"
+                >
+                  {{ continent.name }} +{{ continent.bonus }}
+                </span>
+                <span class="continent-chip more" *ngIf="map.continents.length > 6">
+                  +{{ map.continents.length - 6 }} más
+                </span>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3>Vista previa</h3>
+          <div class="preview-box">
+            <app-risk-board
+              [map]="selectedMap"
+              [state]="previewState"
+              [showNames]="true"
+            ></app-risk-board>
+          </div>
+          <p class="hint">
+            Reparto de ejemplo con {{ maxPlayers }} jugadores. Las líneas de puntos son
+            conexiones marítimas: también se puede atacar por ellas.
+          </p>
+        </div>
+
+        <div class="subsection">
+          <h3>Reglas</h3>
+          <div class="rules-grid">
+            <label class="field-label">
+              <span>Jugadores en la mesa</span>
+              <select class="field" [(ngModel)]="maxPlayers" (ngModelChange)="refreshPreview()">
+                <option *ngFor="let n of maxPlayersOptions" [ngValue]="n">{{ n }} jugadores</option>
+              </select>
+              <small>Los huecos que sobren los puedes rellenar con bots desde la mesa.</small>
+            </label>
+
+            <label class="field-label">
+              <span>Reparto inicial</span>
+              <select class="field" [(ngModel)]="autoClaim">
+                <option [ngValue]="true">Automático (empieza ya)</option>
+                <option [ngValue]="false">Manual (elegís territorios por turnos)</option>
+              </select>
+              <small>El automático reparte territorios y ejércitos de forma equilibrada.</small>
+            </label>
+
+            <label class="field-label">
+              <span>Valor de los canjes</span>
+              <select class="field" [(ngModel)]="tradeProgression">
+                <option value="classic">Clásico (4, 6, 8, 10, 12, 15, +5…)</option>
+                <option value="fixed">Fijo (siempre 6)</option>
+              </select>
+              <small>El clásico acelera el final de la partida.</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="create-actions">
+          <button
+            class="primary big"
+            type="button"
+            (click)="createRoom(false)"
+            [disabled]="busy || !isAdmin"
+            [title]="isAdmin ? '' : 'Necesitas iniciar sesión para crear salas online'"
+          >
+            {{ busy ? 'Creando…' : '🌐 Crear sala online e invitar' }}
+          </button>
+          <button class="primary big ghost-primary" type="button" (click)="createRoom(true)" [disabled]="busy">
+            🤖 Jugar aquí contra la IA
+          </button>
+        </div>
+
+        <p class="hint" *ngIf="!isAdmin">
+          Las salas online (con invitación y varios dispositivos) son para usuarios registrados.
+          <button class="link" type="button" (click)="goToLogin()">Iniciar sesión</button>.
+          La partida local funciona sin cuenta: se guarda en este navegador y puedes retomarla
+          cuando quieras.
+        </p>
+        <p class="hint" *ngIf="isAdmin">
+          La partida local se guarda solo en este navegador y no necesita conexión: perfecta para
+          probar mapas o echar una contra los bots.
+        </p>
+        <p class="error" *ngIf="error">{{ error }}</p>
+      </section>
+
+      <!-- ===== PARTIDAS GUARDADAS ===== -->
+      <section class="panel">
+        <div class="panel-title">
+          <span class="tag">GUARDADAS</span>
+          <h2>Continuar una partida</h2>
+        </div>
+        <p class="hint">
+          Todas las partidas quedan grabadas jugada a jugada. Puedes retomarlas cuando queráis:
+          cada persona vuelve a su asiento y sus ejércitos.
+        </p>
+
+        <p class="muted" *ngIf="loadingRooms">Cargando salas…</p>
+        <p class="muted" *ngIf="!loadingRooms && savedRooms.length === 0">
+          Todavía no has creado ninguna sala.
+        </p>
+
+        <ul class="room-list">
+          <li class="room-item" *ngFor="let room of savedRooms" (click)="resume(room)">
+            <div class="room-main">
+              <span class="room-name">
+                {{ room.meta.name }}
+                <span class="local-tag" *ngIf="room.meta.local">local</span>
+              </span>
+              <span class="room-sub">
+                {{ mapName(room.meta.mapId) }} · {{ room.seatCount }}/{{ room.meta.maxPlayers }} asientos
+                · {{ room.humanCount }} humanos
+              </span>
+            </div>
+            <span class="status" [attr.data-status]="room.meta.status">
+              {{ statusLabel(room.meta) }}
+            </span>
+            <button class="ghost danger" type="button" (click)="deleteRoom(room, $event)" title="Borrar sala">
+              ✕
+            </button>
+          </li>
+        </ul>
+      </section>
+    </ng-container>
+  </div>
+</app-terminal-layout>

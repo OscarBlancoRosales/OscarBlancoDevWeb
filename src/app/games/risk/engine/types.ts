@@ -1,0 +1,245 @@
+/**
+ * Tipos del dominio de RISK.
+ *
+ * El motor es 100% puro y determinista: (estado, acción) -> estado.
+ * Eso permite tres cosas clave del producto:
+ *  - Multijugador sin backend (lockstep: todos los clientes reproducen el mismo log).
+ *  - Partidas grabables y reanudables (el log de acciones ES la grabación).
+ *  - Tests exhaustivos sin mocks.
+ */
+
+export type TerritoryId = string;
+export type ContinentId = string;
+export type PlayerId = string;
+
+/** Fases del turno clásico de RISK. */
+export type Phase =
+  | 'setup-claim' // reparto inicial: cada jugador reclama territorios vacíos
+  | 'setup-deploy' // reparto inicial: reparto del resto de ejércitos
+  | 'reinforce' // recibir y colocar refuerzos
+  | 'attack' // atacar territorios adyacentes
+  | 'fortify' // un único movimiento de reagrupación
+  | 'game-over';
+
+/** Símbolo de una carta de RISK. */
+export type CardSymbol = 'infantry' | 'cavalry' | 'artillery' | 'wildcard';
+
+export interface Card {
+  id: string;
+  /** Los comodines no tienen territorio asociado. */
+  territoryId: TerritoryId | null;
+  symbol: CardSymbol;
+}
+
+export interface Territory {
+  id: TerritoryId;
+  name: string;
+  continentId: ContinentId;
+  /** Adyacencias canónicas (siempre simétricas, validado en tests). */
+  adjacent: TerritoryId[];
+  /** Celdas del retículo hexagonal que dibujan el territorio. */
+  hexes: Array<[number, number]>;
+  /** Punto de anclaje opcional para la etiqueta (si no, se usa el centroide). */
+  labelAnchor?: [number, number];
+}
+
+export interface Continent {
+  id: ContinentId;
+  name: string;
+  bonus: number;
+  color: string;
+  territoryIds: TerritoryId[];
+}
+
+export interface GameMap {
+  id: string;
+  name: string;
+  description: string;
+  /** Radio del hexágono en unidades SVG. */
+  hexRadius: number;
+  territories: Territory[];
+  continents: Continent[];
+  /** Número máximo de jugadores soportado por el mapa. */
+  maxPlayers: number;
+}
+
+export type PlayerKind = 'human' | 'bot';
+
+export interface PlayerState {
+  id: PlayerId;
+  name: string;
+  color: string;
+  kind: PlayerKind;
+  /** Perfil de personalidad de la IA (solo bots). */
+  botProfile?: BotProfile;
+  /** uid de Firebase (admins) o token local (invitados) para reservar el asiento. */
+  seatToken?: string;
+  cards: Card[];
+  eliminated: boolean;
+  /** Ejércitos pendientes de colocar en la fase actual. */
+  reserve: number;
+  /** Ha conquistado al menos un territorio este turno (da derecho a carta). */
+  conqueredThisTurn: boolean;
+}
+
+export type BotProfile = 'agresivo' | 'cauto' | 'oportunista' | 'expansivo' | 'vengativo';
+
+export interface TerritoryState {
+  ownerId: PlayerId | null;
+  armies: number;
+}
+
+export interface CombatResult {
+  attackerDice: number[];
+  defenderDice: number[];
+  attackerLosses: number;
+  defenderLosses: number;
+  conquered: boolean;
+}
+
+export interface GameState {
+  mapId: string;
+  /** Semilla del RNG: junto al índice de acción da tiradas reproducibles. */
+  seed: number;
+  players: PlayerState[];
+  /** Orden de turno por id de jugador. */
+  turnOrder: PlayerId[];
+  currentPlayerIndex: number;
+  phase: Phase;
+  territories: Record<TerritoryId, TerritoryState>;
+  /** Mazo de cartas restante (barajado de forma determinista). */
+  deck: Card[];
+  /** Descarte de canjes. */
+  discard: Card[];
+  /** Número de canjes ya realizados (escala el valor del siguiente). */
+  tradeCount: number;
+  /** Contador de acciones aplicadas: alimenta el RNG. */
+  actionCount: number;
+  /** Turno completo (una vuelta a todos los jugadores). */
+  round: number;
+  /** Territorio desde el que se conquistó, para el movimiento obligatorio posterior. */
+  pendingOccupation: { from: TerritoryId; to: TerritoryId; minArmies: number } | null;
+  /** El jugador ya ha fortificado este turno. */
+  fortifiedThisTurn: boolean;
+  winnerId: PlayerId | null;
+  /** Últimos combates para animaciones e historial. */
+  lastCombat: (CombatResult & { from: TerritoryId; to: TerritoryId; attackerId: PlayerId }) | null;
+  /** Registro legible de lo que ha pasado (para el chat y el panel de eventos). */
+  events: GameEvent[];
+  config: GameConfig;
+}
+
+export interface GameConfig {
+  /** Ejércitos iniciales por jugador (si null se calcula según el número de jugadores). */
+  startingArmies: number | null;
+  /** Reparto inicial de territorios: manual (reclamar) o automático. */
+  autoClaim: boolean;
+  /** Progresión del valor de los canjes. */
+  tradeProgression: 'classic' | 'fixed';
+  /** Permitir dados de defensa 2 con 2+ ejércitos (regla estándar). */
+  maxAttackDice: number;
+  maxDefendDice: number;
+}
+
+export interface GameEvent {
+  /** Índice de acción que generó el evento. */
+  at: number;
+  type:
+    | 'game-start'
+    | 'claim'
+    | 'deploy'
+    | 'reinforce'
+    | 'trade'
+    | 'attack'
+    | 'conquer'
+    | 'occupy'
+    | 'fortify'
+    | 'card-drawn'
+    | 'eliminate'
+    | 'phase'
+    | 'turn'
+    | 'win';
+  playerId: PlayerId | null;
+  /** Texto ya formateado en español. */
+  text: string;
+  data?: Record<string, unknown>;
+}
+
+// ===== ACCIONES =====
+
+export interface BaseAction {
+  playerId: PlayerId;
+}
+
+export interface ClaimAction extends BaseAction {
+  type: 'claim';
+  territoryId: TerritoryId;
+}
+
+export interface DeployAction extends BaseAction {
+  type: 'deploy';
+  territoryId: TerritoryId;
+  armies: number;
+}
+
+export interface TradeCardsAction extends BaseAction {
+  type: 'trade';
+  cardIds: [string, string, string];
+}
+
+export interface AttackAction extends BaseAction {
+  type: 'attack';
+  from: TerritoryId;
+  to: TerritoryId;
+  /** Número de dados del atacante (1..3). */
+  dice: number;
+}
+
+export interface OccupyAction extends BaseAction {
+  type: 'occupy';
+  armies: number;
+}
+
+export interface FortifyAction extends BaseAction {
+  type: 'fortify';
+  from: TerritoryId;
+  to: TerritoryId;
+  armies: number;
+}
+
+export interface EndPhaseAction extends BaseAction {
+  type: 'end-phase';
+}
+
+export interface SurrenderAction extends BaseAction {
+  type: 'surrender';
+}
+
+export type GameAction =
+  | ClaimAction
+  | DeployAction
+  | TradeCardsAction
+  | AttackAction
+  | OccupyAction
+  | FortifyAction
+  | EndPhaseAction
+  | SurrenderAction;
+
+/** Entrada del log persistido en Firebase. */
+export interface LoggedAction {
+  /** Índice global, garantiza el orden en lockstep. */
+  index: number;
+  action: GameAction;
+  /** Marca temporal en ms (solo informativa, nunca alimenta el motor). */
+  ts: number;
+}
+
+export class RuleError extends Error {
+  constructor(
+    public code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'RuleError';
+  }
+}

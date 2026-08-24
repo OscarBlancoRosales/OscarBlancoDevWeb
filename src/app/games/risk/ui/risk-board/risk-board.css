@@ -1,0 +1,276 @@
+/* ===== TABLERO ===== */
+
+.board-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background:
+    radial-gradient(1200px 700px at 30% -10%, rgba(0, 255, 140, 0.07), transparent 60%),
+    linear-gradient(180deg, #070b0a 0%, #05070a 100%);
+  border: 1px solid #23302b;
+}
+
+.board {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  touch-action: none;
+}
+
+.board:active {
+  cursor: grabbing;
+}
+
+.sea {
+  fill: transparent;
+}
+
+.sea-grid {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.vignette {
+  pointer-events: none;
+}
+
+/* ===== RUTAS MARÍTIMAS ===== */
+
+.route {
+  fill: none;
+  stroke: rgba(0, 255, 170, 0.28);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 7;
+  stroke-linecap: round;
+  animation: route-flow 3s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+/* ===== TERRITORIOS ===== */
+
+.territory {
+  cursor: pointer;
+}
+
+.territory-fill {
+  fill-opacity: 0.62;
+  transition:
+    fill 0.45s ease,
+    fill-opacity 0.25s ease;
+}
+
+.territory-continent {
+  fill: none;
+  stroke-width: 2.4;
+  stroke-opacity: 0.5;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.territory-outline {
+  fill: none;
+  stroke: rgba(6, 10, 8, 0.85);
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.territory.hovered .territory-fill {
+  fill-opacity: 0.85;
+}
+
+.territory.dimmed .territory-fill {
+  fill-opacity: 0.22;
+}
+
+.territory.dimmed .territory-continent {
+  stroke-opacity: 0.18;
+}
+
+.territory.mine .territory-continent {
+  stroke-opacity: 0.75;
+}
+
+.territory.selectable .territory-outline {
+  stroke: rgba(255, 255, 255, 0.75);
+  stroke-width: 2;
+}
+
+.territory.selected .territory-fill {
+  fill-opacity: 1;
+}
+
+.territory.selected .territory-outline {
+  stroke: #ffffff;
+  stroke-width: 3;
+  filter: url(#glow);
+}
+
+.territory.target .territory-outline {
+  stroke: #ff4d6d;
+  stroke-width: 2.6;
+  stroke-dasharray: 6 4;
+  animation: target-pulse 1.2s ease-in-out infinite;
+}
+
+.territory.spotlight .territory-outline {
+  stroke: #ffd740;
+  stroke-width: 3;
+  filter: url(#glow);
+}
+
+@keyframes target-pulse {
+  0%,
+  100% {
+    stroke-opacity: 0.55;
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-opacity: 1;
+    stroke-dashoffset: -10;
+  }
+}
+
+/* ===== FICHAS ===== */
+
+.army-badge {
+  cursor: pointer;
+  filter: url(#soft-shadow);
+}
+
+.badge-ring {
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 1.5;
+  transition: fill 0.45s ease;
+}
+
+.army-badge.mine .badge-ring {
+  stroke: #ffffff;
+  stroke-width: 2;
+}
+
+.army-badge.spotlight .badge-ring {
+  stroke: #ffd740;
+  stroke-width: 2.5;
+}
+
+.badge-text {
+  fill: #05070a;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.badge-name {
+  fill: rgba(230, 245, 235, 0.75);
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 8.5px;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+/* ===== CONTROLES ===== */
+
+.board-controls {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.board-controls button {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid #2f4038;
+  background: rgba(8, 14, 11, 0.85);
+  color: #7dffb2;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.board-controls button:hover {
+  background: #0f1a14;
+  border-color: #00e676;
+  color: #00e676;
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
+}
+
+/* ===== TOOLTIP ===== */
+
+.board-tooltip {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(6, 10, 8, 0.92);
+  border: 1px solid #2b3a33;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  font-family: 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  color: #cfe8dc;
+  max-width: 220px;
+  animation: tip-in 0.12s ease-out;
+}
+
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.tip-name {
+  color: #eaf7f0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tip-owner {
+  font-size: 11px;
+}
+
+.tip-armies {
+  color: #8fb3a3;
+}
+
+.tip-odds {
+  color: #ffd740;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .badge-name {
+    display: none;
+  }
+}
