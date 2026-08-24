@@ -6,7 +6,7 @@ import {
   PlayerId,
   TerritoryId,
 } from '../types';
-import { conquestOdds, maxAttackDice } from '../combat';
+import { conquestOdds, diceCapsOf, maxAttackDice } from '../combat';
 import {
   adjacencyOf,
   areConnected,
@@ -226,6 +226,8 @@ export function rankedAttacks(
   const progress = continentProgress(state, map, playerId);
   const board = standings(state);
   const leaderId = board[0]?.playerId;
+  // Los mismos topes que aplicará el combate: la IA no debe calcular con otros.
+  const caps = diceCapsOf(state.config);
   const options: AttackOption[] = [];
 
   for (const from of territoriesOf(state, playerId)) {
@@ -236,7 +238,7 @@ export function rankedAttacks(
       const target = state.territories[to];
       if (!target || target.ownerId === playerId) continue;
 
-      const odds = conquestOdds(origin.armies, target.armies);
+      const odds = conquestOdds(origin.armies, target.armies, caps);
       let score = odds;
       const reasons: string[] = [];
 

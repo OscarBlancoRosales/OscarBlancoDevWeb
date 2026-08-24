@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CLASSIC_CAPS,
   battleRoundProbabilities,
   conquestOdds,
+  diceCapsOf,
   maxAttackDice,
   maxDefendDice,
   resolveCombat,
@@ -222,6 +224,105 @@ describe('combate', () => {
         if (defenders <= 0) wins++;
       }
       expect(wins / trials).toBeCloseTo(conquestOdds(8, 5), 1);
+    });
+  });
+});
+
+describe('los topes de dados de la mesa mandan en todas partes', () => {
+  describe('diceCapsOf', () => {
+    it('usa los topes clásicos cuando no hay configuración', () => {
+      expect(diceCapsOf(null)).toEqual(CLASSIC_CAPS);
+      expect(diceCapsOf(undefined)).toEqual(CLASSIC_CAPS);
+      expect(diceCapsOf({})).toEqual(CLASSIC_CAPS);
+    });
+
+    it('respeta los topes que declare la partida', () => {
+      expect(diceCapsOf({ maxAttackDice: 2, maxDefendDice: 1 })).toEqual({ attack: 2, defend: 1 });
+    });
+
+    it('completa solo lo que falte', () => {
+      expect(diceCapsOf({ maxDefendDice: 3 })).toEqual({ attack: 3, defend: 3 });
+    });
+  });
+
+  describe('battleRoundProbabilities con topes distintos', () => {
+    it('genera la tabla del tamaño pedido', () => {
+      const table = battleRoundProbabilities({ attack: 2, defend: 1 });
+      expect(Object.keys(table).sort()).toEqual(['1v1', '2v1']);
+    });
+
+    it('cada distribución sigue sumando 1', () => {
+      for (const caps of [
+        { attack: 1, defend: 1 },
+        { attack: 2, defend: 1 },
+        { attack: 3, defend: 3 },
+        { attack: 4, defend: 2 },
+      ]) {
+        for (const [key, outcomes] of Object.entries(battleRoundProbabilities(caps))) {
+          expect(
+            outcomes.reduce((sum, [, , p]) => sum + p, 0),
+            `${caps.attack}v${caps.defend} -> ${key}`,
+          ).toBeCloseTo(1, 10);
+        }
+      }
+    });
+
+    it('cachea una tabla por combinación de topes', () => {
+      const a = battleRoundProbabilities({ attack: 2, defend: 1 });
+      expect(battleRoundProbabilities({ attack: 2, defend: 1 })).toBe(a);
+      expect(battleRoundProbabilities({ attack: 3, defend: 2 })).not.toBe(a);
+    });
+  });
+
+  describe('conquestOdds', () => {
+    it('sin topes se comporta exactamente como antes', () => {
+      for (const [a, d] of [
+        [3, 1],
+        [5, 3],
+        [8, 5],
+        [11, 10],
+      ]) {
+        expect(conquestOdds(a, d)).toBe(conquestOdds(a, d, CLASSIC_CAPS));
+      }
+    });
+
+    it('un defensor con menos dados es más fácil de batir', () => {
+      expect(conquestOdds(5, 5, { attack: 3, defend: 1 })).toBeGreaterThan(
+        conquestOdds(5, 5, CLASSIC_CAPS),
+      );
+    });
+
+    it('un atacante con menos dados lo tiene peor', () => {
+      expect(conquestOdds(8, 5, { attack: 1, defend: 2 })).toBeLessThan(
+        conquestOdds(8, 5, CLASSIC_CAPS),
+      );
+    });
+
+    it('la caché no mezcla resultados de topes distintos', () => {
+      const suave = conquestOdds(6, 4, { attack: 3, defend: 1 });
+      const duro = conquestOdds(6, 4, { attack: 1, defend: 2 });
+      expect(suave).not.toBeCloseTo(duro, 3);
+      // Y al repetir siguen dando lo mismo (no se pisan en el memo).
+      expect(conquestOdds(6, 4, { attack: 3, defend: 1 })).toBe(suave);
+      expect(conquestOdds(6, 4, { attack: 1, defend: 2 })).toBe(duro);
+    });
+
+    it('el número que se enseña coincide con el combate real de esa mesa', () => {
+      const caps = { attack: 2, defend: 1 };
+      const rng = createRng(4242);
+      let wins = 0;
+      const trials = 4000;
+      for (let i = 0; i < trials; i++) {
+        let attackers = 7;
+        let defenders = 5;
+        while (attackers > 1 && defenders > 0) {
+          const result = resolveCombat(attackers, defenders, caps.attack, rng, caps);
+          attackers -= result.attackerLosses;
+          defenders -= result.defenderLosses;
+        }
+        if (defenders <= 0) wins++;
+      }
+      expect(wins / trials).toBeCloseTo(conquestOdds(7, 5, caps), 1);
     });
   });
 });

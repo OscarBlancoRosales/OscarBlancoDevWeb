@@ -129,7 +129,29 @@ export interface GameState {
   config: GameConfig;
 }
 
+/**
+ * Versión de las reglas con la que se jugó una partida.
+ *
+ * Es lo que permite ampliar el juego sin romper nada: los dados salen de un RNG
+ * sembrado con (semilla, nº de acción, canal), así que cualquier cambio en
+ * CUÁNTAS tiradas se consumen o en cómo se nombran los canales haría que las
+ * partidas ya grabadas dejaran de reproducirse igual, y que dos clientes con
+ * versiones distintas se desincronizaran en pleno lockstep.
+ *
+ * Regla: la v1 (RISK clásico) queda congelada. Todo lo que venga después
+ * —terreno, tipos de tropa, objetivos— entra como versión nueva, y el motor
+ * escoge el comportamiento según este número.
+ */
+export const RULES_V1 = 1;
+
+/** Versión de reglas de una partida; las salas antiguas no la traen y son v1. */
+export function rulesVersionOf(config: { rulesVersion?: number } | null | undefined): number {
+  return config?.rulesVersion ?? RULES_V1;
+}
+
 export interface GameConfig {
+  /** Versión de las reglas. Ver RULES_V1. */
+  rulesVersion?: number;
   /** Ejércitos iniciales por jugador (si null se calcula según el número de jugadores). */
   startingArmies: number | null;
   /** Reparto inicial de territorios: manual (reclamar) o automático. */

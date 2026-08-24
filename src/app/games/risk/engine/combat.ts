@@ -52,11 +52,25 @@ export function resolveCombat(
   };
 }
 
-/**
- * Probabilidad aproximada de que el atacante conquiste, calculada por
- * simulación exacta de la cadena de Markov 3v2. Se usa en la IA y en el panel
- * de "odds" que ve el jugador antes de atacar.
- */
+/** Topes de dados de una mesa. Los clásicos son 3 y 2. */
+export interface DiceCaps {
+  attack: number;
+  defend: number;
+}
+
+export const CLASSIC_CAPS: DiceCaps = { attack: 3, defend: 2 };
+
+/** Topes de dados que aplican en una partida concreta. */
+export function diceCapsOf(config: {
+  maxAttackDice?: number;
+  maxDefendDice?: number;
+} | null | undefined): DiceCaps {
+  return {
+    attack: config?.maxAttackDice ?? CLASSIC_CAPS.attack,
+    defend: config?.maxDefendDice ?? CLASSIC_CAPS.defend,
+  };
+}
+
 /**
  * Por encima de este tamaño de ejército la probabilidad solo depende de la
  * proporción, así que escalamos ambos lados. Además mantiene acotada la caché:
@@ -65,7 +79,20 @@ export function resolveCombat(
  */
 const ODDS_SCALE_CAP = 60;
 
-export function conquestOdds(attackingArmies: number, defendingArmies: number): number {
+/**
+ * Probabilidad de que el atacante acabe conquistando, resolviendo la cadena de
+ * Markov de la batalla hasta el final.
+ *
+ * Recibe los topes de dados de la mesa porque es EL MISMO número que ve el
+ * jugador antes de atacar y el que usa la IA para decidir: si el combate real
+ * usara unos topes y esta función otros, la interfaz mentiría y la IA jugaría a
+ * ciegas. Cuando el terreno modifique el combate, entrará por aquí.
+ */
+export function conquestOdds(
+  attackingArmies: number,
+  defendingArmies: number,
+  caps: DiceCaps = CLASSIC_CAPS,
+): number {
   let attackers = attackingArmies - 1; // uno se queda siempre en casa
   let defenders = defendingArmies;
   if (attackers <= 0) return 0;
@@ -77,21 +104,22 @@ export function conquestOdds(attackingArmies: number, defendingArmies: number): 
     defenders = Math.max(1, Math.round(defenders * factor));
   }
 
-  // La caché es global y no se invalida nunca: es una función pura de (a, d),
-  // y la IA la consulta cientos de veces por turno.
+  // La caché es global y no se invalida nunca: es una función pura de
+  // (topes, a, d), y la IA la consulta cientos de veces por turno.
   const memo = oddsCache;
+  const capsKey = `${caps.attack}v${caps.defend}`;
 
-  const probs = battleRoundProbabilities();
+  const probs = battleRoundProbabilities(caps);
 
   const win = (a: number, d: number): number => {
     if (d <= 0) return 1;
     if (a <= 0) return 0;
-    const memoKey = `${a}:${d}`;
+    const memoKey = `${capsKey}:${a}:${d}`;
     const cached = memo.get(memoKey);
     if (cached !== undefined) return cached;
 
-    const attackDice = Math.min(3, a);
-    const defendDice = Math.min(2, d);
+    const attackDice = Math.min(caps.attack, a);
+    const defendDice = Math.min(caps.defend, d);
     const table = probs[`${attackDice}v${defendDice}`];
 
     let total = 0;
@@ -105,18 +133,24 @@ export function conquestOdds(attackingArmies: number, defendingArmies: number): 
   return win(attackers, defenders);
 }
 
-/** memo[`a:d`] = probabilidad de que el atacante acabe conquistando. */
+/** memo[`topes:a:d`] = probabilidad de que el atacante acabe conquistando. */
 const oddsCache = new Map<string, number>();
 
 type RoundTable = Record<string, Array<[number, number, number]>>;
-let cachedTable: RoundTable | null = null;
+const cachedTables = new Map<string, RoundTable>();
 
-/** Distribución exacta de bajas por ronda, enumerando todas las tiradas. */
-export function battleRoundProbabilities(): RoundTable {
-  if (cachedTable) return cachedTable;
+/**
+ * Distribución exacta de bajas por ronda, enumerando todas las tiradas.
+ * Una tabla por combinación de topes (la clásica 3v2 se calcula una sola vez).
+ */
+export function battleRoundProbabilities(caps: DiceCaps = CLASSIC_CAPS): RoundTable {
+  const key = `${caps.attack}v${caps.defend}`;
+  const cached = cachedTables.get(key);
+  if (cached) return cached;
+
   const table: RoundTable = {};
-  for (let a = 1; a <= 3; a++) {
-    for (let d = 1; d <= 2; d++) {
+  for (let a = 1; a <= caps.attack; a++) {
+    for (let d = 1; d <= caps.defend; d++) {
       const counts = new Map<string, number>();
       let totalOutcomes = 0;
       const attackRolls = enumerateRolls(a);
@@ -142,7 +176,7 @@ export function battleRoundProbabilities(): RoundTable {
       });
     }
   }
-  cachedTable = table;
+  cachedTables.set(key, table);
   return table;
 }
 

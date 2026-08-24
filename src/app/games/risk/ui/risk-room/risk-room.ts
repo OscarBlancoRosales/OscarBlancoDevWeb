@@ -36,7 +36,7 @@ import {
   reinforcementBreakdown,
   territoriesOf,
 } from '../../engine/rules';
-import { conquestOdds, maxAttackDice } from '../../engine/combat';
+import { conquestOdds, diceCapsOf, maxAttackDice } from '../../engine/combat';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
 import { BotProfile } from '../../engine/types';
@@ -425,7 +425,13 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   maxDiceForSelection(): number {
     if (!this.state || !this.selectedFrom) return 1;
-    return Math.max(1, maxAttackDice(this.state.territories[this.selectedFrom].armies, 3));
+    return Math.max(
+      1,
+      maxAttackDice(
+        this.state.territories[this.selectedFrom].armies,
+        diceCapsOf(this.state.config).attack,
+      ),
+    );
   }
 
   maxFortify(): number {
@@ -438,6 +444,7 @@ export class RiskRoom implements OnInit, OnDestroy {
     return conquestOdds(
       this.state.territories[this.selectedFrom].armies,
       this.state.territories[this.selectedTo].armies,
+      diceCapsOf(this.state.config),
     );
   }
 

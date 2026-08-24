@@ -9,6 +9,7 @@ import {
   PlayerId,
   PlayerKind,
   PlayerState,
+  RULES_V1,
   RuleError,
   TerritoryId,
 } from './types';
@@ -28,6 +29,7 @@ import {
 const MAX_EVENTS = 80;
 
 export const DEFAULT_CONFIG: GameConfig = {
+  rulesVersion: RULES_V1,
   startingArmies: null,
   autoClaim: true,
   tradeProgression: 'classic',

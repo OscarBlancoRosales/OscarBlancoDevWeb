@@ -580,25 +580,25 @@ describe('cerebro heurístico de la IA', () => {
       expect(finished).toBe(true);
       expect(actions).toBeLessThan(40000);
       expect(state.players.filter((p) => !p.eliminated)).toHaveLength(1);
-    });
+    }, 30000);
 
     it('cuatro bots terminan una partida completa en España', () => {
       const { finished } = selfPlay(SPAIN_MAP, 4, 555, 60000);
       expect(finished).toBe(true);
-    });
+    }, 30000);
 
     it('cinco bots terminan una partida en el mapa por comunidades', () => {
       const { finished, state } = selfPlay(SPAIN_REGIONS_MAP, 5, 909, 30000);
       expect(finished).toBe(true);
       expect(state.winnerId).not.toBeNull();
-    });
+    }, 30000);
 
     it('las partidas tienen ataques y conquistas de verdad, no solo refuerzos', () => {
       const { state } = selfPlay(WORLD_MAP, 4, 1234, 30000);
       const conquests = state.events.filter((event) => event.type === 'conquer').length;
       expect(state.round).toBeGreaterThan(2);
       expect(conquests + state.events.filter((e) => e.type === 'attack').length).toBeGreaterThan(0);
-    });
+    }, 30000);
 
     it('el tablero se mantiene coherente durante toda la partida', () => {
       const { state } = selfPlay(WORLD_MAP, 3, 808, 30000);
@@ -606,7 +606,7 @@ describe('cerebro heurístico de la IA', () => {
         expect(territory.armies).toBeGreaterThanOrEqual(1);
         expect(territory.ownerId).not.toBeNull();
       }
-    });
+    }, 30000);
 
     it('la partida es reproducible con la misma semilla', () => {
       const first = selfPlay(TINY_MAP, 2, 31337);

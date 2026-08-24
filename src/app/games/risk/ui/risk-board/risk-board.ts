@@ -10,7 +10,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { GameMap, GameState, TerritoryId } from '../../engine/types';
 import { RenderedMap, RenderedTerritory, renderMap } from '../../engine/board-render';
-import { conquestOdds } from '../../engine/combat';
+import { conquestOdds, diceCapsOf } from '../../engine/combat';
 
 export interface TerritoryTooltip {
   name: string;
@@ -166,7 +166,7 @@ export class RiskBoard {
     const from = this.state?.territories[this.selected];
     const to = this.state?.territories[this.hovered];
     if (!from || !to) return null;
-    return conquestOdds(from.armies, to.armies);
+    return conquestOdds(from.armies, to.armies, diceCapsOf(this.state?.config));
   }
 
   // ===== INTERACCIÓN =====
