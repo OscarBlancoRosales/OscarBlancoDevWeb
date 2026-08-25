@@ -288,6 +288,39 @@ Las jugadas las decide siempre el cerebro local, *inclinado* por lo que pide el 
 el modelo falla, tarda o contesta cualquier cosa, la partida sigue igual con el cerebro
 local. **Nunca se bloquea la mesa esperando a una API.**
 
+### Qué modelos usar, y por qué esos
+
+Elegidos midiendo contra la API de verdad con el prompt del juego, no por el
+nombre. Latencia y calidad de una misma tanda:
+
+| Modelo | Latencia | JSON válido | Español |
+|---|---|---|---|
+| **Nemotron 3 Ultra 550B** | 378 ms | sí | El mejor: prosa natural y con criterio |
+| **Nemotron 3 Super 120B** | 362 ms | sí | Muy bueno, algo más plano |
+| **Nemotron 3 Nano Omni 30B** | 363 ms | sí | El ligero que sí cumple |
+| Dots3-Note Preview | 746 ms | sí | Correcto, se le cuela alguna palabra en inglés |
+| MiniMax M2.7 | 1457 ms | sí | **Se le colaron caracteres chinos**: descartado |
+| North Mini Code | 421 ms | no | Es un modelo de código, no sirve |
+| GLM 5.2 / Gemma 4 / Laguna XS | — | — | Devolvieron 429: se saturan a menudo |
+| LFM2.5-2.6B | — | — | 503, no disponible |
+
+De ahí salen tres decisiones:
+
+**El razonamiento se excluye.** Los Nemotron, MiniMax y GLM piensan en voz alta
+antes de contestar, y ese monólogo se comía los 320 tokens de presupuesto: la
+respuesta llegaba cortada sin el JSON y la partida caía al cerebro local **sin
+decir por qué**. Mandando `reasoning: { exclude: true }` contestan en menos de
+400 ms con el JSON limpio. Era un fallo real, no una optimización.
+
+**Hay cadena de reserva.** Los gratuitos se saturan: en la misma tanda en que los
+Nemotron respondían, cuatro de la lista devolvían 429 o 503. Si el modelo
+elegido está saturado se baja al siguiente, y solo si fallan todos entra el
+cerebro local.
+
+**Los mejores para cada cosa:** Nemotron 3 Ultra para el plan de turno y la
+crónica (es donde se nota la prosa), Super como primera reserva, Nano Omni como
+segunda.
+
 ### Solo modelos gratuitos
 
 El identificador del modelo se escribe a mano, así que sin una barrera un dedo
@@ -296,6 +329,45 @@ envía** si el modelo no es gratuito: vale si está en la lista del proveedor, s
 lleva el sufijo `:free` que OpenRouter le pone a los suyos, o si corre en tu
 propia máquina (Ollama, LM Studio), donde no hay factura que valga. Quien quiera
 pagar puede, pero tiene que apagarlo a propósito.
+
+### La clave de la casa
+
+Se puede desplegar con una clave propia para que la IA funcione sin que cada
+jugador ponga la suya: se pone en `public/ai-key.json` (hay plantilla en
+`ai-key.example.json`).
+
+**Léelo antes de usarlo.** Esto es una web estática: cualquier clave que viaje
+con ella **es pública** y se lee abriendo las herramientas del navegador. Este
+mecanismo no la esconde; lo único que hace es mantenerla **fuera del
+repositorio**, que es lo que de verdad importa, porque el historial de git es
+para siempre y se puede buscar. Por eso el fichero está en `.gitignore`.
+
+De ahí que convenga que sea una clave de **capa gratuita y con límite de gasto**:
+lo peor que puede pasar entonces es que alguien agote el cupo de peticiones, no
+que llegue una factura. La clave del jugador siempre gana sobre la de la casa.
+
+Si algún día hace falta de verdad que la clave no sea pública, el camino es un
+proxy mínimo (un Worker de Cloudflare, gratis) que la guarde del lado del
+servidor y limite por IP.
+
+### Narrar la crónica en voz alta
+
+En los escenarios se puede encender un narrador que lee la crónica. La voz la
+genera un modelo, no el sintetizador del navegador.
+
+El endpoint de voz de OpenRouter (`/api/v1/audio/speech`) no aparece en el
+catálogo de `/models`, así que hubo que encontrarlo probando. De los que
+responden:
+
+- `flux-tts:free` funciona y devuelve WAV, pero **todas sus voces terminan en
+  `-en`**: son inglesas, y leerían "Cáceres" o "Guadiana" con acento inglés.
+- `kokoro-82m` **sí tiene voces en español** (`em_alex`, `em_santa`, `ef_dora`),
+  devuelve WAV de 24 kHz y no consume saldo: tras generar varias pruebas, el
+  gasto de la cuenta seguía en cero.
+
+Por eso el narrador usa Kokoro. Y **solo narra la última crónica**: si se
+encolaran, la voz acabaría minutos por detrás del tablero contando una batalla
+que ya terminó.
 
 ### 4.3 El estratega
 

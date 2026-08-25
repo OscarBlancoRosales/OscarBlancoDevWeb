@@ -3,10 +3,16 @@ import { BehaviorSubject, Observable, Subscription, combineLatest } from 'rxjs';
 import { GameAction, GameMap, GameState } from '../engine/types';
 import { currentPlayer, playerById } from '../engine/engine';
 import { decideAction, StrategyBias } from '../engine/ai/bot-brain';
-import { requestAdvice, requestTurnPlan } from '../engine/ai/ai-orchestrator';
+import { requestAdvice, requestChronicle, requestTurnPlan } from '../engine/ai/ai-orchestrator';
 import { chronicleFor, hasChronicle } from '../engine/ai/chronicle';
 import { rngFor } from '../engine/rng';
-import { AiSettings, loadAiSettings } from '../engine/ai/ai-client';
+import {
+  AiSettings,
+  fetchBundledKeys,
+  hasStoredAiSettings,
+  loadAiSettings,
+  withBundledKey,
+} from '../engine/ai/ai-client';
 import { getMap } from '../engine/maps/map-registry';
 import {
   ChatEntry,
@@ -49,6 +55,23 @@ export class RiskGameService implements OnDestroy {
   botDelayMs = loadBotDelay();
   aiSettings: AiSettings = loadAiSettings();
 
+  /**
+   * Completa los ajustes con la clave que venga con el despliegue, si la hay.
+   *
+   * Se hace una sola vez y sin bloquear nada: si el fichero no existe, la IA se
+   * queda como estaba y el juego sigue con el cerebro local, que es lo de
+   * siempre.
+   */
+  private async adoptBundledKey(): Promise<void> {
+    if (this.bundledChecked) return;
+    this.bundledChecked = true;
+    const untouched = !hasStoredAiSettings();
+    const bundled = await fetchBundledKeys();
+    this.aiSettings = withBundledKey(this.aiSettings, bundled, { untouched });
+  }
+
+  private bundledChecked = false;
+
   private mySeatId = '';
   private roomId = '';
   private seats: RoomSeat[] = [];
@@ -69,6 +92,7 @@ export class RiskGameService implements OnDestroy {
     this.detach();
     this.roomId = roomId;
     this.mySeatId = mySeatId;
+    void this.adoptBundledKey();
     this.rooms.listenToRoom(roomId);
 
     this.subscription = combineLatest([
@@ -183,24 +207,26 @@ export class RiskGameService implements OnDestroy {
     // El turno cambia a menudo; no dejamos crecer el conjunto sin límite.
     if (this.chronicled.size > 400) this.chronicled.clear();
 
-    const line = chronicleFor(
-      {
-        map: this.map,
-        state,
-        playerId: combat.attackerId,
-        from: combat.from,
-        to: combat.to,
-      },
-      rngFor(state.seed, state.actionCount, 'chronicle'),
-    );
+    const context = {
+      map: this.map,
+      state,
+      playerId: combat.attackerId,
+      from: combat.from,
+      to: combat.to,
+    };
+    const line = chronicleFor(context, rngFor(state.seed, state.actionCount, 'chronicle'));
     if (!line) return;
 
-    void this.rooms.sendChat(this.roomId, {
-      authorId: 'chronicle',
-      author: 'Crónica',
-      kind: 'system',
-      text: line,
-    });
+    // El modelo reescribe la nota; si no hay o falla, va la local tal cual.
+    void requestChronicle(context, line, this.aiSettings).then((result) =>
+      this.rooms.sendChat(this.roomId, {
+        authorId: 'chronicle',
+        author: 'Crónica',
+        kind: 'system',
+        text: result.message,
+        origin: result.source,
+      }),
+    );
   }
 
   private chronicled = new Set<string>();

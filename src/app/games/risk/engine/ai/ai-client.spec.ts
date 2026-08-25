@@ -9,7 +9,9 @@ import {
   PROVIDER_SIGNUP,
   chat,
   clearAiSettings,
+  chatWithFallback,
   extractJson,
+  FALLBACK_CHAIN,
   isFreeModel,
   loadAiSettings,
   saveAiSettings,
@@ -150,10 +152,24 @@ describe('cliente de modelos de lenguaje', () => {
     });
 
     it('convierte un error HTTP en AiError de red', async () => {
-      const fetchImpl = vi.fn(async () => jsonResponse({ error: 'nope' }, false, 429));
+      const fetchImpl = vi.fn(async () => jsonResponse({ error: 'nope' }, false, 400));
       await expect(
         chat(settings(), [], { fetchImpl: fetchImpl as unknown as typeof fetch }),
       ).rejects.toMatchObject({ code: 'network' });
+    });
+
+    it('distingue la saturación del resto de errores', async () => {
+      // Un 429 no es un fallo: es "vuelve luego", y por eso se puede reintentar
+      // con otro modelo en vez de rendirse.
+      const busy = vi.fn(async () => jsonResponse({ error: 'busy' }, false, 429));
+      await expect(
+        chat(settings(), [], { fetchImpl: busy as unknown as typeof fetch }),
+      ).rejects.toMatchObject({ code: 'rate-limited' });
+
+      const down = vi.fn(async () => jsonResponse({ error: 'down' }, false, 503));
+      await expect(
+        chat(settings(), [], { fetchImpl: down as unknown as typeof fetch }),
+      ).rejects.toMatchObject({ code: 'unavailable' });
     });
 
     it('avisa cuando la respuesta no trae contenido', async () => {
@@ -338,5 +354,89 @@ describe('solo modelos gratuitos', () => {
       { fetchImpl },
     );
     expect(called).toBe(true);
+  });
+});
+
+describe('cadena de reserva', () => {
+  const base: AiSettings = {
+    ...DEFAULT_AI_SETTINGS,
+    enabled: true,
+    apiKey: 'k',
+    provider: 'openrouter',
+  };
+  const ok = (text: string) =>
+    new Response(JSON.stringify({ choices: [{ message: { content: text } }] }), {
+      headers: { 'content-type': 'application/json' },
+    });
+  const busy = () => new Response(JSON.stringify({ error: 'busy' }), { status: 429 });
+
+  it('si el primero contesta, no prueba más', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(JSON.parse(init.body as string).model);
+      return ok('hola');
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('hola');
+    expect(result.model).toBe(base.model);
+    expect(seen).toHaveLength(1);
+  });
+
+  it('ante saturación baja al siguiente y dice con cuál contestó', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      const model = JSON.parse(init.body as string).model;
+      seen.push(model);
+      return seen.length < 3 ? busy() : ok('al tercer intento');
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('al tercer intento');
+    expect(seen).toHaveLength(3);
+    expect(result.model).toBe(seen[2]);
+    expect(new Set(seen).size).toBe(3);
+  });
+
+  it('un error que no es saturación corta la cadena en seco', async () => {
+    let calls = 0;
+    const fetchImpl = (async () => {
+      calls++;
+      return new Response(JSON.stringify({ error: 'mal' }), { status: 400 });
+    }) as unknown as typeof fetch;
+
+    await expect(chatWithFallback(base, [], { fetchImpl })).rejects.toMatchObject({
+      code: 'network',
+    });
+    expect(calls).toBe(1);
+  });
+
+  it('si todos están saturados, se rinde y el juego usa el cerebro local', async () => {
+    const fetchImpl = (async () => busy()) as unknown as typeof fetch;
+    await expect(chatWithFallback(base, [], { fetchImpl })).rejects.toMatchObject({
+      code: 'rate-limited',
+    });
+  });
+
+  it('la cadena nunca cuela un modelo de pago', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(JSON.parse(init.body as string).model);
+      return busy();
+    }) as unknown as typeof fetch;
+
+    await expect(
+      chatWithFallback({ ...base, model: 'nvidia/nemotron-3-ultra-550b-a55b:free' }, [], {
+        fetchImpl,
+      }),
+    ).rejects.toBeTruthy();
+    for (const model of seen) expect(isFreeModel('openrouter', model), model).toBe(true);
+  });
+
+  it('la reserva solo se aplica donde tiene sentido', () => {
+    expect(FALLBACK_CHAIN.openrouter.length).toBeGreaterThan(1);
+    for (const model of FALLBACK_CHAIN.openrouter) {
+      expect(isFreeModel('openrouter', model), model).toBe(true);
+    }
   });
 });

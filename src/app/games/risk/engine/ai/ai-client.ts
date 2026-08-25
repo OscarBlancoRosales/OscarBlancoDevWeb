@@ -31,7 +31,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   enabled: false,
   provider: 'openrouter',
   apiKey: '',
-  model: 'deepseek/deepseek-chat-v3-0324:free',
+  model: 'nvidia/nemotron-3-ultra-550b-a55b:free',
   timeoutMs: 12000,
   freeOnly: true,
 };
@@ -49,24 +49,29 @@ export interface ModelOption {
 export const FREE_MODELS: Record<AiProvider, ModelOption[]> = {
   openrouter: [
     {
-      id: 'deepseek/deepseek-chat-v3-0324:free',
-      label: 'DeepSeek V3 (free)',
-      note: 'El más listo de los gratuitos. Ideal para estrategia.',
+      id: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+      label: 'Nemotron 3 Ultra (free)',
+      note: 'El mejor con diferencia: JSON limpio en ~380 ms y el español más natural.',
     },
     {
-      id: 'meta-llama/llama-3.3-70b-instruct:free',
-      label: 'Llama 3.3 70B (free)',
-      note: 'Rápido y muy sólido en español.',
+      id: 'nvidia/nemotron-3-super-120b-a12b:free',
+      label: 'Nemotron 3 Super (free)',
+      note: 'Casi tan rápido y algo más sobrio. Buena reserva del Ultra.',
     },
     {
-      id: 'google/gemma-3-27b-it:free',
-      label: 'Gemma 3 27B (free)',
-      note: 'Ligero, responde muy rápido.',
+      id: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      label: 'Nemotron 3 Nano Omni (free)',
+      note: 'El ligero que sí cumple: rápido y sin salirse del guion.',
     },
     {
-      id: 'qwen/qwen3-235b-a22b:free',
-      label: 'Qwen3 235B (free)',
-      note: 'Buen razonamiento, algo más lento.',
+      id: 'dots-studio/dots-3-note-preview:free',
+      label: 'Dots3-Note Preview (free)',
+      note: 'Correcto, algo más lento y se le cuela alguna palabra en inglés.',
+    },
+    {
+      id: 'z-ai/glm-5.2:free',
+      label: 'GLM 5.2 (free)',
+      note: 'Bueno cuando responde, pero se satura a menudo.',
     },
   ],
   groq: [
@@ -123,7 +128,7 @@ export interface ChatMessage {
 
 export class AiError extends Error {
   constructor(
-    public code: 'no-key' | 'network' | 'timeout' | 'bad-response' | 'disabled' | 'paid-model',
+    public code: 'no-key' | 'network' | 'timeout' | 'bad-response' | 'disabled' | 'paid-model' | 'rate-limited' | 'unavailable',
     message: string,
   ) {
     super(message);
@@ -178,6 +183,13 @@ function bodyFor(settings: AiSettings, messages: ChatMessage[], maxTokens: numbe
     messages,
     temperature: 0.85,
     max_tokens: maxTokens,
+    // Los modelos de razonamiento gratuitos (los Nemotron, MiniMax, GLM…)
+    // piensan en voz alta ANTES de contestar, y ese monólogo se come el
+    // presupuesto de tokens: medido, se gastaban los 320 razonando y devolvían
+    // texto cortado sin el JSON, así que la partida caía siempre al cerebro
+    // local sin decir por qué. Excluyendo el razonamiento contestan en menos de
+    // 400 ms con el JSON limpio.
+    ...(settings.provider === 'openrouter' ? { reasoning: { exclude: true } } : {}),
   });
 }
 
@@ -191,6 +203,61 @@ function extractText(settings: AiSettings, payload: unknown): string {
   const text = data?.['choices']?.[0]?.message?.content;
   if (typeof text === 'string') return text;
   throw new AiError('bad-response', 'Respuesta sin contenido');
+}
+
+/**
+ * Modelos a los que recurrir, en orden, cuando el elegido no contesta.
+ *
+ * Los gratuitos se saturan: midiendo la lista entera, GLM 5.2, Gemma 4, Laguna
+ * XS y LFM devolvieron 429 o 503 en la misma tanda en que los Nemotron
+ * contestaban en menos de 400 ms. Sin una cadena de reserva, un 429 dejaba la
+ * mesa sin comentarios de IA y sin explicar por qué.
+ */
+export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
+  openrouter: [
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    'dots-studio/dots-3-note-preview:free',
+  ],
+  groq: [],
+  gemini: [],
+  'openai-compatible': [],
+};
+
+/** ¿Merece la pena reintentar con otro modelo? */
+export function isRetryable(error: unknown): boolean {
+  const code = (error as AiError)?.code;
+  return code === 'rate-limited' || code === 'unavailable';
+}
+
+/**
+ * Llama al modelo elegido y, si está saturado, va bajando por la cadena.
+ *
+ * Devuelve también con qué modelo se ha contestado, que es lo que permite
+ * enseñarlo en la mesa en vez de dejar al jugador adivinando.
+ */
+export async function chatWithFallback(
+  settings: AiSettings,
+  messages: ChatMessage[],
+  options: { maxTokens?: number; fetchImpl?: typeof fetch } = {},
+): Promise<{ text: string; model: string }> {
+  const chain = [settings.model, ...(FALLBACK_CHAIN[settings.provider] ?? [])].filter(
+    (model, index, all) => model && all.indexOf(model) === index,
+  );
+
+  let lastError: unknown = new AiError('bad-response', 'Sin modelos que probar');
+  for (const model of chain) {
+    if (settings.freeOnly !== false && !isFreeModel(settings.provider, model)) continue;
+    try {
+      const text = await chat({ ...settings, model }, messages, options);
+      return { text, model };
+    } catch (error) {
+      lastError = error;
+      if (!isRetryable(error)) throw error;
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -241,6 +308,12 @@ export async function chat(
       signal: controller.signal,
     });
 
+    if (response.status === 429) {
+      throw new AiError('rate-limited', 'El modelo está saturado ahora mismo');
+    }
+    if (response.status === 503 || response.status === 502) {
+      throw new AiError('unavailable', 'El modelo no está disponible ahora mismo');
+    }
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
       throw new AiError(
@@ -287,6 +360,90 @@ export function extractJson<T = unknown>(text: string): T | null {
 const STORAGE_KEY = 'risk_ai_settings';
 
 /** Lee la configuración guardada (solo en este navegador). */
+/**
+ * Clave de la casa: la que se despliega con la aplicación.
+ *
+ * ### Léelo antes de usarla
+ *
+ * Esto es una web estática. Cualquier clave que viaje con ella **es pública**:
+ * se lee abriendo las herramientas del navegador. No hay forma de esconderla, y
+ * este archivo no la esconde: lo único que hace es mantenerla **fuera del
+ * repositorio**, que es lo que de verdad importa, porque el historial de git es
+ * para siempre y se puede buscar.
+ *
+ * Por eso el fichero `public/ai-key.json` está en `.gitignore` y solo se
+ * distribuye la plantilla vacía. Quien despliegue pone la suya.
+ *
+ * Y por eso conviene que sea una clave de capa gratuita y con límite de gasto:
+ * lo peor que puede pasar entonces es que alguien agote el cupo de peticiones,
+ * no que llegue una factura.
+ */
+export interface BundledKeys {
+  openrouter?: string;
+  groq?: string;
+  gemini?: string;
+}
+
+let bundledCache: BundledKeys | null = null;
+
+/** Lee la clave de la casa, si el despliegue trae una. Se pide una sola vez. */
+export async function fetchBundledKeys(
+  fetchImpl: typeof fetch | undefined = globalThis.fetch,
+): Promise<BundledKeys> {
+  if (bundledCache) return bundledCache;
+  if (!fetchImpl) return (bundledCache = {});
+  try {
+    const response = await fetchImpl('ai-key.json', { cache: 'no-store' });
+    if (!response.ok) return (bundledCache = {});
+    const parsed = (await response.json()) as BundledKeys;
+    bundledCache = {
+      openrouter: typeof parsed?.openrouter === 'string' ? parsed.openrouter.trim() : undefined,
+      groq: typeof parsed?.groq === 'string' ? parsed.groq.trim() : undefined,
+      gemini: typeof parsed?.gemini === 'string' ? parsed.gemini.trim() : undefined,
+    };
+    return bundledCache;
+  } catch {
+    return (bundledCache = {});
+  }
+}
+
+/** Solo para tests: olvida lo leído. */
+export function clearBundledCache(): void {
+  bundledCache = null;
+}
+
+/**
+ * Rellena la clave con la de la casa cuando el jugador no ha puesto la suya.
+ *
+ * La clave del jugador SIEMPRE gana: si alguien se ha molestado en escribir la
+ * suya, no se la pisamos. Y la IA solo se enciende sola si el jugador todavía no
+ * había tocado los ajustes; en cuanto los guarda, manda él.
+ */
+export function withBundledKey(
+  settings: AiSettings,
+  bundled: BundledKeys,
+  options: { untouched?: boolean } = {},
+): AiSettings {
+  if (settings.apiKey) return settings;
+  const key = bundled[settings.provider as keyof BundledKeys];
+  if (!key) return settings;
+  return {
+    ...settings,
+    apiKey: key,
+    enabled: options.untouched ? true : settings.enabled,
+  };
+}
+
+/** ¿El jugador ha guardado alguna vez sus ajustes de IA? */
+export function hasStoredAiSettings(storage: Storage | undefined = safeStorage()): boolean {
+  if (!storage) return false;
+  try {
+    return storage.getItem(STORAGE_KEY) !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function loadAiSettings(storage: Storage | undefined = safeStorage()): AiSettings {
   if (!storage) return { ...DEFAULT_AI_SETTINGS };
   try {

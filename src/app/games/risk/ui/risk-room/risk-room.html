@@ -14,6 +14,21 @@
         </span>
       </div>
       <div class="header-actions">
+        <!-- Narrador de la crónica: solo en escenarios y con clave de IA -->
+        <ng-container *ngIf="byChronicle && canNarrate">
+          <button
+            class="btn"
+            type="button"
+            [class.on]="narrator.enabled"
+            (click)="toggleNarrator()"
+            [title]="narrator.enabled ? 'Callar al narrador' : 'Que narre la crónica en voz alta'"
+          >
+            {{ narrator.enabled ? '🔊 Narrando' : '🔈 Narrar' }}
+          </button>
+          <select class="btn voice-pick" *ngIf="narrator.enabled" [(ngModel)]="narrator.voice">
+            <option *ngFor="let voice of narratorVoices" [value]="voice.id">{{ voice.label }}</option>
+          </select>
+        </ng-container>
         <button class="btn" type="button" (click)="copyInvite()">
           {{ copied ? '✓ Copiado' : '🔗 Invitar' }}
         </button>

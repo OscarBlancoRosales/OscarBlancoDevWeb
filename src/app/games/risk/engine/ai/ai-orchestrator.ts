@@ -11,7 +11,8 @@ import {
   threatMap,
   traitsOf,
 } from './bot-brain';
-import { AiSettings, ChatMessage, chat, extractJson } from './ai-client';
+import { AiSettings, ChatMessage, chatWithFallback, extractJson } from './ai-client';
+import { ChronicleContext } from './chronicle';
 
 /**
  * Orquestador de la IA.
@@ -93,6 +94,13 @@ Respondes SIEMPRE con un único objeto JSON, sin texto alrededor, con esta forma
 {"mensaje":"<2 o 3 frases con tu plan, con chispa y sin pasarte de largo>","prioridad":"atacar|consolidar|expandir","objetivos":["ID","ID"],"defender":["ID","ID"]}
 Los IDs son los códigos entre corchetes del resumen del tablero. "objetivos" son territorios enemigos que quieres atacar y "defender" territorios propios que quieres reforzar.
 No inventes IDs que no aparezcan. Máximo 3 en cada lista. El mensaje va dirigido al resto de la mesa.`;
+
+const CHRONICLE_PROMPT = `Eres un corresponsal de guerra que narra la Guerra Civil española de 1936 en español de España.
+Te llega una nota con el movimiento y con lo que pasó de verdad en ese sitio. La reescribes como una crónica breve.
+Respondes SIEMPRE con un único objeto JSON: {"mensaje":"<2 o 3 frases>"}
+Tono sobrio de parte de guerra: hablas de columnas, carreteras, puentes, frentes y abastecimiento.
+No glorificas a ningún bando ni insultas a nadie, no inventas cifras de bajas, y no narras represión ni violencia contra civiles.
+Si la nota dice que la historia se tuerce (ataca el bando que no lo hizo), cuéntalo como lo que es: una campaña que en la guerra real no ocurrió así.`;
 
 const ADVISOR_PROMPT = `Eres el estratega personal de un jugador de RISK. Hablas en español de España, directo y sin rodeos.
 Respondes SIEMPRE con un único objeto JSON: {"mensaje":"<consejo concreto de 2 o 3 frases para este turno>"}
@@ -198,13 +206,51 @@ export async function requestTurnPlan(
   ];
 
   try {
-    const text = await chat(settings, messages, { maxTokens: 320, fetchImpl: options.fetchImpl });
+    const { text } = await chatWithFallback(settings, messages, {
+      maxTokens: 700,
+      fetchImpl: options.fetchImpl,
+    });
     const parsed = extractJson<RawPlan>(text);
     const clean = sanitizePlan(parsed, map, state, playerId);
     if (!clean) return localPlan(state, map, playerId, 'respuesta del modelo no interpretable');
     return { ...clean, source: 'llm' };
   } catch (error) {
     return localPlan(state, map, playerId, (error as Error)?.message ?? 'error del modelo');
+  }
+}
+
+/**
+ * Crónica de guerra escrita por el modelo, con la local como red de seguridad.
+ *
+ * Se le da el episodio histórico ya resuelto (quién ataca, desde dónde, y qué
+ * pasó de verdad ahí) y se le pide que lo cuente. Si no hay modelo, si está
+ * saturado o si contesta algo raro, se usa la línea local, que ya es buena: la
+ * partida nunca se queda sin crónica.
+ */
+export async function requestChronicle(
+  context: ChronicleContext,
+  fallback: string,
+  settings: AiSettings,
+  options: { fetchImpl?: typeof fetch } = {},
+): Promise<{ message: string; source: 'llm' | 'local' }> {
+  if (!settings.enabled) return { message: fallback, source: 'local' };
+
+  const messages: ChatMessage[] = [
+    { role: 'system', content: CHRONICLE_PROMPT },
+    { role: 'user', content: fallback },
+  ];
+
+  try {
+    const { text } = await chatWithFallback(settings, messages, {
+      maxTokens: 600,
+      fetchImpl: options.fetchImpl,
+    });
+    const parsed = extractJson<{ mensaje?: unknown }>(text);
+    const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
+    if (message.length < 20) return { message: fallback, source: 'local' };
+    return { message: message.slice(0, 560), source: 'llm' };
+  } catch {
+    return { message: fallback, source: 'local' };
   }
 }
 
@@ -225,7 +271,10 @@ export async function requestAdvice(
   ];
 
   try {
-    const text = await chat(settings, messages, { maxTokens: 260, fetchImpl: options.fetchImpl });
+    const { text } = await chatWithFallback(settings, messages, {
+      maxTokens: 600,
+      fetchImpl: options.fetchImpl,
+    });
     const parsed = extractJson<{ mensaje?: unknown }>(text);
     const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
     if (!message) return { message: local, source: 'local' };

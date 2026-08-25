@@ -1377,3 +1377,15 @@
 .mission-row.done .mission-detail {
   color: #ffd740;
 }
+
+/* Narrador de la crónica */
+.btn.on {
+  border-color: rgba(206, 147, 216, 0.6);
+  color: #ce93d8;
+  background: rgba(206, 147, 216, 0.1);
+}
+
+.voice-pick {
+  max-width: 13rem;
+  cursor: pointer;
+}

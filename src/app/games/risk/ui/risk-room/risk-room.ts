@@ -39,6 +39,7 @@ import {
 import { conquestOdds, maxAttackDice } from '../../engine/combat';
 import { approachOf, battleRulesFor, TERRAIN_META } from '../../engine/terrain';
 import { hasUnit, infantryOf, UNIT_KINDS, UNIT_META } from '../../engine/units';
+import { NarratorService, TTS_VOICES } from '../../services/narrator';
 import { missionProgress } from '../../engine/missions';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
@@ -115,6 +116,7 @@ export class RiskRoom implements OnInit, OnDestroy {
     private router: Router,
     private rooms: RiskRoomService,
     private game: RiskGameService,
+    public narrator: NarratorService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -156,7 +158,9 @@ export class RiskRoom implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       }),
       this.rooms.chat$.subscribe((chat) => {
+        const previous = this.chat;
         this.chat = chat;
+        this.narrateNewChronicle(previous, chat);
         this.cdr.markForCheck();
       }),
       this.game.state$.subscribe((state) => {
@@ -472,6 +476,38 @@ export class RiskRoom implements OnInit, OnDestroy {
     if (!this.state?.config.advancedTerrain || !this.map || !id) return null;
     const terrain = this.map.territories.find((t) => t.id === id)?.terrain;
     return terrain ? TERRAIN_META[terrain] : null;
+  }
+
+  /**
+   * Narra la última crónica cuando llega una nueva.
+   *
+   * Solo la última: si se encolaran, la voz iría minutos por detrás del tablero
+   * contando una batalla que ya terminó.
+   */
+  private narrateNewChronicle(previous: ChatEntry[], next: ChatEntry[]): void {
+    if (!this.narrator.enabled || next.length === 0) return;
+    if (next.length <= previous.length) return;
+    const latest = next[next.length - 1];
+    if (latest.authorId !== 'chronicle') return;
+    void this.narrator.speak(latest.text, this.aiSettings);
+  }
+
+  toggleNarrator(): void {
+    this.narrator.toggle();
+  }
+
+  /** ¿Esta mesa tiene crónica que narrar? */
+  get byChronicle(): boolean {
+    return !!this.map?.scenario;
+  }
+
+  get narratorVoices() {
+    return TTS_VOICES;
+  }
+
+  /** ¿Se puede narrar? Hace falta clave de OpenRouter. */
+  get canNarrate(): boolean {
+    return this.aiSettings.provider === 'openrouter' && !!this.aiSettings.apiKey;
   }
 
   /** Modo avanzado activo en esta partida. */
