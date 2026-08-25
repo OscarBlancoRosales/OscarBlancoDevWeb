@@ -1389,3 +1389,17 @@
   max-width: 13rem;
   cursor: pointer;
 }
+
+/* Refuerzos: que se vea lo que queda y se pueda deshacer */
+.pill.big.spent {
+  opacity: 0.5;
+}
+
+.btn.undo {
+  border-color: rgba(255, 215, 64, 0.4);
+  color: #ffd740;
+}
+
+.btn.undo:hover {
+  background: rgba(255, 215, 64, 0.1);
+}

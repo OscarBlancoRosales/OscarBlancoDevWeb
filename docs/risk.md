@@ -729,7 +729,26 @@ Se habla de campañas, frentes y unidades: de lo militar. Los episodios de
 represión contra la población civil, que los hubo por los dos lados y son lo más
 serio de aquella guerra, no se convierten aquí en material de juego.
 
-## 9. Victoria por objetivos
+## 9. Reparto inicial y deshacer refuerzos
+
+**El reparto es al azar y compensado.** Los territorios se barajan y se reparten
+en rueda, así que a cada uno le tocan los mismos o uno menos. Cuando no salen
+exactos —42 entre 4 son 11, 11, 10 y 10— pasan dos cosas:
+
+- **Quién se lleva el de más se sortea.** Antes lo cogían siempre los primeros
+  del orden de turno.
+- **Menos tierras, más tropas.** Cada territorio de menos vale un ejército de
+  más, que es lo que cuesta ocupar uno. Antes todos recibían lo mismo y quien
+  tenía una provincia menos salía perdiendo dos veces: menos tablero **y** menos
+  refuerzos cada turno.
+
+**Se puede deshacer lo colocado**, con el botón de deshacer el último o el de
+empezar de cero. Es una acción del motor, no un truco de la interfaz: el log
+**es** la partida, así que deshacer queda registrado como todo lo demás y todos
+los clientes llegan al mismo estado. Solo vale durante tus refuerzos: en cuanto
+pasas a atacar, lo colocado está colocado.
+
+## 10. Victoria por objetivos
 
 Un desplegable en la sala: **conquista total** (lo clásico) o **por objetivos**.
 Con objetivos, cada jugador recibe una meta al empezar y gana quien la cumpla,
@@ -753,7 +772,7 @@ comiera tiradas del mismo flujo que el reparto del tablero, encender los
 objetivos cambiaría la posición inicial y dos mesas con la misma semilla dejarían
 de empezar igual. Hay un test que lo comprueba.
 
-## 10. Tests
+## 11. Tests
 
 ```bash
 npm test                                    # todo

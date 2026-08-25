@@ -195,19 +195,22 @@ export function borderTerritories(
   map: GameMap,
   playerId: PlayerId,
 ): TerritoryId[] {
+  // Un aliado NO es frontera: en un escenario por bandos, la línea con el
+  // compañero es retaguardia. Contarla como frente hacía que los bots
+  // amontonaran refuerzos mirándose entre ellos en vez de al enemigo.
   return territoriesOf(state, playerId).filter((id) =>
-    adjacencyOf(map, id).some((n) => state.territories[n]?.ownerId !== playerId),
+    adjacencyOf(map, id).some((n) => isEnemy(state, playerId, n)),
   );
 }
 
-/** Territorios propios rodeados solo por territorios propios (retaguardia). */
+/** Territorios propios sin ningún enemigo al lado (retaguardia). */
 export function interiorTerritories(
   state: GameState,
   map: GameMap,
   playerId: PlayerId,
 ): TerritoryId[] {
-  return territoriesOf(state, playerId).filter((id) =>
-    adjacencyOf(map, id).every((n) => state.territories[n]?.ownerId === playerId),
+  return territoriesOf(state, playerId).filter(
+    (id) => !adjacencyOf(map, id).some((n) => isEnemy(state, playerId, n)),
   );
 }
 

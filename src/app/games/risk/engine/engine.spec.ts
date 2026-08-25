@@ -15,7 +15,7 @@ import {
 import { GameAction, GameState, RuleError } from './types';
 import { TINY_MAP, applyAll, forceTurn, makeGame, ruleErrorOf, setBoard } from './testing';
 import { WORLD_MAP } from './maps/world.map';
-import { territoriesOf } from './rules';
+import { armiesOf, territoriesOf } from './rules';
 
 /** Deja el turno de `p1` en fase de ataque con un tablero controlado. */
 function attackScenario(overrides: Partial<Record<string, [string | null, number]>> = {}) {
@@ -841,6 +841,238 @@ describe('motor de RISK', () => {
       const state = forceTurn(twoHumans, 'p1', 'attack');
       const next = applyAction(state, { type: 'surrender', playerId: 'p2' }, TINY_MAP);
       expect(playerById(next, 'p2')!.kind).toBe('bot');
+    });
+  });
+
+  describe('deshacer refuerzos', () => {
+    function ready(reserve = 8) {
+      return forceTurn(setBoard(makeGame(), { A1: ['p1', 1], A2: ['p1', 1] }), 'p1', 'reinforce', reserve);
+    }
+
+    it('devuelve a la reserva lo último colocado', () => {
+      let state = ready();
+      state = applyAll(state, [
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 3 },
+        { type: 'deploy', playerId: 'p1', territoryId: 'A2', armies: 2 },
+      ]);
+      expect(state.territories['A2'].armies).toBe(3);
+      expect(playerById(state, 'p1')!.reserve).toBe(3);
+
+      state = applyAction(state, { type: 'undo-deploy', playerId: 'p1' }, TINY_MAP);
+      expect(state.territories['A2'].armies).toBe(1);
+      expect(state.territories['A1'].armies).toBe(4);
+      expect(playerById(state, 'p1')!.reserve).toBe(5);
+    });
+
+    it('puede devolverlo todo de una vez', () => {
+      let state = ready();
+      state = applyAll(state, [
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 3 },
+        { type: 'deploy', playerId: 'p1', territoryId: 'A2', armies: 2 },
+      ]);
+      state = applyAction(state, { type: 'undo-deploy', playerId: 'p1', all: true }, TINY_MAP);
+      expect(state.territories['A1'].armies).toBe(1);
+      expect(state.territories['A2'].armies).toBe(1);
+      expect(playerById(state, 'p1')!.reserve).toBe(8);
+    });
+
+    it('deshacer varias veces vacía la pila', () => {
+      let state = ready();
+      state = applyAll(state, [
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 1 },
+        { type: 'deploy', playerId: 'p1', territoryId: 'A2', armies: 1 },
+      ]);
+      state = applyAction(state, { type: 'undo-deploy', playerId: 'p1' }, TINY_MAP);
+      state = applyAction(state, { type: 'undo-deploy', playerId: 'p1' }, TINY_MAP);
+      expect(playerById(state, 'p1')!.reserve).toBe(8);
+      expect(ruleErrorOf(state, { type: 'undo-deploy', playerId: 'p1' })).toBe('nothing-to-undo');
+    });
+
+    it('sin nada colocado no hay nada que deshacer', () => {
+      expect(ruleErrorOf(ready(), { type: 'undo-deploy', playerId: 'p1' })).toBe('nothing-to-undo');
+    });
+
+    it('solo durante los refuerzos: al atacar ya está colocado', () => {
+      let state = ready(2);
+      state = applyAction(
+        state,
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 2 },
+        TINY_MAP,
+      );
+      state = applyAction(state, { type: 'end-phase', playerId: 'p1' }, TINY_MAP);
+      expect(state.phase).toBe('attack');
+      expect(ruleErrorOf(state, { type: 'undo-deploy', playerId: 'p1' })).toBe('wrong-phase');
+    });
+
+    it('no se puede deshacer lo del turno anterior', () => {
+      let state = ready(2);
+      state = applyAll(state, [
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 2 },
+        { type: 'end-phase', playerId: 'p1' },
+        { type: 'end-phase', playerId: 'p1' },
+      ]);
+      // Ya juega otro; cuando vuelva, su pila estará vacía.
+      const back = forceTurn(state, 'p1', 'reinforce', 3);
+      expect(ruleErrorOf(back, { type: 'undo-deploy', playerId: 'p1' })).toBe('nothing-to-undo');
+    });
+
+    it('aparece en el menú solo cuando hay algo que deshacer', () => {
+      let state = ready();
+      expect(legalActionTypes(state, 'p1')).not.toContain('undo-deploy');
+      state = applyAction(
+        state,
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 1 },
+        TINY_MAP,
+      );
+      expect(legalActionTypes(state, 'p1')).toContain('undo-deploy');
+    });
+
+    it('lo cuenta en los eventos', () => {
+      let state = ready();
+      state = applyAll(state, [
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 3 },
+        { type: 'undo-deploy', playerId: 'p1' },
+      ]);
+      expect(state.events.some((e) => e.text.includes('recupera'))).toBe(true);
+    });
+
+    it('no deja al territorio con menos ejércitos que tropas especializadas', () => {
+      let state = ready();
+      state = applyAction(
+        state,
+        { type: 'deploy', playerId: 'p1', territoryId: 'A1', armies: 3 },
+        TINY_MAP,
+      );
+      state.territories['A1'].units = { blindado: 3 };
+      state = applyAction(state, { type: 'undo-deploy', playerId: 'p1' }, TINY_MAP);
+      const territory = state.territories['A1'];
+      const specialists = Object.values(territory.units ?? {}).reduce((a, b) => a + b, 0);
+      expect(specialists).toBeLessThanOrEqual(territory.armies);
+    });
+  });
+
+  describe('reparto automático: al azar, pero justo', () => {
+    function table(seed: number, players = 4, map = WORLD_MAP) {
+      const state = createGame({
+        map,
+        seed,
+        players: Array.from({ length: players }, (_, i) => ({
+          id: `p${i}`,
+          name: `J${i}`,
+          kind: 'bot' as const,
+        })),
+      });
+      return state.turnOrder.map((id) => ({
+        id,
+        territories: territoriesOf(state, id).length,
+        armies: armiesOf(state, id),
+      }));
+    }
+
+    it('nadie se queda sin nada y se reparte el mapa entero', () => {
+      const state = createGame({
+        map: WORLD_MAP,
+        seed: 5,
+        players: Array.from({ length: 4 }, (_, i) => ({
+          id: `p${i}`,
+          name: `J${i}`,
+          kind: 'bot' as const,
+        })),
+      });
+      const sinDueño = Object.values(state.territories).filter((t) => !t.ownerId);
+      expect(sinDueño).toHaveLength(0);
+      for (const player of state.players) {
+        expect(territoriesOf(state, player.id).length).toBeGreaterThan(0);
+      }
+    });
+
+    it('los territorios se reparten lo más iguales posible', () => {
+      for (let seed = 1; seed <= 30; seed++) {
+        const counts = table(seed).map((row) => row.territories);
+        expect(Math.max(...counts) - Math.min(...counts), `semilla ${seed}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('quien tiene un territorio menos recibe un ejército más', () => {
+      // Es la compensación que pedía el equilibrio: menos tierras, más tropas.
+      for (let seed = 1; seed <= 30; seed++) {
+        const rows = table(seed);
+        const most = Math.max(...rows.map((r) => r.territories));
+        const base = rows.find((r) => r.territories === most)!.armies;
+        for (const row of rows) {
+          expect(row.armies, `semilla ${seed}, ${row.id}`).toBe(base + (most - row.territories));
+        }
+      }
+    });
+
+    it('territorios más ejércitos suman lo mismo para todos', () => {
+      // Otra forma de decir lo mismo, y la que se nota jugando: nadie empieza
+      // con más fuerza total que otro.
+      for (let seed = 1; seed <= 30; seed++) {
+        const totals = table(seed).map((r) => r.armies + (r.territories === 0 ? 0 : 0));
+        const compensated = table(seed).map((r) => r.armies - r.territories);
+        expect(new Set(totals).size, `semilla ${seed} (ejércitos)`).toBeLessThanOrEqual(2);
+        expect(new Set(compensated).size, `semilla ${seed} (netos)`).toBeLessThanOrEqual(2);
+      }
+    });
+
+    it('cuando el reparto es exacto nadie necesita compensación', () => {
+      // 42 territorios entre 6 salen a 7 justos.
+      const rows = table(9, 6);
+      expect(new Set(rows.map((r) => r.territories)).size).toBe(1);
+      expect(new Set(rows.map((r) => r.armies)).size).toBe(1);
+    });
+
+    it('el territorio de más no cae siempre en el mismo sitio del orden', () => {
+      // Sin desplazamiento aleatorio, siempre lo cogían los primeros en jugar.
+      const positions = new Set<number>();
+      for (let seed = 1; seed <= 40; seed++) {
+        const rows = table(seed);
+        const most = Math.max(...rows.map((r) => r.territories));
+        rows.forEach((row, index) => {
+          if (row.territories === most) positions.add(index);
+        });
+      }
+      expect(positions.size).toBeGreaterThan(2);
+    });
+
+    it('el reparto cambia con la semilla', () => {
+      const a = createGame({
+        map: WORLD_MAP,
+        seed: 1,
+        players: [
+          { id: 'p0', name: 'A', kind: 'bot' as const },
+          { id: 'p1', name: 'B', kind: 'bot' as const },
+        ],
+      });
+      const b = createGame({
+        map: WORLD_MAP,
+        seed: 2,
+        players: [
+          { id: 'p0', name: 'A', kind: 'bot' as const },
+          { id: 'p1', name: 'B', kind: 'bot' as const },
+        ],
+      });
+      expect(territoriesOf(a, 'p0')).not.toEqual(territoriesOf(b, 'p0'));
+    });
+
+    it('con la misma semilla sale exactamente el mismo reparto', () => {
+      expect(table(77)).toEqual(table(77));
+    });
+
+    it('lo cuenta en los eventos', () => {
+      const state = createGame({
+        map: WORLD_MAP,
+        seed: 3,
+        players: Array.from({ length: 4 }, (_, i) => ({
+          id: `p${i}`,
+          name: `J${i}`,
+          kind: 'bot' as const,
+        })),
+      });
+      const text = state.events.map((e) => e.text).join(' ');
+      expect(text).toContain('al azar');
+      expect(text).toContain('compensad');
     });
   });
 

@@ -287,10 +287,20 @@
 
               <!-- Refuerzos -->
               <div class="action-block" *ngIf="state.phase === 'reinforce'">
-                <span class="pill big">{{ me?.reserve }} refuerzos</span>
+                <!--
+                  El contador es lo primero y lo más grande: antes se confundía
+                  con la cantidad del deslizador y parecía que siempre quedaba 1.
+                -->
+                <span class="pill big" [class.spent]="(me?.reserve ?? 0) === 0">
+                  Te quedan {{ me?.reserve }}
+                </span>
                 <span class="muted small">{{ reinforcementDetail }}</span>
+                <span class="muted small" *ngIf="placedCount > 0">
+                  Colocados este turno: {{ placedTotal }} en {{ placedCount }}
+                  {{ placedCount === 1 ? 'territorio' : 'territorios' }}
+                </span>
 
-                <ng-container *ngIf="selectedFrom">
+                <ng-container *ngIf="selectedFrom && (me?.reserve ?? 0) > 0">
                   <span class="action-label">→ {{ territoryName(selectedFrom) }}</span>
                   <input
                     class="slider"
@@ -299,9 +309,18 @@
                     [max]="me?.reserve || 1"
                     [(ngModel)]="deployAmount"
                   />
-                  <span class="amount">{{ deployAmount }}</span>
+                  <span class="amount">{{ deployAmount }} de {{ me?.reserve }}</span>
                   <button class="btn go" type="button" (click)="deploy()">Colocar</button>
                   <button class="btn" type="button" (click)="deploy(true)">Colocar todo</button>
+                </ng-container>
+
+                <ng-container *ngIf="placedCount > 0">
+                  <button class="btn undo" type="button" (click)="undoDeploy()" title="Devolver a la reserva lo último que has colocado">
+                    ↶ Deshacer
+                  </button>
+                  <button class="btn undo" type="button" (click)="undoDeploy(true)" title="Devolver a la reserva todo lo colocado este turno">
+                    ↺ Empezar de cero
+                  </button>
                 </ng-container>
                 <span class="muted" *ngIf="!selectedFrom">Pulsa uno de tus territorios en el mapa.</span>
 

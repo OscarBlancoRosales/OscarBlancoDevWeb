@@ -15,6 +15,7 @@ import {
   areConnected,
   attackTargets,
   borderTerritories,
+  isEnemy,
   interiorTerritories,
   territoriesOf,
 } from '../rules';
@@ -162,9 +163,7 @@ export function threatMap(
 ): TerritoryThreat[] {
   return borderTerritories(state, map, playerId)
     .map((id) => {
-      const enemies = adjacencyOf(map, id).filter(
-        (other) => state.territories[other]?.ownerId !== playerId,
-      );
+      const enemies = adjacencyOf(map, id).filter((other) => isEnemy(state, playerId, other));
       const armies = state.territories[id].armies;
       const enemyArmies = enemies.reduce(
         (sum, other) => sum + (state.territories[other]?.armies ?? 0),
@@ -374,7 +373,7 @@ export function rankedAttacks(
 
       // Penaliza dejar desguarnecido un frente caliente.
       const otherEnemies = adjacencyOf(map, from).filter(
-        (other) => other !== to && state.territories[other]?.ownerId !== playerId,
+        (other) => other !== to && isEnemy(state, playerId, other),
       );
       if (otherEnemies.length >= 2) {
         score -= 0.08 * otherEnemies.length;
@@ -468,9 +467,7 @@ function troopValue(
   unit: UnitKind,
 ): number {
   const territory = state.territories[id];
-  const enemies = adjacencyOf(map, id).filter(
-    (other) => state.territories[other]?.ownerId !== playerId,
-  );
+  const enemies = adjacencyOf(map, id).filter((other) => isEnemy(state, playerId, other));
 
   switch (unit) {
     case 'blindado': {
@@ -503,7 +500,7 @@ function troopValue(
         if (!state.config.advancedTerrain || isOpen(terrainOf(map, neighbour))) openTargets++;
         for (const second of adjacencyOf(map, neighbour)) {
           if (second === id || direct.has(second)) continue;
-          if (state.territories[second]?.ownerId !== playerId) reachable++;
+          if (isEnemy(state, playerId, second)) reachable++;
         }
       }
       if (reachable === 0 || territory.armies < 5) return 0;
@@ -660,6 +657,22 @@ export function occupyAmount(
   return Math.max(minArmies, Math.min(available, Math.max(1, desired)));
 }
 
+/**
+ * A partir de aquí un ataque es cosa hecha y no debe gastar cupo.
+ *
+ * No es una cifra caprichosa: por debajo de nueve de cada diez, atacar todavía
+ * cuesta ejércitos y el cupo tiene sentido.
+ */
+const FREE_ATTACK_ODDS = 0.9;
+
+/**
+ * Tope duro, para que un turno siempre acabe.
+ *
+ * Aunque los ataques sean gratis, un bot no puede quedarse dando vueltas: sin
+ * este techo, un frente muy favorable podría alargar un turno indefinidamente.
+ */
+const HARD_ATTACK_CAP = 60;
+
 /** Cuántos ataques lleva el jugador en el turno actual. */
 export function attacksThisTurn(state: GameState, playerId: PlayerId): number {
   let count = 0;
@@ -729,11 +742,22 @@ export function decideAction(
         armies: occupyAmount(state, map, from, to, playerId, minArmies),
       };
     }
-    if (attacksThisTurn(state, playerId) >= traits.maxAttacksPerTurn) {
+    const attacksSoFar = attacksThisTurn(state, playerId);
+    if (attacksSoFar >= HARD_ATTACK_CAP) {
       return { type: 'end-phase', playerId };
     }
     const options = rankedAttacks(state, map, playerId, profile, bias);
     const best = options[0];
+    // El cupo de ataques existe para que un bot no se desangre en ataques
+    // regulares, no para frenarle cuando tiene la partida ganada en ese frente.
+    // Sin esta excepción se veía un empate perpetuo: medido en el mundo a dos
+    // jugadores, el tablero se congelaba en 27 contra 15 con más de dos mil
+    // ejércitos por bando y el mejor ataque disponible a probabilidad 1,000; se
+    // conquistaba y se reconquistaba lo mismo cada turno hasta la ronda 1192.
+    const overwhelming = (best?.odds ?? 0) >= FREE_ATTACK_ODDS;
+    if (attacksSoFar >= traits.maxAttacksPerTurn && !overwhelming) {
+      return { type: 'end-phase', playerId };
+    }
     const threshold = effectiveAttackThreshold(traits, state.round, bias);
     if (best && best.odds >= threshold) {
       return { type: 'attack', playerId, from: best.from, to: best.to, dice: best.dice };

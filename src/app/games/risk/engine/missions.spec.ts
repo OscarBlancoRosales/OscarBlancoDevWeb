@@ -129,7 +129,15 @@ describe('victoria por objetivos', () => {
     it('la guarnición mínima cuenta', () => {
       let state = objectivesGame();
       state.missions = { p1: { kind: 'territories', count: 3, minArmies: 2, text: 'Controla 3' } };
-      state = setBoard(state, { A1: ['p1', 2], A2: ['p1', 2], A3: ['p1', 1] });
+      // El tablero entero, para no depender de cómo cayera el reparto inicial.
+      state = setBoard(state, {
+        A1: ['p1', 2],
+        A2: ['p1', 2],
+        A3: ['p1', 1],
+        B1: ['p2', 1],
+        B2: ['p2', 1],
+        B3: ['p3', 1],
+      });
       expect(isMissionComplete(state, TINY_MAP, 'p1')).toBe(false);
       state = setBoard(state, { A3: ['p1', 2] });
       expect(isMissionComplete(state, TINY_MAP, 'p1')).toBe(true);

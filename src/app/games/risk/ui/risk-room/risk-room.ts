@@ -427,6 +427,12 @@ export class RiskRoom implements OnInit, OnDestroy {
     }
     if (this.selectedFrom && !this.state.territories[this.selectedFrom]) this.selectedFrom = null;
     if (this.selectedTo && !this.state.territories[this.selectedTo]) this.selectedTo = null;
+    // Tras colocar (o deshacer) la reserva cambia: el deslizador tiene que
+    // seguirla o se queda enseñando una cantidad que ya no se puede poner.
+    if (this.state.phase === 'reinforce') {
+      const reserve = this.me?.reserve ?? 0;
+      this.deployAmount = Math.max(1, Math.min(this.deployAmount, reserve || 1));
+    }
     if (this.state.pendingOccupation) {
       const pending = this.state.pendingOccupation;
       const max = Math.max(1, this.state.territories[pending.from].armies - 1);
@@ -619,6 +625,21 @@ export class RiskRoom implements OnInit, OnDestroy {
     } catch (error) {
       this.errorMessage = (error as Error).message;
     }
+  }
+
+  /** Cuántas colocaciones se pueden deshacer. */
+  get placedCount(): number {
+    return this.state?.placedThisTurn?.length ?? 0;
+  }
+
+  /** Cuántos ejércitos suman esas colocaciones. */
+  get placedTotal(): number {
+    return (this.state?.placedThisTurn ?? []).reduce((sum, entry) => sum + entry.armies, 0);
+  }
+
+  async undoDeploy(all = false): Promise<void> {
+    if (this.placedCount === 0) return;
+    await this.send({ type: 'undo-deploy', playerId: this.seatId, all });
   }
 
   async deploy(all = false): Promise<void> {

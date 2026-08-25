@@ -261,14 +261,30 @@ function autoDistribute(
     rng,
   );
 
+  // Los territorios se reparten en rueda sobre la baraja, así que a cada uno le
+  // tocan los mismos (o uno menos) y siempre distintos. El desplazamiento
+  // inicial decide QUIÉN se lleva el de más cuando no hay reparto exacto: sin
+  // él siempre serían los primeros del orden de turno.
+  const offset = rng.int(0, order.length - 1);
   shuffled.forEach((territoryId, index) => {
-    const ownerId = order[index % order.length];
+    const ownerId = order[(index + offset) % order.length];
     state.territories[territoryId] = { ownerId, armies: 1 };
   });
 
+  // Compensación: menos tierras, más tropas.
+  //
+  // 42 territorios entre 4 no salen exactos, así que dos empiezan con once y dos
+  // con diez. Antes todos recibían los mismos ejércitos, y el que tenía una
+  // provincia menos salía perdiendo dos veces: menos tablero Y menos refuerzos
+  // por territorio cada turno. Ahora cada territorio de menos vale un ejército
+  // de más, que es lo que cuesta ocupar uno.
+  const counts = new Map(order.map((id) => [id, territoriesOf(state, id).length]));
+  const most = Math.max(...counts.values());
+
   for (const playerId of order) {
     const owned = territoriesOf(state, playerId);
-    let remaining = startingArmies - owned.length;
+    const compensation = most - (counts.get(playerId) ?? most);
+    let remaining = startingArmies + compensation - owned.length;
     // Reparto pseudoaleatorio pero equilibrado: rueda con desplazamiento.
     let cursor = rng.int(0, Math.max(0, owned.length - 1));
     while (remaining > 0 && owned.length > 0) {
@@ -278,10 +294,17 @@ function autoDistribute(
     }
   }
 
+  const compensated = order.filter((id) => (counts.get(id) ?? 0) < most).length;
   pushEvent(state, {
     type: 'deploy',
     playerId: null,
-    text: `Territorios repartidos: ${startingArmies} ejércitos por jugador.`,
+    text:
+      `Territorios repartidos al azar: ${startingArmies} ejércitos por jugador` +
+      (compensated > 0
+        ? `, y un ejército de más por cada territorio de menos (${compensated} ${
+            compensated === 1 ? 'jugador compensado' : 'jugadores compensados'
+          }).`
+        : '.'),
   });
 }
 
@@ -293,6 +316,7 @@ function beginTurn(state: GameState, map: GameMap, first = false): void {
   player.conqueredThisTurn = false;
   state.fortifiedThisTurn = false;
   state.fortifyCount = 0;
+  state.placedThisTurn = [];
   state.pendingOccupation = null;
   state.phase = 'reinforce';
   player.reserve = reinforcementsFor(state, map, player.id);
@@ -450,6 +474,9 @@ export function applyAction(state: GameState, action: GameAction, map: GameMap):
     case 'upgrade':
       applyUpgrade(next, action.playerId, action.territoryId, action.unit, map);
       break;
+    case 'undo-deploy':
+      applyUndoDeploy(next, action.playerId, action.all ?? false, map);
+      break;
     default: {
       const exhaustive: never = action;
       throw new RuleError('unknown-action', `Acción desconocida: ${JSON.stringify(exhaustive)}`);
@@ -549,6 +576,7 @@ function applyDeploy(
 
   territory.armies += armies;
   player.reserve -= armies;
+  state.placedThisTurn = [...(state.placedThisTurn ?? []), { territoryId, armies }];
 
   pushEvent(state, {
     type: 'reinforce',
@@ -793,6 +821,46 @@ function applyFortify(
   if (fortifiesDone(state) >= fortifyLimit(state, playerId)) endTurn(state, map);
 }
 
+/**
+ * Devuelve a la reserva lo colocado en este turno.
+ *
+ * Solo lo de ESTE turno y solo durante la fase de refuerzos: no es una máquina
+ * del tiempo, es el botón de "me he equivocado" antes de dar por buenos los
+ * refuerzos. En cuanto se pasa a atacar, lo colocado ya está colocado.
+ */
+function applyUndoDeploy(state: GameState, playerId: PlayerId, all: boolean, map: GameMap): void {
+  const player = requireTurn(state, playerId);
+  if (state.phase !== 'reinforce') {
+    throw new RuleError('wrong-phase', 'Solo puedes deshacer durante los refuerzos');
+  }
+  const placed = state.placedThisTurn ?? [];
+  if (placed.length === 0) {
+    throw new RuleError('nothing-to-undo', 'No has colocado nada todavía');
+  }
+
+  const undone = all ? placed.slice() : [placed[placed.length - 1]];
+  let total = 0;
+  for (const entry of undone) {
+    const territory = state.territories[entry.territoryId];
+    if (!territory) continue;
+    territory.armies -= entry.armies;
+    trimUnits(territory);
+    player.reserve += entry.armies;
+    total += entry.armies;
+  }
+  state.placedThisTurn = all ? [] : placed.slice(0, -1);
+
+  const where = all
+    ? 'sus refuerzos'
+    : `los ${undone[0].armies} de ${map.territories.find((t) => t.id === undone[0].territoryId)?.name}`;
+  pushEvent(state, {
+    type: 'reinforce',
+    playerId,
+    text: `${player.name} recupera ${where} (${total} a la reserva).`,
+    data: { undone: undone.length, armies: total },
+  });
+}
+
 // ===== TROPAS ESPECIALIZADAS =====
 
 /** Reagrupaciones ya hechas este turno. */
@@ -880,6 +948,8 @@ function applyEndPhase(state: GameState, playerId: PlayerId, map: GameMap): void
     if (player.reserve > 0) {
       throw new RuleError('reserve-pending', `Aún te quedan ${player.reserve} ejércitos por colocar`);
     }
+    // Al pasar a atacar, lo colocado queda colocado: ya no hay vuelta atrás.
+    state.placedThisTurn = [];
     state.phase = 'attack';
     pushEvent(state, { type: 'phase', playerId, text: `${player.name} pasa al ataque.` });
     return;
@@ -995,6 +1065,7 @@ export function legalActionTypes(state: GameState, playerId: PlayerId): GameActi
       return ['claim'];
     case 'reinforce': {
       const types: GameAction['type'][] = ['deploy', 'surrender'];
+      if ((state.placedThisTurn ?? []).length > 0) types.push('undo-deploy');
       if (player.cards.length >= 3) types.push('trade');
       if (state.config.advancedUnits && canUpgradeSomething(state, playerId)) types.push('upgrade');
       if (player.reserve === 0) types.push('end-phase');

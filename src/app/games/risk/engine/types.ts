@@ -209,6 +209,13 @@ export interface GameState {
   round: number;
   /** Territorio desde el que se conquistó, para el movimiento obligatorio posterior. */
   pendingOccupation: { from: TerritoryId; to: TerritoryId; minArmies: number } | null;
+  /**
+   * Refuerzos colocados en este turno, en orden.
+   *
+   * Solo existe durante la fase de refuerzos del turno en curso, para poder
+   * deshacer: colocar es fácil de hacer mal y hasta ahora no había vuelta atrás.
+   */
+  placedThisTurn?: Array<{ territoryId: TerritoryId; armies: number }>;
   /** El jugador ya ha fortificado este turno. */
   fortifiedThisTurn: boolean;
   /**
@@ -383,6 +390,19 @@ export interface UpgradeAction extends BaseAction {
   unit: UnitKind;
 }
 
+/**
+ * Devuelve a la reserva los refuerzos colocados en este turno.
+ *
+ * Es una acción de verdad, no un botón de la interfaz: el log ES la partida, así
+ * que deshacer tiene que quedar registrado como todo lo demás para que todos los
+ * clientes lleguen al mismo estado.
+ */
+export interface UndoDeployAction extends BaseAction {
+  type: 'undo-deploy';
+  /** Si es cierto, devuelve todo lo colocado; si no, solo lo último. */
+  all?: boolean;
+}
+
 export type GameAction =
   | ClaimAction
   | DeployAction
@@ -392,7 +412,8 @@ export type GameAction =
   | FortifyAction
   | EndPhaseAction
   | SurrenderAction
-  | UpgradeAction;
+  | UpgradeAction
+  | UndoDeployAction;
 
 /** Entrada del log persistido en Firebase. */
 export interface LoggedAction {

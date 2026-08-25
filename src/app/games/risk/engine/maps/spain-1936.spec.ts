@@ -7,8 +7,15 @@ import {
 } from './spain-1936.map';
 import { SPAIN_MAP } from './spain.map';
 import { applyAction, createGame, currentPlayer, DEFAULT_CONFIG } from '../engine';
-import { areAllies, canAttack, isEnemy, territoriesOf } from '../rules';
-import { decideAction, BOT_PROFILE_IDS } from '../ai/bot-brain';
+import {
+  areAllies,
+  borderTerritories,
+  canAttack,
+  interiorTerritories,
+  isEnemy,
+  territoriesOf,
+} from '../rules';
+import { decideAction, BOT_PROFILE_IDS, threatMap } from '../ai/bot-brain';
 import { chronicleFor, CHRONICLE_EVENTS, hasChronicle } from '../ai/chronicle';
 import { createRng } from '../rng';
 import { GameState } from '../types';
@@ -270,6 +277,60 @@ describe('España 1936', () => {
       // Y el que gana pertenece a un bando, no está solo.
       const winner = state.players.find((p) => p.id === state.winnerId)!;
       expect(winner.side).toBeTruthy();
+    }, 60000);
+  });
+
+  describe('los aliados no son frontera', () => {
+    it('un territorio que solo toca al aliado es retaguardia, no frente', () => {
+      const state = scenarioGame(4);
+      const [a, b] = state.players.filter((p) => p.side === 'republica');
+      const border = borderTerritories(state, SPAIN_1936_MAP, a.id);
+      const interior = interiorTerritories(state, SPAIN_1936_MAP, a.id);
+
+      // Ninguno de los que cuentan como frontera toca solo a aliados.
+      for (const id of border) {
+        const neighbours = SPAIN_1936_MAP.territories.find((t) => t.id === id)!.adjacent;
+        expect(neighbours.some((n) => isEnemy(state, a.id, n)), id).toBe(true);
+      }
+      // Y frontera e interior no se solapan ni dejan huecos.
+      expect(new Set([...border, ...interior]).size).toBe(
+        territoriesOf(state, a.id).length,
+      );
+      expect(border.some((id) => interior.includes(id))).toBe(false);
+      expect(b.side).toBe(a.side);
+    });
+
+    it('la presión del mapa de amenazas solo cuenta enemigos', () => {
+      const state = scenarioGame(4);
+      const republicano = state.players.find((p) => p.side === 'republica')!;
+      for (const threat of threatMap(state, SPAIN_1936_MAP, republicano.id)) {
+        const neighbours = SPAIN_1936_MAP.territories.find((t) => t.id === threat.id)!.adjacent;
+        const enemyArmies = neighbours
+          .filter((n) => isEnemy(state, republicano.id, n))
+          .reduce((sum, n) => sum + state.territories[n].armies, 0);
+        expect(threat.enemyArmies, threat.id).toBe(enemyArmies);
+      }
+    });
+
+    it('una partida de bots a cuatro no se enquista', () => {
+      // Antes de tratar bien a los aliados, 13 de cada 20 partidas de 2 contra 2
+      // se quedaban sin terminar: los bots amontonaban refuerzos mirándose entre
+      // ellos en vez de al enemigo.
+      let sinTerminar = 0;
+      for (const seed of [1000, 1137, 1274, 1411, 1548]) {
+        let state = scenarioGame(4, seed);
+        let actions = 0;
+        while (state.phase !== 'game-over' && actions < 20000) {
+          const player = currentPlayer(state);
+          if (!player) break;
+          const action = decideAction(state, SPAIN_1936_MAP, player.id);
+          if (!action) break;
+          state = applyAction(state, action, SPAIN_1936_MAP);
+          actions++;
+        }
+        if (state.phase !== 'game-over') sinTerminar++;
+      }
+      expect(sinTerminar).toBe(0);
     }, 60000);
   });
 
