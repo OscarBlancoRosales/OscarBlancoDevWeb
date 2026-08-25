@@ -47,3 +47,6 @@ Thumbs.db
 .env
 .env.local
 .env.production
+
+# Cartografía descargada y artefactos de las herramientas de mapas
+.cache/

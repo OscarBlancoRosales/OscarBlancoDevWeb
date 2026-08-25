@@ -1,0 +1,158 @@
+<div class="board-wrapper">
+  <svg
+    #svg
+    class="board"
+    *ngIf="rendered"
+    [attr.viewBox]="rendered.viewBox"
+    preserveAspectRatio="xMidYMid meet"
+    (wheel)="onWheel($event)"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp()"
+    (pointerleave)="onPointerUp(); onTerritoryLeave()"
+    (touchstart)="onTouchStart($event)"
+    (touchmove)="onTouchMove($event)"
+    (touchend)="onTouchEnd()"
+  >
+    <defs>
+      <!-- Fondo: rejilla tenue tipo carta náutica -->
+      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0,255,140,0.05)" stroke-width="1" />
+      </pattern>
+
+      <radialGradient id="vignette" cx="50%" cy="50%" r="75%">
+        <stop offset="60%" stop-color="rgba(0,0,0,0)" />
+        <stop offset="100%" stop-color="rgba(0,0,0,0.55)" />
+      </radialGradient>
+
+      <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+        <feGaussianBlur stdDeviation="4" result="blur" />
+        <feMerge>
+          <feMergeNode in="blur" />
+          <feMergeNode in="SourceGraphic" />
+        </feMerge>
+      </filter>
+
+      <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
+        <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.55" />
+      </filter>
+
+    </defs>
+
+    <rect class="sea" x="-4000" y="-4000" width="8000" height="8000" />
+    <rect class="sea-grid" x="-4000" y="-4000" width="8000" height="8000" fill="url(#grid)" />
+
+    <g [attr.transform]="transform">
+      <!-- Rutas marítimas -->
+      <g class="routes">
+        <path
+          *ngFor="let route of rendered.routes; trackBy: trackRoute"
+          class="route"
+          [attr.d]="route.path"
+        />
+      </g>
+
+      <!-- Territorios -->
+      <g class="territories">
+        <g
+          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          class="territory"
+          [ngClass]="classesFor(territory)"
+          (click)="onTerritoryClick(territory.id, $event)"
+          (mouseenter)="onTerritoryEnter(territory.id)"
+          (mouseleave)="onTerritoryLeave()"
+        >
+          <path class="territory-fill" [attr.d]="territory.path" [attr.fill]="ownerColorOf(territory.id)" />
+          <path
+            class="territory-continent"
+            [attr.d]="territory.path"
+            [attr.stroke]="territory.continentColor"
+          />
+          <path class="territory-outline" [attr.d]="territory.path" />
+        </g>
+      </g>
+
+      <!-- Fichas de ejércitos -->
+      <g class="armies">
+        <g
+          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          class="army-badge"
+          [class.mine]="isMine(territory.id)"
+          [class.spotlight]="spotlight === territory.id"
+          [attr.transform]="'translate(' + territory.label.x + ' ' + territory.label.y + ')'"
+          (click)="onTerritoryClick(territory.id, $event)"
+          (mouseenter)="onTerritoryEnter(territory.id)"
+          (mouseleave)="onTerritoryLeave()"
+        >
+          <circle class="badge-ring" r="11" [attr.fill]="ownerColorOf(territory.id)" />
+          <text class="badge-text" y="4">{{ armiesOf(territory.id) }}</text>
+          <!--
+            Orografía: un glifo, no una trama sobre la silueta. Rellenar 42
+            contornos de país con un patrón SVG deja el navegador clavado varios
+            segundos, y a poco zoom la textura no se distingue. El glifo se lee
+            siempre y no cuesta nada.
+          -->
+          <text
+            class="badge-terrain"
+            *ngIf="terrainGlyphOf(territory) as glyph"
+            x="13"
+            y="-6"
+            [attr.fill]="terrainTintOf(territory)"
+          >
+            {{ glyph }}
+          </text>
+          <!--
+            Tropas especializadas: un glifo por ficha, en fila sobre la ficha de
+            ejércitos. El índice se calcula al cambiar el estado, no aquí.
+          -->
+          <g class="badge-units">
+            <text
+              *ngFor="let unit of unitsOf(territory.id); let i = index; trackBy: trackUnit"
+              class="badge-unit"
+              [attr.x]="unitOffsetX(i, unitsOf(territory.id).length)"
+              y="-13"
+              [attr.fill]="unit.color"
+            >
+              {{ unit.glyph }}
+            </text>
+          </g>
+          <text class="badge-name" *ngIf="showNames">
+            <tspan
+              *ngFor="let line of territory.nameLines; let i = index"
+              x="0"
+              [attr.y]="22 + i * 9"
+            >
+              {{ line }}
+            </tspan>
+          </text>
+        </g>
+      </g>
+    </g>
+
+    <rect class="vignette" x="-4000" y="-4000" width="8000" height="8000" fill="url(#vignette)" />
+  </svg>
+
+  <!-- Controles de vista -->
+  <div class="board-controls">
+    <button type="button" (click)="zoomIn()" title="Acercar">+</button>
+    <button type="button" (click)="zoomOut()" title="Alejar">−</button>
+    <button type="button" (click)="resetView()" title="Centrar">⌂</button>
+  </div>
+
+  <!-- Cartel flotante del territorio bajo el cursor -->
+  <div class="board-tooltip" *ngIf="tooltip as info">
+    <span class="tip-name">{{ info.name }}</span>
+    <span class="tip-owner" [style.color]="info.color">{{ info.owner }}</span>
+    <span class="tip-armies">{{ info.armies }} ejércitos</span>
+    <span class="tip-terrain" *ngIf="info.terrain as terrain">
+      <span class="tip-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
+      {{ terrain.name }} · {{ terrain.effect }}
+    </span>
+    <span class="tip-approach" *ngIf="info.approach === 'desembarco'">
+      Desembarco: cruzando el mar solo tiras 2 dados.
+    </span>
+    <span class="tip-odds" *ngIf="info.odds !== null">
+      Conquista: {{ (info.odds * 100) | number: '1.0-0' }} %
+    </span>
+  </div>
+</div>

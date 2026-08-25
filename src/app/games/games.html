@@ -1,0 +1,54 @@
+<app-terminal-layout title="Juegos">
+  <div class="games-container">
+    <header class="games-header">
+      <div class="header-text">
+        <h1><span class="prompt">&gt;</span> Juegos</h1>
+        <p class="subtitle">
+          Mesa de juegos en tiempo real. Crea sala, invita con un enlace y a jugar.
+        </p>
+      </div>
+      <div class="header-badge">
+        <span class="dot"></span>
+        multijugador en directo
+      </div>
+    </header>
+
+    <div class="games-grid">
+      <article
+        class="game-card"
+        *ngFor="let game of games"
+        [class.ready]="game.status === 'listo'"
+        [class.wip]="game.status === 'en-obras'"
+        (click)="open(game)"
+      >
+        <div class="card-glow"></div>
+
+        <div class="card-top">
+          <span class="game-icon">{{ game.icon }}</span>
+          <span class="game-status" [class.on]="game.status === 'listo'">
+            {{ game.status === 'listo' ? 'JUGABLE' : 'EN OBRAS' }}
+          </span>
+        </div>
+
+        <h2 class="game-name">{{ game.name }}</h2>
+        <p class="game-tagline">{{ game.tagline }}</p>
+        <p class="game-description">{{ game.description }}</p>
+
+        <ul class="game-highlights">
+          <li *ngFor="let item of game.highlights">
+            <span class="bullet">▸</span>{{ item }}
+          </li>
+        </ul>
+
+        <div class="card-meta">
+          <span>👥 {{ game.players }}</span>
+          <span>⏱ {{ game.duration }}</span>
+        </div>
+
+        <button class="card-action" type="button" [disabled]="!game.route">
+          {{ game.route ? 'Entrar' : 'Próximamente' }}
+        </button>
+      </article>
+    </div>
+  </div>
+</app-terminal-layout>

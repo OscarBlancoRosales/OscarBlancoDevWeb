@@ -1,0 +1,619 @@
+<app-terminal-layout [title]="meta?.name || 'RISK'">
+  <div class="room" *ngIf="meta; else loading">
+    <!-- ===================== CABECERA ===================== -->
+    <header class="room-header">
+      <div class="header-left">
+        <h1>{{ meta.name }}</h1>
+        <span class="chip map">{{ map?.name }}</span>
+        <span class="chip status" [attr.data-status]="meta.status">
+          {{ meta.status === 'lobby' ? 'Sala de espera' : phaseLabel }}
+        </span>
+        <span class="chip round" *ngIf="state && inGame">Ronda {{ state.round }}</span>
+        <span class="chip host" *ngIf="isHost" title="Este navegador mueve los bots y guarda la partida">
+          ⚙ anfitrión
+        </span>
+      </div>
+      <div class="header-actions">
+        <button class="btn" type="button" (click)="copyInvite()">
+          {{ copied ? '✓ Copiado' : '🔗 Invitar' }}
+        </button>
+        <button class="btn" type="button" *ngIf="isOwner && meta.status === 'playing'" (click)="pauseGame()">
+          ⏸ Pausar
+        </button>
+        <button class="btn" type="button" *ngIf="isOwner && meta.status === 'paused'" (click)="resumeGame()">
+          ▶ Reanudar
+        </button>
+        <button class="btn danger" type="button" (click)="leave()">Salir</button>
+      </div>
+    </header>
+
+    <!-- ===================== SALA DE ESPERA ===================== -->
+    <section class="waiting" *ngIf="!inGame">
+      <div class="waiting-main">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Asientos</h2>
+            <span class="counter">{{ seats.length }} / {{ meta.maxPlayers }}</span>
+          </div>
+
+          <ul class="seat-list">
+            <li class="seat" *ngFor="let seat of seats; trackBy: trackSeat" [class.me]="seat.id === seatId">
+              <span class="seat-color" [style.background]="seat.color"></span>
+              <div class="seat-info">
+                <span class="seat-name">
+                  {{ seat.name }}
+                  <span class="seat-tag owner" *ngIf="seat.isOwner">anfitrión</span>
+                  <span class="seat-tag bot" *ngIf="seat.kind === 'bot'">
+                    IA · {{ profileInfo[seat.botProfile || 'oportunista'].label }}
+                  </span>
+                </span>
+                <span class="seat-sub" *ngIf="seat.kind === 'bot'">
+                  {{ profileInfo[seat.botProfile || 'oportunista'].description }}
+                </span>
+                <span class="seat-sub" *ngIf="seat.kind === 'human'">
+                  {{ seat.connected ? 'conectado' : 'desconectado · su asiento sigue reservado' }}
+                </span>
+              </div>
+              <button
+                class="ghost danger"
+                type="button"
+                *ngIf="isOwner && seat.id !== seatId"
+                (click)="removeSeat(seat)"
+                title="Quitar del asiento"
+              >
+                ✕
+              </button>
+            </li>
+          </ul>
+
+          <div class="empty-seats" *ngIf="freeSeats > 0">
+            <span>{{ freeSeats }} {{ freeSeats === 1 ? 'hueco libre' : 'huecos libres' }}</span>
+          </div>
+        </div>
+
+        <div class="panel" *ngIf="isOwner">
+          <div class="panel-head">
+            <h2>Rellenar con IA</h2>
+          </div>
+          <p class="hint">
+            ¿Falta gente? Sienta bots. Cada perfil juega distinto y comenta sus planes en el chat
+            en cada turno.
+          </p>
+          <div class="bot-picker">
+            <button
+              type="button"
+              class="profile-card"
+              *ngFor="let profile of botProfiles"
+              [class.active]="profile === newBotProfile"
+              (click)="newBotProfile = profile"
+            >
+              <span class="profile-name">{{ profileInfo[profile].label }}</span>
+              <span class="profile-desc">{{ profileInfo[profile].description }}</span>
+            </button>
+          </div>
+          <div class="row">
+            <button class="btn" type="button" (click)="addBot()" [disabled]="freeSeats <= 0">
+              + Añadir bot
+            </button>
+            <button class="btn" type="button" (click)="fillWithBots()" [disabled]="freeSeats <= 0">
+              Rellenar todos los huecos
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="waiting-side">
+        <div class="panel invite-panel">
+          <div class="panel-head"><h2>Invitar</h2></div>
+          <p class="hint">Pasa este enlace. Quien lo abra solo tiene que poner su nombre.</p>
+          <code class="invite-code">{{ inviteLink }}</code>
+          <button class="btn wide" type="button" (click)="copyInvite()">
+            {{ copied ? '✓ Enlace copiado' : 'Copiar enlace' }}
+          </button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Reglas de la mesa</h2></div>
+          <ul class="rules-list">
+            <li><span>Mapa</span><b>{{ map?.name }}</b></li>
+            <li><span>Territorios</span><b>{{ map?.territories?.length }}</b></li>
+            <li><span>Reparto</span><b>{{ meta.config.autoClaim ? 'Automático' : 'Manual' }}</b></li>
+            <li>
+              <span>Canjes</span>
+              <b>{{ meta.config.tradeProgression === 'classic' ? 'Clásico' : 'Fijo (6)' }}</b>
+            </li>
+            <!-- Quien entra por invitación tiene que saber a qué reglas juega. -->
+            <li>
+              <span>Orografía</span>
+              <b>{{ meta.config.advancedTerrain ? 'Sí' : 'No' }}</b>
+            </li>
+            <li>
+              <span>Tropas</span>
+              <b>{{ meta.config.advancedUnits ? 'Sí' : 'No' }}</b>
+            </li>
+          </ul>
+        </div>
+
+        <button class="btn start" type="button" *ngIf="isOwner" (click)="startGame()" [disabled]="!canStart">
+          {{ seats.length < 2 ? 'Hacen falta 2 jugadores' : '▶ Empezar la partida' }}
+        </button>
+        <p class="hint center" *ngIf="!isOwner">Esperando a que el anfitrión empiece la partida…</p>
+      </aside>
+    </section>
+
+    <!-- ===================== PARTIDA ===================== -->
+    <section class="game" *ngIf="inGame && state">
+      <!-- Panel izquierdo: jugadores -->
+      <aside class="players-column">
+        <div class="turn-banner" [style.borderColor]="colorOf(active?.id || '')">
+          <span class="turn-dot" [style.background]="colorOf(active?.id || '')"></span>
+          <div class="turn-text">
+            <span class="turn-name">
+              <ng-container *ngIf="isMyTurn">Es tu turno</ng-container>
+              <ng-container *ngIf="!isMyTurn">
+                {{ handedToAi && active?.id === seatId ? 'La IA juega por ti' : (active?.name || '—') }}
+              </ng-container>
+            </span>
+            <span class="turn-phase">{{ phaseLabel }}</span>
+          </div>
+          <span class="thinking" *ngIf="thinking">{{ thinking }} pensando…</span>
+        </div>
+
+        <div class="panel players-panel">
+          <div class="panel-head">
+            <h2>Ejércitos</h2>
+          </div>
+          <ul class="player-list">
+            <li
+              class="player-row"
+              *ngFor="let entry of scoreboard"
+              [class.active]="entry.player.id === active?.id"
+              [class.me]="entry.player.id === seatId"
+              [class.out]="entry.player.eliminated"
+            >
+              <span class="player-color" [style.background]="entry.player.color"></span>
+              <div class="player-info">
+                <span class="player-name">
+                  {{ entry.player.name }}
+                  <span class="mini-tag" *ngIf="entry.player.kind === 'bot'">IA</span>
+                  <span class="mini-tag out" *ngIf="entry.player.eliminated">fuera</span>
+                </span>
+                <span class="player-stats">
+                  {{ entry.territories }} territorios · {{ entry.armies }} ejércitos ·
+                  {{ entry.player.cards.length }} 🂠
+                </span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <!--
+          Objetivos. Se enseñan todos, no solo el propio: sin servidor no hay
+          secreto posible y fingirlo sería mentir. Ver missions.ts.
+        -->
+        <div class="panel missions-panel" *ngIf="byObjectives">
+          <div class="panel-head"><h2>Objetivos</h2></div>
+          <ul class="mission-list">
+            <li
+              class="mission-row"
+              *ngFor="let entry of missions"
+              [class.me]="entry.playerId === seatId"
+              [class.done]="entry.done"
+            >
+              <span class="player-color" [style.background]="entry.color"></span>
+              <div class="mission-info">
+                <span class="mission-who">{{ entry.name }}</span>
+                <span class="mission-text">{{ entry.text }}</span>
+                <span class="mission-detail">{{ entry.detail }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
+        <div class="panel continents-panel" *ngIf="map">
+          <div class="panel-head"><h2>Continentes</h2></div>
+          <ul class="continent-list">
+            <li *ngFor="let continent of map.continents">
+              <span class="continent-dot" [style.background]="continent.color"></span>
+              <span class="continent-name">{{ continent.name }}</span>
+              <span class="continent-bonus">+{{ continent.bonus }}</span>
+            </li>
+          </ul>
+        </div>
+      </aside>
+
+      <!-- Centro: tablero + controles -->
+      <div class="board-column">
+        <app-risk-board
+          *ngIf="map"
+          [map]="map"
+          [state]="state"
+          [selected]="selectedFrom"
+          [selectable]="selectableTerritories"
+          [targets]="targetTerritories"
+          [myPlayerId]="seatId"
+          [showNames]="showNames"
+          [showTerrain]="advancedTerrain"
+          (territoryClick)="onTerritoryClick($event)"
+        ></app-risk-board>
+
+        <!-- Barra de acción -->
+        <div class="action-bar" [class.my-turn]="isMyTurn">
+          <!-- Victoria -->
+          <div class="action-block victory" *ngIf="state.phase === 'game-over'">
+            <span class="victory-icon">🏆</span>
+            <div>
+              <strong>{{ winner?.name }}</strong> ha ganado la partida.
+              <span class="muted">La grabación queda guardada: podéis revisarla cuando queráis.</span>
+            </div>
+          </div>
+
+          <ng-container *ngIf="state.phase !== 'game-over'">
+            <!-- No es mi turno -->
+            <div class="action-block waiting-turn" *ngIf="!isMyTurn">
+              <span class="spinner"></span>
+              <ng-container *ngIf="handedToAi && active?.id === seatId">
+                Abandonaste la partida: la IA lleva tus ejércitos
+              </ng-container>
+              <ng-container *ngIf="!(handedToAi && active?.id === seatId)">
+                Turno de <b [style.color]="colorOf(active?.id || '')">{{ active?.name }}</b>
+              </ng-container>
+              <span class="muted">· {{ phaseLabel }}</span>
+            </div>
+
+            <ng-container *ngIf="isMyTurn">
+              <!-- Reparto manual -->
+              <div class="action-block" *ngIf="state.phase === 'setup-claim' || state.phase === 'setup-deploy'">
+                <span class="action-label">
+                  {{ state.phase === 'setup-claim' ? 'Elige un territorio libre' : 'Refuerza un territorio tuyo' }}
+                </span>
+                <span class="pill">{{ me?.reserve }} por colocar</span>
+              </div>
+
+              <!-- Refuerzos -->
+              <div class="action-block" *ngIf="state.phase === 'reinforce'">
+                <span class="pill big">{{ me?.reserve }} refuerzos</span>
+                <span class="muted small">{{ reinforcementDetail }}</span>
+
+                <ng-container *ngIf="selectedFrom">
+                  <span class="action-label">→ {{ territoryName(selectedFrom) }}</span>
+                  <input
+                    class="slider"
+                    type="range"
+                    min="1"
+                    [max]="me?.reserve || 1"
+                    [(ngModel)]="deployAmount"
+                  />
+                  <span class="amount">{{ deployAmount }}</span>
+                  <button class="btn go" type="button" (click)="deploy()">Colocar</button>
+                  <button class="btn" type="button" (click)="deploy(true)">Colocar todo</button>
+                </ng-container>
+                <span class="muted" *ngIf="!selectedFrom">Pulsa uno de tus territorios en el mapa.</span>
+
+                <!-- Tropas: ascender una ficha que ya está en el territorio -->
+                <div class="troop-bar" *ngIf="advancedUnits && selectedFrom">
+                  <span class="troop-label">Preparar tropa</span>
+                  <button
+                    class="troop-btn"
+                    type="button"
+                    *ngFor="let troop of troops"
+                    [disabled]="!canUpgrade(troop.id)"
+                    [title]="troop.effect + ' · cuesta ' + troop.cost"
+                    (click)="upgrade(troop.id)"
+                  >
+                    <span class="troop-glyph" [style.color]="troop.color">{{ troop.glyph }}</span>
+                    {{ troop.name }}
+                    <span class="troop-cost">{{ troop.cost }}</span>
+                  </button>
+                </div>
+
+                <button class="btn end" type="button" (click)="endPhase()" [disabled]="!canEndPhase()">
+                  Terminar refuerzos →
+                </button>
+              </div>
+
+              <!-- Ocupación tras conquista -->
+              <div class="action-block conquer" *ngIf="state.phase === 'attack' && state.pendingOccupation">
+                <span class="action-label">
+                  ¡Conquistado {{ territoryName(state.pendingOccupation.to) }}! ¿Cuántos entran?
+                </span>
+                <input
+                  class="slider"
+                  type="range"
+                  [min]="state.pendingOccupation.minArmies"
+                  [max]="state.territories[state.pendingOccupation.from].armies - 1"
+                  [(ngModel)]="occupyArmies"
+                />
+                <span class="amount">{{ occupyArmies }}</span>
+                <button class="btn go" type="button" (click)="occupy()">Ocupar</button>
+              </div>
+
+              <!-- Ataque -->
+              <div class="action-block" *ngIf="state.phase === 'attack' && !state.pendingOccupation">
+                <ng-container *ngIf="!selectedFrom">
+                  <span class="muted">Elige desde qué territorio atacas (necesita 2 ejércitos o más).</span>
+                </ng-container>
+
+                <ng-container *ngIf="selectedFrom && !selectedTo">
+                  <span class="action-label">Desde {{ territoryName(selectedFrom) }}</span>
+                  <span class="muted">Ahora elige el objetivo enemigo.</span>
+                  <button class="btn" type="button" (click)="clearSelection()">Cambiar origen</button>
+                </ng-container>
+
+                <ng-container *ngIf="selectedFrom && selectedTo">
+                  <span class="action-label">
+                    {{ territoryName(selectedFrom) }} → {{ territoryName(selectedTo) }}
+                  </span>
+                  <span class="odds" [class.good]="(selectionOdds() || 0) >= 0.6" [class.bad]="(selectionOdds() || 0) < 0.4">
+                    {{ ((selectionOdds() || 0) * 100) | number: '1.0-0' }} %
+                  </span>
+                  <span
+                    class="terrain-tag"
+                    *ngIf="terrainOf(selectedTo) as terrain"
+                    [title]="terrain.effect"
+                  >
+                    <span class="terrain-tag-glyph" [style.color]="terrain.tint">
+                      {{ terrain.glyph }}
+                    </span>
+                    {{ terrain.name }}
+                  </span>
+                  <span class="terrain-tag landing" *ngIf="isLandingSelected()" title="Cruzando el mar solo tiras 2 dados">
+                    ⚓ Desembarco
+                  </span>
+                  <span class="terrain-tag air" *ngIf="isAirSelected()" title="Ataque aéreo: alcanza sin frontera, pero solo con 2 dados">
+                    ✈ Ataque aéreo
+                  </span>
+                  <span class="terrain-tag armour" *ngIf="isArmouredSelected()" title="Los blindados suman +1 al mejor dado">
+                    ■ Blindados
+                  </span>
+                  <div class="dice-picker">
+                    <button
+                      type="button"
+                      *ngFor="let n of [1, 2, 3]"
+                      class="dice-option"
+                      [class.active]="attackDice === n"
+                      [disabled]="n > maxDiceForSelection()"
+                      (click)="attackDice = n"
+                    >
+                      {{ n }}🎲
+                    </button>
+                  </div>
+                  <button class="btn go attack" type="button" (click)="attack()">¡Atacar!</button>
+                  <button class="btn" type="button" (click)="clearSelection()">Cancelar</button>
+                </ng-container>
+
+                <button class="btn end" type="button" (click)="endPhase()" [disabled]="!canEndPhase()">
+                  Terminar ataques →
+                </button>
+              </div>
+
+              <!-- Reagrupación -->
+              <div class="action-block" *ngIf="state.phase === 'fortify'">
+                <ng-container *ngIf="!selectedFrom">
+                  <span class="muted">
+                    {{ state.fortifiedThisTurn ? 'Ya has reagrupado este turno.' : 'Elige desde dónde mueves ejércitos.' }}
+                  </span>
+                </ng-container>
+                <ng-container *ngIf="selectedFrom && !selectedTo">
+                  <span class="action-label">Desde {{ territoryName(selectedFrom) }}</span>
+                  <span class="muted">Elige un territorio tuyo conectado.</span>
+                </ng-container>
+                <ng-container *ngIf="selectedFrom && selectedTo">
+                  <span class="action-label">
+                    {{ territoryName(selectedFrom) }} → {{ territoryName(selectedTo) }}
+                  </span>
+                  <input class="slider" type="range" min="1" [max]="maxFortify()" [(ngModel)]="fortifyArmies" />
+                  <span class="amount">{{ fortifyArmies }}</span>
+                  <button class="btn go" type="button" (click)="fortify()">Mover</button>
+                  <button class="btn" type="button" (click)="clearSelection()">Cancelar</button>
+                </ng-container>
+
+                <button class="btn end" type="button" (click)="endPhase()" [disabled]="!canEndPhase()">
+                  Terminar turno →
+                </button>
+              </div>
+            </ng-container>
+          </ng-container>
+        </div>
+
+        <!-- Resultado del último combate -->
+        <div class="combat-strip" *ngIf="state.lastCombat as combat">
+          <span class="combat-label">
+            {{ territoryName(combat.from) }} → {{ territoryName(combat.to) }}
+          </span>
+          <span class="dice-group attacker">
+            <span class="die" *ngFor="let d of combat.attackerDice">{{ d }}</span>
+          </span>
+          <span class="vs">vs</span>
+          <span class="dice-group defender">
+            <span class="die" *ngFor="let d of combat.defenderDice">{{ d }}</span>
+          </span>
+          <span class="losses">
+            −{{ combat.defenderLosses }} defensor / −{{ combat.attackerLosses }} atacante
+          </span>
+          <span class="conquered" *ngIf="combat.conquered">CONQUISTADO</span>
+        </div>
+
+        <p class="error" *ngIf="errorMessage">{{ errorMessage }}</p>
+      </div>
+
+      <!-- Panel derecho: chat, eventos, cartas, IA -->
+      <aside class="side-column">
+        <div class="tabs">
+          <button type="button" [class.active]="panel === 'chat'" (click)="panel = 'chat'">Chat</button>
+          <button type="button" [class.active]="panel === 'eventos'" (click)="panel = 'eventos'">Eventos</button>
+          <button type="button" [class.active]="panel === 'cartas'" (click)="panel = 'cartas'">
+            Cartas <span class="tab-badge" *ngIf="myCards.length">{{ myCards.length }}</span>
+          </button>
+          <button type="button" [class.active]="panel === 'ia'" (click)="panel = 'ia'">IA</button>
+        </div>
+
+        <!-- CHAT -->
+        <div class="panel tab-body" *ngIf="panel === 'chat'">
+          <div class="chat-feed">
+            <div
+              class="chat-msg"
+              *ngFor="let entry of chatFeed; trackBy: trackChat"
+              [ngClass]="entry.kind"
+            >
+              <span class="chat-author" [style.color]="colorOf(entry.authorId)">
+                {{ entry.author }}
+                <span class="llm-tag" *ngIf="entry.origin === 'llm'" title="Escrito por un modelo de lenguaje">
+                  LLM
+                </span>
+              </span>
+              <span class="chat-text">{{ entry.text }}</span>
+            </div>
+            <p class="muted" *ngIf="chatFeed.length === 0">
+              Aquí van los planes, las amenazas y las excusas por los dados.
+            </p>
+          </div>
+          <div class="chat-input">
+            <input
+              class="field"
+              type="text"
+              [(ngModel)]="chatDraft"
+              placeholder="Escribe algo…"
+              maxlength="400"
+              (keydown.enter)="sendChat()"
+            />
+            <button class="btn" type="button" (click)="sendChat()">Enviar</button>
+          </div>
+          <button class="btn advisor" type="button" (click)="askAdvisor()">🧠 Pedir consejo al estratega</button>
+        </div>
+
+        <!-- EVENTOS -->
+        <div class="panel tab-body" *ngIf="panel === 'eventos'">
+          <div class="event-feed">
+            <div class="event" *ngFor="let event of state.events.slice().reverse(); trackBy: trackEvent" [ngClass]="event.type">
+              <span class="event-dot" [style.background]="colorOf(event.playerId || '')"></span>
+              <span class="event-text">{{ event.text }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARTAS -->
+        <div class="panel tab-body" *ngIf="panel === 'cartas'">
+          <p class="hint" *ngIf="mustTradeNow">
+            Tienes {{ myCards.length }} cartas: estás obligado a canjear un trío antes de seguir.
+          </p>
+          <p class="hint" *ngIf="!mustTradeNow && myCards.length < 3">
+            Conquista al menos un territorio en tu turno para robar carta.
+          </p>
+          <div class="card-grid">
+            <button
+              type="button"
+              class="risk-card"
+              *ngFor="let card of myCards"
+              [class.selected]="selectedCards.includes(card.id)"
+              (click)="toggleCard(card)"
+            >
+              <span class="card-symbol">{{ cardIcon[card.symbol] }}</span>
+              <span class="card-kind">{{ cardLabel[card.symbol] }}</span>
+              <span class="card-territory">{{ territoryName(card.territoryId) || '—' }}</span>
+            </button>
+          </div>
+          <button
+            class="btn go wide"
+            type="button"
+            (click)="tradeCards()"
+            [disabled]="!selectedCardsAreValid || state.phase !== 'reinforce' || !isMyTurn"
+          >
+            Canjear trío
+          </button>
+          <p class="muted small">
+            Valen tres símbolos iguales o los tres distintos. Los comodines valen por cualquiera.
+          </p>
+        </div>
+
+        <!-- IA -->
+        <div class="panel tab-body" *ngIf="panel === 'ia'">
+          <p class="hint">
+            Los bots ya juegan y comentan sin conectarse a nada. Si quieres que además escriban con
+            un modelo de lenguaje, pon aquí una clave gratuita: se guarda <b>solo en este navegador</b>
+            y no se comparte con la sala.
+          </p>
+
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="aiSettings.enabled" (change)="saveAi()" />
+            <span>Usar modelo de lenguaje</span>
+          </label>
+
+          <ng-container *ngIf="aiSettings.enabled">
+            <label class="field-label">
+              <span>Proveedor</span>
+              <select class="field" [(ngModel)]="aiSettings.provider" (ngModelChange)="onProviderChange(); saveAi()">
+                <option *ngFor="let provider of providers" [value]="provider">
+                  {{ providerLabels[provider] }}
+                </option>
+              </select>
+            </label>
+
+            <label class="field-label">
+              <span>Modelo</span>
+              <select class="field" [(ngModel)]="aiSettings.model" (ngModelChange)="saveAi()">
+                <option *ngFor="let model of modelOptions" [value]="model.id">{{ model.label }}</option>
+              </select>
+              <small *ngFor="let model of modelOptions">
+                <ng-container *ngIf="model.id === aiSettings.model">{{ model.note }}</ng-container>
+              </small>
+            </label>
+
+            <label class="field-label" *ngIf="aiSettings.provider === 'openai-compatible'">
+              <span>URL base</span>
+              <input class="field" type="text" [(ngModel)]="aiSettings.baseUrl" (change)="saveAi()"
+                placeholder="http://localhost:11434/v1" />
+            </label>
+
+            <label class="field-label" *ngIf="aiSettings.provider !== 'openai-compatible'">
+              <span>Clave de API</span>
+              <input class="field" type="password" [(ngModel)]="aiSettings.apiKey" (change)="saveAi()"
+                placeholder="sk-…" autocomplete="off" />
+              <small>
+                Consigue una gratis en
+                <a [href]="providerSignup[aiSettings.provider]" target="_blank" rel="noopener">
+                  {{ providerLabels[aiSettings.provider] }}
+                </a>.
+              </small>
+            </label>
+
+            <p class="muted small">
+              Si el modelo falla o tarda, la partida sigue con el cerebro local: nunca se queda
+              parada esperando.
+            </p>
+          </ng-container>
+
+          <label class="field-label">
+            <span>Ritmo de los bots</span>
+            <select class="field" [ngModel]="botDelay" (ngModelChange)="setBotDelay($event)">
+              <option *ngFor="let speed of botSpeeds" [ngValue]="speed.ms">
+                {{ speed.label }} ({{ speed.ms }} ms por jugada)
+              </option>
+            </select>
+          </label>
+
+          <label class="switch">
+            <input type="checkbox" [(ngModel)]="showNames" />
+            <span>Ver nombres en el mapa</span>
+          </label>
+
+          <button
+            class="btn danger wide"
+            type="button"
+            (click)="surrender()"
+            [disabled]="handedToAi || !inGame"
+          >
+            {{ handedToAi ? 'Ya has abandonado: juega la IA' : 'Abandonar (la IA se queda mis ejércitos)' }}
+          </button>
+        </div>
+      </aside>
+    </section>
+  </div>
+
+  <ng-template #loading>
+    <div class="loading">
+      <span class="spinner"></span>
+      Cargando la sala…
+    </div>
+  </ng-template>
+</app-terminal-layout>

@@ -1,0 +1,28 @@
+{
+  "rules": {
+    "rooms": {
+      ".read": true,
+      ".write": true
+    },
+    "riskRooms": {
+      ".read": true,
+      "$roomId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['meta']) || !newData.exists()",
+        "meta": {
+          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])"
+        },
+        "log": {
+          "$entry": {
+            ".validate": "newData.hasChildren(['action'])"
+          }
+        },
+        "chat": {
+          "$message": {
+            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600"
+          }
+        }
+      }
+    }
+  }
+}
