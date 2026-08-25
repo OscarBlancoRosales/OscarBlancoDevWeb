@@ -1,4 +1,4 @@
-import { TerritoryState, UnitCounts, UnitKind } from './types';
+import { Terrain, TerritoryState, UnitCounts, UnitKind } from './types';
 
 /**
  * Tropas especializadas del modo avanzado.
@@ -38,7 +38,7 @@ export const UNIT_META: Record<UnitKind, UnitMeta> = {
     name: 'Caballería',
     glyph: '⇉',
     cost: 2,
-    effect: 'Te deja reagrupar dos veces en el turno.',
+    effect: 'Reagrupas dos veces por turno. En campo abierto, +1 al segundo dado atacando.',
     color: '#ffd740',
   },
   blindado: {
@@ -46,7 +46,7 @@ export const UNIT_META: Record<UnitKind, UnitMeta> = {
     name: 'Blindados',
     glyph: '■',
     cost: 3,
-    effect: 'Atacando por tierra desde aquí, +1 al mejor dado.',
+    effect: 'En terreno abierto, +1 al mejor dado atacando y +1 al segundo defendiendo. En montaña o bosque no maniobran.',
     color: '#ff8a65',
   },
   naval: {
@@ -54,7 +54,7 @@ export const UNIT_META: Record<UnitKind, UnitMeta> = {
     name: 'Flota',
     glyph: '⚓',
     cost: 3,
-    effect: 'Cruzar el mar desde aquí deja de ser un desembarco.',
+    effect: 'Cruzar el mar desde aquí deja de ser un desembarco. Defendiendo, +1 al mejor dado contra quien desembarque.',
     color: '#4fc3f7',
   },
   aereo: {
@@ -62,10 +62,87 @@ export const UNIT_META: Record<UnitKind, UnitMeta> = {
     name: 'Aviación',
     glyph: '✈',
     cost: 4,
-    effect: 'Alcanza territorios a dos pasos, saltándose la frontera.',
+    effect: 'Alcanza a dos pasos. Sobre terreno despejado, +1 al mejor dado; contra otra aviación, la intercepta.',
     color: '#ce93d8',
   },
 };
+
+/**
+ * Terrenos donde una máquina puede maniobrar.
+ *
+ * Es la distinción que hace que tropa y terreno se combinen en vez de sumarse
+ * por su cuenta: un blindado en una llanura es otra cosa que el mismo blindado
+ * metido en un bosque.
+ */
+export const OPEN_TERRAIN: Terrain[] = ['llanura', 'desierto', 'costa'];
+
+export function isOpen(terrain: Terrain): boolean {
+  return OPEN_TERRAIN.includes(terrain);
+}
+
+/**
+ * Lo que las tropas del ATACANTE aportan, según desde dónde salen y contra qué.
+ *
+ * Cada línea depende de la pareja de terrenos, que es justo lo que se pedía: la
+ * misma tropa vale mucho o no vale nada según el mapa.
+ */
+export function unitAssault(
+  origin: TerritoryState | undefined,
+  fromTerrain: Terrain,
+  toTerrain: Terrain,
+  approach: 'tierra' | 'desembarco' | 'aereo',
+): number[] {
+  let bonus: number[] = [];
+
+  // Blindados: solo cuentan por tierra y contra terreno donde puedan entrar.
+  if (approach === 'tierra' && hasUnit(origin, 'blindado') && isOpen(toTerrain)) {
+    bonus = add(bonus, [1]);
+  }
+  // Caballería: maniobra. Necesita campo abierto a los dos lados.
+  if (
+    approach === 'tierra' &&
+    hasUnit(origin, 'caballeria') &&
+    isOpen(fromTerrain) &&
+    isOpen(toTerrain)
+  ) {
+    bonus = add(bonus, [0, 1]);
+  }
+  // Aviación: ve el objetivo si está despejado. Sobre bosque o montaña, no.
+  if (hasUnit(origin, 'aereo') && isOpen(toTerrain)) {
+    bonus = add(bonus, [1]);
+  }
+  return bonus;
+}
+
+/** Lo que las tropas del DEFENSOR aportan, según dónde están y cómo les llegan. */
+export function unitDefence(
+  target: TerritoryState | undefined,
+  terrain: Terrain,
+  approach: 'tierra' | 'desembarco' | 'aereo',
+): number[] {
+  let bonus: number[] = [];
+
+  // Blindados atrincherados: en abierto son una barrera; en monte, chatarra.
+  if (hasUnit(target, 'blindado') && isOpen(terrain)) {
+    bonus = add(bonus, [0, 1]);
+  }
+  // La flota bate la playa de quien intenta desembarcar.
+  if (approach === 'desembarco' && hasUnit(target, 'naval')) {
+    bonus = add(bonus, [1]);
+  }
+  // Caza interceptor: la aviación se defiende de la aviación.
+  if (approach === 'aereo' && hasUnit(target, 'aereo')) {
+    bonus = add(bonus, [1]);
+  }
+  return bonus;
+}
+
+function add(a: number[], b: number[]): number[] {
+  const length = Math.max(a.length, b.length);
+  const out: number[] = [];
+  for (let i = 0; i < length; i++) out.push((a[i] ?? 0) + (b[i] ?? 0));
+  return out;
+}
 
 export const UNIT_KINDS = Object.keys(UNIT_META) as UnitKind[];
 

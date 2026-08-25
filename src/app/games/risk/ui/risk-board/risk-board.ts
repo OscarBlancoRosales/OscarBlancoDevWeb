@@ -31,6 +31,8 @@ export interface TerritoryTooltip {
   terrain: TerrainMeta | null;
   /** Cómo llegaría el ataque que se está apuntando, si se está apuntando uno. */
   approach: ApproachKind | null;
+  /** Desglose del combate apuntado, ya en palabras. */
+  matchup: string[];
 }
 
 /**
@@ -199,9 +201,40 @@ export class RiskBoard {
       terrain: this.showTerrain ? TERRAIN_META[territory.terrain] : null,
       approach:
         this.showTerrain && aiming && this._map
-          ? approachOf(this._map, this.selected!, this.hovered)
+          ? approachOf(this._map, this.selected!, this.hovered, this.originState())
           : null,
+      matchup: aiming ? this.matchupLines() : [],
     };
+  }
+
+  private originState() {
+    return this.selected ? this.state?.territories[this.selected] : undefined;
+  }
+
+  /**
+   * Traduce a palabras el combate concreto que se está apuntando.
+   *
+   * Es lo que hace legible la matriz: con terreno de origen, terreno de destino
+   * y tropas de los dos lados sumando a la vez, un número suelto no dice de
+   * dónde sale la ventaja.
+   */
+  private matchupLines(): string[] {
+    if (!this._map || !this.selected || !this.hovered) return [];
+    const rules = battleRulesFor(
+      this._map,
+      this.state?.config,
+      this.selected,
+      this.hovered,
+      this.originState(),
+      this.state?.territories[this.hovered],
+    );
+    const lines: string[] = [];
+    const mine = describeBonus(rules.attackBonus);
+    const theirs = describeBonus(rules.defenceBonus);
+    if (rules.attack < 3) lines.push(`Solo ${rules.attack} dados`);
+    if (mine) lines.push(`A tu favor: ${mine}`);
+    if (theirs) lines.push(`A su favor: ${theirs}`);
+    return lines;
   }
 
   /** ¿El cursor está sobre un objetivo del territorio ya seleccionado? */
@@ -221,7 +254,14 @@ export class RiskBoard {
     const from = this.state?.territories[this.selected];
     const to = this.state?.territories[this.hovered];
     if (!from || !to || !this._map) return null;
-    const rules = battleRulesFor(this._map, this.state?.config, this.selected, this.hovered);
+    const rules = battleRulesFor(
+      this._map,
+      this.state?.config,
+      this.selected,
+      this.hovered,
+      from,
+      to,
+    );
     return conquestOdds(from.armies, to.armies, rules);
   }
 
@@ -378,3 +418,20 @@ function touchDistance(event: TouchEvent): number {
 
 /** Array compartido para los territorios sin tropas: identidad estable. */
 const EMPTY_UNITS: UnitMeta[] = [];
+
+/**
+ * Pone en palabras un vector de bonificación por rango.
+ *
+ * `[1]` es el mejor dado, `[0, 1]` el segundo. Un valor negativo resta.
+ */
+function describeBonus(bonus: number[] | undefined): string {
+  const values = bonus ?? [];
+  const names = ['al mejor dado', 'al segundo dado', 'al tercer dado'];
+  const parts: string[] = [];
+  values.forEach((value, index) => {
+    if (value === 0) return;
+    const sign = value > 0 ? `+${value}` : `${value}`;
+    parts.push(`${sign} ${names[index] ?? `al dado ${index + 1}`}`);
+  });
+  return parts.join(', ');
+}

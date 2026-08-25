@@ -447,6 +447,7 @@ export class RiskRoom implements OnInit, OnDestroy {
       this.selectedFrom,
       to,
       this.state.territories[this.selectedFrom],
+      this.state.territories[to],
     );
   }
 

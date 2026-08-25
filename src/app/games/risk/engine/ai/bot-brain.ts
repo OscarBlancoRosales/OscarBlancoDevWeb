@@ -9,7 +9,7 @@ import {
 } from '../types';
 import { conquestOdds, maxAttackDice } from '../combat';
 import { approachOf, battleRulesFor, terrainOf, TERRAIN_META } from '../terrain';
-import { hasUnit, infantryOf, UNIT_META } from '../units';
+import { hasUnit, infantryOf, isOpen, UNIT_META } from '../units';
 import {
   adjacencyOf,
   areConnected,
@@ -212,7 +212,11 @@ function threatWeight(
     }
     const plain = conquestOdds(enemyArmies, armies);
     if (plain <= 0) continue;
-    const real = conquestOdds(enemyArmies, armies, battleRulesFor(map, state.config, other, id));
+    const real = conquestOdds(
+      enemyArmies,
+      armies,
+      battleRulesFor(map, state.config, other, id, state.territories[other], state.territories[id]),
+    );
     total += enemyArmies * (real / plain);
   }
   return total;
@@ -326,7 +330,7 @@ export function rankedAttacks(
 
       // Las mismas reglas que aplicará el combate, terreno incluido: la IA no
       // debe calcular con otras o atacaría montañas creyéndolas llanuras.
-      const rules = battleRulesFor(map, state.config, from, to, origin);
+      const rules = battleRulesFor(map, state.config, from, to, origin, target);
       const odds = conquestOdds(origin.armies, target.armies, rules);
       let score = odds;
       const reasons: string[] = [];
@@ -470,10 +474,17 @@ function troopValue(
 
   switch (unit) {
     case 'blindado': {
-      // Vale en un frente activo con tropa suficiente para atacar de verdad.
-      const byLand = enemies.filter((other) => approachOf(map, id, other, territory) === 'tierra');
-      if (byLand.length === 0 || territory.armies < 4) return 0;
-      return 0.6 + Math.min(0.3, byLand.length * 0.1);
+      // Solo maniobran contra terreno abierto: un tanque enfrente de una sierra
+      // no vale nada, y la IA tiene que saberlo igual que lo sabe el combate.
+      const usable = enemies.filter(
+        (other) =>
+          approachOf(map, id, other, territory) === 'tierra' &&
+          (!state.config.advancedTerrain || isOpen(terrainOf(map, other))),
+      );
+      if (usable.length === 0 || territory.armies < 4) return 0;
+      // Además defienden aquí mismo si el sitio es abierto.
+      const holds = !state.config.advancedTerrain || isOpen(terrainOf(map, id)) ? 0.15 : 0;
+      return 0.6 + Math.min(0.3, usable.length * 0.1) + holds;
     }
     case 'naval': {
       const landings = enemies.filter(
@@ -483,25 +494,32 @@ function troopValue(
       return 0.7 + Math.min(0.2, landings.length * 0.1);
     }
     case 'aereo': {
-      // Solo si abre objetivos nuevos: vecinos de vecinos que no son frontera.
+      // Vale por dos cosas: abre objetivos que la frontera no da, y empuja
+      // contra terreno despejado. Sobre bosque o montaña no ve nada.
       const direct = new Set(adjacencyOf(map, id));
       let reachable = 0;
+      let openTargets = 0;
       for (const neighbour of direct) {
+        if (!state.config.advancedTerrain || isOpen(terrainOf(map, neighbour))) openTargets++;
         for (const second of adjacencyOf(map, neighbour)) {
           if (second === id || direct.has(second)) continue;
           if (state.territories[second]?.ownerId !== playerId) reachable++;
         }
       }
       if (reachable === 0 || territory.armies < 5) return 0;
-      return 0.4 + Math.min(0.3, reachable * 0.05);
+      return 0.4 + Math.min(0.25, reachable * 0.05) + Math.min(0.15, openTargets * 0.05);
     }
     case 'caballeria': {
-      // Una sola en toda la partida: lo que da es la segunda reagrupación.
+      // Lo principal que da es la segunda reagrupación, y con una basta. Si
+      // además está en campo abierto contra campo abierto, empuja.
       const alreadyHas = territoriesOf(state, playerId).some((other) =>
         hasUnit(state.territories[other], 'caballeria'),
       );
       if (alreadyHas) return 0;
-      return enemies.length === 0 ? 0.5 : 0.2;
+      const maneuvers =
+        !state.config.advancedTerrain ||
+        (isOpen(terrainOf(map, id)) && enemies.some((other) => isOpen(terrainOf(map, other))));
+      return (enemies.length === 0 ? 0.5 : 0.2) + (maneuvers ? 0.1 : 0);
     }
     default:
       return 0;

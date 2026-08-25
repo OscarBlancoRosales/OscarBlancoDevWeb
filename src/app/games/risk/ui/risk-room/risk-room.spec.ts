@@ -391,8 +391,14 @@ describe('RiskRoom (la mesa)', () => {
         room.selectedTo = 'QC';
         expect(room.isAirSelected()).toBe(true);
 
+        // Alaska es montaña: ahí los blindados no maniobran y no suman.
         room.state!.territories['AB'].units = { blindado: 1 };
         room.selectedTo = 'AK';
+        expect(room.isArmouredSelected()).toBe(false);
+
+        // Contra el Territorio del Noroeste, que es llanura, sí.
+        room.state!.territories['NT'] = { ownerId: 'otro', armies: 3 };
+        room.selectedTo = 'NT';
         expect(room.isArmouredSelected()).toBe(true);
       } finally {
         mounted.fixture.destroy();

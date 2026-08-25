@@ -61,6 +61,46 @@ export interface Continent {
   territoryIds: TerritoryId[];
 }
 
+/**
+ * Un bando: los jugadores que van juntos y ganan juntos.
+ *
+ * Es lo que convierte una partida de todos contra todos en una guerra de dos
+ * frentes. Dos facciones del mismo bando no pueden atacarse.
+ */
+export interface SideDef {
+  id: string;
+  name: string;
+  color: string;
+}
+
+/** Una facción concreta dentro de un bando: quién es y a quién representa. */
+export interface FactionDef {
+  id: string;
+  name: string;
+  /** Bando al que pertenece. */
+  side: string;
+  color: string;
+  /** Quiénes eran, en una línea. */
+  blurb: string;
+}
+
+/**
+ * Escenario histórico: quién controla qué al empezar, y con quién juega cada
+ * cual.
+ *
+ * Un mapa con escenario no reparte el tablero al azar: arranca en una posición
+ * concreta, que es lo que hace que la partida cuente una historia y no una
+ * conquista abstracta.
+ */
+export interface Scenario {
+  sides: SideDef[];
+  factions: FactionDef[];
+  /** Quién controla cada territorio al empezar y con cuántos ejércitos. */
+  deployment: Record<TerritoryId, { faction: string; armies: number }>;
+  /** Texto de cabecera que se enseña en la sala. */
+  intro: string;
+}
+
 export interface GameMap {
   id: string;
   name: string;
@@ -85,6 +125,8 @@ export interface GameMap {
   continents: Continent[];
   /** Número máximo de jugadores soportado por el mapa. */
   maxPlayers: number;
+  /** Si lo trae, el mapa es un escenario histórico y no se reparte al azar. */
+  scenario?: Scenario;
 }
 
 export type PlayerKind = 'human' | 'bot';
@@ -102,6 +144,10 @@ export interface PlayerState {
   eliminated: boolean;
   /** Quién lo sacó de la partida. Lo necesita la victoria por objetivos. */
   eliminatedBy?: PlayerId;
+  /** Facción que lleva, en un escenario histórico. */
+  factionId?: string;
+  /** Bando al que pertenece. Los del mismo bando no pueden atacarse. */
+  side?: string;
   /** Ejércitos pendientes de colocar en la fase actual. */
   reserve: number;
   /** Ha conquistado al menos un territorio este turno (da derecho a carta). */

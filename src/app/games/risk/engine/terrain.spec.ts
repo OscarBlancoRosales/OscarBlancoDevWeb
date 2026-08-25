@@ -6,7 +6,12 @@ import {
   isLandBridge,
   isSeaRoute,
   terrainOf,
-  terrainRules,
+  terrainAssault,
+  terrainDefence,
+  terrainPairRules,
+  addBonus,
+  capNet,
+  MAX_NET_SHIFT,
   TERRAINS,
   TERRAIN_META,
 } from './terrain';
@@ -48,7 +53,8 @@ describe('orografía', () => {
         expect(meta.id).toBe(terrain);
         expect(meta.name.length).toBeGreaterThan(0);
         expect(meta.glyph.length).toBeGreaterThan(0);
-        expect(meta.effect.length).toBeGreaterThan(10);
+        expect(meta.defence.length).toBeGreaterThan(10);
+        expect(meta.assault.length).toBeGreaterThan(10);
         expect(meta.tint).toMatch(/^#[0-9a-f]{6}$/i);
       }
     });
@@ -62,58 +68,160 @@ describe('orografía', () => {
 
     it('el terreno por defecto es la llanura, o sea el juego clásico', () => {
       expect(DEFAULT_TERRAIN).toBe('llanura');
-      expect(terrainRules('llanura', 'tierra')).toEqual(CLASSIC_RULES);
+      expect(terrainDefence('llanura', 'tierra')).toEqual([]);
+      expect(terrainAssault('llanura', 'tierra')).toEqual([]);
+      expect(CLASSIC_RULES.defenceBonus).toEqual([]);
     });
   });
 
-  describe('efecto de cada terreno', () => {
-    it('la llanura no toca nada', () => {
-      expect(terrainRules('llanura', 'tierra')).toEqual({
-        attack: 3,
-        defend: 2,
-        defenceBonus: [],
-        attackBonus: [],
-      });
+  describe('el terreno tiene dos mitades', () => {
+    it('la llanura no toca nada, ni defendiendo ni atacando', () => {
+      expect(terrainDefence('llanura', 'tierra')).toEqual([]);
+      expect(terrainAssault('llanura', 'tierra')).toEqual([]);
     });
 
-    it('la montaña refuerza el mejor dado del defensor', () => {
-      expect(terrainRules('montaña', 'tierra').defenceBonus).toEqual([1]);
+    it('defendiendo: la montaña refuerza el mejor dado', () => {
+      expect(terrainDefence('montaña', 'tierra')).toEqual([1]);
     });
 
-    it('el bosque refuerza el segundo dado, no el mejor', () => {
-      expect(terrainRules('bosque', 'tierra').defenceBonus).toEqual([0, 1]);
+    it('defendiendo: el bosque refuerza el segundo, no el mejor', () => {
+      expect(terrainDefence('bosque', 'tierra')).toEqual([0, 1]);
     });
 
-    it('el desierto penaliza el segundo dado', () => {
-      expect(terrainRules('desierto', 'tierra').defenceBonus).toEqual([0, -1]);
+    it('defendiendo: el desierto penaliza el segundo', () => {
+      expect(terrainDefence('desierto', 'tierra')).toEqual([0, -1]);
     });
 
-    it('la costa no hace nada por tierra: solo defiende la playa', () => {
-      expect(terrainRules('costa', 'tierra').defenceBonus).toEqual([]);
-      expect(terrainRules('costa', 'desembarco').defenceBonus).toEqual([1]);
+    it('defendiendo: la costa solo vale contra un desembarco', () => {
+      expect(terrainDefence('costa', 'tierra')).toEqual([]);
+      expect(terrainDefence('costa', 'desembarco')).toEqual([1]);
     });
 
-    it('el desembarco recorta al atacante a 2 dados en todos los terrenos', () => {
+    it('atacando: salir de un bosque da sorpresa en el mejor dado', () => {
+      expect(terrainAssault('bosque', 'tierra')).toEqual([1]);
+    });
+
+    it('atacando: bajar de una montaña empuja el segundo dado', () => {
+      expect(terrainAssault('montaña', 'tierra')).toEqual([0, 1]);
+    });
+
+    it('atacando: cruzar un desierto se ve venir', () => {
+      expect(terrainAssault('desierto', 'tierra')).toEqual([0, -1]);
+    });
+
+    it('quien cruza el mar o llega volando deja atrás el suelo del que salió', () => {
       for (const terrain of TERRAINS) {
-        expect(terrainRules(terrain, 'tierra').attack, terrain).toBe(3);
-        expect(terrainRules(terrain, 'desembarco').attack, terrain).toBe(2);
+        expect(terrainAssault(terrain, 'desembarco'), terrain).toEqual([]);
+        expect(terrainAssault(terrain, 'aereo'), terrain).toEqual([]);
       }
     });
 
-    it('ningún terreno cambia el número de dados del defensor', () => {
+    it('cada mitad mueve como mucho un dado, y como mucho en uno', () => {
       for (const terrain of TERRAINS) {
-        expect(terrainRules(terrain, 'tierra').defend, terrain).toBe(2);
-        expect(terrainRules(terrain, 'desembarco').defend, terrain).toBe(2);
+        for (const approach of ['tierra', 'desembarco', 'aereo'] as const) {
+          for (const bonus of [
+            terrainDefence(terrain, approach),
+            terrainAssault(terrain, approach),
+          ]) {
+            expect(bonus.filter((value: number) => value !== 0).length).toBeLessThanOrEqual(1);
+            for (const value of bonus) expect(Math.abs(value)).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    });
+  });
+
+  describe('suma de bonificaciones', () => {
+    it('suma elemento a elemento', () => {
+      expect(addBonus([1], [0, 1])).toEqual([1, 1]);
+      expect(addBonus([0, 1], [0, -1])).toEqual([0, 0]);
+    });
+
+    it('el acotado deja un paso en cada dirección, no más', () => {
+      expect(capNet([5])).toEqual([MAX_NET_SHIFT]);
+      expect(capNet([-5])).toEqual([-MAX_NET_SHIFT]);
+      // Dos a favor del mismo lado: solo cuenta uno.
+      expect(capNet([1, 1])).toEqual([1, 0]);
+      // Uno para cada lado: los dos se quedan.
+      expect(capNet([1, -1])).toEqual([1, -1]);
+    });
+
+    it('el vector vacío es el elemento neutro', () => {
+      expect(addBonus([], [1, -1])).toEqual([1, -1]);
+      expect(addBonus([1, -1], [])).toEqual([1, -1]);
+    });
+  });
+
+  describe('lo que cuenta es la pareja de terrenos', () => {
+    const odds = (from: Terrain, to: Terrain) => conquestOdds(8, 8, terrainPairRules(from, to));
+    const classic = conquestOdds(8, 8);
+
+    it('salir de un bosque cancela la altura de la montaña', () => {
+      // Los dos empujan el MEJOR dado, uno por lado: se anulan del todo.
+      expect(odds('bosque', 'montaña')).toBeCloseTo(classic, 10);
+      expect(terrainPairRules('bosque', 'montaña').attackBonus).toEqual([]);
+      expect(terrainPairRules('bosque', 'montaña').defenceBonus).toEqual([]);
+    });
+
+    it('lo más caro es asaltar una montaña sin nada que lo compense', () => {
+      expect(odds('llanura', 'montaña')).toBeCloseTo(0.199, 2);
+      expect(odds('desierto', 'montaña')).toBeCloseTo(0.199, 2);
+    });
+
+    it('lo más barato es salir de un bosque contra terreno despejado', () => {
+      expect(odds('bosque', 'costa')).toBeCloseTo(0.763, 2);
+      expect(odds('bosque', 'desierto')).toBeCloseTo(0.763, 2);
+    });
+
+    it('el mismo objetivo se paga distinto según de dónde salgas', () => {
+      expect(odds('bosque', 'llanura')).toBeGreaterThan(odds('llanura', 'llanura'));
+      expect(odds('desierto', 'llanura')).toBeLessThan(odds('llanura', 'llanura'));
+    });
+
+    it('el mismo origen rinde distinto según a dónde ataques', () => {
+      expect(odds('llanura', 'desierto')).toBeGreaterThan(odds('llanura', 'llanura'));
+      expect(odds('llanura', 'montaña')).toBeLessThan(odds('llanura', 'llanura'));
+    });
+
+    it('un bosque contra otro bosque no se aplana', () => {
+      // Cada lado se lleva un dado: el atacante el mejor, el defensor el
+      // segundo. No puede salir lo mismo que atacar campo abierto.
+      expect(terrainPairRules('bosque', 'bosque').attackBonus).toEqual([1]);
+      expect(terrainPairRules('bosque', 'bosque').defenceBonus).toEqual([0, 1]);
+      expect(odds('bosque', 'bosque')).not.toBeCloseTo(odds('bosque', 'desierto'), 3);
+    });
+
+    it('atacar de llanura a llanura es exactamente el juego clásico', () => {
+      for (let a = 2; a <= 15; a++) {
+        for (let d = 1; d <= 10; d++) {
+          expect(conquestOdds(a, d, terrainPairRules('llanura', 'llanura'))).toBe(
+            conquestOdds(a, d),
+          );
+        }
       }
     });
 
-    it('el terreno mueve como mucho un dado, y como mucho en uno', () => {
-      for (const terrain of TERRAINS) {
-        for (const approach of ['tierra', 'desembarco'] as const) {
-          const bonus = terrainRules(terrain, approach).defenceBonus ?? [];
-          const moved = bonus.filter((value) => value !== 0);
-          expect(moved.length, `${terrain}/${approach}`).toBeLessThanOrEqual(1);
-          for (const value of bonus) expect(Math.abs(value)).toBeLessThanOrEqual(1);
+    it('nadie puede acumular dos pasos a su favor', () => {
+      for (const from of TERRAINS) {
+        for (const to of TERRAINS) {
+          const rules = terrainPairRules(from, to);
+          const label = `${from} -> ${to}`;
+          expect((rules.attackBonus ?? []).reduce((s, v) => s + v, 0), label).toBeLessThanOrEqual(1);
+          expect((rules.defenceBonus ?? []).reduce((s, v) => s + v, 0), label).toBeLessThanOrEqual(
+            1,
+          );
+        }
+      }
+    });
+
+    it('ninguna pareja se va de madre', () => {
+      // Con las dos mitades sumando hay que comprobar que el peor y el mejor
+      // caso siguen en la banda que ya se había medido y aceptado.
+      for (const from of TERRAINS) {
+        for (const to of TERRAINS) {
+          const value = odds(from, to);
+          expect(value, `${from} -> ${to}`).toBeGreaterThanOrEqual(0.19);
+          expect(value, `${from} -> ${to}`).toBeLessThanOrEqual(0.77);
         }
       }
     });
@@ -122,8 +230,13 @@ describe('orografía', () => {
   describe('probabilidades reales', () => {
     // Contrastadas contra una simulación independiente de 300 000 batallas por
     // caso (misma metodología que las de referencia del combate clásico).
-    const rulesOf = (terrain: Terrain, approach: 'tierra' | 'desembarco' = 'tierra') =>
-      terrainRules(terrain, approach);
+    // Atacando desde llanura, que es la referencia: el origen no aporta nada.
+    const rulesOf = (terrain: Terrain, approach: 'tierra' | 'desembarco' = 'tierra') => ({
+      attack: approach === 'tierra' ? 3 : 2,
+      defend: 2,
+      defenceBonus: terrainDefence(terrain, approach),
+      attackBonus: [],
+    });
 
     it('un ataque de 10 contra 5 se paga distinto según dónde caiga', () => {
       expect(conquestOdds(10, 5, rulesOf('llanura'))).toBeCloseTo(0.872, 2);

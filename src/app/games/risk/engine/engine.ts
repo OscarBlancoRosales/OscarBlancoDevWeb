@@ -132,6 +132,23 @@ export function createGame(options: CreateGameOptions): GameState {
     territories[territory.id] = { ownerId: null, armies: 0 };
   }
 
+  // En un escenario histórico cada jugador lleva una facción concreta, y las
+  // facciones se reparten alternando bandos: con dos jugadores sale uno contra
+  // uno, con cuatro dos contra dos. El orden de la mesa ya viene barajado, así
+  // que no hace falta más azar.
+  if (map.scenario) {
+    const byside = map.scenario.sides.map((side) =>
+      map.scenario!.factions.filter((faction) => faction.side === side.id),
+    );
+    players.forEach((player, index) => {
+      const group = byside[index % byside.length];
+      const faction = group[Math.floor(index / byside.length) % group.length];
+      player.factionId = faction.id;
+      player.side = faction.side;
+      player.color = faction.color;
+    });
+  }
+
   const state: GameState = {
     mapId: map.id,
     seed,
@@ -162,7 +179,10 @@ export function createGame(options: CreateGameOptions): GameState {
     text: `Comienza la partida en ${map.name} con ${players.length} jugadores.`,
   });
 
-  if (config.autoClaim) {
+  if (map.scenario) {
+    deployScenario(state, map);
+    beginTurn(state, map, /* first */ true);
+  } else if (config.autoClaim) {
     autoDistribute(state, map, startingArmies, rng);
     beginTurn(state, map, /* first */ true);
   } else {
@@ -185,6 +205,47 @@ export function createGame(options: CreateGameOptions): GameState {
   }
 
   return state;
+}
+
+/**
+ * Coloca el tablero tal y como lo declara el escenario.
+ *
+ * Las provincias de una facción que nadie lleva se reparten entre quienes sí
+ * juegan de ese mismo bando: en una partida de dos, quien lleve la República
+ * hereda también las columnas confederadas. Así el escenario empieza siempre
+ * completo, jueguen dos o cuatro.
+ */
+function deployScenario(state: GameState, map: GameMap): void {
+  const scenario = map.scenario!;
+  const byFaction = new Map<string, PlayerId>();
+  for (const player of state.players) {
+    if (player.factionId) byFaction.set(player.factionId, player.id);
+  }
+  const bySide = new Map<string, PlayerId[]>();
+  for (const player of state.players) {
+    if (!player.side) continue;
+    bySide.set(player.side, [...(bySide.get(player.side) ?? []), player.id]);
+  }
+
+  let spare = 0;
+  for (const territory of map.territories) {
+    const slot = scenario.deployment[territory.id];
+    if (!slot) continue;
+    const faction = scenario.factions.find((f) => f.id === slot.faction);
+    let ownerId = byFaction.get(slot.faction);
+    if (!ownerId && faction) {
+      const allies = bySide.get(faction.side) ?? [];
+      ownerId = allies[spare++ % Math.max(1, allies.length)];
+    }
+    if (!ownerId) continue;
+    state.territories[territory.id] = { ownerId, armies: slot.armies };
+  }
+
+  pushEvent(state, {
+    type: 'game-start',
+    playerId: null,
+    text: scenario.intro,
+  });
 }
 
 /** Reparto automático: territorios en rueda y el resto de ejércitos encima. */
@@ -288,6 +349,26 @@ function checkVictory(state: GameState, map: GameMap): boolean {
         text: `¡${player.name} cumple su objetivo y gana la partida! (${
           missionProgress(state, map, player.id).text
         })`,
+      });
+      return true;
+    }
+  }
+
+  // En un escenario por bandos gana el bando entero cuando el otro se queda sin
+  // nada. No hace falta que un solo jugador lo tenga todo: la guerra la ganan
+  // los dos juntos o no la gana ninguno.
+  if (map.scenario && alive.some((player) => player.side)) {
+    const sides = new Set(alive.map((player) => player.side).filter(Boolean));
+    if (sides.size === 1) {
+      const [side] = [...sides];
+      const winners = alive.filter((player) => player.side === side);
+      const name = map.scenario.sides.find((s) => s.id === side)?.name ?? side;
+      state.winnerId = winners[0]?.id ?? null;
+      state.phase = 'game-over';
+      pushEvent(state, {
+        type: 'win',
+        playerId: state.winnerId,
+        text: `La guerra termina: ${name} controla España.`,
       });
       return true;
     }
@@ -546,7 +627,7 @@ function applyAttack(
   const target = state.territories[to];
   // Las mismas reglas que ve el jugador en pantalla y que usa la IA: los topes
   // de la mesa ya combinados con el terreno de `to` y con la forma de llegar.
-  const rules = battleRulesFor(map, state.config, from, to, origin);
+  const rules = battleRulesFor(map, state.config, from, to, origin, target);
   const allowed = maxAttackDice(origin.armies, rules.attack);
   if (!Number.isInteger(dice) || dice < 1 || dice > allowed) {
     throw new RuleError('bad-dice', `Puedes lanzar entre 1 y ${allowed} dados`);

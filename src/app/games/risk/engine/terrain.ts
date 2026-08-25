@@ -1,6 +1,6 @@
 import { GameConfig, GameMap, Terrain, TerritoryId, TerritoryState } from './types';
 import { BattleRules, diceCapsOf } from './combat';
-import { hasUnit } from './units';
+import { hasUnit, unitAssault, unitDefence } from './units';
 
 /**
  * Orografía: el terreno de cada territorio cambia cómo se pelea por él.
@@ -31,8 +31,10 @@ export interface TerrainMeta {
   name: string;
   /** Glifo para la leyenda y el tooltip. */
   glyph: string;
-  /** Cómo pelea el defensor aquí, en una línea. */
-  effect: string;
+  /** Qué le da a quien DEFIENDE aquí. */
+  defence: string;
+  /** Qué le da a quien ATACA DESDE aquí. */
+  assault: string;
   /** Tinte de la trama que se dibuja sobre la silueta. */
   tint: string;
 }
@@ -43,7 +45,8 @@ export const TERRAIN_META: Record<Terrain, TerrainMeta> = {
     slug: 'llanura',
     name: 'Llanura',
     glyph: '≡',
-    effect: 'Terreno abierto: el combate de siempre.',
+    defence: 'Terreno abierto: nada a favor.',
+    assault: 'Campo de maniobra: se despliega sin estorbos, pero sin sorpresa.',
     tint: '#9ccc65',
   },
   bosque: {
@@ -51,7 +54,8 @@ export const TERRAIN_META: Record<Terrain, TerrainMeta> = {
     slug: 'bosque',
     name: 'Bosque',
     glyph: '♣',
-    effect: 'Emboscada en los flancos: +1 al segundo dado del defensor.',
+    defence: 'Emboscada en los flancos: +1 al segundo dado del defensor.',
+    assault: 'Sales sin que te vean venir: +1 al mejor dado del atacante.',
     tint: '#2e7d32',
   },
   montaña: {
@@ -59,7 +63,8 @@ export const TERRAIN_META: Record<Terrain, TerrainMeta> = {
     slug: 'montana',
     name: 'Montaña',
     glyph: '▲',
-    effect: 'Domina la altura: +1 al mejor dado del defensor.',
+    defence: 'Domina la altura: +1 al mejor dado del defensor.',
+    assault: 'Bajas con impulso pero en columna: +1 al segundo dado del atacante.',
     tint: '#a1887f',
   },
   desierto: {
@@ -67,7 +72,8 @@ export const TERRAIN_META: Record<Terrain, TerrainMeta> = {
     slug: 'desierto',
     name: 'Desierto',
     glyph: '∴',
-    effect: 'Flanco al descubierto: −1 al segundo dado del defensor.',
+    defence: 'Flanco al descubierto: −1 al segundo dado del defensor.',
+    assault: 'La aproximación se ve venir: −1 al segundo dado del atacante.',
     tint: '#e0b040',
   },
   costa: {
@@ -75,7 +81,8 @@ export const TERRAIN_META: Record<Terrain, TerrainMeta> = {
     slug: 'costa',
     name: 'Costa',
     glyph: '≈',
-    effect: 'Por tierra, normal. Playa defendida: +1 al mejor dado contra un desembarco.',
+    defence: 'Playa defendida: +1 al mejor dado contra un desembarco.',
+    assault: 'Puerto de partida: por tierra, un frente como otro cualquiera.',
     tint: '#29b6f6',
   },
 };
@@ -86,44 +93,136 @@ export const TERRAINS = Object.keys(TERRAIN_META) as Terrain[];
 export const DEFAULT_TERRAIN: Terrain = 'llanura';
 
 /**
- * Efecto de cada terreno, ya combinado con la forma de llegar.
+ * Tope de lo que puede desequilibrar UN combate, sumando todo.
  *
- * Dos palancas y nada más:
+ * Es la lección más cara de este diseño. Con el terreno del defensor solo, un
+ * paso de dado dejaba el 8 contra 8 entre 0,20 y 0,66: exigente y jugable. Al
+ * añadir el terreno del atacante, las tropas de los dos lados y dejar que todo
+ * se acumulara, el mismo 8 contra 8 se iba de 0,080 a 0,900: un muro por un lado
+ * y un regalo por el otro, justo lo que ya se había descartado antes.
  *
- * - **El desembarco** recorta al atacante a 2 dados, sea cual sea el terreno:
- *   cruzando el mar no se mete toda la fuerza de golpe.
- * - **El terreno** mueve un dado del defensor, y solo uno. La montaña refuerza
- *   la posición principal (el mejor dado); el bosque y el desierto actúan sobre
- *   el segundo, que es el que cubre los flancos. La costa no hace nada por
- *   tierra: su ventaja es contra quien llega por mar.
- *
- * Que el bosque y el desierto vayan al segundo dado tiene una consecuencia que
- * se nota jugando: contra un defensor de un solo ejército, que tira un único
- * dado, no cambian nada. Un bosque vacío no embosca a nadie.
- *
- * Un ataque aéreo se parece a un desembarco en lo que importa: no lleva masa
- * detrás, así que también se queda en 2 dados. Lo que gana es alcance.
- *
- * Medido contra una simulación independiente de 300 000 batallas, un ataque de
- * 10 contra 5 pasa de 0,872 en llanura a 0,958 en desierto, 0,719 en bosque,
- * 0,699 en montaña y 0,394 desembarcando en una costa.
+ * Así que el saldo se acota a UN paso de dado. La pareja de terrenos y las
+ * tropas siguen decidiendo QUÉ dado se mueve y a favor de quién —que es lo que
+ * hace interesante el mapa—, pero ninguna combinación puede ir más allá de lo
+ * que ya estaba medido y aceptado.
  */
-export function terrainRules(terrain: Terrain, approach: ApproachKind): BattleRules {
-  const attack = approach === 'tierra' ? 3 : 2;
-  const landing = approach === 'desembarco';
+export const MAX_NET_SHIFT = 1;
+
+/**
+ * Lo que el terreno le da a quien DEFIENDE en él.
+ *
+ * Cada terreno mueve un solo dado y en uno solo. La montaña refuerza la posición
+ * principal (el mejor dado); el bosque y el desierto actúan sobre el segundo,
+ * que es el que cubre los flancos. Eso tiene una consecuencia que se nota
+ * jugando: contra un defensor de un solo ejército, que tira un único dado, el
+ * bosque y el desierto no cambian nada. Un bosque vacío no embosca a nadie.
+ */
+export function terrainDefence(terrain: Terrain, approach: ApproachKind): number[] {
   switch (terrain) {
     case 'bosque':
-      return { attack, defend: 2, defenceBonus: [0, 1], attackBonus: [] };
+      return [0, 1];
     case 'montaña':
-      return { attack, defend: 2, defenceBonus: [1], attackBonus: [] };
+      return [1];
     case 'desierto':
-      return { attack, defend: 2, defenceBonus: [0, -1], attackBonus: [] };
+      return [0, -1];
     case 'costa':
-      return { attack, defend: 2, defenceBonus: landing ? [1] : [], attackBonus: [] };
-    case 'llanura':
+      return approach === 'desembarco' ? [1] : [];
     default:
-      return { attack, defend: 2, defenceBonus: [], attackBonus: [] };
+      return [];
   }
+}
+
+/**
+ * Lo que el terreno le da a quien ATACA DESDE él.
+ *
+ * Sin esto el terreno era siempre un impuesto para el atacante, y el mapa se
+ * leía en una sola dirección. Con las dos mitades, lo que importa es la PAREJA:
+ * salir de un bosque contra una montaña cancela el bono de altura del defensor
+ * en el mejor dado, mientras que cruzar un desierto para asaltar un bosque es lo
+ * peor que se puede intentar.
+ *
+ * Un desembarco o un ataque aéreo no heredan nada del terreno de origen: quien
+ * cruza el mar o llega volando deja atrás el suelo del que salió.
+ */
+export function terrainAssault(terrain: Terrain, approach: ApproachKind): number[] {
+  if (approach !== 'tierra') return [];
+  switch (terrain) {
+    case 'bosque':
+      return [1];
+    case 'montaña':
+      return [0, 1];
+    case 'desierto':
+      return [0, -1];
+    default:
+      return [];
+  }
+}
+
+/** Suma dos vectores de bonificación por rango. */
+export function addBonus(a: number[], b: number[]): number[] {
+  const length = Math.max(a.length, b.length);
+  const out: number[] = [];
+  for (let i = 0; i < length; i++) out.push((a[i] ?? 0) + (b[i] ?? 0));
+  return out;
+}
+
+/**
+ * Acota el saldo del combate a un paso de dado EN CADA DIRECCIÓN.
+ *
+ * Es la lección más cara de este diseño. Con el terreno del defensor solo, un
+ * paso de dado dejaba el 8 contra 8 entre 0,20 y 0,66: exigente y jugable. Al
+ * añadir el terreno del atacante y las tropas de los dos lados, y dejar que todo
+ * se acumulara, el mismo 8 contra 8 se iba de 0,080 a 0,900: un muro por un lado
+ * y un regalo por el otro, justo lo que ya se había descartado antes.
+ *
+ * El primer arreglo —quedarse solo con el dado decisivo— acotaba bien pero
+ * aplastaba la matriz: atacar un bosque desde un bosque salía igual que atacar
+ * un desierto desde un bosque, porque la ventaja del defensor se tiraba entera.
+ *
+ * Así que se acota por separado: como mucho un paso a favor del atacante y como
+ * mucho uno a favor del defensor. Un combate puede estar desequilibrado en los
+ * dos dados a la vez, uno para cada lado —que es justo lo que pasa en un bosque
+ * contra otro bosque—, pero nadie puede acumular dos pasos a su favor.
+ *
+ * En los empates gana el índice más bajo, que es el mejor dado: determinista, y
+ * dos clientes reproduciendo el log llegan al mismo sitio.
+ */
+export function capNet(net: number[]): number[] {
+  const out = new Array(net.length).fill(0);
+  for (const sign of [1, -1]) {
+    let bestIndex = -1;
+    let bestValue = 0;
+    net.forEach((value, index) => {
+      if (Math.sign(value) !== sign) return;
+      if (Math.abs(value) > Math.abs(bestValue)) {
+        bestValue = value;
+        bestIndex = index;
+      }
+    });
+    if (bestIndex !== -1) out[bestIndex] = sign * Math.min(Math.abs(bestValue), MAX_NET_SHIFT);
+  }
+  return out;
+}
+
+/**
+ * Reglas de un combate mirando SOLO al terreno de los dos lados.
+ *
+ * Es la matriz del mapa en estado puro, sin tropas ni topes de mesa: lo que usan
+ * los tests y las herramientas de medida para que midan exactamente lo mismo que
+ * juega el motor.
+ */
+export function terrainPairRules(
+  from: Terrain,
+  to: Terrain,
+  approach: ApproachKind = 'tierra',
+): BattleRules {
+  const net = capNet(subtract(terrainAssault(from, approach), terrainDefence(to, approach)));
+  return {
+    attack: approach === 'tierra' ? 3 : 2,
+    defend: 2,
+    attackBonus: trimTrailingZeros(net.map((value) => Math.max(0, value))),
+    defenceBonus: trimTrailingZeros(net.map((value) => Math.max(0, -value))),
+  };
 }
 
 /**
@@ -226,30 +325,62 @@ export function battleRulesFor(
   from: TerritoryId,
   to: TerritoryId,
   origin?: TerritoryState,
+  target?: TerritoryState,
 ): BattleRules {
   const caps = diceCapsOf(config);
-  const units = config?.advancedUnits ? origin : undefined;
-  const approach = approachOf(map, from, to, units);
+  const withUnits = !!config?.advancedUnits;
+  const withTerrain = !!config?.advancedTerrain;
+  const approach = approachOf(map, from, to, withUnits ? origin : undefined);
 
-  // Los blindados empujan igual que la montaña frena: un dado, y solo el mejor.
-  // No vuelan: en un ataque aéreo no cuentan.
-  const attackBonus =
-    config?.advancedUnits && approach === 'tierra' && hasUnit(origin, 'blindado') ? [1] : [];
+  // Con la orografía apagada el mapa no cambia NADA, tampoco para las tropas:
+  // todo cuenta como llanura, así que un blindado maniobra en cualquier sitio.
+  const fromTerrain = withTerrain ? terrainOf(map, from) : DEFAULT_TERRAIN;
+  const toTerrain = withTerrain ? terrainOf(map, to) : DEFAULT_TERRAIN;
 
-  if (!config?.advancedTerrain) {
-    // Sin orografía no hay desembarcos, pero el alcance aéreo sí existe: es de
-    // las tropas, no del terreno.
-    const attack = approach === 'aereo' ? Math.min(2, caps.attack) : caps.attack;
-    return { ...caps, attack, attackBonus };
+  let attackBonus: number[] = [];
+  let defenceBonus: number[] = [];
+
+  if (withTerrain) {
+    attackBonus = addBonus(attackBonus, terrainAssault(fromTerrain, approach));
+    defenceBonus = addBonus(defenceBonus, terrainDefence(toTerrain, approach));
+  }
+  if (withUnits) {
+    attackBonus = addBonus(attackBonus, unitAssault(origin, fromTerrain, toTerrain, approach));
+    defenceBonus = addBonus(defenceBonus, unitDefence(target, toTerrain, approach));
   }
 
-  const rules = terrainRules(terrainOf(map, to), approach);
-  // Los topes de la mesa siguen mandando: ni el terreno ni las tropas dan más
-  // dados de los que la configuración permite.
+  // Lo que decide el combate es el SALDO, no cada mitad por su cuenta: sumar 1
+  // al atacante y 1 al defensor en el mismo dado es exactamente igual que no
+  // tocar nada. Se calcula el neto, se acota a un paso, y se reparte otra vez.
+  // Como efecto secundario la caché de probabilidades se queda en muy pocas
+  // combinaciones distintas.
+  const net = capNet(subtract(attackBonus, defenceBonus));
+  const finalAttack = net.map((value) => Math.max(0, value));
+  const finalDefence = net.map((value) => Math.max(0, -value));
+
+  // Los topes de la mesa mandan sobre todo lo demás. El desembarco y el ataque
+  // aéreo recortan al atacante; el alcance aéreo existe aunque la orografía esté
+  // apagada, porque es de la tropa y no del terreno.
+  const wantsFewerDice = approach !== 'tierra' && (withTerrain || approach === 'aereo');
+  const attack = Math.min(wantsFewerDice ? 2 : 3, caps.attack);
+
   return {
-    attack: Math.min(rules.attack, caps.attack),
-    defend: Math.min(rules.defend, caps.defend),
-    defenceBonus: rules.defenceBonus,
-    attackBonus,
+    attack,
+    defend: Math.min(2, caps.defend),
+    defenceBonus: trimTrailingZeros(finalDefence),
+    attackBonus: trimTrailingZeros(finalAttack),
   };
+}
+
+function subtract(a: number[], b: number[]): number[] {
+  const length = Math.max(a.length, b.length);
+  const out: number[] = [];
+  for (let i = 0; i < length; i++) out.push((a[i] ?? 0) - (b[i] ?? 0));
+  return out;
+}
+
+function trimTrailingZeros(values: number[]): number[] {
+  let last = values.length;
+  while (last > 0 && values[last - 1] === 0) last--;
+  return values.slice(0, last);
 }

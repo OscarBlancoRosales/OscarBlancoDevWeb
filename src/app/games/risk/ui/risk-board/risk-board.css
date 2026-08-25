@@ -331,3 +331,9 @@
   stroke-width: 2.5px;
   stroke-linejoin: round;
 }
+
+.tip-matchup {
+  display: block;
+  font-size: 0.7rem;
+  color: #8b949e;
+}

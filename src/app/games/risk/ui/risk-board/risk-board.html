@@ -146,8 +146,9 @@
     <span class="tip-armies">{{ info.armies }} ejércitos</span>
     <span class="tip-terrain" *ngIf="info.terrain as terrain">
       <span class="tip-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
-      {{ terrain.name }} · {{ terrain.effect }}
+      {{ terrain.name }} · {{ terrain.defence }}
     </span>
+    <span class="tip-matchup" *ngFor="let line of info.matchup">{{ line }}</span>
     <span class="tip-approach" *ngIf="info.approach === 'desembarco'">
       Desembarco: cruzando el mar solo tiras 2 dados.
     </span>

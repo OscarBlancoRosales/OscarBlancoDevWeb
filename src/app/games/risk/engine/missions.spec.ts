@@ -10,7 +10,7 @@ import { decideAction, BOT_PROFILE_IDS } from './ai/bot-brain';
 import { GameMap, GameState, PlayerId } from './types';
 import { TINY_MAP, forceTurn, setBoard } from './testing';
 import { WORLD_MAP } from './maps/world.map';
-import { CATALONIA_MAP } from './maps/catalonia.map';
+import { SPAIN_MAP } from './maps/spain.map';
 
 const PLAYERS = [
   { id: 'p1', name: 'Ada', kind: 'human' as const },
@@ -44,7 +44,7 @@ describe('victoria por objetivos', () => {
     });
 
     it('no se repiten entre jugadores', () => {
-      for (const map of [TINY_MAP, WORLD_MAP, CATALONIA_MAP]) {
+      for (const map of [TINY_MAP, WORLD_MAP, SPAIN_MAP]) {
         const state = objectivesGame(map, 77);
         const texts = Object.values(state.missions!).map((m) => m.text);
         expect(new Set(texts).size, map.name).toBe(texts.length);
@@ -91,7 +91,7 @@ describe('victoria por objetivos', () => {
     });
 
     it('todos los objetivos repartidos son alcanzables en el mapa', () => {
-      for (const map of [WORLD_MAP, CATALONIA_MAP]) {
+      for (const map of [WORLD_MAP, SPAIN_MAP]) {
         for (let seed = 1; seed <= 15; seed++) {
           const state = objectivesGame(map, seed);
           for (const mission of Object.values(state.missions!)) {
@@ -299,7 +299,7 @@ describe('victoria por objetivos', () => {
 
   describe('partidas completas de bots', () => {
     it('terminan, y antes que por conquista total', () => {
-      const map = CATALONIA_MAP;
+      const map = SPAIN_MAP;
       let shorter = 0;
       for (let seed = 1; seed <= 6; seed++) {
         const withObjectives = selfPlay(map, seed, 'objectives');

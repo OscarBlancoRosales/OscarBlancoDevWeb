@@ -106,6 +106,11 @@ export class RiskLobby implements OnInit {
     return this.maps.find((map) => map.id === this.mapId) ?? this.maps[0];
   }
 
+  /** El escenario del mapa elegido, si lo tiene. */
+  get scenario() {
+    return this.selectedMap.scenario ?? null;
+  }
+
   get maxPlayersOptions(): number[] {
     const cap = this.selectedMap.maxPlayers;
     return Array.from({ length: cap - 1 }, (_, i) => i + 2);

@@ -4,6 +4,8 @@ import { GameAction, GameMap, GameState } from '../engine/types';
 import { currentPlayer, playerById } from '../engine/engine';
 import { decideAction, StrategyBias } from '../engine/ai/bot-brain';
 import { requestAdvice, requestTurnPlan } from '../engine/ai/ai-orchestrator';
+import { chronicleFor, hasChronicle } from '../engine/ai/chronicle';
+import { rngFor } from '../engine/rng';
 import { AiSettings, loadAiSettings } from '../engine/ai/ai-client';
 import { getMap } from '../engine/maps/map-registry';
 import {
@@ -157,9 +159,51 @@ export class RiskGameService implements OnDestroy {
       return;
     }
 
+    this.maybeChronicle(state);
     this.maybeAdvise(state);
     void this.driveBots(state);
   }
+
+  /**
+   * Crónica de guerra de los escenarios históricos.
+   *
+   * Una línea la primera vez que se ataca cada pareja de provincias en un turno:
+   * una batalla larga son muchas tiradas, y contar cada una llenaría el chat de
+   * ruido. La escribe solo el anfitrión, como los mensajes de los bots, para que
+   * no salga repetida en cada cliente.
+   */
+  private maybeChronicle(state: GameState): void {
+    if (!this.map || !hasChronicle(this.map)) return;
+    const combat = state.lastCombat;
+    if (!combat) return;
+
+    const key = `${state.round}:${state.currentPlayerIndex}:${combat.from}->${combat.to}`;
+    if (this.chronicled.has(key)) return;
+    this.chronicled.add(key);
+    // El turno cambia a menudo; no dejamos crecer el conjunto sin límite.
+    if (this.chronicled.size > 400) this.chronicled.clear();
+
+    const line = chronicleFor(
+      {
+        map: this.map,
+        state,
+        playerId: combat.attackerId,
+        from: combat.from,
+        to: combat.to,
+      },
+      rngFor(state.seed, state.actionCount, 'chronicle'),
+    );
+    if (!line) return;
+
+    void this.rooms.sendChat(this.roomId, {
+      authorId: 'chronicle',
+      author: 'Crónica',
+      kind: 'system',
+      text: line,
+    });
+  }
+
+  private chronicled = new Set<string>();
 
   /** Si el turno es de un bot, planifica y juega una acción cada vez. */
   private async driveBots(state: GameState): Promise<void> {

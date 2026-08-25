@@ -100,7 +100,8 @@ describe('RiskLobby', () => {
       expect(component.terrains).toHaveLength(5);
       for (const terrain of component.terrains) {
         expect(terrain.name.length).toBeGreaterThan(0);
-        expect(terrain.effect.length).toBeGreaterThan(10);
+        expect(terrain.defence.length).toBeGreaterThan(10);
+        expect(terrain.assault.length).toBeGreaterThan(10);
       }
     });
 

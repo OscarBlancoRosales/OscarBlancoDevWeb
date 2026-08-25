@@ -68,6 +68,7 @@ export function canAttack(
   if (!origin || !target) return false;
   if (origin.ownerId !== playerId) return false;
   if (target.ownerId === playerId) return false;
+  if (areAllies(state, playerId, target.ownerId)) return false;
   if (origin.armies < 2) return false;
   if (adjacencyOf(map, from).includes(to)) return true;
   return airReachOf(state, map, from).includes(to);
@@ -142,6 +143,30 @@ export function areConnected(
   return false;
 }
 
+/**
+ * ¿Van juntos? En un escenario histórico, dos facciones del mismo bando no se
+ * atacan entre sí, por mucho que en la guerra de verdad acabaran haciéndolo.
+ */
+export function areAllies(
+  state: GameState,
+  a: PlayerId,
+  b: PlayerId | null | undefined,
+): boolean {
+  if (!b || a === b) return a === b;
+  const first = state.players.find((p) => p.id === a);
+  const second = state.players.find((p) => p.id === b);
+  if (!first?.side || !second?.side) return false;
+  return first.side === second.side;
+}
+
+/** ¿Es enemigo de verdad? (ni tuyo ni de tu bando) */
+export function isEnemy(state: GameState, playerId: PlayerId, id: TerritoryId): boolean {
+  const owner = state.territories[id]?.ownerId;
+  if (owner === undefined) return false;
+  if (owner === playerId) return false;
+  return !areAllies(state, playerId, owner);
+}
+
 /** Territorios propios desde los que se puede atacar a alguien. */
 export function attackSources(state: GameState, map: GameMap, playerId: PlayerId): TerritoryId[] {
   return territoriesOf(state, playerId).filter(
@@ -158,8 +183,7 @@ export function attackTargets(
   from: TerritoryId,
   playerId: PlayerId,
 ): TerritoryId[] {
-  const enemy = (id: TerritoryId) =>
-    state.territories[id] !== undefined && state.territories[id].ownerId !== playerId;
+  const enemy = (id: TerritoryId) => isEnemy(state, playerId, id);
   const byLand = adjacencyOf(map, from).filter(enemy);
   const byAir = airReachOf(state, map, from).filter(enemy);
   return byAir.length > 0 ? [...byLand, ...byAir] : byLand;

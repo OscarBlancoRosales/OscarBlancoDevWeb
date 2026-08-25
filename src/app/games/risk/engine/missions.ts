@@ -5,10 +5,9 @@ import { continentsOf, territoriesOf } from './rules';
 /**
  * Victoria por objetivos.
  *
- * En un tablero grande, conquistarlo entero es una campaña interminable: son las
- * comarcas las que enseñaron el problema, pero pasa igual en cualquier mapa de
- * 40 territorios largos. Con objetivos, cada jugador tiene una meta propia y la
- * partida se decide cuando alguien la cumple.
+ * En un tablero grande, conquistarlo entero es una campaña interminable: en las
+ * 52 provincias españolas se nota enseguida. Con objetivos, cada jugador tiene
+ * una meta propia y la partida se decide cuando alguien la cumple.
  *
  * **Los objetivos son públicos, y es a propósito.** Sin backend no hay forma de
  * guardar un secreto: todos los clientes reproducen el mismo log y calculan el

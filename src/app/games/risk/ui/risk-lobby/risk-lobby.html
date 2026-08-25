@@ -97,6 +97,31 @@
           </div>
         </div>
 
+        <!-- Escenario histórico: quién es quién antes de empezar -->
+        <div class="subsection" *ngIf="scenario as sc">
+          <h3>El escenario</h3>
+          <p class="scenario-intro">{{ sc.intro }}</p>
+          <div class="side-grid">
+            <div class="side-block" *ngFor="let side of sc.sides" [style.borderColor]="side.color">
+              <span class="side-name" [style.color]="side.color">{{ side.name }}</span>
+              <div class="faction" *ngFor="let faction of sc.factions">
+                <ng-container *ngIf="faction.side === side.id">
+                  <span class="faction-name">
+                    <span class="faction-dot" [style.background]="faction.color"></span>
+                    {{ faction.name }}
+                  </span>
+                  <small>{{ faction.blurb }}</small>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+          <p class="hint">
+            Se juega por bandos: los del mismo lado no pueden atacarse y ganan juntos. Con dos
+            jugadores es uno contra uno y cada uno lleva las dos facciones de su bando; con cuatro,
+            dos contra dos. Los huecos los puede rellenar la IA.
+          </p>
+        </div>
+
         <div class="subsection">
           <h3>Vista previa</h3>
           <div class="preview-box">
@@ -171,11 +196,15 @@
               <span class="terrain-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
               <span class="terrain-text">
                 <strong>{{ terrain.name }}</strong>
-                {{ terrain.effect }}
+                <span class="terrain-role">Defendiendo:</span> {{ terrain.defence }}
+                <span class="terrain-role">Atacando desde aquí:</span> {{ terrain.assault }}
               </span>
             </div>
             <p class="hint">
-              Además, atacar cruzando una línea de puntos es un desembarco: solo tiras 2 dados.
+              Lo que cuenta es la <strong>pareja</strong>: el terreno del que sales y el terreno al
+              que entras se suman. Salir de un bosque contra una montaña cancela la altura del
+              defensor; cruzar un desierto para asaltar un bosque es lo peor que puedes intentar.
+              Y atacar cruzando una línea de puntos es un desembarco: solo tiras 2 dados.
             </p>
           </div>
 

@@ -304,7 +304,7 @@ escriben en Firebase ni los ve el resto de la mesa.
 | Todo el mundo | 42 | 6 continentes | **cartografía real** | La partida larga de siempre |
 | España por provincias | 52 | 18 comunidades | **cartografía real** | Muy territorial, la más larga |
 | España por comunidades | 19 | 5 macrozonas | **cartografía real** | Partida rápida |
-| Cataluña por comarcas | 41 | 7 ámbitos | **cartografía real** | Todo fronteras de tierra |
+| España 1936 | 52 | 9 frentes | **escenario histórico** | Dos bandos, posición inicial real |
 
 ### De cartografía real a tablero
 
@@ -407,13 +407,25 @@ Un interruptor en la sala. Apagado, la partida es el RISK clásico y el mapa no
 cambia ni un dado. Encendido, **el terreno decide cómo se pelea cada
 territorio**.
 
-| Terreno | Efecto sobre el defensor |
-|---|---|
-| Llanura `≡` | Nada: el combate de siempre |
-| Bosque `♣` | +1 al **segundo** dado (emboscada en los flancos) |
-| Montaña `▲` | +1 al **mejor** dado (domina la altura) |
-| Desierto `∴` | −1 al **segundo** dado (flanco al descubierto) |
-| Costa `≈` | Por tierra nada; contra un desembarco, +1 al mejor dado |
+Y no es un impuesto que pague solo el atacante: **cada terreno tiene dos
+mitades**, lo que da al que defiende en él y lo que da al que ataca desde él.
+
+| Terreno | Defendiendo aquí | Atacando desde aquí |
+|---|---|---|
+| Llanura `≡` | Nada | Nada |
+| Bosque `♣` | +1 al **segundo** dado (emboscada en los flancos) | +1 al **mejor** dado (sales sin que te vean) |
+| Montaña `▲` | +1 al **mejor** dado (domina la altura) | +1 al **segundo** (bajas con impulso, pero en columna) |
+| Desierto `∴` | −1 al **segundo** dado (flanco al descubierto) | −1 al **segundo** (la aproximación se ve venir) |
+| Costa `≈` | Contra un desembarco, +1 al mejor dado | Nada por tierra |
+
+**Lo que decide un combate es la pareja.** Salir de un bosque contra una montaña
+cancela la altura del defensor —los dos empujan el mejor dado, uno por lado— y el
+resultado es exactamente el combate clásico. Asaltar una montaña desde el llano
+es lo más caro que hay. El mismo objetivo se paga distinto según de dónde salgas,
+y el mismo origen rinde distinto según a dónde ataques.
+
+Quien cruza el mar o llega volando no hereda nada del suelo del que salió: deja
+el terreno atrás.
 
 Y una regla que no depende del terreno: **atacar cruzando el mar es un
 desembarco**, y desembarcando solo se tiran 2 dados.
@@ -432,11 +444,30 @@ desembarco en costa 0,394 ← una playa defendida es lo más caro del juego
 
 Tres decisiones de diseño que conviene entender:
 
-**Solo se mueve un dado, y solo en uno.** La primera versión sumaba la
-bonificación a *todos* los dados del defensor. Medido: la montaña dejaba un 8
-contra 8 en 0,08 (un muro infranqueable) y el desierto lo subía a 0,90 (regalado).
-Moviendo un único dado la escala queda entre 0,20 y 0,66, que se nota mucho sin
-romper nada.
+**El saldo se acota a un paso de dado en cada dirección.** Es la lección más cara
+de este diseño, y se ha aprendido dos veces. Primero: sumar la bonificación a
+*todos* los dados del defensor dejaba la montaña en 0,08 a 8 contra 8 (un muro) y
+el desierto en 0,90 (regalado); moviendo un solo dado la escala se quedaba entre
+0,20 y 0,66. Después, al añadir la mitad del atacante y las tropas de los dos
+lados y dejar que todo se acumulara, volvió a irse de 0,080 a 0,900.
+
+El primer arreglo —quedarse solo con el dado decisivo— acotaba bien pero aplastaba
+la matriz: atacar un bosque desde un bosque salía igual que atacar un desierto
+desde un bosque. Así que se acota por separado: **como mucho un paso a favor del
+atacante y como mucho uno a favor del defensor.** Un combate puede estar
+desequilibrado en los dos dados a la vez, uno para cada lado —que es justo lo que
+pasa en un bosque contra otro bosque—, pero nadie acumula dos pasos a su favor.
+
+La matriz completa, a 8 contra 8 (el clásico es 0,446):
+
+```
+desde \ hacia   llanura  bosque  montaña  desierto  costa
+llanura           0,446   0,235    0,199     0,655   0,446
+bosque            0,763   0,550    0,446     0,763   0,763
+montaña           0,655   0,446    0,360     0,655   0,655
+desierto          0,235   0,235    0,199     0,446   0,235
+costa             0,446   0,235    0,199     0,655   0,446
+```
 
 **Qué dado se mueve importa.** La montaña toca el mejor dado y el bosque el
 segundo. La consecuencia se nota jugando: contra un defensor de un solo ejército,
@@ -475,31 +506,6 @@ riesgo real de atasco: en montaña un 8 contra 8 da 0,198, y el suelo del umbral
 de ataque de la IA estaba en 0,20, así que los bots literalmente nunca atacaban
 allí y se dedicaban a acumular. Se ve en `bot-brain.ts`, en el alivio anti-atasco.
 
-### Las comarcas, y por qué solo una comunidad
-
-Las ~370 comarcas de toda España darían un tablero que no se acaba nunca, y ese
-era el problema desde el principio. La salida es hacer el mapa de **una sola
-comunidad**: Cataluña tiene 41 comarcas, justo el tamaño del tablero clásico del
-mundo, y encima con una diferencia que se nota jugando — **no hay un solo salto
-por mar**, todo son fronteras de tierra, así que no existen los cuellos de
-botella que en el mundo dejan un continente defendible con dos guarniciones.
-
-Los "continentes" son los siete **ámbitos funcionales territoriales**. Se usa la
-división de 2010 y no la de 2017 porque esta última saca el Penedès de tres
-ámbitos distintos, y un continente de RISK tiene que ser una pieza contigua (hay
-un test que lo comprueba en todos los mapas).
-
-Del origen salen 50 trozos para 41 comarcas: nueve tienen **enclaves de verdad**,
-el más famoso Llívia, que es de la Cerdanya y está rodeada de Francia. Todos
-rondan el 1 % del área de su comarca, o sea puntos que en un tablero no se pueden
-ni pulsar, así que se descartan igual que se descartan los islotes en el mapa de
-España. Es una pena, pero un territorio tiene que ser algo que se pueda señalar
-con el dedo.
-
-Medido en 160 partidas de bots (3 a 6 jugadores): termina el 99 %, con una ronda
-media de 50 en clásico y 49 en modo avanzado. Algo más larga que el mundo (40),
-pero perfectamente jugable.
-
 ## 7. Modo avanzado: las tropas
 
 Otro interruptor, independiente del de la orografía. Se pueden encender los dos,
@@ -508,12 +514,21 @@ uno, o ninguno.
 Con los refuerzos, en vez de colocar ejércitos nuevos, puedes **ascender una
 ficha que ya esté en el tablero**:
 
-| Tropa | Coste | Qué hace |
-|---|---|---|
-| Caballería `⇉` | 2 | Te deja reagrupar dos veces en el turno |
-| Blindados `■` | 3 | Atacando por tierra desde ahí, +1 al mejor dado |
-| Flota `⚓` | 3 | Cruzar el mar desde ahí deja de ser un desembarco |
-| Aviación `✈` | 4 | Alcanza territorios a dos pasos, saltándose la frontera |
+| Tropa | Coste | Atacando | Defendiendo |
+|---|---|---|---|
+| Caballería `⇉` | 2 | Reagrupas dos veces por turno; en campo abierto contra campo abierto, +1 al segundo dado | — |
+| Blindados `■` | 3 | +1 al mejor dado, **solo contra terreno abierto**: en montaña o bosque no maniobran | +1 al segundo dado, también solo en abierto |
+| Flota `⚓` | 3 | Cruzar el mar desde ahí deja de ser un desembarco | +1 al mejor dado contra quien desembarque |
+| Aviación `✈` | 4 | Alcanza a dos pasos; +1 al mejor dado **sobre terreno despejado** | Intercepta: +1 al segundo dado contra otro ataque aéreo |
+
+**Tropa y terreno se combinan, no se suman por su cuenta.** Un blindado en una
+llanura es otra cosa que el mismo blindado metido en un bosque, y eso vale igual
+atacando que defendiendo. Es la misma idea que la pareja de terrenos, un piso más
+arriba: lo que importa es *qué tropa, desde qué terreno, contra qué tropa en qué
+terreno*.
+
+Con la orografía apagada el mapa no cambia nada, tampoco para las tropas: todo
+cuenta como llanura y un blindado maniobra en cualquier sitio.
 
 Dos decisiones marcan todo el diseño:
 
@@ -570,7 +585,70 @@ verdad. La IA construye poco y con criterio: solo si le sobra reserva por encima
 de lo que necesita para tapar agujeros, y solo donde la tropa hace algo (un
 blindado en un frente sin fronteras de tierra vale cero, y lo sabe).
 
-## 8. Victoria por objetivos
+## 8. Modo histórico: España 1936
+
+El primer escenario. La cartografía es exactamente la del mapa provincial —los
+mismos contornos, las mismas fronteras—, pero cambian tres cosas:
+
+- **No se reparte al azar.** El tablero arranca con el reparto real de provincias
+  de julio del 36: el golpe triunfó en unas treinta y fracasó en veinte, con la
+  República conservando la mitad oriental, la cornisa cantábrica, Madrid, La
+  Mancha, Badajoz y Andalucía oriental. Madrid, Barcelona, Sevilla, Zaragoza,
+  Burgos y Navarra empiezan mejor guarnecidas que una provincia cualquiera.
+- **Se juega por bandos.** Dos facciones por lado, que no pueden atacarse entre
+  sí y ganan juntas. Con dos jugadores es uno contra uno y cada uno lleva las dos
+  facciones de su bando; con cuatro, dos contra dos. Los huecos los rellena la IA.
+- **Los continentes son los frentes**, no las comunidades: Frente del Norte, de
+  Aragón, del Centro, del Sur, Levante, Extremadura y La Mancha, Galicia, el
+  Protectorado y Canarias.
+
+### Las facciones
+
+| Bando | Facción | Quiénes son |
+|---|---|---|
+| República | Ejército Popular | El Estado rehaciendo un ejército sobre la marcha, con la industria y la mayoría de la población detrás |
+| República | Columnas confederadas | Las milicias de la CNT-FAI que salieron de Barcelona hacia Aragón |
+| Sublevados | Ejército de África | Regulares y Legión: la tropa profesional, si consigue cruzar el Estrecho |
+| Sublevados | Ejército del Norte | Mola, los requetés navarros y las guarniciones de Castilla y León |
+
+El Ejército de África empieza en Ceuta, Melilla, Canarias y la cabeza de puente
+andaluza, así que tiene exactamente el problema que tuvo: pasar el Estrecho.
+
+### La crónica de guerra
+
+Cada vez que se ataca una pareja de provincias nueva, la sala publica una línea
+de crónica. Y no es decorado: **depende de quién ataca y de qué pareja**.
+
+Los episodios reales llevan marcado qué bando los protagonizó. Si en la partida
+ataca ese mismo bando, se cuenta como ocurrió; si ataca el otro, se cuenta como
+lo que es, una historia que se tuerce, y dice qué se está evitando. Cruzar de
+Ceuta a Cádiz saca el puente aéreo de los Junkers; subir de Cáceres a Badajoz
+saca la marcha que unió las dos zonas sublevadas; entrar en Teruel desde Cuenca
+saca los veinte grados bajo cero del 37. Si lo intenta el bando contrario, la
+misma casilla cuenta lo que habría cambiado.
+
+Cuando la pareja no tiene episodio propio, la crónica habla del terreno: monte
+arriba, entre pinos, o a campo descubierto.
+
+Es una **función pura** de (estado, acción, semilla), así que todos los clientes
+que reproduzcan el log leen la misma crónica, y la escribe solo el anfitrión para
+que no salga repetida.
+
+### Sobre la simplificación, dicho claro
+
+Un territorio de RISK tiene un solo dueño y julio del 36 no era tan limpio: en
+Oviedo y en Granada las capitales quedaron en manos sublevadas dentro de
+provincias que no lo estaban, el Alcázar de Toledo aguantó dos meses en zona
+republicana, Menorca siguió fiel a la República mientras Mallorca no, y media
+provincia de Huesca la recuperaron las columnas salidas de Barcelona. Cada
+provincia se asigna a quien controlaba la mayor parte de ella, y las excepciones
+se cuentan en la crónica cuando la partida pasa por ahí.
+
+Se habla de campañas, frentes y unidades: de lo militar. Los episodios de
+represión contra la población civil, que los hubo por los dos lados y son lo más
+serio de aquella guerra, no se convierten aquí en material de juego.
+
+## 9. Victoria por objetivos
 
 Un desplegable en la sala: **conquista total** (lo clásico) o **por objetivos**.
 Con objetivos, cada jugador recibe una meta al empezar y gana quien la cumpla,
@@ -594,7 +672,7 @@ comiera tiradas del mismo flujo que el reparto del tablero, encender los
 objetivos cambiaría la posición inicial y dos mesas con la misma semilla dejarían
 de empezar igual. Hay un test que lo comprueba.
 
-## 9. Tests
+## 10. Tests
 
 ```bash
 npm test                                    # todo

@@ -29,10 +29,11 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 
 #### Juegos — RISK
 - RISK completo con reglas clasicas: refuerzos, canje de cartas, ataques con dados, reagrupacion y bonificacion por continente
-- Cuatro mapas de cartografía real: Todo el mundo (42 territorios), España por provincias (52), España por comunidades (19) y Cataluña por comarcas (41)
+- Tres mapas de cartografía real: Todo el mundo (42 territorios), España por provincias (52) y España por comunidades (19)
 - Modo avanzado opcional con orografía: llanura, bosque, montaña, desierto y costa cambian cómo se pelea cada territorio, y desembarcar cuesta caro
 - Modo avanzado opcional con tropas: caballería, blindados, flota y aviación se preparan ascendiendo fichas que ya están en el tablero
 - Victoria por conquista total o por objetivos, para partidas más cortas
+- Modo histórico: España 1936, con el reparto real de provincias tras el golpe, dos bandos de dos facciones y una crónica de guerra que cambia según quién ataque y desde dónde
 - Salas con invitacion por enlace, igual que el Scrum Poker, y bots de IA para rellenar huecos
 - Partidas grabadas jugada a jugada: se pueden pausar y retomar respetando el asiento de cada persona
 - Bots con personalidad que comentan su estrategia en el chat en cada turno, y un estratega que te aconseja a ti
@@ -109,10 +110,11 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 
 #### Games — RISK
 - Full RISK with classic rules: reinforcements, card trading, dice battles, fortifying and continent bonuses
-- Four maps drawn from real cartography: World (42 territories), Spain by province (52), Spain by region (19) and Catalonia by comarca (41)
+- Three maps drawn from real cartography: World (42 territories), Spain by province (52) and Spain by region (19)
 - Optional advanced mode with terrain: plains, forest, mountain, desert and coast change how each territory is fought over, and amphibious attacks are expensive
 - Optional advanced mode with troops: cavalry, armour, navy and air are built by promoting pieces already on the board
 - Win by total conquest or by objectives, for shorter games
+- Historical mode: Spain 1936, with the real provincial split after the coup, two sides of two factions each, and a war chronicle that changes with who attacks and from where
 - Invite-link rooms, just like Scrum Poker, plus AI bots to fill empty seats
 - Games are recorded action by action: pause and resume later, everyone keeps their seat
 - Bots with personality that comment their strategy in chat every turn, plus an advisor for you

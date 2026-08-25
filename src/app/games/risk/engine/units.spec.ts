@@ -256,13 +256,67 @@ describe('tropas especializadas', () => {
       expect(rules.attackBonus).toEqual([1]);
     });
 
-    it('no vuelan: en un ataque aéreo no cuentan', () => {
+    it('no vuelan: en un ataque aéreo no aportan nada', () => {
       const { state, map } = advancedGame({ A1: ['p1', 8], B2: ['p2', 4] });
-      state.territories['A1'].units = { blindado: 1, aereo: 1 };
-      // B2 no es vecino de A1 en el mapa de laboratorio.
+      // B2 no es vecino de A1 en el mapa de laboratorio: solo se llega volando.
+      state.territories['A1'].units = { aereo: 1 };
       expect(approachOf(map, 'A1', 'B2', state.territories['A1'])).toBe('aereo');
-      const rules = battleRulesFor(map, state.config, 'A1', 'B2', state.territories['A1']);
-      expect(rules.attackBonus).toEqual([]);
+      const soloAvion = battleRulesFor(map, state.config, 'A1', 'B2', state.territories['A1']);
+
+      // Sumarle blindados no cambia nada: los tanques no van en el avión.
+      state.territories['A1'].units = { aereo: 1, blindado: 1 };
+      const conTanques = battleRulesFor(map, state.config, 'A1', 'B2', state.territories['A1']);
+      expect(conTanques.attackBonus).toEqual(soloAvion.attackBonus);
+    });
+
+    it('en montaña o bosque tampoco maniobran', () => {
+      const map = {
+        ...unitsMap(),
+        id: 'tiny-units-monte',
+        territories: unitsMap().territories.map((t) =>
+          t.id === 'A2' ? { ...t, terrain: 'montaña' as const } : t,
+        ),
+      };
+      const { state } = advancedGame({ A1: ['p1', 8], A2: ['p2', 4] }, { map, terrain: true });
+      state.territories['A1'].units = { blindado: 1 };
+      expect(battleRulesFor(map, state.config, 'A1', 'A2', state.territories['A1']).attackBonus).toEqual(
+        [],
+      );
+    });
+
+    it('defendiendo en abierto son una barrera, en monte no', () => {
+      const abierto = advancedGame({ A1: ['p1', 8], A2: ['p2', 4] }, { terrain: true });
+      abierto.state.territories['A2'].units = { blindado: 1 };
+      expect(
+        battleRulesFor(
+          abierto.map,
+          abierto.state.config,
+          'A1',
+          'A2',
+          abierto.state.territories['A1'],
+          abierto.state.territories['A2'],
+        ).defenceBonus,
+      ).toEqual([0, 1]);
+
+      const monte = {
+        ...unitsMap(),
+        id: 'tiny-units-monte-def',
+        territories: unitsMap().territories.map((t) =>
+          t.id === 'A2' ? { ...t, terrain: 'montaña' as const } : t,
+        ),
+      };
+      const enMonte = advancedGame({ A1: ['p1', 8], A2: ['p2', 4] }, { map: monte, terrain: true });
+      enMonte.state.territories['A2'].units = { blindado: 1 };
+      const bonus = battleRulesFor(
+        monte,
+        enMonte.state.config,
+        'A1',
+        'A2',
+        enMonte.state.territories['A1'],
+        enMonte.state.territories['A2'],
+      ).defenceBonus;
+      // Solo queda lo del terreno (montaña: +1 al mejor); el blindado no suma.
+      expect(bonus).toEqual([1]);
     });
 
     it('mejoran de verdad las probabilidades', () => {
@@ -299,10 +353,32 @@ describe('tropas especializadas', () => {
       expect(battleRulesFor(map, state.config, 'A1', 'B3', state.territories['A1']).attack).toBe(3);
     });
 
-    it('la flota del defensor no sirve de nada: cuenta la del que ataca', () => {
+    it('la flota del defensor no le devuelve el dado al atacante', () => {
       const { state, map } = advancedGame({ A1: ['p1', 8], B3: ['p2', 4] }, { terrain: true });
       state.territories['B3'].units = { naval: 1 };
       expect(battleRulesFor(map, state.config, 'A1', 'B3', state.territories['A1']).attack).toBe(2);
+    });
+
+    it('la flota del defensor bate la playa del que desembarca', () => {
+      const { state, map } = advancedGame({ A1: ['p1', 8], B3: ['p2', 4] }, { terrain: true });
+      const sinFlota = battleRulesFor(
+        map,
+        state.config,
+        'A1',
+        'B3',
+        state.territories['A1'],
+        state.territories['B3'],
+      ).defenceBonus;
+      state.territories['B3'].units = { naval: 1 };
+      const conFlota = battleRulesFor(
+        map,
+        state.config,
+        'A1',
+        'B3',
+        state.territories['A1'],
+        state.territories['B3'],
+      ).defenceBonus;
+      expect(conFlota?.[0] ?? 0).toBeGreaterThan(sinFlota?.[0] ?? 0);
     });
   });
 

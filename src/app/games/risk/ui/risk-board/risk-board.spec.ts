@@ -199,7 +199,7 @@ describe('RiskBoard', () => {
 
       component.showTerrain = true;
       expect(component.tooltip?.terrain?.name).toBe('Montaña');
-      expect(component.tooltip?.terrain?.effect.length).toBeGreaterThan(10);
+      expect(component.tooltip?.terrain?.defence.length).toBeGreaterThan(10);
     });
 
     it('avisa del desembarco al apuntar cruzando el mar', () => {
@@ -224,12 +224,13 @@ describe('RiskBoard', () => {
       expect(component.tooltip?.approach).toBeNull();
     });
 
-    it('la probabilidad que enseña es la del terreno, no la clásica', () => {
+    it('la probabilidad que enseña cuenta las DOS mitades del terreno', () => {
+      // A1 es bosque y A2 es montaña: salir de un bosque (+1 al mejor del
+      // atacante) cancela la altura de la montaña (+1 al mejor del defensor).
+      // Ese empate es justo lo que se quiere comprobar: el terreno ya no es un
+      // impuesto que solo paga el atacante.
       const map = terrainMap();
-      const advanced = {
-        ...state,
-        config: { ...state.config, advancedTerrain: true },
-      };
+      const advanced = { ...state, config: { ...state.config, advancedTerrain: true } };
       component.map = map;
       component.selected = 'A1';
       component.targets = ['A2'];
@@ -241,10 +242,37 @@ describe('RiskBoard', () => {
       component.state = advanced;
       component.showTerrain = true;
       component.onTerritoryEnter('A2');
-      const withTerrain = component.tooltip!.odds!;
+      expect(component.tooltip!.odds!).toBeCloseTo(classic, 10);
+    });
 
-      // A2 es montaña: defenderse allí es más fácil.
-      expect(withTerrain).toBeLessThan(classic);
+    it('desde una llanura, la montaña sí frena', () => {
+      // B1 es llanura y no aporta nada al atacante, así que la altura de A2
+      // pesa entera.
+      const map = terrainMap();
+      const advanced = { ...state, config: { ...state.config, advancedTerrain: true } };
+      component.map = map;
+      component.selected = 'B1';
+      component.targets = ['A2'];
+
+      component.state = state;
+      component.onTerritoryEnter('A2');
+      const classic = component.tooltip!.odds!;
+
+      component.state = advanced;
+      component.showTerrain = true;
+      component.onTerritoryEnter('A2');
+      expect(component.tooltip!.odds!).toBeLessThan(classic);
+    });
+
+    it('el cartel desglosa el enfrentamiento en palabras', () => {
+      const advanced = { ...state, config: { ...state.config, advancedTerrain: true } };
+      component.map = terrainMap();
+      component.state = advanced;
+      component.showTerrain = true;
+      component.selected = 'B1';
+      component.targets = ['A2'];
+      component.onTerritoryEnter('A2');
+      expect(component.tooltip!.matchup.join(' ')).toContain('A su favor');
     });
 
     it('marca todos los terrenos menos la llanura', () => {
