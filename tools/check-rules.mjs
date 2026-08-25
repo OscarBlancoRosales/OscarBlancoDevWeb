@@ -148,6 +148,15 @@ export function checkRules(rules, doc) {
     has(risk?.meta?.['.write'], 'auth != null'),
     'Crear una sala tiene que exigir sesión: si no, cualquiera llena la base',
   );
+  //    Y ojo con el permiso del nodo de la sala: si concede escritura cuando la
+  //    sala NO existe, se lo salta todo, porque en Firebase un permiso concedido
+  //    arriba cascadea hacia abajo. Ese `!data.exists()` estuvo publicado y dejó
+  //    crear salas sin sesión pese al `auth != null` de `meta`.
+  need(
+    !has(roomWrite, '!data.exists()'),
+    'El permiso del nodo de la sala no puede conceder nada por no existir: ' +
+      'cascadea y anula la exigencia de sesión al crear',
+  );
   for (const [nombre, rule] of [
     ['seats', risk?.seats?.$seatId?.['.write']],
     ['log', risk?.log?.$entry?.['.write']],
@@ -235,6 +244,13 @@ function selfTest(good, doc) {
       'asiento suplantable',
       (r) => delete r.rules.riskRooms.$roomId.seats.$seatId.seatToken,
       'testigo de un asiento',
+    ],
+    [
+      'permiso en cascada al crear',
+      (r) =>
+        (r.rules.riskRooms.$roomId['.write'] =
+          "!data.exists() || auth != null || data.child('meta/updatedAt').val() < now"),
+      'cascadea',
     ],
     [
       'creación sin sesión',

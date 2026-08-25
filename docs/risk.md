@@ -131,7 +131,7 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
       ],
       "$roomId": {
         ".read": true,
-        ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
+        ".write": "auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
         ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
           ".write": "!data.exists() && auth != null",
