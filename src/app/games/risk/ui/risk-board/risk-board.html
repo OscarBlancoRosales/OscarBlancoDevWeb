@@ -101,6 +101,21 @@
           >
             {{ glyph }}
           </text>
+          <!--
+            Tropas especializadas: un glifo por ficha, en fila sobre la ficha de
+            ejércitos. El índice se calcula al cambiar el estado, no aquí.
+          -->
+          <g class="badge-units">
+            <text
+              *ngFor="let unit of unitsOf(territory.id); let i = index; trackBy: trackUnit"
+              class="badge-unit"
+              [attr.x]="unitOffsetX(i, unitsOf(territory.id).length)"
+              y="-13"
+              [attr.fill]="unit.color"
+            >
+              {{ unit.glyph }}
+            </text>
+          </g>
           <text class="badge-name" *ngIf="showNames">
             <tspan
               *ngFor="let line of territory.nameLines; let i = index"

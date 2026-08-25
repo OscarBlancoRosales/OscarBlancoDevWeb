@@ -1257,3 +1257,65 @@
   border-color: rgba(41, 182, 246, 0.5);
   color: #29b6f6;
 }
+
+/* ===== TROPAS ESPECIALIZADAS ===== */
+
+.troop-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.troop-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6e7681;
+}
+
+.troop-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #c9d1d9;
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.troop-btn:hover:not(:disabled) {
+  border-color: rgba(0, 230, 118, 0.55);
+  background: rgba(0, 230, 118, 0.09);
+}
+
+.troop-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.troop-glyph {
+  font-weight: 700;
+}
+
+.troop-cost {
+  padding: 0 0.28rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  font-size: 0.68rem;
+}
+
+.terrain-tag.air {
+  border-color: rgba(206, 147, 216, 0.55);
+  color: #ce93d8;
+}
+
+.terrain-tag.armour {
+  border-color: rgba(255, 138, 101, 0.55);
+  color: #ff8a65;
+}

@@ -5,12 +5,15 @@ import {
   GameState,
   PlayerId,
   TerritoryId,
+  UnitKind,
 } from '../types';
 import { conquestOdds, maxAttackDice } from '../combat';
-import { battleRulesFor, terrainOf, TERRAIN_META } from '../terrain';
+import { approachOf, battleRulesFor, terrainOf, TERRAIN_META } from '../terrain';
+import { hasUnit, infantryOf, UNIT_META } from '../units';
 import {
   adjacencyOf,
   areConnected,
+  attackTargets,
   borderTerritories,
   interiorTerritories,
   territoriesOf,
@@ -315,13 +318,15 @@ export function rankedAttacks(
     const origin = state.territories[from];
     if (origin.armies < 2) continue;
 
-    for (const to of adjacencyOf(map, from)) {
+    // `attackTargets` incluye el alcance aéreo cuando lo hay, así que la IA ve
+    // exactamente los mismos objetivos que el jugador.
+    for (const to of attackTargets(state, map, from, playerId)) {
       const target = state.territories[to];
       if (!target || target.ownerId === playerId) continue;
 
       // Las mismas reglas que aplicará el combate, terreno incluido: la IA no
       // debe calcular con otras o atacaría montañas creyéndolas llanuras.
-      const rules = battleRulesFor(map, state.config, from, to);
+      const rules = battleRulesFor(map, state.config, from, to, origin);
       const odds = conquestOdds(origin.armies, target.armies, rules);
       let score = odds;
       const reasons: string[] = [];
@@ -329,6 +334,10 @@ export function rankedAttacks(
       if (state.config.advancedTerrain) {
         const terrain = terrainOf(map, to);
         if (terrain !== 'llanura') reasons.push(TERRAIN_META[terrain].name.toLowerCase());
+      }
+      if (state.config.advancedUnits && approachOf(map, from, to, origin) === 'aereo') {
+        score += 0.1;
+        reasons.push('por aire, sin frontera');
       }
 
       const targetContinent = map.territories.find((t) => t.id === to)?.continentId;
@@ -386,6 +395,117 @@ export function rankedAttacks(
   }
 
   return options.sort((a, b) => b.score - a.score);
+}
+
+/**
+ * ¿Conviene ascender una ficha a especialista antes de repartir refuerzos?
+ *
+ * La IA construye poco y con criterio, no por acumular: solo si le sobra
+ * reserva por encima de lo que necesita para tapar agujeros, y solo donde la
+ * tropa hace algo. Devuelve null casi siempre, que es lo correcto.
+ */
+export function troopToBuild(
+  state: GameState,
+  map: GameMap,
+  playerId: PlayerId,
+  profile: BotProfile | undefined = 'oportunista',
+): GameAction | null {
+  if (!state.config.advancedUnits) return null;
+  const player = playerById(state, playerId);
+  if (!player) return null;
+
+  // Con la reserva justa, primero se tapan agujeros: una tropa no defiende un
+  // frente por sí sola.
+  const traits = traitsOf(profile);
+  if (player.reserve < TROOP_RESERVE_FLOOR) return null;
+
+  const options: Array<{ territoryId: TerritoryId; unit: UnitKind; score: number }> = [];
+  for (const id of territoriesOf(state, playerId)) {
+    const territory = state.territories[id];
+    if (infantryOf(territory) < 1) continue;
+
+    for (const unit of TROOP_PRIORITY) {
+      const meta = UNIT_META[unit];
+      if (player.reserve < meta.cost) continue;
+      // Una segunda del mismo tipo en el mismo sitio no aporta nada: los efectos
+      // no se acumulan.
+      if (hasUnit(territory, unit)) continue;
+      const score = troopValue(state, map, playerId, id, unit);
+      if (score <= 0) continue;
+      options.push({ territoryId: id, unit, score: score + traits.aggression * 0.1 });
+    }
+  }
+  if (options.length === 0) return null;
+
+  options.sort((a, b) => b.score - a.score || (a.territoryId < b.territoryId ? -1 : 1));
+  const best = options[0];
+  return { type: 'upgrade', playerId, territoryId: best.territoryId, unit: best.unit };
+}
+
+/** Por debajo de esta reserva la IA no gasta en tropas: primero, el frente. */
+const TROOP_RESERVE_FLOOR = 6;
+
+/** Orden de preferencia cuando varias tropas valen lo mismo. */
+const TROOP_PRIORITY: UnitKind[] = ['blindado', 'naval', 'aereo', 'caballeria'];
+
+/**
+ * Cuánto vale una tropa concreta en un territorio concreto.
+ *
+ * Cada una se valora por lo que de verdad hace ahí, no por su coste: los
+ * blindados solo sirven si desde ahí se ataca por tierra, la flota solo si hay
+ * una ruta marítima que cruzar, y la aviación solo si abre objetivos que la
+ * frontera no da.
+ */
+function troopValue(
+  state: GameState,
+  map: GameMap,
+  playerId: PlayerId,
+  id: TerritoryId,
+  unit: UnitKind,
+): number {
+  const territory = state.territories[id];
+  const enemies = adjacencyOf(map, id).filter(
+    (other) => state.territories[other]?.ownerId !== playerId,
+  );
+
+  switch (unit) {
+    case 'blindado': {
+      // Vale en un frente activo con tropa suficiente para atacar de verdad.
+      const byLand = enemies.filter((other) => approachOf(map, id, other, territory) === 'tierra');
+      if (byLand.length === 0 || territory.armies < 4) return 0;
+      return 0.6 + Math.min(0.3, byLand.length * 0.1);
+    }
+    case 'naval': {
+      const landings = enemies.filter(
+        (other) => approachOf(map, id, other, undefined) === 'desembarco',
+      );
+      if (landings.length === 0 || territory.armies < 4) return 0;
+      return 0.7 + Math.min(0.2, landings.length * 0.1);
+    }
+    case 'aereo': {
+      // Solo si abre objetivos nuevos: vecinos de vecinos que no son frontera.
+      const direct = new Set(adjacencyOf(map, id));
+      let reachable = 0;
+      for (const neighbour of direct) {
+        for (const second of adjacencyOf(map, neighbour)) {
+          if (second === id || direct.has(second)) continue;
+          if (state.territories[second]?.ownerId !== playerId) reachable++;
+        }
+      }
+      if (reachable === 0 || territory.armies < 5) return 0;
+      return 0.4 + Math.min(0.3, reachable * 0.05);
+    }
+    case 'caballeria': {
+      // Una sola en toda la partida: lo que da es la segunda reagrupación.
+      const alreadyHas = territoriesOf(state, playerId).some((other) =>
+        hasUnit(state.territories[other], 'caballeria'),
+      );
+      if (alreadyHas) return 0;
+      return enemies.length === 0 ? 0.5 : 0.2;
+    }
+    default:
+      return 0;
+  }
 }
 
 /** Reparto de refuerzos: dónde conviene poner los ejércitos y por qué. */
@@ -568,6 +688,8 @@ export function decideAction(
       }
     }
     if (player.reserve > 0) {
+      const troop = troopToBuild(state, map, playerId, profile);
+      if (troop) return troop;
       const plan = reinforcementPlan(state, map, playerId, player.reserve, profile, bias);
       if (plan.length > 0) {
         return { type: 'deploy', playerId, territoryId: plan[0].territoryId, armies: plan[0].armies };

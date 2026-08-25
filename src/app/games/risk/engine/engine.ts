@@ -12,11 +12,22 @@ import {
   RULES_V1,
   RuleError,
   TerritoryId,
+  UnitKind,
 } from './types';
 import { createRng, rngFor, shuffle } from './rng';
 import { DEFAULT_MAX_TRADE_VALUE, buildDeck, isValidSet, takeCards, tradeValue } from './cards';
 import { maxAttackDice, resolveCombat } from './combat';
 import { battleRulesFor } from './terrain';
+import {
+  addUnit,
+  applyCasualties,
+  clearUnits,
+  fortifyAllowance,
+  hasUnit,
+  infantryOf,
+  trimUnits,
+  UNIT_META,
+} from './units';
 import {
   adjacencyOf,
   areConnected,
@@ -38,6 +49,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   maxAttackDice: 3,
   maxDefendDice: 2,
   advancedTerrain: false,
+  advancedUnits: false,
 };
 
 /** Paleta de los jugadores: alto contraste sobre el fondo oscuro. */
@@ -202,6 +214,7 @@ function beginTurn(state: GameState, map: GameMap, first = false): void {
 
   player.conqueredThisTurn = false;
   state.fortifiedThisTurn = false;
+  state.fortifyCount = 0;
   state.pendingOccupation = null;
   state.phase = 'reinforce';
   player.reserve = reinforcementsFor(state, map, player.id);
@@ -315,6 +328,9 @@ export function applyAction(state: GameState, action: GameAction, map: GameMap):
       break;
     case 'surrender':
       applySurrender(next, action.playerId, map);
+      break;
+    case 'upgrade':
+      applyUpgrade(next, action.playerId, action.territoryId, action.unit, map);
       break;
     default: {
       const exhaustive: never = action;
@@ -493,7 +509,7 @@ function applyAttack(
   const target = state.territories[to];
   // Las mismas reglas que ve el jugador en pantalla y que usa la IA: los topes
   // de la mesa ya combinados con el terreno de `to` y con la forma de llegar.
-  const rules = battleRulesFor(map, state.config, from, to);
+  const rules = battleRulesFor(map, state.config, from, to, origin);
   const allowed = maxAttackDice(origin.armies, rules.attack);
   if (!Number.isInteger(dice) || dice < 1 || dice > allowed) {
     throw new RuleError('bad-dice', `Puedes lanzar entre 1 y ${allowed} dados`);
@@ -502,8 +518,10 @@ function applyAttack(
   const rng = rngFor(state.seed, state.actionCount, `${from}->${to}`);
   const result = resolveCombat(origin.armies, target.armies, dice, rng, rules);
 
-  origin.armies -= result.attackerLosses;
-  target.armies -= result.defenderLosses;
+  // Las bajas se las come primero la infantería: los especialistas caen cuando
+  // ya no queda nadie más (ver CASUALTY_ORDER en units.ts).
+  applyCasualties(origin, result.attackerLosses);
+  applyCasualties(target, result.defenderLosses);
 
   const fromName = map.territories.find((t) => t.id === from)?.name ?? from;
   const toName = map.territories.find((t) => t.id === to)?.name ?? to;
@@ -521,6 +539,8 @@ function applyAttack(
   if (result.conquered) {
     target.ownerId = playerId;
     target.armies = 0;
+    // El territorio cae entero: sus especialistas se pierden con él.
+    clearUnits(target);
     player.conqueredThisTurn = true;
     state.pendingOccupation = { from, to, minArmies: Math.min(dice, origin.armies - 1) };
 
@@ -589,7 +609,9 @@ function applyOccupy(state: GameState, playerId: PlayerId, armies: number): void
     throw new RuleError('bad-amount', `Debes mover entre ${min} y ${max} ejércitos`);
   }
 
+  // Los especialistas no viajan: se construyen donde hacen falta y se quedan.
   origin.armies -= armies;
+  trimUnits(origin);
   target.armies += armies;
   state.pendingOccupation = null;
 
@@ -615,8 +637,8 @@ function applyFortify(
   if (state.phase !== 'fortify') {
     throw new RuleError('wrong-phase', 'No estás en la fase de reagrupación');
   }
-  if (state.fortifiedThisTurn) {
-    throw new RuleError('already-fortified', 'Solo se permite una reagrupación por turno');
+  if (fortifiesDone(state) >= fortifyLimit(state, playerId)) {
+    throw new RuleError('already-fortified', 'Ya has agotado las reagrupaciones del turno');
   }
   const origin = state.territories[from];
   const target = state.territories[to];
@@ -633,7 +655,9 @@ function applyFortify(
   }
 
   origin.armies -= armies;
+  trimUnits(origin);
   target.armies += armies;
+  state.fortifyCount = fortifiesDone(state) + 1;
   state.fortifiedThisTurn = true;
 
   pushEvent(state, {
@@ -645,7 +669,87 @@ function applyFortify(
     data: { from, to, armies },
   });
 
-  endTurn(state, map);
+  // Con caballería queda otra reagrupación, así que el turno no se cierra
+  // todavía; sin ella se cierra en cuanto se mueve, como en el RISK de siempre.
+  if (fortifiesDone(state) >= fortifyLimit(state, playerId)) endTurn(state, map);
+}
+
+// ===== TROPAS ESPECIALIZADAS =====
+
+/** Reagrupaciones ya hechas este turno. */
+function fortifiesDone(state: GameState): number {
+  // Las partidas grabadas antes de que existiera el contador solo tienen el
+  // booleano, así que se deduce de él.
+  return state.fortifyCount ?? (state.fortifiedThisTurn ? 1 : 0);
+}
+
+/** Cuántas reagrupaciones puede hacer el jugador en este turno. */
+function fortifyLimit(state: GameState, playerId: PlayerId): number {
+  if (!state.config.advancedUnits) return 1;
+  const hasCavalry = Object.values(state.territories).some(
+    (territory) => territory.ownerId === playerId && hasUnit(territory, 'caballeria'),
+  );
+  return fortifyAllowance(hasCavalry);
+}
+
+/** ¿Puede ascender alguna ficha en algún sitio? (dirige el menú y la IA) */
+function canUpgradeSomething(state: GameState, playerId: PlayerId): boolean {
+  const player = playerById(state, playerId);
+  if (!player) return false;
+  const cheapest = Math.min(...Object.values(UNIT_META).map((meta) => meta.cost));
+  if (player.reserve < cheapest) return false;
+  return Object.values(state.territories).some(
+    (territory) => territory.ownerId === playerId && infantryOf(territory) > 0,
+  );
+}
+
+/**
+ * Asciende una ficha de infantería a especialista.
+ *
+ * No añade ejércitos: cuesta reserva y cambia de tipo una ficha que ya estaba.
+ * Por eso el reparto de refuerzos, los continentes y la eliminación siguen
+ * contando exactamente igual.
+ */
+function applyUpgrade(
+  state: GameState,
+  playerId: PlayerId,
+  territoryId: TerritoryId,
+  unit: UnitKind,
+  map: GameMap,
+): void {
+  const player = requireTurn(state, playerId);
+  if (!state.config.advancedUnits) {
+    throw new RuleError('no-advanced-units', 'Esta partida no usa tropas especializadas');
+  }
+  if (state.phase !== 'reinforce') {
+    throw new RuleError('wrong-phase', 'Las tropas se preparan al recibir refuerzos');
+  }
+  const meta = UNIT_META[unit];
+  if (!meta) throw new RuleError('unknown-unit', 'Esa tropa no existe');
+
+  const territory = state.territories[territoryId];
+  if (!territory) throw new RuleError('unknown-territory', 'Territorio desconocido');
+  if (territory.ownerId !== playerId) {
+    throw new RuleError('not-your-territory', 'Ese territorio no es tuyo');
+  }
+  if (infantryOf(territory) < 1) {
+    throw new RuleError('no-infantry', 'No queda infantería que ascender ahí');
+  }
+  if (player.reserve < meta.cost) {
+    throw new RuleError('not-enough-reserve', `${meta.name} cuesta ${meta.cost} de refuerzo`);
+  }
+
+  player.reserve -= meta.cost;
+  addUnit(territory, unit);
+
+  pushEvent(state, {
+    type: 'deploy',
+    playerId,
+    text: `${player.name} prepara ${meta.name.toLowerCase()} en ${
+      map.territories.find((t) => t.id === territoryId)?.name ?? territoryId
+    }.`,
+    data: { territoryId, unit },
+  });
 }
 
 // ===== CAMBIO DE FASE =====
@@ -773,13 +877,14 @@ export function legalActionTypes(state: GameState, playerId: PlayerId): GameActi
     case 'reinforce': {
       const types: GameAction['type'][] = ['deploy', 'surrender'];
       if (player.cards.length >= 3) types.push('trade');
+      if (state.config.advancedUnits && canUpgradeSomething(state, playerId)) types.push('upgrade');
       if (player.reserve === 0) types.push('end-phase');
       return types;
     }
     case 'attack':
       return state.pendingOccupation ? ['occupy'] : ['attack', 'end-phase', 'surrender'];
     case 'fortify':
-      return state.fortifiedThisTurn
+      return fortifiesDone(state) >= fortifyLimit(state, playerId)
         ? ['end-phase', 'surrender']
         : ['fortify', 'end-phase', 'surrender'];
     default:

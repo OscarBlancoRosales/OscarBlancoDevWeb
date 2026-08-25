@@ -356,7 +356,77 @@ riesgo real de atasco: en montaña un 8 contra 8 da 0,198, y el suelo del umbral
 de ataque de la IA estaba en 0,20, así que los bots literalmente nunca atacaban
 allí y se dedicaban a acumular. Se ve en `bot-brain.ts`, en el alivio anti-atasco.
 
-## 7. Tests
+## 7. Modo avanzado: las tropas
+
+Otro interruptor, independiente del de la orografía. Se pueden encender los dos,
+uno, o ninguno.
+
+Con los refuerzos, en vez de colocar ejércitos nuevos, puedes **ascender una
+ficha que ya esté en el tablero**:
+
+| Tropa | Coste | Qué hace |
+|---|---|---|
+| Caballería `⇉` | 2 | Te deja reagrupar dos veces en el turno |
+| Blindados `■` | 3 | Atacando por tierra desde ahí, +1 al mejor dado |
+| Flota `⚓` | 3 | Cruzar el mar desde ahí deja de ser un desembarco |
+| Aviación `✈` | 4 | Alcanza territorios a dos pasos, saltándose la frontera |
+
+Dos decisiones marcan todo el diseño:
+
+**Un especialista no es una ficha extra, es una ficha ascendida.** `units` es un
+desglose de `armies`, nunca un ejército aparte: la infantería es `armies` menos
+la suma de `units`. Así ninguna regla que cuente ejércitos —refuerzos por
+territorios, bonificación de continente, eliminación, victoria, cartas— tiene que
+enterarse de que existen las tropas, y una partida clásica no lleva ni un byte de
+más porque `units` ni aparece.
+
+**Un especialista no se mueve.** Se prepara donde hace falta y se queda; si cae
+el territorio, cae con él. La alternativa —arrastrarlos al reagrupar o al
+ocupar— obligaría a decidir cuáles viajan en cada movimiento, y eso ni cabe en la
+interfaz ni aporta nada. A cambio, construir en la retaguardia no sirve de nada,
+que es exactamente la tensión que se busca.
+
+De ahí salen dos reglas más, pequeñas pero necesarias:
+
+- **Las bajas se las come primero la infantería.** Los especialistas caen cuando
+  ya no queda nadie, y en un orden fijo y documentado (`CASUALTY_ORDER`). Si
+  dependiera del azar o del orden de recorrido de un objeto, dos clientes
+  reconstruirían estados distintos del mismo log.
+- **Nunca puede haber más especialistas que fichas.** Cualquier cosa que baje el
+  número de ejércitos (bajas, ocupación, reagrupación) recorta el desglose. Hay
+  un test que comprueba el invariante en cada acción de una partida entera.
+
+### Cómo se cruzan con la orografía
+
+Cada palanca vive en su capa y se componen sin pisarse:
+
+- La **flota** solo tiene sentido si existen los desembarcos, o sea con la
+  orografía encendida: lo que hace es quitar la penalización.
+- Los **blindados** empujan igual que la montaña frena: un dado, y solo el mejor.
+  No vuelan, así que en un ataque aéreo no cuentan.
+- La **aviación** funciona con la orografía apagada, porque el alcance es de la
+  tropa y no del terreno. Un ataque aéreo se queda en 2 dados: alcanza lejos,
+  pero no lleva masa detrás.
+
+### El coste medido en las partidas de bots
+
+180 partidas de bots por configuración, sobre los tres mapas y con 3, 4 y 5
+jugadores:
+
+```
+                    sin terminar   ronda media   tropas en juego (máx)
+clásico                    0/180          40,3                       0
+orografía                  1/180          45,0                       0
+tropas                     1/180          41,9                      61
+orografía + tropas         3/180          45,6                      90
+```
+
+Las tropas no alargan las partidas de forma apreciable y los bots las usan de
+verdad. La IA construye poco y con criterio: solo si le sobra reserva por encima
+de lo que necesita para tapar agujeros, y solo donde la tropa hace algo (un
+blindado en un frente sin fronteras de tierra vale cero, y lo sabe).
+
+## 8. Tests
 
 ```bash
 npm test                                    # todo

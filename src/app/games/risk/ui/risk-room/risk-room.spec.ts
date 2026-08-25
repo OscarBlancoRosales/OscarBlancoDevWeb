@@ -37,7 +37,12 @@ async function mountRoom(roomId: string, seatId: string) {
 
 /** Crea una sala local con un humano y devuelve sus identificadores. */
 async function createLocalRoom(
-  options: { maxPlayers?: number; mapId?: string; advancedTerrain?: boolean } = {},
+  options: {
+    maxPlayers?: number;
+    mapId?: string;
+    advancedTerrain?: boolean;
+    advancedUnits?: boolean;
+  } = {},
 ) {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({ providers: [provideRouter([])] }).compileComponents();
@@ -50,7 +55,11 @@ async function createLocalRoom(
     ownerName: 'Oscar',
     local: true,
     seed: 20260824,
-    config: { ...DEFAULT_CONFIG, advancedTerrain: options.advancedTerrain ?? false },
+    config: {
+      ...DEFAULT_CONFIG,
+      advancedTerrain: options.advancedTerrain ?? false,
+      advancedUnits: options.advancedUnits ?? false,
+    },
   });
   rooms.listenToRoom(meta.id);
   const seatId = await rooms.claimSeat(meta.id, {
@@ -292,6 +301,114 @@ describe('RiskRoom (la mesa)', () => {
         room.selectedTo = 'NT';
         const plain = room.selectionOdds()!;
         expect(mountain).toBeLessThan(plain);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+  });
+
+  describe('tropas especializadas en la mesa', () => {
+    async function unitTable() {
+      const created = await createLocalRoom({ advancedTerrain: true, advancedUnits: true });
+      const mounted = await mountRoom(created.roomId, created.seatId);
+      await mounted.component.fillWithBots();
+      await wait();
+      await mounted.component.startGame();
+      await wait(30);
+      mounted.fixture.detectChanges();
+      return mounted;
+    }
+
+    it('una sala clásica no ofrece tropas', () => {
+      expect(component.advancedUnits).toBe(false);
+      expect(component.canUpgrade('blindado')).toBe(false);
+      expect(component.isAirSelected()).toBe(false);
+      expect(component.isArmouredSelected()).toBe(false);
+    });
+
+    it('el catálogo de tropas llega a la barra de refuerzos', async () => {
+      const mounted = await unitTable();
+      try {
+        expect(mounted.component.advancedUnits).toBe(true);
+        expect(mounted.component.troops.map((t) => t.id)).toEqual([
+          'caballeria',
+          'blindado',
+          'naval',
+          'aereo',
+        ]);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('solo se puede ascender con reserva, infantería y territorio propio', async () => {
+      const mounted = await unitTable();
+      try {
+        const room = mounted.component;
+        const mine = Object.keys(room.state!.territories).find(
+          (id) => room.state!.territories[id].ownerId === room.seatId,
+        )!;
+        room.state!.phase = 'reinforce';
+        room.state!.territories[mine] = { ownerId: room.seatId, armies: 6 };
+        room.selectedFrom = mine;
+
+        room.me!.reserve = 10;
+        expect(room.canUpgrade('blindado')).toBe(true);
+
+        room.me!.reserve = 1;
+        expect(room.canUpgrade('blindado')).toBe(false);
+
+        room.me!.reserve = 10;
+        room.state!.territories[mine].units = { blindado: 1 };
+        // La misma tropa no se repite en el mismo sitio: no se acumula.
+        expect(room.canUpgrade('blindado')).toBe(false);
+        expect(room.canUpgrade('naval')).toBe(true);
+
+        // Sin infantería libre tampoco.
+        room.state!.territories[mine] = { ownerId: room.seatId, armies: 2, units: { naval: 2 } };
+        expect(room.canUpgrade('blindado')).toBe(false);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('avisa del ataque aéreo y de los blindados', async () => {
+      const mounted = await unitTable();
+      try {
+        const room = mounted.component;
+        room.state!.territories['AB'] = { ownerId: room.seatId, armies: 10, units: { aereo: 1 } };
+        room.state!.territories['AK'] = { ownerId: 'otro', armies: 3 };
+        room.state!.territories['QC'] = { ownerId: 'otro', armies: 3 };
+        room.selectedFrom = 'AB';
+
+        // Alberta toca Alaska: eso es tierra.
+        room.selectedTo = 'AK';
+        expect(room.isAirSelected()).toBe(false);
+
+        // Quebec no toca Alberta, pero está a dos pasos (por Ontario).
+        room.selectedTo = 'QC';
+        expect(room.isAirSelected()).toBe(true);
+
+        room.state!.territories['AB'].units = { blindado: 1 };
+        room.selectedTo = 'AK';
+        expect(room.isArmouredSelected()).toBe(true);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('los blindados suben el porcentaje que se enseña', async () => {
+      const mounted = await unitTable();
+      try {
+        const room = mounted.component;
+        room.state!.territories['AB'] = { ownerId: room.seatId, armies: 12 };
+        room.state!.territories['NT'] = { ownerId: 'otro', armies: 6 };
+        room.selectedFrom = 'AB';
+        room.selectedTo = 'NT';
+        const plain = room.selectionOdds()!;
+
+        room.state!.territories['AB'].units = { blindado: 1 };
+        expect(room.selectionOdds()!).toBeGreaterThan(plain);
       } finally {
         mounted.fixture.destroy();
       }

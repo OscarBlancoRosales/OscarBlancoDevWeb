@@ -106,9 +106,27 @@ export interface PlayerState {
 
 export type BotProfile = 'agresivo' | 'cauto' | 'oportunista' | 'expansivo' | 'vengativo';
 
+/**
+ * Tipos de tropa del modo avanzado. Ver `units.ts` para qué hace cada una.
+ */
+export type UnitKind = 'caballeria' | 'blindado' | 'naval' | 'aereo';
+
+/** Cuántas fichas de cada especialidad hay en un territorio. */
+export type UnitCounts = Partial<Record<UnitKind, number>>;
+
 export interface TerritoryState {
   ownerId: PlayerId | null;
+  /**
+   * Fichas totales del territorio, especialistas incluidos.
+   *
+   * `units` es un DESGLOSE de este número, no un ejército aparte: la infantería
+   * es `armies` menos la suma de `units`. Así todas las reglas que cuentan
+   * ejércitos (refuerzos, eliminación, victoria, cartas) siguen valiendo tal
+   * cual, y el estado no engorda en las partidas clásicas, donde `units` ni
+   * existe.
+   */
   armies: number;
+  units?: UnitCounts;
 }
 
 export interface CombatResult {
@@ -143,6 +161,12 @@ export interface GameState {
   pendingOccupation: { from: TerritoryId; to: TerritoryId; minArmies: number } | null;
   /** El jugador ya ha fortificado este turno. */
   fortifiedThisTurn: boolean;
+  /**
+   * Reagrupaciones hechas este turno. Normalmente 0 o 1; la caballería permite
+   * una segunda. Se mantiene `fortifiedThisTurn` para no romper las partidas ya
+   * grabadas ni los sitios que solo preguntan "¿ya ha fortificado?".
+   */
+  fortifyCount?: number;
   winnerId: PlayerId | null;
   /** Últimos combates para animaciones e historial. */
   lastCombat: (CombatResult & { from: TerritoryId; to: TerritoryId; attackerId: PlayerId }) | null;
@@ -200,6 +224,12 @@ export interface GameConfig {
    * que esté marcado hoy en la sala.
    */
   advancedTerrain?: boolean;
+  /**
+   * Modo avanzado: tropas especializadas (caballería, blindados, naval, aérea).
+   *
+   * Se congela al empezar, igual que el resto de la configuración.
+   */
+  advancedUnits?: boolean;
 }
 
 export interface GameEvent {
@@ -276,6 +306,18 @@ export interface SurrenderAction extends BaseAction {
   type: 'surrender';
 }
 
+/**
+ * Convierte una ficha de infantería del territorio en un especialista.
+ *
+ * No añade fichas: cuesta reserva y cambia de tipo una que ya estaba. Por eso
+ * ninguna regla que cuente ejércitos se entera.
+ */
+export interface UpgradeAction extends BaseAction {
+  type: 'upgrade';
+  territoryId: TerritoryId;
+  unit: UnitKind;
+}
+
 export type GameAction =
   | ClaimAction
   | DeployAction
@@ -284,7 +326,8 @@ export type GameAction =
   | OccupyAction
   | FortifyAction
   | EndPhaseAction
-  | SurrenderAction;
+  | SurrenderAction
+  | UpgradeAction;
 
 /** Entrada del log persistido en Firebase. */
 export interface LoggedAction {

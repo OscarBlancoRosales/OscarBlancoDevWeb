@@ -257,6 +257,74 @@ describe('RiskBoard', () => {
     });
   });
 
+  describe('tropas especializadas', () => {
+    function advancedState() {
+      const advanced: GameState = {
+        ...state,
+        config: { ...state.config, advancedUnits: true },
+        territories: {
+          ...state.territories,
+          A1: { ownerId: 'p1', armies: 5, units: { blindado: 1, aereo: 1 } },
+          B1: { ownerId: 'p2', armies: 3, units: { naval: 2 } },
+        },
+      };
+      return advanced;
+    }
+
+    it('sin modo avanzado no dibuja tropas', () => {
+      fixture.componentRef.setInput('state', advancedState());
+      component.state = { ...advancedState(), config: { ...state.config, advancedUnits: false } };
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.badge-unit').length).toBe(0);
+    });
+
+    it('dibuja un glifo por ficha especializada', () => {
+      fixture.componentRef.setInput('state', advancedState());
+      fixture.detectChanges();
+      // 1 blindado + 1 aéreo en A1, 2 navales en B1.
+      expect(fixture.nativeElement.querySelectorAll('.badge-unit').length).toBe(4);
+    });
+
+    it('las tropas de un territorio salen en el orden del catálogo', () => {
+      component.state = advancedState();
+      expect(component.unitsOf('A1').map((u) => u.id)).toEqual(['blindado', 'aereo']);
+      expect(component.unitsOf('B1').map((u) => u.id)).toEqual(['naval', 'naval']);
+      expect(component.unitsOf('A2')).toEqual([]);
+    });
+
+    it('reutiliza el mismo array si el territorio no cambia', () => {
+      // Si devolviera uno nuevo en cada ciclo, la vista quedaría siempre sucia.
+      component.state = advancedState();
+      const first = component.unitsOf('A1');
+      component.state = { ...advancedState() };
+      expect(component.unitsOf('A1')).toBe(first);
+    });
+
+    it('un territorio sin tropas siempre devuelve el mismo array vacío', () => {
+      component.state = advancedState();
+      expect(component.unitsOf('A3')).toBe(component.unitsOf('A2'));
+    });
+
+    it('rehace el array cuando cambian las tropas', () => {
+      component.state = advancedState();
+      const first = component.unitsOf('A1');
+      const changed = advancedState();
+      changed.territories = {
+        ...changed.territories,
+        A1: { ownerId: 'p1', armies: 5, units: { blindado: 2, aereo: 1 } },
+      };
+      component.state = changed;
+      expect(component.unitsOf('A1')).not.toBe(first);
+      expect(component.unitsOf('A1')).toHaveLength(3);
+    });
+
+    it('los glifos se reparten centrados sobre la ficha', () => {
+      expect(component.unitOffsetX(0, 1)).toBe(0);
+      expect(component.unitOffsetX(0, 2)).toBe(-component.unitOffsetX(1, 2));
+      expect(component.unitOffsetX(1, 3)).toBe(0);
+    });
+  });
+
   describe('vista', () => {
     it('empieza centrada y sin zoom', () => {
       expect(component.zoom).toBe(1);

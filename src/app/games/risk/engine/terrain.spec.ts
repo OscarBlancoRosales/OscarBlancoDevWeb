@@ -72,6 +72,7 @@ describe('orografía', () => {
         attack: 3,
         defend: 2,
         defenceBonus: [],
+        attackBonus: [],
       });
     });
 
@@ -271,11 +272,13 @@ describe('orografía', () => {
         attack: 3,
         defend: 2,
         defenceBonus: [],
+        attackBonus: [],
       });
       expect(battleRulesFor(map, DEFAULT_CONFIG, 'A1', 'B3')).toEqual({
         attack: 3,
         defend: 2,
         defenceBonus: [],
+        attackBonus: [],
       });
     });
 
@@ -297,6 +300,7 @@ describe('orografía', () => {
         attack: 2,
         defend: 2,
         defenceBonus: [1],
+        attackBonus: [],
       });
     });
 

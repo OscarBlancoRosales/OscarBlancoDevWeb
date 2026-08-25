@@ -1,4 +1,5 @@
 import { GameMap, GameState, PlayerId, TerritoryId } from './types';
+import { hasUnit } from './units';
 
 /** Número de ejércitos iniciales según cuántos jueguen (regla clásica). */
 export function startingArmiesFor(playerCount: number): number {
@@ -54,7 +55,7 @@ export function reinforcementBreakdown(
   return { base, continents, total };
 }
 
-/** ¿Se puede atacar `to` desde `from`? (mismo dueño, adyacencia y 2+ ejércitos) */
+/** ¿Se puede atacar `to` desde `from`? (mismo dueño, alcance y 2+ ejércitos) */
 export function canAttack(
   state: GameState,
   map: GameMap,
@@ -68,7 +69,34 @@ export function canAttack(
   if (origin.ownerId !== playerId) return false;
   if (target.ownerId === playerId) return false;
   if (origin.armies < 2) return false;
-  return adjacencyOf(map, from).includes(to);
+  if (adjacencyOf(map, from).includes(to)) return true;
+  return airReachOf(state, map, from).includes(to);
+}
+
+/**
+ * Territorios que alcanza la aviación de `from`: los vecinos de sus vecinos.
+ *
+ * Sin aviación (o sin modo avanzado) no alcanza nada, y el juego es el de
+ * siempre. La lista excluye a los vecinos directos, que ya se atacan por
+ * frontera, y al propio territorio.
+ */
+export function airReachOf(
+  state: GameState,
+  map: GameMap,
+  from: TerritoryId,
+): TerritoryId[] {
+  if (!state.config.advancedUnits) return [];
+  if (!hasUnit(state.territories[from], 'aereo')) return [];
+
+  const direct = new Set(adjacencyOf(map, from));
+  const reach = new Set<TerritoryId>();
+  for (const neighbour of direct) {
+    for (const second of adjacencyOf(map, neighbour)) {
+      if (second === from || direct.has(second)) continue;
+      reach.add(second);
+    }
+  }
+  return [...reach];
 }
 
 const adjacencyCache = new WeakMap<GameMap, Record<TerritoryId, TerritoryId[]>>();
@@ -119,7 +147,7 @@ export function attackSources(state: GameState, map: GameMap, playerId: PlayerId
   return territoriesOf(state, playerId).filter(
     (id) =>
       state.territories[id].armies >= 2 &&
-      adjacencyOf(map, id).some((n) => state.territories[n]?.ownerId !== playerId),
+      attackTargets(state, map, id, playerId).length > 0,
   );
 }
 
@@ -130,7 +158,11 @@ export function attackTargets(
   from: TerritoryId,
   playerId: PlayerId,
 ): TerritoryId[] {
-  return adjacencyOf(map, from).filter((id) => state.territories[id]?.ownerId !== playerId);
+  const enemy = (id: TerritoryId) =>
+    state.territories[id] !== undefined && state.territories[id].ownerId !== playerId;
+  const byLand = adjacencyOf(map, from).filter(enemy);
+  const byAir = airReachOf(state, map, from).filter(enemy);
+  return byAir.length > 0 ? [...byLand, ...byAir] : byLand;
 }
 
 /** Territorios propios que tocan a un enemigo (frontera). */

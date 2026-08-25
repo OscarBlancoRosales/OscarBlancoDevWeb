@@ -241,6 +241,7 @@ describe('los topes de dados de la mesa mandan en todas partes', () => {
         attack: 2,
         defend: 1,
         defenceBonus: [],
+        attackBonus: [],
       });
     });
 
@@ -249,6 +250,7 @@ describe('los topes de dados de la mesa mandan en todas partes', () => {
         attack: 3,
         defend: 3,
         defenceBonus: [],
+        attackBonus: [],
       });
     });
   });

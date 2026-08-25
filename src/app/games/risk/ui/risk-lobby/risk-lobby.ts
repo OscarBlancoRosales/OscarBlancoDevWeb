@@ -9,6 +9,7 @@ import { DEFAULT_CONFIG, PLAYER_COLORS, createGame } from '../../engine/engine';
 import { GameMap, GameState } from '../../engine/types';
 import { RiskBoard } from '../risk-board/risk-board';
 import { TERRAINS, TERRAIN_META } from '../../engine/terrain';
+import { UNIT_KINDS, UNIT_META } from '../../engine/units';
 import {
   RiskRoomService,
   RoomMeta,
@@ -45,9 +46,12 @@ export class RiskLobby implements OnInit {
   autoClaim = true;
   tradeProgression: 'classic' | 'fixed' = 'classic';
   advancedTerrain = false;
+  advancedUnits = false;
 
   /** Fichas de los terrenos, para la leyenda del modo avanzado. */
   readonly terrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]);
+  /** Fichas de las tropas, para la leyenda del modo avanzado. */
+  readonly troops = UNIT_KINDS.map((kind) => UNIT_META[kind]);
 
   // Entrada del jugador
   playerName = '';
@@ -190,6 +194,7 @@ export class RiskLobby implements OnInit {
           autoClaim: this.autoClaim,
           tradeProgression: this.tradeProgression,
           advancedTerrain: this.advancedTerrain,
+          advancedUnits: this.advancedUnits,
         },
       });
 

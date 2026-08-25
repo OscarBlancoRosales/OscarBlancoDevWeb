@@ -124,6 +124,35 @@ describe('RiskLobby', () => {
     });
   });
 
+  describe('tropas especializadas', () => {
+    it('empiezan apagadas', () => {
+      expect(component.advancedUnits).toBe(false);
+    });
+
+    it('la leyenda lista las cuatro tropas con coste y efecto', () => {
+      expect(component.troops).toHaveLength(4);
+      for (const troop of component.troops) {
+        expect(troop.cost).toBeGreaterThan(0);
+        expect(troop.effect.length).toBeGreaterThan(10);
+      }
+    });
+
+    it('con el modo encendido aparece su leyenda', () => {
+      component.advancedUnits = true;
+      fixture.detectChanges();
+      const legends = fixture.nativeElement.querySelectorAll('.terrain-legend');
+      expect(legends.length).toBe(1);
+      expect(legends[0].querySelectorAll('.terrain-item').length).toBe(4);
+    });
+
+    it('orografía y tropas son independientes', () => {
+      component.advancedTerrain = true;
+      component.advancedUnits = true;
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.terrain-legend').length).toBe(2);
+    });
+  });
+
   it('resuelve el nombre del mapa', () => {
     expect(component.mapName('world')).toBe('Todo el mundo');
     expect(component.mapName('inventado')).toBe('inventado');
@@ -198,6 +227,18 @@ describe('RiskLobby', () => {
       await component.createRoom(true);
 
       const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(meta.config.advancedTerrain).toBe(false);
+      expect(meta.config.advancedUnits).toBe(false);
+    });
+
+    it('las tropas viajan a la configuración de la sala por su cuenta', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.playerName = 'Oscar';
+      component.advancedUnits = true;
+      await component.createRoom(true);
+
+      const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(meta.config.advancedUnits).toBe(true);
       expect(meta.config.advancedTerrain).toBe(false);
     });
 

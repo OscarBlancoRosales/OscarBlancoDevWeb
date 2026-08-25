@@ -19,6 +19,7 @@ import {
   TERRAINS,
   TERRAIN_META,
 } from '../../engine/terrain';
+import { UNIT_KINDS, UNIT_META, UnitMeta } from '../../engine/units';
 
 export interface TerritoryTooltip {
   name: string;
@@ -57,6 +58,7 @@ export class RiskBoard {
 
   @Input() set state(value: GameState | null) {
     this._state = value;
+    this.indexUnits();
     this.updateTooltip();
   }
   get state(): GameState | null {
@@ -79,6 +81,17 @@ export class RiskBoard {
     return this._showTerrain;
   }
   private _showTerrain = false;
+
+  /**
+   * Tropas de cada territorio, indexadas al cambiar el estado.
+   *
+   * NO se calcula desde la plantilla: devolver un array nuevo en cada ciclo de
+   * detección de cambios deja la vista permanentemente sucia. Se recalcula solo
+   * cuando el estado cambia, y si un territorio no cambia se reutiliza el mismo
+   * array, así que `*ngFor` no rehace nada.
+   */
+  unitsByTerritory: Record<TerritoryId, UnitMeta[]> = {};
+  private unitSignatures: Record<TerritoryId, string> = {};
 
   /** Terrenos que se marcan en el tablero (la llanura es el caso normal). */
   readonly markedTerrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]).filter(
@@ -212,6 +225,51 @@ export class RiskBoard {
     return conquestOdds(from.armies, to.armies, rules);
   }
 
+  /** Recalcula el índice de tropas, conservando los arrays que no cambian. */
+  private indexUnits(): void {
+    const state = this._state;
+    if (!state?.config.advancedUnits) {
+      this.unitsByTerritory = {};
+      this.unitSignatures = {};
+      return;
+    }
+    const next: Record<TerritoryId, UnitMeta[]> = {};
+    for (const [id, territory] of Object.entries(state.territories)) {
+      const counts = UNIT_KINDS.map((kind) => territory.units?.[kind] ?? 0);
+      if (counts.every((count) => count === 0)) {
+        delete this.unitSignatures[id];
+        continue;
+      }
+      const signature = counts.join(',');
+      if (this.unitSignatures[id] === signature && this.unitsByTerritory[id]) {
+        next[id] = this.unitsByTerritory[id];
+        continue;
+      }
+      const metas: UnitMeta[] = [];
+      UNIT_KINDS.forEach((kind, index) => {
+        for (let i = 0; i < counts[index]; i++) metas.push(UNIT_META[kind]);
+      });
+      next[id] = metas;
+      this.unitSignatures[id] = signature;
+    }
+    this.unitsByTerritory = next;
+  }
+
+  /** Tropas dibujadas en un territorio (array estable entre ciclos). */
+  unitsOf(id: TerritoryId): UnitMeta[] {
+    return this.unitsByTerritory[id] ?? EMPTY_UNITS;
+  }
+
+  trackUnit(index: number, meta: UnitMeta): string {
+    return `${index}:${meta.id}`;
+  }
+
+  /** Coloca los glifos de tropa en fila centrada sobre la ficha. */
+  unitOffsetX(index: number, total: number): number {
+    const step = 9;
+    return (index - (total - 1) / 2) * step;
+  }
+
   /** Glifo del terreno de un territorio (nada si es llanura o está apagado). */
   terrainGlyphOf(territory: RenderedTerritory): string | null {
     if (!this.showTerrain) return null;
@@ -317,3 +375,6 @@ function touchDistance(event: TouchEvent): number {
   const [a, b] = [event.touches[0], event.touches[1]];
   return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
 }
+
+/** Array compartido para los territorios sin tropas: identidad estable. */
+const EMPTY_UNITS: UnitMeta[] = [];

@@ -1,5 +1,6 @@
-import { GameConfig, GameMap, Terrain, TerritoryId } from './types';
+import { GameConfig, GameMap, Terrain, TerritoryId, TerritoryState } from './types';
 import { BattleRules, diceCapsOf } from './combat';
+import { hasUnit } from './units';
 
 /**
  * Orografía: el terreno de cada territorio cambia cómo se pelea por él.
@@ -15,8 +16,13 @@ import { BattleRules, diceCapsOf } from './combat';
  * los clientes calculan lo mismo reproduciendo el log.
  */
 
-/** Cómo llega el ataque al territorio. */
-export type ApproachKind = 'tierra' | 'desembarco';
+/**
+ * Cómo llega el ataque al territorio.
+ *
+ * `aereo` no es una frontera: es un salto a un territorio que está a dos pasos,
+ * que solo puede dar quien tenga aviación (ver `units.ts`).
+ */
+export type ApproachKind = 'tierra' | 'desembarco' | 'aereo';
 
 export interface TerrainMeta {
   id: Terrain;
@@ -95,25 +101,28 @@ export const DEFAULT_TERRAIN: Terrain = 'llanura';
  * se nota jugando: contra un defensor de un solo ejército, que tira un único
  * dado, no cambian nada. Un bosque vacío no embosca a nadie.
  *
+ * Un ataque aéreo se parece a un desembarco en lo que importa: no lleva masa
+ * detrás, así que también se queda en 2 dados. Lo que gana es alcance.
+ *
  * Medido contra una simulación independiente de 300 000 batallas, un ataque de
  * 10 contra 5 pasa de 0,872 en llanura a 0,958 en desierto, 0,719 en bosque,
  * 0,699 en montaña y 0,394 desembarcando en una costa.
  */
 export function terrainRules(terrain: Terrain, approach: ApproachKind): BattleRules {
-  const attack = approach === 'desembarco' ? 2 : 3;
+  const attack = approach === 'tierra' ? 3 : 2;
   const landing = approach === 'desembarco';
   switch (terrain) {
     case 'bosque':
-      return { attack, defend: 2, defenceBonus: [0, 1] };
+      return { attack, defend: 2, defenceBonus: [0, 1], attackBonus: [] };
     case 'montaña':
-      return { attack, defend: 2, defenceBonus: [1] };
+      return { attack, defend: 2, defenceBonus: [1], attackBonus: [] };
     case 'desierto':
-      return { attack, defend: 2, defenceBonus: [0, -1] };
+      return { attack, defend: 2, defenceBonus: [0, -1], attackBonus: [] };
     case 'costa':
-      return { attack, defend: 2, defenceBonus: landing ? [1] : [] };
+      return { attack, defend: 2, defenceBonus: landing ? [1] : [], attackBonus: [] };
     case 'llanura':
     default:
-      return { attack, defend: 2, defenceBonus: [] };
+      return { attack, defend: 2, defenceBonus: [], attackBonus: [] };
   }
 }
 
@@ -172,12 +181,35 @@ function routeKey(a: TerritoryId, b: TerritoryId): string {
  *
  * Que una conexión se dibuje suelta no basta para que sea un desembarco: los
  * puentes de tierra se dibujan igual porque las siluetas no se tocan, pero se
- * cruzan a pie.
+ * cruzan a pie. Y una flota en el origen convierte el desembarco en un
+ * desplazamiento normal: para eso están los barcos.
+ *
+ * Si los dos territorios ni siquiera son vecinos, el ataque solo puede ser
+ * aéreo; quién puede hacerlo lo decide `rules.ts`, aquí solo se nombra.
  */
-export function approachOf(map: GameMap, from: TerritoryId, to: TerritoryId): ApproachKind {
+export function approachOf(
+  map: GameMap,
+  from: TerritoryId,
+  to: TerritoryId,
+  origin?: TerritoryState,
+): ApproachKind {
+  if (!areNeighbours(map, from, to)) return 'aereo';
   if (!isSeaRoute(map, from, to)) return 'tierra';
-  return isLandBridge(map, from, to) ? 'tierra' : 'desembarco';
+  if (isLandBridge(map, from, to)) return 'tierra';
+  return hasUnit(origin, 'naval') ? 'tierra' : 'desembarco';
 }
+
+function areNeighbours(map: GameMap, from: TerritoryId, to: TerritoryId): boolean {
+  let index = neighbourIndex.get(map);
+  if (!index) {
+    index = new Map();
+    for (const territory of map.territories) index.set(territory.id, new Set(territory.adjacent));
+    neighbourIndex.set(map, index);
+  }
+  return index.get(from)?.has(to) ?? false;
+}
+
+const neighbourIndex = new WeakMap<GameMap, Map<TerritoryId, Set<TerritoryId>>>();
 
 /**
  * Reglas de combate de un ataque concreto.
@@ -187,19 +219,37 @@ export function approachOf(map: GameMap, from: TerritoryId, to: TerritoryId): Ap
  */
 export function battleRulesFor(
   map: GameMap,
-  config: Pick<GameConfig, 'maxAttackDice' | 'maxDefendDice' | 'advancedTerrain'> | null | undefined,
+  config:
+    | Pick<GameConfig, 'maxAttackDice' | 'maxDefendDice' | 'advancedTerrain' | 'advancedUnits'>
+    | null
+    | undefined,
   from: TerritoryId,
   to: TerritoryId,
+  origin?: TerritoryState,
 ): BattleRules {
   const caps = diceCapsOf(config);
-  if (!config?.advancedTerrain) return caps;
+  const units = config?.advancedUnits ? origin : undefined;
+  const approach = approachOf(map, from, to, units);
 
-  const rules = terrainRules(terrainOf(map, to), approachOf(map, from, to));
-  // Los topes de la mesa siguen mandando: el terreno nunca da más dados de los
-  // que la configuración permite.
+  // Los blindados empujan igual que la montaña frena: un dado, y solo el mejor.
+  // No vuelan: en un ataque aéreo no cuentan.
+  const attackBonus =
+    config?.advancedUnits && approach === 'tierra' && hasUnit(origin, 'blindado') ? [1] : [];
+
+  if (!config?.advancedTerrain) {
+    // Sin orografía no hay desembarcos, pero el alcance aéreo sí existe: es de
+    // las tropas, no del terreno.
+    const attack = approach === 'aereo' ? Math.min(2, caps.attack) : caps.attack;
+    return { ...caps, attack, attackBonus };
+  }
+
+  const rules = terrainRules(terrainOf(map, to), approach);
+  // Los topes de la mesa siguen mandando: ni el terreno ni las tropas dan más
+  // dados de los que la configuración permite.
   return {
     attack: Math.min(rules.attack, caps.attack),
     defend: Math.min(rules.defend, caps.defend),
     defenceBonus: rules.defenceBonus,
+    attackBonus,
   };
 }

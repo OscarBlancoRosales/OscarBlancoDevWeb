@@ -319,3 +319,15 @@
   font-size: 0.72rem;
   color: #29b6f6;
 }
+
+/* Tropas especializadas: fila de glifos sobre la ficha de ejércitos. */
+.badge-unit {
+  font-size: 10px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}

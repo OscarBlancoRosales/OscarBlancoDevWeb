@@ -166,6 +166,31 @@
               Además, atacar cruzando una línea de puntos es un desembarco: solo tiras 2 dados.
             </p>
           </div>
+
+          <label class="toggle-row">
+            <input type="checkbox" [(ngModel)]="advancedUnits" />
+            <span class="toggle-body">
+              <span class="toggle-title">Modo avanzado · tropas</span>
+              <small>
+                Con los refuerzos puedes ascender fichas que ya estén en el tablero a tropas
+                especializadas. No añaden ejércitos: cambian de tipo uno que ya tenías.
+              </small>
+            </span>
+          </label>
+
+          <div class="terrain-legend" *ngIf="advancedUnits">
+            <div class="terrain-item" *ngFor="let troop of troops">
+              <span class="terrain-glyph" [style.color]="troop.color">{{ troop.glyph }}</span>
+              <span class="terrain-text">
+                <strong>{{ troop.name }} ({{ troop.cost }})</strong>
+                {{ troop.effect }}
+              </span>
+            </div>
+            <p class="hint">
+              Las tropas no se mueven: se preparan donde hacen falta y se pierden si cae el
+              territorio.
+            </p>
+          </div>
         </div>
 
         <div class="create-actions">

@@ -38,6 +38,7 @@ import {
 } from '../../engine/rules';
 import { conquestOdds, maxAttackDice } from '../../engine/combat';
 import { approachOf, battleRulesFor, TERRAIN_META } from '../../engine/terrain';
+import { hasUnit, infantryOf, UNIT_KINDS, UNIT_META } from '../../engine/units';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
 import { BotProfile } from '../../engine/types';
@@ -438,7 +439,13 @@ export class RiskRoom implements OnInit, OnDestroy {
   private selectionRules() {
     if (!this.state || !this.map || !this.selectedFrom) return null;
     const to = this.selectedTo ?? this.selectedFrom;
-    return battleRulesFor(this.map, this.state.config, this.selectedFrom, to);
+    return battleRulesFor(
+      this.map,
+      this.state.config,
+      this.selectedFrom,
+      to,
+      this.state.territories[this.selectedFrom],
+    );
   }
 
   maxDiceForSelection(): number {
@@ -467,6 +474,45 @@ export class RiskRoom implements OnInit, OnDestroy {
   /** Modo avanzado activo en esta partida. */
   get advancedTerrain(): boolean {
     return !!this.state?.config.advancedTerrain;
+  }
+
+  /** Tropas especializadas activas en esta partida. */
+  get advancedUnits(): boolean {
+    return !!this.state?.config.advancedUnits;
+  }
+
+  /** Catálogo de tropas para la barra de refuerzos. */
+  readonly troops = UNIT_KINDS.map((kind) => UNIT_META[kind]);
+
+  /** ¿El ataque apuntado llega por aire? */
+  isAirSelected(): boolean {
+    if (!this.advancedUnits || !this.map || !this.selectedFrom || !this.selectedTo) return false;
+    const origin = this.state?.territories[this.selectedFrom];
+    return approachOf(this.map, this.selectedFrom, this.selectedTo, origin) === 'aereo';
+  }
+
+  /** ¿El origen aporta blindados a este ataque? */
+  isArmouredSelected(): boolean {
+    if (!this.advancedUnits || !this.selectedFrom || !this.selectedTo) return false;
+    const rules = this.selectionRules();
+    return (rules?.attackBonus?.length ?? 0) > 0;
+  }
+
+  /** ¿Se puede ascender una ficha del territorio elegido a esta tropa? */
+  canUpgrade(kind: (typeof UNIT_KINDS)[number]): boolean {
+    if (!this.advancedUnits || !this.state || !this.selectedFrom || !this.me) return false;
+    if (this.state.phase !== 'reinforce') return false;
+    const territory = this.state.territories[this.selectedFrom];
+    if (!territory || territory.ownerId !== this.seatId) return false;
+    if (infantryOf(territory) < 1) return false;
+    // Repetir la misma tropa en el mismo sitio no aporta nada: no se acumulan.
+    if (hasUnit(territory, kind)) return false;
+    return this.me.reserve >= UNIT_META[kind].cost;
+  }
+
+  async upgrade(kind: (typeof UNIT_KINDS)[number]): Promise<void> {
+    if (!this.selectedFrom || !this.canUpgrade(kind)) return;
+    await this.send({ type: 'upgrade', playerId: this.seatId, territoryId: this.selectedFrom, unit: kind });
   }
 
   maxFortify(): number {

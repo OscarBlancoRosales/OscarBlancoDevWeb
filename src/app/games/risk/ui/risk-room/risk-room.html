@@ -122,6 +122,15 @@
               <span>Canjes</span>
               <b>{{ meta.config.tradeProgression === 'classic' ? 'Clásico' : 'Fijo (6)' }}</b>
             </li>
+            <!-- Quien entra por invitación tiene que saber a qué reglas juega. -->
+            <li>
+              <span>Orografía</span>
+              <b>{{ meta.config.advancedTerrain ? 'Sí' : 'No' }}</b>
+            </li>
+            <li>
+              <span>Tropas</span>
+              <b>{{ meta.config.advancedUnits ? 'Sí' : 'No' }}</b>
+            </li>
           </ul>
         </div>
 
@@ -258,6 +267,23 @@
                 </ng-container>
                 <span class="muted" *ngIf="!selectedFrom">Pulsa uno de tus territorios en el mapa.</span>
 
+                <!-- Tropas: ascender una ficha que ya está en el territorio -->
+                <div class="troop-bar" *ngIf="advancedUnits && selectedFrom">
+                  <span class="troop-label">Preparar tropa</span>
+                  <button
+                    class="troop-btn"
+                    type="button"
+                    *ngFor="let troop of troops"
+                    [disabled]="!canUpgrade(troop.id)"
+                    [title]="troop.effect + ' · cuesta ' + troop.cost"
+                    (click)="upgrade(troop.id)"
+                  >
+                    <span class="troop-glyph" [style.color]="troop.color">{{ troop.glyph }}</span>
+                    {{ troop.name }}
+                    <span class="troop-cost">{{ troop.cost }}</span>
+                  </button>
+                </div>
+
                 <button class="btn end" type="button" (click)="endPhase()" [disabled]="!canEndPhase()">
                   Terminar refuerzos →
                 </button>
@@ -310,6 +336,12 @@
                   </span>
                   <span class="terrain-tag landing" *ngIf="isLandingSelected()" title="Cruzando el mar solo tiras 2 dados">
                     ⚓ Desembarco
+                  </span>
+                  <span class="terrain-tag air" *ngIf="isAirSelected()" title="Ataque aéreo: alcanza sin frontera, pero solo con 2 dados">
+                    ✈ Ataque aéreo
+                  </span>
+                  <span class="terrain-tag armour" *ngIf="isArmouredSelected()" title="Los blindados suman +1 al mejor dado">
+                    ■ Blindados
                   </span>
                   <div class="dice-picker">
                     <button
