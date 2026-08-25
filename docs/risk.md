@@ -97,12 +97,14 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
       ".write": true
     },
     "riskRooms": {
-      ".read": true,
+      ".read": "auth != null && query.orderByChild === 'meta/ownerUid' && query.equalTo === auth.uid",
+      ".indexOn": ["meta/ownerUid"],
       "$roomId": {
+        ".read": true,
         ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
         ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
-          ".write": true,
+          ".write": "!data.exists()",
           ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
           "seed": {
             ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
@@ -112,6 +114,20 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
           },
           "createdAt": {
             ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+          },
+          "ownerUid": {
+            ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+          },
+          "roster": {
+            ".write": "!data.exists()"
+          },
+          "status": {
+            ".write": true,
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "updatedAt": {
+            ".write": true,
+            ".validate": "newData.isNumber()"
           },
           "maxPlayers": {
             ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
@@ -129,6 +145,9 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
         "seats": {
           "$seatId": {
             ".write": true,
+            "seatToken": {
+              ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+            },
             "name": {
               ".validate": "newData.isString() && newData.val().length <= 40"
             },
@@ -165,6 +184,19 @@ Las reglas tienen que dejar entrar a invitados **sin cuenta** (esa es toda la gr
 enlace de invitación), así que no pueden apoyarse en la autenticación para lo normal. Lo
 que sí hacen es cerrar lo que de verdad rompe una partida:
 
+- **No se pueden listar las salas.** Es el arreglo de fondo: mientras la lectura estuvo
+  abierta en el nodo padre, decir que "el identificador aleatorio protege la sala" era
+  mentira, porque bastaba con descargarlas todas de una vez. Ahora solo se puede leer una
+  sala **nombrándola** (que es lo que hace el enlace de invitación) o preguntar por *las
+  tuyas* con una consulta concreta: `orderByChild('meta/ownerUid').equalTo(auth.uid)`, y
+  las reglas no aceptan ninguna otra. De paso, listar tus salas ya no se baja los logs de
+  las partidas ajenas, que en la capa gratuita se nota.
+- **La alineación se congela.** `meta` completa solo se puede escribir al crear la sala, y
+  `roster` una única vez: es el dato del que cuelga el estado inicial, así que reescribirlo
+  invalidaría el log entero. Después solo quedan abiertos `status` y `updatedAt`.
+- **El testigo de un asiento es inmutable.** Una vez ocupado, no se le puede cambiar el
+  `seatToken` para suplantar a quien lo tiene.
+
 - **El log es de solo-añadir.** `!data.exists()` en cada entrada: se puede apuntar una
   jugada nueva, pero nadie puede reescribir ni borrar una ya hecha. Es la regla más
   importante de todas, porque el log **es** la partida: quien pudiera editarlo podría
@@ -181,12 +213,19 @@ que sí hacen es cerrar lo que de verdad rompe una partida:
 - **Topes de tamaño** en los nombres y en el texto del chat, para que un bucle no llene la
   base gratuita.
 
-Y lo que **no** hacen, dicho claramente: cualquiera que conozca el identificador de una
-sala puede leerla y añadirle jugadas y mensajes. Sin backend no hay forma de evitarlo — el
-motor vive en el cliente y los invitados no tienen cuenta. Lo que protege una partida es
-que el identificador es aleatorio y no se puede listar de forma útil, o sea el mismo
-modelo que un enlace secreto de Google Docs. Si algún día hace falta más, el camino es
-autenticación anónima de Firebase y reglas sobre `auth.uid`, no retocar estas.
+Y lo que **no** hacen, dicho claramente: quien conozca el identificador de una sala puede
+leerla, añadirle jugadas y mensajes, y liberar asientos. Sin backend no hay forma de
+evitarlo — el motor vive en el cliente y los invitados no tienen cuenta con la que
+distinguirlos. El modelo de seguridad es el de un enlace secreto de Google Docs: **el
+identificador es la credencial**, y ahora sí lo es de verdad, porque ya no se puede
+enumerar.
+
+Si algún día hace falta más, el camino está claro y no pasa por retocar estas reglas:
+activar **autenticación anónima** en Firebase (da un `uid` estable a cada navegador sin
+pedirle nada a nadie), guardar ese `uid` en cada asiento y exigir `auth.uid` para tocarlo.
+Eso convertiría el asiento en propiedad de quien lo ocupa. Se ha dejado fuera de esta
+tanda porque obliga a activar un proveedor en la consola y a que la aplicación degrade con
+elegancia si no está activo.
 
 > **Ojo al desplegar:** `database.rules.json` es el conjunto **completo** de reglas de la
 > base, no solo las del RISK. Subirlo sustituye también las de `rooms`, que es el nodo del

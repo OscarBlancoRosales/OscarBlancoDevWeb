@@ -2,9 +2,12 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import {
   DataSnapshot,
+  equalTo,
   onDisconnect,
   onValue,
+  orderByChild,
   push,
+  query,
   ref,
   remove,
   serverTimestamp,
@@ -289,8 +292,11 @@ export class RiskRoomService {
       // pantalla colgada: devolvemos lo que haya.
       const timer = setTimeout(() => finish([]), 6000);
 
+      // Se pregunta SOLO por las salas propias, no se descarga la base entera y
+      // se filtra aquí: las reglas de seguridad únicamente aceptan esta consulta
+      // exacta, y además así no se bajan los logs de partidas ajenas.
       onValue(
-        ref(database, ROOMS_PATH),
+        query(ref(database, ROOMS_PATH), orderByChild('meta/ownerUid'), equalTo(ownerUid)),
         (snapshot) => {
           clearTimeout(timer);
           const rooms = (snapshot.val() as Record<string, any> | null) ?? {};
@@ -522,11 +528,16 @@ export class RiskRoomService {
     await remove(ref(database, `${ROOMS_PATH}/${roomId}`));
   }
 
-  /** Borra salas abandonadas para no engordar la base gratuita. */
-  async cleanOldRooms(now = Date.now()): Promise<number> {
+  /**
+   * Borra tus salas abandonadas para no engordar la base gratuita.
+   *
+   * Solo las tuyas: la base ya no deja listar las de nadie más, y borrar la
+   * partida de otro tampoco sería asunto tuyo.
+   */
+  async cleanOldRooms(ownerUid: string, now = Date.now()): Promise<number> {
     return new Promise((resolve) => {
       onValue(
-        ref(database, ROOMS_PATH),
+        query(ref(database, ROOMS_PATH), orderByChild('meta/ownerUid'), equalTo(ownerUid)),
         async (snapshot) => {
           const rooms = (snapshot.val() as Record<string, any> | null) ?? {};
           let removed = 0;
