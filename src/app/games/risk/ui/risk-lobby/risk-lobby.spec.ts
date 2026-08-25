@@ -91,6 +91,39 @@ describe('RiskLobby', () => {
     expect(component.statusLabel({ ...(base as object), status: 'finished' } as never)).toBe('Terminada');
   });
 
+  describe('modo avanzado', () => {
+    it('empieza apagado: el clásico es lo que se ofrece por defecto', () => {
+      expect(component.advancedTerrain).toBe(false);
+    });
+
+    it('la leyenda lista los cinco terrenos con su efecto', () => {
+      expect(component.terrains).toHaveLength(5);
+      for (const terrain of component.terrains) {
+        expect(terrain.name.length).toBeGreaterThan(0);
+        expect(terrain.effect.length).toBeGreaterThan(10);
+      }
+    });
+
+    it('con el modo apagado no se enseña la leyenda', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.terrain-legend')).toBeNull();
+    });
+
+    it('con el modo encendido la leyenda lista los cinco terrenos', () => {
+      component.advancedTerrain = true;
+      fixture.detectChanges();
+      const legend = fixture.nativeElement.querySelector('.terrain-legend');
+      expect(legend).not.toBeNull();
+      expect(legend.querySelectorAll('.terrain-item').length).toBe(5);
+    });
+
+    it('la vista previa marca la orografía al encenderlo', () => {
+      component.advancedTerrain = true;
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('.badge-terrain').length).toBeGreaterThan(0);
+    });
+  });
+
   it('resuelve el nombre del mapa', () => {
     expect(component.mapName('world')).toBe('Todo el mundo');
     expect(component.mapName('inventado')).toBe('inventado');
@@ -147,6 +180,25 @@ describe('RiskLobby', () => {
       expect(meta.config.tradeProgression).toBe('fixed');
       expect(meta.maxPlayers).toBe(5);
       expect(meta.mapId).toBe(RISK_MAPS[1].id);
+    });
+
+    it('el modo avanzado viaja a la configuración de la sala', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.playerName = 'Oscar';
+      component.advancedTerrain = true;
+      await component.createRoom(true);
+
+      const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(meta.config.advancedTerrain).toBe(true);
+    });
+
+    it('sin marcar el modo avanzado la sala queda en clásico', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.playerName = 'Oscar';
+      await component.createRoom(true);
+
+      const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(meta.config.advancedTerrain).toBe(false);
     });
 
     it('volver a una sala local recupera el mismo asiento', async () => {

@@ -280,3 +280,42 @@
     display: none;
   }
 }
+
+/* ===== OROGRAFÍA (modo avanzado) ===== */
+
+/*
+ * El terreno se marca con un glifo junto a la ficha, no tramando la silueta:
+ * rellenar contornos de país con un patrón SVG deja el navegador clavado, y a
+ * poco zoom la textura no se distingue de otra.
+ */
+.badge-terrain {
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
+.tip-terrain {
+  display: block;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: #b9c4cc;
+}
+
+.tip-glyph {
+  font-weight: 700;
+  margin-right: 0.2rem;
+}
+
+.tip-approach {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: #29b6f6;
+}

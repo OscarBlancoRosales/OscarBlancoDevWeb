@@ -31,6 +31,12 @@ export interface Card {
   symbol: CardSymbol;
 }
 
+/**
+ * Orografía de un territorio. Solo cuenta en modo avanzado; en el clásico todos
+ * los territorios pelean igual. Ver `terrain.ts` para el efecto de cada uno.
+ */
+export type Terrain = 'llanura' | 'bosque' | 'montaña' | 'desierto' | 'costa';
+
 export interface Territory {
   id: TerritoryId;
   name: string;
@@ -41,6 +47,8 @@ export interface Territory {
   shape: string;
   /** Punto interior donde va la etiqueta, calculado a partir de la silueta. */
   labelAnchor: [number, number];
+  /** Orografía. Si no se declara es llanura, que es el combate de siempre. */
+  terrain?: Terrain;
 }
 
 export interface Continent {
@@ -58,10 +66,19 @@ export interface GameMap {
   /** Tamaño del lienzo sobre el que están dibujadas las siluetas. */
   board: { width: number; height: number };
   /**
-   * Adyacencias que no son fronteras terrestres, sino saltos por mar. Se
-   * dibujan como líneas de puntos entre los dos territorios.
+   * Adyacencias que sobre el dibujo no llegan a tocarse: se pintan como línea
+   * de puntos. Casi todas son saltos por mar.
    */
   seaRoutes?: Array<[TerritoryId, TerritoryId]>;
+  /**
+   * De las anteriores, las que en realidad son frontera de tierra.
+   *
+   * El tablero del RISK une China con los Urales o América Central con EE. UU.
+   * Oriental, pero los trozos de mundo que forman esos territorios no llegan a
+   * tocarse, así que se dibujan sueltas. Por reglas NO son un desembarco: la
+   * orografía no puede depender de un accidente del dibujo.
+   */
+  landBridges?: Array<[TerritoryId, TerritoryId]>;
   territories: Territory[];
   continents: Continent[];
   /** Número máximo de jugadores soportado por el mapa. */
@@ -175,6 +192,14 @@ export interface GameConfig {
   /** Permitir dados de defensa 2 con 2+ ejércitos (regla estándar). */
   maxAttackDice: number;
   maxDefendDice: number;
+  /**
+   * Modo avanzado: la orografía del mapa modifica el combate.
+   *
+   * Se congela al empezar la partida, como el resto de la configuración: una
+   * grabación antigua se reproduce con el valor con el que se jugó, no con el
+   * que esté marcado hoy en la sala.
+   */
+  advancedTerrain?: boolean;
 }
 
 export interface GameEvent {

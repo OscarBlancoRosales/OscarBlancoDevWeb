@@ -17,7 +17,7 @@ import {
   threatMap,
   traitsOf,
 } from './bot-brain';
-import { applyAction, createGame, currentPlayer, playerById } from '../engine';
+import { applyAction, createGame, currentPlayer, DEFAULT_CONFIG, playerById } from '../engine';
 import { GameState } from '../types';
 import { TINY_MAP, forceTurn, makeGame, setBoard } from '../testing';
 import { WORLD_MAP } from '../maps/world.map';
@@ -102,7 +102,7 @@ describe('cerebro heurístico de la IA', () => {
 
     it('el alivio tiene tope', () => {
       expect(stalemateRelief(100)).toBe(stalemateRelief(1000));
-      expect(stalemateRelief(1000)).toBeLessThanOrEqual(0.3);
+      expect(stalemateRelief(1000)).toBeLessThanOrEqual(0.6);
     });
 
     it('hasta el más cauto acaba atacando', () => {
@@ -112,9 +112,12 @@ describe('cerebro heurístico de la IA', () => {
     });
 
     it('nunca baja de un mínimo razonable', () => {
-      expect(
-        effectiveAttackThreshold(BOT_PROFILES.agresivo, 999, { thresholdShift: -1 }),
-      ).toBeGreaterThanOrEqual(0.2);
+      // El suelo tiene que dejar pasar el peor ataque razonable del modo
+      // avanzado: 8 contra 8 en montaña sale a 0,198, y con el suelo antiguo
+      // (0,20) los bots no atacaban una montaña jamás.
+      const floor = effectiveAttackThreshold(BOT_PROFILES.agresivo, 999, { thresholdShift: -1 });
+      expect(floor).toBeGreaterThan(0);
+      expect(floor).toBeLessThan(0.198);
     });
 
     it('el sesgo del modelo se suma al alivio', () => {
@@ -153,6 +156,85 @@ describe('cerebro heurístico de la IA', () => {
       for (let i = 1; i < threats.length; i++) {
         expect(threats[i - 1].pressure).toBeGreaterThanOrEqual(threats[i].pressure);
       }
+    });
+
+    it('en clásico la presión es enemigos menos propios, sin más', () => {
+      const state = setBoard(makeGame(), {
+        A1: ['p1', 4],
+        A2: ['p1', 4],
+        A3: ['p1', 4],
+        B1: ['p2', 6],
+        B2: ['p2', 6],
+        B3: ['p2', 6],
+      });
+      for (const threat of threatMap(state, TINY_MAP, 'p1')) {
+        expect(threat.pressure).toBe(threat.enemyArmies - threat.armies);
+      }
+    });
+
+    it('en modo avanzado aprieta menos una montaña que un desierto', () => {
+      // Mismo tablero, mismos ejércitos: solo cambia el terreno de A1.
+      function pressureOn(terrain: 'montaña' | 'desierto' | 'llanura'): number {
+        const map = {
+          ...TINY_MAP,
+          id: `tiny-threat-${terrain}`,
+          territories: TINY_MAP.territories.map((territory) =>
+            territory.id === 'A1' ? { ...territory, terrain } : territory,
+          ),
+        };
+        let state = createGame({
+          map,
+          seed: 5,
+          players: [
+            { id: 'p1', name: 'Ada', kind: 'bot' as const },
+            { id: 'p2', name: 'Bram', kind: 'bot' as const },
+          ],
+          config: { ...DEFAULT_CONFIG, advancedTerrain: true },
+        });
+        state = setBoard(state, {
+          A1: ['p1', 6],
+          A2: ['p1', 6],
+          A3: ['p1', 6],
+          B1: ['p2', 9],
+          B2: ['p2', 9],
+          B3: ['p2', 9],
+        });
+        return threatMap(state, map, 'p1').find((t) => t.id === 'A1')!.pressure;
+      }
+
+      expect(pressureOn('montaña')).toBeLessThan(pressureOn('llanura'));
+      expect(pressureOn('desierto')).toBeGreaterThan(pressureOn('llanura'));
+    });
+
+    it('el terreno no cambia el recuento crudo de ejércitos enemigos', () => {
+      // `enemyArmies` sigue siendo el dato en bruto: lo ponderado es la presión.
+      const map = {
+        ...TINY_MAP,
+        id: 'tiny-threat-raw',
+        territories: TINY_MAP.territories.map((territory) =>
+          territory.id === 'A1' ? { ...territory, terrain: 'montaña' as const } : territory,
+        ),
+      };
+      let state = createGame({
+        map,
+        seed: 5,
+        players: [
+          { id: 'p1', name: 'Ada', kind: 'bot' as const },
+          { id: 'p2', name: 'Bram', kind: 'bot' as const },
+        ],
+        config: { ...DEFAULT_CONFIG, advancedTerrain: true },
+      });
+      state = setBoard(state, {
+        A1: ['p1', 6],
+        A2: ['p1', 6],
+        A3: ['p1', 6],
+        B1: ['p2', 9],
+        B2: ['p2', 9],
+        B3: ['p2', 9],
+      });
+      const threat = threatMap(state, map, 'p1').find((t) => t.id === 'A1')!;
+      expect(threat.enemyArmies).toBe(9);
+      expect(threat.armies).toBe(6);
     });
 
     it('calcula bien los ejércitos enemigos adyacentes', () => {

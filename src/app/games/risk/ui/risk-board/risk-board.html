@@ -36,6 +36,7 @@
       <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
         <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000" flood-opacity="0.55" />
       </filter>
+
     </defs>
 
     <rect class="sea" x="-4000" y="-4000" width="8000" height="8000" />
@@ -85,6 +86,21 @@
         >
           <circle class="badge-ring" r="11" [attr.fill]="ownerColorOf(territory.id)" />
           <text class="badge-text" y="4">{{ armiesOf(territory.id) }}</text>
+          <!--
+            Orografía: un glifo, no una trama sobre la silueta. Rellenar 42
+            contornos de país con un patrón SVG deja el navegador clavado varios
+            segundos, y a poco zoom la textura no se distingue. El glifo se lee
+            siempre y no cuesta nada.
+          -->
+          <text
+            class="badge-terrain"
+            *ngIf="terrainGlyphOf(territory) as glyph"
+            x="13"
+            y="-6"
+            [attr.fill]="terrainTintOf(territory)"
+          >
+            {{ glyph }}
+          </text>
           <text class="badge-name" *ngIf="showNames">
             <tspan
               *ngFor="let line of territory.nameLines; let i = index"
@@ -113,6 +129,13 @@
     <span class="tip-name">{{ info.name }}</span>
     <span class="tip-owner" [style.color]="info.color">{{ info.owner }}</span>
     <span class="tip-armies">{{ info.armies }} ejércitos</span>
+    <span class="tip-terrain" *ngIf="info.terrain as terrain">
+      <span class="tip-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
+      {{ terrain.name }} · {{ terrain.effect }}
+    </span>
+    <span class="tip-approach" *ngIf="info.approach === 'desembarco'">
+      Desembarco: cruzando el mar solo tiras 2 dados.
+    </span>
     <span class="tip-odds" *ngIf="info.odds !== null">
       Conquista: {{ (info.odds * 100) | number: '1.0-0' }} %
     </span>

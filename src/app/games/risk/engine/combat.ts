@@ -21,16 +21,24 @@ export function rollDice(count: number, rng: Rng): number[] {
 /**
  * Resuelve una batalla comparando los dados emparejados de mayor a menor.
  * El empate lo gana siempre el defensor (regla clásica).
+ *
+ * `defenceBonus` es un vector por rango: `defenceBonus[i]` se suma al i-ésimo
+ * mejor dado del defensor antes de comparar esa pareja. Se suma DESPUÉS de
+ * ordenar, así que los dados se emparejan de mayor a menor igual que en la mesa;
+ * lo que cambia es quién gana cada pareja. Los dados que se guardan y se enseñan
+ * son los realmente tirados, no los bonificados: el jugador tiene que ver lo que
+ * salió.
  */
 export function resolveCombat(
   attackingArmies: number,
   defendingArmies: number,
   attackDiceCount: number,
   rng: Rng,
-  caps: { attack: number; defend: number } = { attack: 3, defend: 2 },
+  rules: BattleRules = CLASSIC_RULES,
 ): CombatResult {
-  const attackerCount = Math.min(attackDiceCount, maxAttackDice(attackingArmies, caps.attack));
-  const defenderCount = maxDefendDice(defendingArmies, caps.defend);
+  const attackerCount = Math.min(attackDiceCount, maxAttackDice(attackingArmies, rules.attack));
+  const defenderCount = maxDefendDice(defendingArmies, rules.defend);
+  const bonus = rules.defenceBonus ?? [];
 
   const attackerDice = rollDice(attackerCount, rng);
   const defenderDice = rollDice(defenderCount, rng);
@@ -39,7 +47,7 @@ export function resolveCombat(
   let defenderLosses = 0;
   const comparisons = Math.min(attackerDice.length, defenderDice.length);
   for (let i = 0; i < comparisons; i++) {
-    if (attackerDice[i] > defenderDice[i]) defenderLosses++;
+    if (attackerDice[i] > defenderDice[i] + (bonus[i] ?? 0)) defenderLosses++;
     else attackerLosses++;
   }
 
@@ -52,23 +60,46 @@ export function resolveCombat(
   };
 }
 
-/** Topes de dados de una mesa. Los clásicos son 3 y 2. */
-export interface DiceCaps {
+/**
+ * Cómo se pelea una batalla concreta: topes de dados y ventaja del defensor.
+ *
+ * Los topes son de la mesa; la bonificación la pone el terreno (ver
+ * `terrain.ts`). Es un vector por rango, no un número suelto, porque el terreno
+ * no afecta igual a todos los dados: la montaña refuerza la posición principal
+ * (`[1]`, solo el mejor dado) y el bosque esconde los flancos (`[0, 1]`, solo el
+ * segundo). Un valor negativo penaliza al defensor. Lo que falte cuenta como 0.
+ */
+export interface BattleRules {
   attack: number;
   defend: number;
+  defenceBonus?: number[];
 }
 
-export const CLASSIC_CAPS: DiceCaps = { attack: 3, defend: 2 };
+/** Nombre viejo de lo mismo, cuando solo importaban los topes. */
+export type DiceCaps = BattleRules;
+
+export const CLASSIC_RULES: BattleRules = { attack: 3, defend: 2, defenceBonus: [] };
+export const CLASSIC_CAPS = CLASSIC_RULES;
 
 /** Topes de dados que aplican en una partida concreta. */
 export function diceCapsOf(config: {
   maxAttackDice?: number;
   maxDefendDice?: number;
-} | null | undefined): DiceCaps {
+} | null | undefined): BattleRules {
   return {
-    attack: config?.maxAttackDice ?? CLASSIC_CAPS.attack,
-    defend: config?.maxDefendDice ?? CLASSIC_CAPS.defend,
+    attack: config?.maxAttackDice ?? CLASSIC_RULES.attack,
+    defend: config?.maxDefendDice ?? CLASSIC_RULES.defend,
+    defenceBonus: [],
   };
+}
+
+/** Clave de caché de unas reglas. Dos reglas iguales comparten tabla. */
+function rulesKey(rules: BattleRules): string {
+  const bonus = rules.defenceBonus ?? [];
+  // Los ceros de cola no cambian nada, así que no deben partir la caché.
+  let last = bonus.length;
+  while (last > 0 && bonus[last - 1] === 0) last--;
+  return `${rules.attack}v${rules.defend}:${bonus.slice(0, last).join(',')}`;
 }
 
 /**
@@ -83,15 +114,15 @@ const ODDS_SCALE_CAP = 60;
  * Probabilidad de que el atacante acabe conquistando, resolviendo la cadena de
  * Markov de la batalla hasta el final.
  *
- * Recibe los topes de dados de la mesa porque es EL MISMO número que ve el
- * jugador antes de atacar y el que usa la IA para decidir: si el combate real
- * usara unos topes y esta función otros, la interfaz mentiría y la IA jugaría a
- * ciegas. Cuando el terreno modifique el combate, entrará por aquí.
+ * Recibe las reglas de ESA batalla (topes de la mesa ya combinados con el
+ * terreno del territorio atacado) porque es EL MISMO número que ve el jugador
+ * antes de atacar y el que usa la IA para decidir: si el combate real usara unas
+ * reglas y esta función otras, la interfaz mentiría y la IA jugaría a ciegas.
  */
 export function conquestOdds(
   attackingArmies: number,
   defendingArmies: number,
-  caps: DiceCaps = CLASSIC_CAPS,
+  rules: BattleRules = CLASSIC_RULES,
 ): number {
   let attackers = attackingArmies - 1; // uno se queda siempre en casa
   let defenders = defendingArmies;
@@ -107,9 +138,9 @@ export function conquestOdds(
   // La caché es global y no se invalida nunca: es una función pura de
   // (topes, a, d), y la IA la consulta cientos de veces por turno.
   const memo = oddsCache;
-  const capsKey = `${caps.attack}v${caps.defend}`;
+  const capsKey = rulesKey(rules);
 
-  const probs = battleRoundProbabilities(caps);
+  const probs = battleRoundProbabilities(rules);
 
   const win = (a: number, d: number): number => {
     if (d <= 0) return 1;
@@ -118,8 +149,8 @@ export function conquestOdds(
     const cached = memo.get(memoKey);
     if (cached !== undefined) return cached;
 
-    const attackDice = Math.min(caps.attack, a);
-    const defendDice = Math.min(caps.defend, d);
+    const attackDice = Math.min(rules.attack, a);
+    const defendDice = Math.min(rules.defend, d);
     const table = probs[`${attackDice}v${defendDice}`];
 
     let total = 0;
@@ -141,16 +172,17 @@ const cachedTables = new Map<string, RoundTable>();
 
 /**
  * Distribución exacta de bajas por ronda, enumerando todas las tiradas.
- * Una tabla por combinación de topes (la clásica 3v2 se calcula una sola vez).
+ * Una tabla por combinación de reglas (la clásica 3v2 se calcula una sola vez).
  */
-export function battleRoundProbabilities(caps: DiceCaps = CLASSIC_CAPS): RoundTable {
-  const key = `${caps.attack}v${caps.defend}`;
+export function battleRoundProbabilities(rules: BattleRules = CLASSIC_RULES): RoundTable {
+  const key = rulesKey(rules);
   const cached = cachedTables.get(key);
   if (cached) return cached;
 
+  const bonus = rules.defenceBonus ?? [];
   const table: RoundTable = {};
-  for (let a = 1; a <= caps.attack; a++) {
-    for (let d = 1; d <= caps.defend; d++) {
+  for (let a = 1; a <= rules.attack; a++) {
+    for (let d = 1; d <= rules.defend; d++) {
       const counts = new Map<string, number>();
       let totalOutcomes = 0;
       const attackRolls = enumerateRolls(a);
@@ -162,7 +194,7 @@ export function battleRoundProbabilities(caps: DiceCaps = CLASSIC_CAPS): RoundTa
           let attackerLosses = 0;
           let defenderLosses = 0;
           for (let i = 0; i < Math.min(a, d); i++) {
-            if (as[i] > ds[i]) defenderLosses++;
+            if (as[i] > ds[i] + (bonus[i] ?? 0)) defenderLosses++;
             else attackerLosses++;
           }
           const outcomeKey = `${attackerLosses}:${defenderLosses}`;

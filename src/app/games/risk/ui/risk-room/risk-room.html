@@ -201,6 +201,7 @@
           [targets]="targetTerritories"
           [myPlayerId]="seatId"
           [showNames]="showNames"
+          [showTerrain]="advancedTerrain"
           (territoryClick)="onTerritoryClick($event)"
         ></app-risk-board>
 
@@ -296,6 +297,19 @@
                   </span>
                   <span class="odds" [class.good]="(selectionOdds() || 0) >= 0.6" [class.bad]="(selectionOdds() || 0) < 0.4">
                     {{ ((selectionOdds() || 0) * 100) | number: '1.0-0' }} %
+                  </span>
+                  <span
+                    class="terrain-tag"
+                    *ngIf="terrainOf(selectedTo) as terrain"
+                    [title]="terrain.effect"
+                  >
+                    <span class="terrain-tag-glyph" [style.color]="terrain.tint">
+                      {{ terrain.glyph }}
+                    </span>
+                    {{ terrain.name }}
+                  </span>
+                  <span class="terrain-tag landing" *ngIf="isLandingSelected()" title="Cruzando el mar solo tiras 2 dados">
+                    ⚓ Desembarco
                   </span>
                   <div class="dice-picker">
                     <button

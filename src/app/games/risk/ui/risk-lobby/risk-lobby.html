@@ -104,6 +104,7 @@
               [map]="selectedMap"
               [state]="previewState"
               [showNames]="true"
+              [showTerrain]="advancedTerrain"
             ></app-risk-board>
           </div>
           <p class="hint">
@@ -140,6 +141,30 @@
               </select>
               <small>El clásico acelera el final de la partida.</small>
             </label>
+          </div>
+
+          <label class="toggle-row">
+            <input type="checkbox" [(ngModel)]="advancedTerrain" />
+            <span class="toggle-body">
+              <span class="toggle-title">Modo avanzado · orografía</span>
+              <small>
+                El terreno decide cómo se pelea cada territorio. Sin marcar, la partida es el
+                RISK clásico y el mapa no cambia nada.
+              </small>
+            </span>
+          </label>
+
+          <div class="terrain-legend" *ngIf="advancedTerrain">
+            <div class="terrain-item" *ngFor="let terrain of terrains">
+              <span class="terrain-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
+              <span class="terrain-text">
+                <strong>{{ terrain.name }}</strong>
+                {{ terrain.effect }}
+              </span>
+            </div>
+            <p class="hint">
+              Además, atacar cruzando una línea de puntos es un desembarco: solo tiras 2 dados.
+            </p>
           </div>
         </div>
 

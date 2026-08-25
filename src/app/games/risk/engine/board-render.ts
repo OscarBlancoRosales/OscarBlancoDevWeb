@@ -1,4 +1,5 @@
-import { GameMap, TerritoryId } from './types';
+import { GameMap, Terrain, TerritoryId } from './types';
+import { DEFAULT_TERRAIN, isSeaRoute } from './terrain';
 
 /** Punto en coordenadas de pantalla. */
 export interface Point {
@@ -22,6 +23,8 @@ export interface RenderedTerritory {
   continentColor: string;
   path: string;
   label: Point;
+  /** Orografía, para la trama y el tooltip. Llanura si el mapa no la declara. */
+  terrain: Terrain;
 }
 
 export interface RenderedRoute {
@@ -59,6 +62,7 @@ export function renderMap(map: GameMap): RenderedMap {
       continentColor: continent?.color ?? '#666666',
       path: territory.shape,
       label: { x: territory.labelAnchor[0], y: territory.labelAnchor[1] },
+      terrain: territory.terrain ?? DEFAULT_TERRAIN,
     };
   });
 
@@ -94,17 +98,6 @@ export function renderMap(map: GameMap): RenderedMap {
   };
   cache.set(map.id, rendered);
   return rendered;
-}
-
-/**
- * Una adyacencia es ruta marítima si el mapa la declara como tal. El dato lo
- * trae el propio mapa, que es quien sabe qué conexiones son fronteras de tierra
- * y cuáles son un salto por mar.
- */
-function isSeaRoute(map: GameMap, from: string, to: string): boolean {
-  return (map.seaRoutes ?? []).some(
-    ([a, b]) => (a === from && b === to) || (a === to && b === from),
-  );
 }
 
 /**

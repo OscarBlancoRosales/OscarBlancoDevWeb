@@ -6,7 +6,8 @@ import {
   PlayerId,
   TerritoryId,
 } from '../types';
-import { conquestOdds, diceCapsOf, maxAttackDice } from '../combat';
+import { conquestOdds, maxAttackDice } from '../combat';
+import { battleRulesFor, terrainOf, TERRAIN_META } from '../terrain';
 import {
   adjacencyOf,
   areConnected,
@@ -99,7 +100,19 @@ export function traitsOf(profile: BotProfile | undefined): ProfileTraits {
 const STALEMATE_FROM_ROUND = 12;
 /** Cuánto se relaja el umbral por cada ronda de más, y hasta dónde. */
 const RELIEF_PER_ROUND = 0.015;
-const MAX_RELIEF = 0.3;
+const MAX_RELIEF = 0.6;
+/**
+ * Por debajo de aquí no baja el listón por mucho que se enquiste la partida.
+ *
+ * Estaba en 0,20 y se quedó corto al llegar la orografía: atacar 8 contra 8 en
+ * montaña da 0,198, o sea justo por debajo, así que los bots no atacaban una
+ * montaña NUNCA y se dedicaban a acumular. Medido en 180 partidas por
+ * configuración: con el suelo en 0,20 quedaban 6 sin terminar en modo avanzado
+ * y 2 en clásico; con 0,06 y el tope de alivio en 0,6, ninguna en clásico y 3
+ * en avanzado, y además las partidas clásicas acaban antes (ronda media 40 en
+ * vez de 43).
+ */
+const MIN_ATTACK_THRESHOLD = 0.06;
 
 /**
  * Rebaja del listón de ataque cuando la partida se atasca.
@@ -124,7 +137,7 @@ export function effectiveAttackThreshold(
   bias?: StrategyBias,
 ): number {
   const base = traits.attackThreshold + (bias?.thresholdShift ?? 0);
-  return Math.max(0.2, base - stalemateRelief(round));
+  return Math.max(MIN_ATTACK_THRESHOLD, base - stalemateRelief(round));
 }
 
 // ===== ANÁLISIS DEL TABLERO =====
@@ -149,19 +162,57 @@ export function threatMap(
       const enemies = adjacencyOf(map, id).filter(
         (other) => state.territories[other]?.ownerId !== playerId,
       );
+      const armies = state.territories[id].armies;
       const enemyArmies = enemies.reduce(
         (sum, other) => sum + (state.territories[other]?.armies ?? 0),
         0,
       );
       return {
         id,
-        armies: state.territories[id].armies,
+        armies,
         enemyArmies,
         enemyCount: enemies.length,
-        pressure: enemyArmies - state.territories[id].armies,
+        pressure: threatWeight(state, map, playerId, id, enemies) - armies,
       };
     })
     .sort((a, b) => b.pressure - a.pressure);
+}
+
+/**
+ * Cuánta fuerza enemiga pesa de verdad sobre un territorio.
+ *
+ * En el clásico es la suma de ejércitos vecinos y ya está. En modo avanzado se
+ * pondera cada vecino por lo fácil que le resultaría entrar: doce ejércitos
+ * enfrente de una montaña aprietan menos que doce enfrente de un desierto, y
+ * doce al otro lado del mar aprietan mucho menos todavía.
+ *
+ * La ponderación es el cociente entre las probabilidades reales de ese ataque y
+ * las que tendría el mismo ataque en llanura, así que en llanura vale 1 y el
+ * clásico no cambia. Se apoya en la misma caché de `conquestOdds` que usa el
+ * resto de la IA, así que no cuesta nada apreciable.
+ */
+function threatWeight(
+  state: GameState,
+  map: GameMap,
+  playerId: PlayerId,
+  id: TerritoryId,
+  enemies: TerritoryId[],
+): number {
+  const armies = state.territories[id].armies;
+  let total = 0;
+  for (const other of enemies) {
+    const enemyArmies = state.territories[other]?.armies ?? 0;
+    if (enemyArmies <= 0) continue;
+    if (!state.config.advancedTerrain) {
+      total += enemyArmies;
+      continue;
+    }
+    const plain = conquestOdds(enemyArmies, armies);
+    if (plain <= 0) continue;
+    const real = conquestOdds(enemyArmies, armies, battleRulesFor(map, state.config, other, id));
+    total += enemyArmies * (real / plain);
+  }
+  return total;
 }
 
 export interface ContinentProgress {
@@ -258,8 +309,6 @@ export function rankedAttacks(
   const progress = continentProgress(state, map, playerId);
   const board = standings(state);
   const leaderId = board[0]?.playerId;
-  // Los mismos topes que aplicará el combate: la IA no debe calcular con otros.
-  const caps = diceCapsOf(state.config);
   const options: AttackOption[] = [];
 
   for (const from of territoriesOf(state, playerId)) {
@@ -270,9 +319,17 @@ export function rankedAttacks(
       const target = state.territories[to];
       if (!target || target.ownerId === playerId) continue;
 
-      const odds = conquestOdds(origin.armies, target.armies, caps);
+      // Las mismas reglas que aplicará el combate, terreno incluido: la IA no
+      // debe calcular con otras o atacaría montañas creyéndolas llanuras.
+      const rules = battleRulesFor(map, state.config, from, to);
+      const odds = conquestOdds(origin.armies, target.armies, rules);
       let score = odds;
       const reasons: string[] = [];
+
+      if (state.config.advancedTerrain) {
+        const terrain = terrainOf(map, to);
+        if (terrain !== 'llanura') reasons.push(TERRAIN_META[terrain].name.toLowerCase());
+      }
 
       const targetContinent = map.territories.find((t) => t.id === to)?.continentId;
       const continent = progress.find((c) => c.id === targetContinent);
@@ -320,7 +377,7 @@ export function rankedAttacks(
       options.push({
         from,
         to,
-        dice: maxAttackDice(origin.armies, state.config.maxAttackDice),
+        dice: maxAttackDice(origin.armies, rules.attack),
         odds,
         score,
         reason: reasons.join(', ') || 'presión sobre la frontera',

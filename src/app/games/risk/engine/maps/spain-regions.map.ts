@@ -1,4 +1,4 @@
-import { GameMap, Territory, TerritoryId } from '../types';
+import { GameMap, Terrain, Territory, TerritoryId } from '../types';
 import { SPAIN_BOARD_HEIGHT, SPAIN_BOARD_WIDTH } from './spain.shapes';
 import { SPAIN_REGION_ADJACENCY, SPAIN_REGION_SHAPES } from './spain-regions.shapes';
 
@@ -46,6 +46,29 @@ const NAMES: Record<string, string> = {
   canarias: 'Canarias',
   ceuta: 'Ceuta',
   melilla: 'Melilla',
+};
+
+/** Orografía dominante de cada comunidad (solo cuenta en modo avanzado). */
+const TERRAIN: Record<string, Terrain> = {
+  galicia: 'costa',
+  asturias: 'montaña',
+  cantabria: 'montaña',
+  'pais-vasco': 'montaña',
+  navarra: 'montaña',
+  rioja: 'llanura',
+  aragon: 'montaña',
+  cataluna: 'costa',
+  valenciana: 'costa',
+  murcia: 'costa',
+  'castilla-leon': 'llanura',
+  madrid: 'llanura',
+  'castilla-mancha': 'llanura',
+  extremadura: 'bosque',
+  andalucia: 'montaña',
+  baleares: 'costa',
+  canarias: 'desierto',
+  ceuta: 'costa',
+  melilla: 'costa',
 };
 
 interface ZoneMeta {
@@ -115,6 +138,7 @@ const territories: Territory[] = Object.keys(NAMES).map((id) => ({
   adjacent: ADJACENCY[id],
   shape: SPAIN_REGION_SHAPES[id].path,
   labelAnchor: SPAIN_REGION_SHAPES[id].label,
+  terrain: TERRAIN[id],
 }));
 
 export const SPAIN_REGIONS_MAP: GameMap = {

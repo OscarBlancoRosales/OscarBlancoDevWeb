@@ -1,4 +1,4 @@
-import { GameMap, Territory, TerritoryId } from '../types';
+import { GameMap, Terrain, Territory, TerritoryId } from '../types';
 import {
   SPAIN_BOARD_HEIGHT,
   SPAIN_BOARD_WIDTH,
@@ -135,6 +135,69 @@ export const SPAIN_COMMUNITIES = [
   { id: 'ceuta-melilla', name: 'Ceuta y Melilla', bonus: 2, color: '#f15bb5', ids: ['CE', 'ML'] },
 ];
 
+/**
+ * Orografía de cada provincia (solo cuenta en modo avanzado).
+ *
+ * Es una decisión de diseño, no un cálculo: una provincia real tiene de todo, y
+ * aquí hay que elegir el rasgo que manda. Asturias es montaña aunque tenga
+ * costa, y Almería es desierto aunque tenga playa. Lo que se busca es que el
+ * tablero se lea de un vistazo y que cada zona se defienda distinto.
+ */
+export const SPAIN_TERRAIN: Record<string, Terrain> = {
+  AC: 'costa',
+  LU: 'montaña',
+  OU: 'montaña',
+  PO: 'costa',
+  AS: 'montaña',
+  CB: 'montaña',
+  BI: 'costa',
+  SS: 'montaña',
+  VI: 'llanura',
+  NA: 'montaña',
+  RI: 'llanura',
+  ZG: 'llanura',
+  HU: 'montaña',
+  TE: 'montaña',
+  LL: 'montaña',
+  GI: 'costa',
+  BR: 'costa',
+  TA: 'costa',
+  CS: 'costa',
+  VL: 'costa',
+  AT: 'costa',
+  MU: 'costa',
+  GU: 'montaña',
+  CU: 'montaña',
+  AB: 'llanura',
+  CR: 'llanura',
+  TO: 'llanura',
+  MD: 'llanura',
+  LE: 'montaña',
+  PL: 'llanura',
+  BU: 'llanura',
+  SO: 'bosque',
+  SG: 'bosque',
+  VA: 'llanura',
+  AV: 'montaña',
+  SL: 'llanura',
+  ZA: 'llanura',
+  CC: 'bosque',
+  BD: 'llanura',
+  HV: 'bosque',
+  SV: 'llanura',
+  CD: 'costa',
+  CO: 'llanura',
+  JA: 'montaña',
+  GR: 'montaña',
+  MG: 'costa',
+  AM: 'desierto',
+  PM: 'costa',
+  GC: 'desierto',
+  TF: 'montaña',
+  CE: 'costa',
+  ML: 'costa',
+};
+
 const CONTINENT_OF: Record<string, string> = {};
 for (const meta of SPAIN_COMMUNITIES) {
   for (const id of meta.ids) CONTINENT_OF[id] = meta.id;
@@ -158,6 +221,7 @@ const territories: Territory[] = Object.keys(SPAIN_PROVINCE_NAMES).map((id) => (
   adjacent: ADJACENCY[id],
   shape: SPAIN_SHAPES[id].path,
   labelAnchor: SPAIN_SHAPES[id].label,
+  terrain: SPAIN_TERRAIN[id],
 }));
 
 export const SPAIN_MAP: GameMap = {

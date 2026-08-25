@@ -282,7 +282,81 @@ los continentes y el resaltado de selección.
 Las adyacencias que no son fronteras de tierra se declaran en `seaRoutes` y se
 dibujan como líneas de puntos.
 
-## 6. Tests
+## 6. Modo avanzado: la orografía
+
+Un interruptor en la sala. Apagado, la partida es el RISK clásico y el mapa no
+cambia ni un dado. Encendido, **el terreno decide cómo se pelea cada
+territorio**.
+
+| Terreno | Efecto sobre el defensor |
+|---|---|
+| Llanura `≡` | Nada: el combate de siempre |
+| Bosque `♣` | +1 al **segundo** dado (emboscada en los flancos) |
+| Montaña `▲` | +1 al **mejor** dado (domina la altura) |
+| Desierto `∴` | −1 al **segundo** dado (flanco al descubierto) |
+| Costa `≈` | Por tierra nada; contra un desembarco, +1 al mejor dado |
+
+Y una regla que no depende del terreno: **atacar cruzando el mar es un
+desembarco**, y desembarcando solo se tiran 2 dados.
+
+Qué se paga por atacar 10 contra 5, medido contra una simulación independiente
+de 300 000 batallas por caso:
+
+```
+desierto          0,958   ← el sitio más barato de conquistar
+llanura           0,872
+bosque            0,719
+montaña           0,699
+desembarco        0,635
+desembarco en costa 0,394 ← una playa defendida es lo más caro del juego
+```
+
+Tres decisiones de diseño que conviene entender:
+
+**Solo se mueve un dado, y solo en uno.** La primera versión sumaba la
+bonificación a *todos* los dados del defensor. Medido: la montaña dejaba un 8
+contra 8 en 0,08 (un muro infranqueable) y el desierto lo subía a 0,90 (regalado).
+Moviendo un único dado la escala queda entre 0,20 y 0,66, que se nota mucho sin
+romper nada.
+
+**Qué dado se mueve importa.** La montaña toca el mejor dado y el bosque el
+segundo. La consecuencia se nota jugando: contra un defensor de un solo ejército,
+que tira un único dado, el bosque y el desierto no cambian nada. Un bosque vacío
+no embosca a nadie; una montaña vacía sigue siendo una montaña.
+
+**El terreno no puede depender de un accidente del dibujo.** Las conexiones que
+se pintan de puntos son las que sobre el mapa no llegan a tocarse, y en el mundo
+tres de ellas (China–Urales, Kamchatka–Mongolia, América Central–EE. UU.
+Oriental) son fronteras de tierra del tablero clásico que nuestras siluetas no
+alcanzan a juntar. Están declaradas como `landBridges` y se cruzan a pie: sería
+absurdo que atacar de China a los Urales fuese un desembarco porque a Kazajistán
+le tocó otro territorio.
+
+### Un solo sitio por donde entra
+
+Toda la orografía pasa por `battleRulesFor(map, config, from, to)`, que devuelve
+los topes de dados y la bonificación de **ese** ataque. Ese mismo valor lo usan:
+
+- el combate real (`applyAttack`),
+- el porcentaje que ve el jugador antes de atacar,
+- y la IA para decidir a quién ataca.
+
+No es un detalle de estilo. Si el combate usara unas reglas y la pantalla otras,
+el número mentiría; si la IA usara otras, atacaría montañas creyéndolas llanuras.
+
+Sigue siendo puro y determinista: las reglas salen del mapa y de la configuración
+**congelada al empezar la partida**, así que una grabación antigua se reproduce
+con el modo con el que se jugó, no con el que esté marcado hoy en la sala.
+
+### El coste medido en las partidas de bots
+
+Encender la orografía hace las partidas más largas (ronda media de 43 a 55 en 180
+partidas de bots) porque hay posiciones que cuesta romper. Ese efecto tenía un
+riesgo real de atasco: en montaña un 8 contra 8 da 0,198, y el suelo del umbral
+de ataque de la IA estaba en 0,20, así que los bots literalmente nunca atacaban
+allí y se dedicaban a acumular. Se ve en `bot-brain.ts`, en el alivio anti-atasco.
+
+## 7. Tests
 
 ```bash
 npm test                                    # todo

@@ -16,6 +16,7 @@ import {
 import { createRng, rngFor, shuffle } from './rng';
 import { DEFAULT_MAX_TRADE_VALUE, buildDeck, isValidSet, takeCards, tradeValue } from './cards';
 import { maxAttackDice, resolveCombat } from './combat';
+import { battleRulesFor } from './terrain';
 import {
   adjacencyOf,
   areConnected,
@@ -36,6 +37,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   maxTradeValue: DEFAULT_MAX_TRADE_VALUE,
   maxAttackDice: 3,
   maxDefendDice: 2,
+  advancedTerrain: false,
 };
 
 /** Paleta de los jugadores: alto contraste sobre el fondo oscuro. */
@@ -489,16 +491,16 @@ function applyAttack(
   }
   const origin = state.territories[from];
   const target = state.territories[to];
-  const allowed = maxAttackDice(origin.armies, state.config.maxAttackDice);
+  // Las mismas reglas que ve el jugador en pantalla y que usa la IA: los topes
+  // de la mesa ya combinados con el terreno de `to` y con la forma de llegar.
+  const rules = battleRulesFor(map, state.config, from, to);
+  const allowed = maxAttackDice(origin.armies, rules.attack);
   if (!Number.isInteger(dice) || dice < 1 || dice > allowed) {
     throw new RuleError('bad-dice', `Puedes lanzar entre 1 y ${allowed} dados`);
   }
 
   const rng = rngFor(state.seed, state.actionCount, `${from}->${to}`);
-  const result = resolveCombat(origin.armies, target.armies, dice, rng, {
-    attack: state.config.maxAttackDice,
-    defend: state.config.maxDefendDice,
-  });
+  const result = resolveCombat(origin.armies, target.armies, dice, rng, rules);
 
   origin.armies -= result.attackerLosses;
   target.armies -= result.defenderLosses;

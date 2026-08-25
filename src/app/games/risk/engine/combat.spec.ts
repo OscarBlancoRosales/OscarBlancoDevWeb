@@ -237,11 +237,19 @@ describe('los topes de dados de la mesa mandan en todas partes', () => {
     });
 
     it('respeta los topes que declare la partida', () => {
-      expect(diceCapsOf({ maxAttackDice: 2, maxDefendDice: 1 })).toEqual({ attack: 2, defend: 1 });
+      expect(diceCapsOf({ maxAttackDice: 2, maxDefendDice: 1 })).toEqual({
+        attack: 2,
+        defend: 1,
+        defenceBonus: [],
+      });
     });
 
     it('completa solo lo que falte', () => {
-      expect(diceCapsOf({ maxDefendDice: 3 })).toEqual({ attack: 3, defend: 3 });
+      expect(diceCapsOf({ maxDefendDice: 3 })).toEqual({
+        attack: 3,
+        defend: 3,
+        defenceBonus: [],
+      });
     });
   });
 

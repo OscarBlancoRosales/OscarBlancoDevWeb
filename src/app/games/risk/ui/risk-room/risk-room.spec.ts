@@ -36,7 +36,9 @@ async function mountRoom(roomId: string, seatId: string) {
 }
 
 /** Crea una sala local con un humano y devuelve sus identificadores. */
-async function createLocalRoom(options: { maxPlayers?: number; mapId?: string } = {}) {
+async function createLocalRoom(
+  options: { maxPlayers?: number; mapId?: string; advancedTerrain?: boolean } = {},
+) {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({ providers: [provideRouter([])] }).compileComponents();
   const rooms = TestBed.inject(RiskRoomService);
@@ -48,7 +50,7 @@ async function createLocalRoom(options: { maxPlayers?: number; mapId?: string } 
     ownerName: 'Oscar',
     local: true,
     seed: 20260824,
-    config: DEFAULT_CONFIG,
+    config: { ...DEFAULT_CONFIG, advancedTerrain: options.advancedTerrain ?? false },
   });
   rooms.listenToRoom(meta.id);
   const seatId = await rooms.claimSeat(meta.id, {
@@ -203,6 +205,96 @@ describe('RiskRoom (la mesa)', () => {
       const applied = component.derived!.applied;
       expect(component.derived!.rejected).toEqual([]);
       expect(applied).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe('modo avanzado en la mesa', () => {
+    /** Monta una mesa avanzada con la partida ya empezada. */
+    async function advancedTable() {
+      const created = await createLocalRoom({ advancedTerrain: true });
+      const mounted = await mountRoom(created.roomId, created.seatId);
+      await mounted.component.fillWithBots();
+      await wait();
+      await mounted.component.startGame();
+      await wait(30);
+      mounted.fixture.detectChanges();
+      return mounted;
+    }
+
+    it('una sala clásica no enseña orografía', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+      expect(component.advancedTerrain).toBe(false);
+      expect(component.terrainOf('AK')).toBeNull();
+      expect(component.isLandingSelected()).toBe(false);
+    });
+
+    it('la mesa avanzada sabe el terreno de cada territorio', async () => {
+      const mounted = await advancedTable();
+      try {
+        expect(mounted.component.advancedTerrain).toBe(true);
+        expect(mounted.component.terrainOf('AK')?.name).toBe('Montaña');
+        expect(mounted.component.terrainOf('NF')?.name).toBe('Desierto');
+        expect(mounted.component.terrainOf(null)).toBeNull();
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('el desembarco recorta a 2 los dados que se pueden pedir', async () => {
+      const mounted = await advancedTable();
+      try {
+        const room = mounted.component;
+        // Alaska con ejércitos de sobra atacando a Kamchatka: cruza el Bering.
+        room.state!.territories['AK'] = { ownerId: room.seatId, armies: 12 };
+        room.selectedFrom = 'AK';
+        room.selectedTo = 'KC';
+        expect(room.isLandingSelected()).toBe(true);
+        expect(room.maxDiceForSelection()).toBe(2);
+
+        // Y un vecino por tierra sigue dando los tres de siempre.
+        room.selectedTo = 'NT';
+        expect(room.isLandingSelected()).toBe(false);
+        expect(room.maxDiceForSelection()).toBe(3);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('cruzar un puente de tierra no cuenta como desembarco', async () => {
+      const mounted = await advancedTable();
+      try {
+        const room = mounted.component;
+        room.state!.territories['CH'] = { ownerId: room.seatId, armies: 12 };
+        room.selectedFrom = 'CH';
+        room.selectedTo = 'UR';
+        expect(room.isLandingSelected()).toBe(false);
+        expect(room.maxDiceForSelection()).toBe(3);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+
+    it('la probabilidad que se enseña tiene en cuenta el terreno', async () => {
+      const mounted = await advancedTable();
+      try {
+        const room = mounted.component;
+        // Mismo ataque, mismos ejércitos: la única diferencia es el terreno del
+        // objetivo (Alaska es montaña, Territorio del Noroeste es llanura).
+        room.state!.territories['AB'] = { ownerId: room.seatId, armies: 12 };
+        room.state!.territories['AK'] = { ownerId: 'otro', armies: 6 };
+        room.state!.territories['NT'] = { ownerId: 'otro', armies: 6 };
+        room.selectedFrom = 'AB';
+        room.selectedTo = 'AK';
+        const mountain = room.selectionOdds()!;
+        room.selectedTo = 'NT';
+        const plain = room.selectionOdds()!;
+        expect(mountain).toBeLessThan(plain);
+      } finally {
+        mounted.fixture.destroy();
+      }
     });
   });
 

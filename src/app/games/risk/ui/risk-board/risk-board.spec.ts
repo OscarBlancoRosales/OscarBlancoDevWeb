@@ -124,6 +124,139 @@ describe('RiskBoard', () => {
     });
   });
 
+  describe('orografía', () => {
+    /** Un mapa igual que el de laboratorio, pero con terreno declarado. */
+    function terrainMap() {
+      return {
+        ...TINY_MAP,
+        id: 'tiny-board-terrain',
+        seaRoutes: [['A1', 'B3']] as Array<[string, string]>,
+        territories: TINY_MAP.territories.map((territory) => ({
+          ...territory,
+          terrain:
+            territory.id === 'A2'
+              ? ('montaña' as const)
+              : territory.id === 'B1'
+                ? ('llanura' as const)
+                : ('bosque' as const),
+          adjacent:
+            territory.id === 'A1'
+              ? [...territory.adjacent, 'B3']
+              : territory.id === 'B3'
+                ? [...territory.adjacent, 'A1']
+                : territory.adjacent,
+        })),
+      };
+    }
+
+    it('sin modo avanzado no marca ningún terreno', () => {
+      // setInput marca la vista como sucia: el tablero es OnPush.
+      fixture.componentRef.setInput('map', terrainMap());
+      fixture.detectChanges();
+      expect(component.showTerrain).toBe(false);
+      expect(fixture.nativeElement.querySelectorAll('.badge-terrain').length).toBe(0);
+    });
+
+    it('con modo avanzado marca cada territorio con terreno', () => {
+      fixture.componentRef.setInput('map', terrainMap());
+      fixture.componentRef.setInput('showTerrain', true);
+      fixture.detectChanges();
+      const drawn = fixture.nativeElement.querySelectorAll('.badge-terrain');
+      // Los seis territorios menos B1, que es llanura y no se marca.
+      expect(drawn.length).toBe(5);
+    });
+
+    it('la llanura no lleva glifo', () => {
+      component.map = terrainMap();
+      component.showTerrain = true;
+      const rendered = component.rendered!.byId['B1'];
+      expect(component.terrainGlyphOf(rendered)).toBeNull();
+    });
+
+    it('cada terreno tiene su glifo y su color', () => {
+      component.map = terrainMap();
+      component.showTerrain = true;
+      expect(component.terrainGlyphOf(component.rendered!.byId['A2'])).toBe('▲');
+      expect(component.terrainGlyphOf(component.rendered!.byId['A3'])).toBe('♣');
+      expect(component.terrainTintOf(component.rendered!.byId['A2'])).toMatch(/^#[0-9a-f]{6}$/i);
+    });
+
+    it('el tablero no rellena siluetas con patrones SVG', () => {
+      // Rellenar 42 contornos de país con un patrón deja el navegador clavado
+      // varios segundos. Si alguien lo reintroduce, que salte aquí.
+      fixture.componentRef.setInput('map', terrainMap());
+      fixture.componentRef.setInput('showTerrain', true);
+      fixture.detectChanges();
+      const html: string = fixture.nativeElement.innerHTML;
+      expect(html).not.toContain('url(#terr-');
+    });
+
+    it('el cartel flotante explica el terreno solo en modo avanzado', () => {
+      component.map = terrainMap();
+      component.state = state;
+      component.onTerritoryEnter('A2');
+      expect(component.tooltip?.terrain).toBeNull();
+
+      component.showTerrain = true;
+      expect(component.tooltip?.terrain?.name).toBe('Montaña');
+      expect(component.tooltip?.terrain?.effect.length).toBeGreaterThan(10);
+    });
+
+    it('avisa del desembarco al apuntar cruzando el mar', () => {
+      component.map = terrainMap();
+      component.state = state;
+      component.showTerrain = true;
+      component.selected = 'A1';
+      component.targets = ['B3', 'B1'];
+
+      component.onTerritoryEnter('B3');
+      expect(component.tooltip?.approach).toBe('desembarco');
+
+      component.onTerritoryEnter('B1');
+      expect(component.tooltip?.approach).toBe('tierra');
+    });
+
+    it('no habla de desembarco si no se está apuntando a nada', () => {
+      component.map = terrainMap();
+      component.state = state;
+      component.showTerrain = true;
+      component.onTerritoryEnter('B3');
+      expect(component.tooltip?.approach).toBeNull();
+    });
+
+    it('la probabilidad que enseña es la del terreno, no la clásica', () => {
+      const map = terrainMap();
+      const advanced = {
+        ...state,
+        config: { ...state.config, advancedTerrain: true },
+      };
+      component.map = map;
+      component.selected = 'A1';
+      component.targets = ['A2'];
+
+      component.state = state;
+      component.onTerritoryEnter('A2');
+      const classic = component.tooltip!.odds!;
+
+      component.state = advanced;
+      component.showTerrain = true;
+      component.onTerritoryEnter('A2');
+      const withTerrain = component.tooltip!.odds!;
+
+      // A2 es montaña: defenderse allí es más fácil.
+      expect(withTerrain).toBeLessThan(classic);
+    });
+
+    it('marca todos los terrenos menos la llanura', () => {
+      expect(component.markedTerrains.map((meta) => meta.id)).toEqual([
+        'bosque',
+        'montaña',
+        'desierto',
+        'costa',
+      ]);
+    });
+  });
+
   describe('vista', () => {
     it('empieza centrada y sin zoom', () => {
       expect(component.zoom).toBe(1);

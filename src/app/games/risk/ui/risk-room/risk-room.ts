@@ -36,7 +36,8 @@ import {
   reinforcementBreakdown,
   territoriesOf,
 } from '../../engine/rules';
-import { conquestOdds, diceCapsOf, maxAttackDice } from '../../engine/combat';
+import { conquestOdds, maxAttackDice } from '../../engine/combat';
+import { approachOf, battleRulesFor, TERRAIN_META } from '../../engine/terrain';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
 import { BotProfile } from '../../engine/types';
@@ -306,6 +307,11 @@ export class RiskRoom implements OnInit, OnDestroy {
   private recomputeSelection(): void {
     this.selectableTerritories = this.computeSelectable();
     this.targetTerritories = this.computeTargets();
+    // Tras cada ronda de combate el origen tiene menos ejércitos, así que el
+    // número de dados elegido puede haberse quedado por encima del máximo.
+    if (this.selectedFrom) {
+      this.attackDice = Math.min(this.attackDice, this.maxDiceForSelection());
+    }
   }
 
   private computeSelectable(): TerritoryId[] {
@@ -423,15 +429,44 @@ export class RiskRoom implements OnInit, OnDestroy {
     this.recomputeSelection();
   }
 
+  /**
+   * Reglas del ataque que se está apuntando: topes y terreno.
+   *
+   * En fase de ataque `selectedTo` es el objetivo; mientras no lo haya, se usan
+   * las reglas de la mesa sin terreno, que es lo que hay que enseñar.
+   */
+  private selectionRules() {
+    if (!this.state || !this.map || !this.selectedFrom) return null;
+    const to = this.selectedTo ?? this.selectedFrom;
+    return battleRulesFor(this.map, this.state.config, this.selectedFrom, to);
+  }
+
   maxDiceForSelection(): number {
     if (!this.state || !this.selectedFrom) return 1;
+    const rules = this.selectionRules();
     return Math.max(
       1,
-      maxAttackDice(
-        this.state.territories[this.selectedFrom].armies,
-        diceCapsOf(this.state.config).attack,
-      ),
+      maxAttackDice(this.state.territories[this.selectedFrom].armies, rules?.attack ?? 3),
     );
+  }
+
+  /** ¿El ataque apuntado es un desembarco? (solo en modo avanzado). */
+  isLandingSelected(): boolean {
+    if (!this.state?.config.advancedTerrain || !this.map) return false;
+    if (!this.selectedFrom || !this.selectedTo) return false;
+    return approachOf(this.map, this.selectedFrom, this.selectedTo) === 'desembarco';
+  }
+
+  /** Ficha del terreno de un territorio, para enseñarla junto a la selección. */
+  terrainOf(id: TerritoryId | null) {
+    if (!this.state?.config.advancedTerrain || !this.map || !id) return null;
+    const terrain = this.map.territories.find((t) => t.id === id)?.terrain;
+    return terrain ? TERRAIN_META[terrain] : null;
+  }
+
+  /** Modo avanzado activo en esta partida. */
+  get advancedTerrain(): boolean {
+    return !!this.state?.config.advancedTerrain;
   }
 
   maxFortify(): number {
@@ -444,7 +479,7 @@ export class RiskRoom implements OnInit, OnDestroy {
     return conquestOdds(
       this.state.territories[this.selectedFrom].armies,
       this.state.territories[this.selectedTo].armies,
-      diceCapsOf(this.state.config),
+      this.selectionRules() ?? undefined,
     );
   }
 

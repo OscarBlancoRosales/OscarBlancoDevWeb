@@ -29,7 +29,8 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 
 #### Juegos — RISK
 - RISK completo con reglas clasicas: refuerzos, canje de cartas, ataques con dados, reagrupacion y bonificacion por continente
-- Tres mapas: Todo el mundo (42 territorios), Espana por provincias (52) y Espana por comunidades (19)
+- Tres mapas de cartografía real: Todo el mundo (42 territorios), España por provincias (52) y España por comunidades (19)
+- Modo avanzado opcional con orografía: llanura, bosque, montaña, desierto y costa cambian cómo se pelea cada territorio, y desembarcar cuesta caro
 - Salas con invitacion por enlace, igual que el Scrum Poker, y bots de IA para rellenar huecos
 - Partidas grabadas jugada a jugada: se pueden pausar y retomar respetando el asiento de cada persona
 - Bots con personalidad que comentan su estrategia en el chat en cada turno, y un estratega que te aconseja a ti
@@ -106,7 +107,8 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 
 #### Games — RISK
 - Full RISK with classic rules: reinforcements, card trading, dice battles, fortifying and continent bonuses
-- Three maps: World (42 territories), Spain by province (52) and Spain by region (19)
+- Three maps drawn from real cartography: World (42 territories), Spain by province (52) and Spain by region (19)
+- Optional advanced mode with terrain: plains, forest, mountain, desert and coast change how each territory is fought over, and amphibious attacks are expensive
 - Invite-link rooms, just like Scrum Poker, plus AI bots to fill empty seats
 - Games are recorded action by action: pause and resume later, everyone keeps their seat
 - Bots with personality that comment their strategy in chat every turn, plus an advisor for you

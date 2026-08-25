@@ -10,7 +10,15 @@ import {
 import { CommonModule } from '@angular/common';
 import { GameMap, GameState, TerritoryId } from '../../engine/types';
 import { RenderedMap, RenderedTerritory, renderMap } from '../../engine/board-render';
-import { conquestOdds, diceCapsOf } from '../../engine/combat';
+import { conquestOdds } from '../../engine/combat';
+import {
+  ApproachKind,
+  approachOf,
+  battleRulesFor,
+  TerrainMeta,
+  TERRAINS,
+  TERRAIN_META,
+} from '../../engine/terrain';
 
 export interface TerritoryTooltip {
   name: string;
@@ -18,6 +26,10 @@ export interface TerritoryTooltip {
   owner: string;
   color: string;
   odds: number | null;
+  /** Solo en modo avanzado. */
+  terrain: TerrainMeta | null;
+  /** Cómo llegaría el ataque que se está apuntando, si se está apuntando uno. */
+  approach: ApproachKind | null;
 }
 
 /**
@@ -58,6 +70,20 @@ export class RiskBoard {
   /** Territorio resaltado por el chat o por la IA. */
   @Input() spotlight: TerritoryId | null = null;
   @Input() showNames = true;
+  /** Modo avanzado: pinta la orografía y la explica en el cartel flotante. */
+  @Input() set showTerrain(value: boolean) {
+    this._showTerrain = value;
+    this.updateTooltip();
+  }
+  get showTerrain(): boolean {
+    return this._showTerrain;
+  }
+  private _showTerrain = false;
+
+  /** Terrenos que se marcan en el tablero (la llanura es el caso normal). */
+  readonly markedTerrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]).filter(
+    (meta) => meta.id !== 'llanura',
+  );
 
   @Output() territoryClick = new EventEmitter<TerritoryId>();
   @Output() territoryHover = new EventEmitter<TerritoryId | null>();
@@ -150,23 +176,51 @@ export class RiskBoard {
     }
     const ownerId = this.state?.territories[this.hovered]?.ownerId;
     const owner = this.state?.players.find((p) => p.id === ownerId);
+    const aiming = this.isAiming(this.hovered);
     this.tooltip = {
       name: territory.name,
       armies: this.armiesOf(this.hovered),
       owner: owner?.name ?? 'Sin dueño',
       color: owner?.color ?? '#888',
       odds: this.hoveredOdds(),
+      terrain: this.showTerrain ? TERRAIN_META[territory.terrain] : null,
+      approach:
+        this.showTerrain && aiming && this._map
+          ? approachOf(this._map, this.selected!, this.hovered)
+          : null,
     };
   }
 
-  /** Probabilidad de conquista del ataque que se está apuntando. */
+  /** ¿El cursor está sobre un objetivo del territorio ya seleccionado? */
+  private isAiming(id: TerritoryId): boolean {
+    return !!this.selected && this.isTarget(id);
+  }
+
+  /**
+   * Probabilidad de conquista del ataque que se está apuntando.
+   *
+   * Usa las mismas reglas que aplicará el motor (terreno incluido): el número
+   * que se enseña tiene que ser el de verdad.
+   */
   hoveredOdds(): number | null {
     if (!this.selected || !this.hovered) return null;
     if (!this.isTarget(this.hovered)) return null;
     const from = this.state?.territories[this.selected];
     const to = this.state?.territories[this.hovered];
-    if (!from || !to) return null;
-    return conquestOdds(from.armies, to.armies, diceCapsOf(this.state?.config));
+    if (!from || !to || !this._map) return null;
+    const rules = battleRulesFor(this._map, this.state?.config, this.selected, this.hovered);
+    return conquestOdds(from.armies, to.armies, rules);
+  }
+
+  /** Glifo del terreno de un territorio (nada si es llanura o está apagado). */
+  terrainGlyphOf(territory: RenderedTerritory): string | null {
+    if (!this.showTerrain) return null;
+    if (territory.terrain === 'llanura') return null;
+    return TERRAIN_META[territory.terrain].glyph;
+  }
+
+  terrainTintOf(territory: RenderedTerritory): string {
+    return TERRAIN_META[territory.terrain].tint;
   }
 
   // ===== INTERACCIÓN =====

@@ -1234,3 +1234,26 @@
     width: 100%;
   }
 }
+
+/* ===== OROGRAFÍA EN LA BARRA DE ACCIÓN ===== */
+
+.terrain-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  color: #b9c4cc;
+  white-space: nowrap;
+}
+
+.terrain-tag-glyph {
+  font-weight: 700;
+}
+
+.terrain-tag.landing {
+  border-color: rgba(41, 182, 246, 0.5);
+  color: #29b6f6;
+}

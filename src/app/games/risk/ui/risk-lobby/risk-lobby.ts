@@ -8,6 +8,7 @@ import { RISK_MAPS } from '../../engine/maps/map-registry';
 import { DEFAULT_CONFIG, PLAYER_COLORS, createGame } from '../../engine/engine';
 import { GameMap, GameState } from '../../engine/types';
 import { RiskBoard } from '../risk-board/risk-board';
+import { TERRAINS, TERRAIN_META } from '../../engine/terrain';
 import {
   RiskRoomService,
   RoomMeta,
@@ -43,6 +44,10 @@ export class RiskLobby implements OnInit {
   maxPlayers = 4;
   autoClaim = true;
   tradeProgression: 'classic' | 'fixed' = 'classic';
+  advancedTerrain = false;
+
+  /** Fichas de los terrenos, para la leyenda del modo avanzado. */
+  readonly terrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]);
 
   // Entrada del jugador
   playerName = '';
@@ -184,6 +189,7 @@ export class RiskLobby implements OnInit {
           ...DEFAULT_CONFIG,
           autoClaim: this.autoClaim,
           tradeProgression: this.tradeProgression,
+          advancedTerrain: this.advancedTerrain,
         },
       });
 
