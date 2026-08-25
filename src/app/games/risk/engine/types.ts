@@ -8,6 +8,8 @@
  *  - Tests exhaustivos sin mocks.
  */
 
+import type { Mission } from './missions';
+
 export type TerritoryId = string;
 export type ContinentId = string;
 export type PlayerId = string;
@@ -98,6 +100,8 @@ export interface PlayerState {
   seatToken?: string;
   cards: Card[];
   eliminated: boolean;
+  /** Quién lo sacó de la partida. Lo necesita la victoria por objetivos. */
+  eliminatedBy?: PlayerId;
   /** Ejércitos pendientes de colocar en la fase actual. */
   reserve: number;
   /** Ha conquistado al menos un territorio este turno (da derecho a carta). */
@@ -168,6 +172,13 @@ export interface GameState {
    */
   fortifyCount?: number;
   winnerId: PlayerId | null;
+  /**
+   * Objetivo de cada jugador, si la mesa juega por objetivos.
+   *
+   * Se reparten al crear la partida con el RNG sembrado, así que salen iguales
+   * en todos los clientes. Son públicos a propósito: ver `missions.ts`.
+   */
+  missions?: Record<PlayerId, Mission>;
   /** Últimos combates para animaciones e historial. */
   lastCombat: (CombatResult & { from: TerritoryId; to: TerritoryId; attackerId: PlayerId }) | null;
   /** Registro legible de lo que ha pasado (para el chat y el panel de eventos). */
@@ -230,6 +241,14 @@ export interface GameConfig {
    * Se congela al empezar, igual que el resto de la configuración.
    */
   advancedUnits?: boolean;
+  /**
+   * Cómo se gana.
+   *
+   * `conquest` es lo clásico: quedarse con el mapa entero. `objectives` reparte
+   * una meta a cada jugador y la partida se decide cuando alguien la cumple,
+   * que es lo que hace jugable un tablero de 40 territorios largos.
+   */
+  victory?: 'conquest' | 'objectives';
 }
 
 export interface GameEvent {

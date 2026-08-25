@@ -39,6 +39,7 @@ import {
 import { conquestOdds, maxAttackDice } from '../../engine/combat';
 import { approachOf, battleRulesFor, TERRAIN_META } from '../../engine/terrain';
 import { hasUnit, infantryOf, UNIT_KINDS, UNIT_META } from '../../engine/units';
+import { missionProgress } from '../../engine/missions';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
 import { BotProfile } from '../../engine/types';
@@ -161,6 +162,7 @@ export class RiskRoom implements OnInit, OnDestroy {
       this.game.state$.subscribe((state) => {
         this.state = state;
         this.syncSelectionWithState();
+        this.refreshMissions();
         this.cdr.markForCheck();
       }),
       this.game.derived$.subscribe((derived) => {
@@ -479,6 +481,44 @@ export class RiskRoom implements OnInit, OnDestroy {
   /** Tropas especializadas activas en esta partida. */
   get advancedUnits(): boolean {
     return !!this.state?.config.advancedUnits;
+  }
+
+  /** ¿Esta mesa se gana por objetivos? */
+  get byObjectives(): boolean {
+    return this.state?.config.victory === 'objectives' && !!this.state.missions;
+  }
+
+  /**
+   * Objetivos de la mesa, recalculados solo cuando cambia el estado.
+   *
+   * Igual que el cartel del tablero: si la plantilla llamara a una función que
+   * devuelve objetos nuevos en cada ciclo, la vista quedaría siempre sucia.
+   */
+  missions: Array<{
+    playerId: string;
+    name: string;
+    color: string;
+    text: string;
+    detail: string;
+    done: boolean;
+  }> = [];
+
+  private refreshMissions(): void {
+    if (!this.state || !this.map || this.state.config.victory !== 'objectives') {
+      if (this.missions.length > 0) this.missions = [];
+      return;
+    }
+    this.missions = this.state.players.map((player) => {
+      const progress = missionProgress(this.state!, this.map!, player.id);
+      return {
+        playerId: player.id,
+        name: player.name,
+        color: player.color,
+        text: progress.text,
+        detail: progress.detail,
+        done: progress.done,
+      };
+    });
   }
 
   /** Catálogo de tropas para la barra de refuerzos. */

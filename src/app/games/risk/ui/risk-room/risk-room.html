@@ -187,6 +187,29 @@
           </ul>
         </div>
 
+        <!--
+          Objetivos. Se enseñan todos, no solo el propio: sin servidor no hay
+          secreto posible y fingirlo sería mentir. Ver missions.ts.
+        -->
+        <div class="panel missions-panel" *ngIf="byObjectives">
+          <div class="panel-head"><h2>Objetivos</h2></div>
+          <ul class="mission-list">
+            <li
+              class="mission-row"
+              *ngFor="let entry of missions"
+              [class.me]="entry.playerId === seatId"
+              [class.done]="entry.done"
+            >
+              <span class="player-color" [style.background]="entry.color"></span>
+              <div class="mission-info">
+                <span class="mission-who">{{ entry.name }}</span>
+                <span class="mission-text">{{ entry.text }}</span>
+                <span class="mission-detail">{{ entry.detail }}</span>
+              </div>
+            </li>
+          </ul>
+        </div>
+
         <div class="panel continents-panel" *ngIf="map">
           <div class="panel-head"><h2>Continentes</h2></div>
           <ul class="continent-list">

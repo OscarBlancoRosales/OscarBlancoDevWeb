@@ -75,9 +75,19 @@ puede renombrar gente, cambiar colores o desconectarse sin que el tablero cambie
 
 ## 3. Reglas de seguridad de Firebase
 
-El juego escribe en el nodo `riskRooms`. Hay que abrirlo en la consola de Firebase
-(*Realtime Database → Reglas*). Estas reglas dejan jugar sin cuenta pero **solo dentro de
-`riskRooms`**, y siguen protegiendo el resto de la base:
+El juego escribe en el nodo `riskRooms`, y hasta que ese nodo no esté abierto la base
+rechaza todo (comprobado: 401 en `riskRooms`, en `rooms` y en la raíz). Las reglas están
+en **`database.rules.json`**, en la raíz del repositorio, listas para subir:
+
+```bash
+npm i -g firebase-tools     # una vez
+firebase login              # una vez
+npm run deploy:rules
+```
+
+Es lo único que queda por hacer para que el juego online funcione, y solo lo puede hacer
+quien tenga acceso al proyecto de Firebase. Si prefieres pegarlas a mano, están también en
+la consola (*Realtime Database → Reglas*); es exactamente este JSON:
 
 ```json
 {
@@ -186,6 +196,7 @@ escriben en Firebase ni los ve el resto de la mesa.
 | Todo el mundo | 42 | 6 continentes | **cartografía real** | La partida larga de siempre |
 | España por provincias | 52 | 18 comunidades | **cartografía real** | Muy territorial, la más larga |
 | España por comunidades | 19 | 5 macrozonas | **cartografía real** | Partida rápida |
+| Cataluña por comarcas | 41 | 7 ámbitos | **cartografía real** | Todo fronteras de tierra |
 
 ### De cartografía real a tablero
 
@@ -356,6 +367,31 @@ riesgo real de atasco: en montaña un 8 contra 8 da 0,198, y el suelo del umbral
 de ataque de la IA estaba en 0,20, así que los bots literalmente nunca atacaban
 allí y se dedicaban a acumular. Se ve en `bot-brain.ts`, en el alivio anti-atasco.
 
+### Las comarcas, y por qué solo una comunidad
+
+Las ~370 comarcas de toda España darían un tablero que no se acaba nunca, y ese
+era el problema desde el principio. La salida es hacer el mapa de **una sola
+comunidad**: Cataluña tiene 41 comarcas, justo el tamaño del tablero clásico del
+mundo, y encima con una diferencia que se nota jugando — **no hay un solo salto
+por mar**, todo son fronteras de tierra, así que no existen los cuellos de
+botella que en el mundo dejan un continente defendible con dos guarniciones.
+
+Los "continentes" son los siete **ámbitos funcionales territoriales**. Se usa la
+división de 2010 y no la de 2017 porque esta última saca el Penedès de tres
+ámbitos distintos, y un continente de RISK tiene que ser una pieza contigua (hay
+un test que lo comprueba en todos los mapas).
+
+Del origen salen 50 trozos para 41 comarcas: nueve tienen **enclaves de verdad**,
+el más famoso Llívia, que es de la Cerdanya y está rodeada de Francia. Todos
+rondan el 1 % del área de su comarca, o sea puntos que en un tablero no se pueden
+ni pulsar, así que se descartan igual que se descartan los islotes en el mapa de
+España. Es una pena, pero un territorio tiene que ser algo que se pueda señalar
+con el dedo.
+
+Medido en 160 partidas de bots (3 a 6 jugadores): termina el 99 %, con una ronda
+media de 50 en clásico y 49 en modo avanzado. Algo más larga que el mundo (40),
+pero perfectamente jugable.
+
 ## 7. Modo avanzado: las tropas
 
 Otro interruptor, independiente del de la orografía. Se pueden encender los dos,
@@ -426,7 +462,31 @@ verdad. La IA construye poco y con criterio: solo si le sobra reserva por encima
 de lo que necesita para tapar agujeros, y solo donde la tropa hace algo (un
 blindado en un frente sin fronteras de tierra vale cero, y lo sabe).
 
-## 8. Tests
+## 8. Victoria por objetivos
+
+Un desplegable en la sala: **conquista total** (lo clásico) o **por objetivos**.
+Con objetivos, cada jugador recibe una meta al empezar y gana quien la cumpla,
+sin tener que barrer el mapa. Hay tres clases:
+
+- **Continentes**: tener enteros dos continentes que se toquen.
+- **Territorios**: llegar a un número, a veces con guarnición mínima de dos.
+- **Eliminar**: sacar a alguien concreto de la partida. Si se te adelantan, tu
+  objetivo pasa solo al de reserva (número de territorios), que es la regla
+  clásica.
+
+**Los objetivos son públicos, y es a propósito.** Sin backend no hay forma de
+guardar un secreto: todos los clientes reproducen el mismo log y calculan el
+mismo estado, así que cualquiera podría leer el objetivo ajeno abriendo la
+consola del navegador. Antes que fingir un secreto que no existe, se enseñan
+todos en un panel. Además se juega mejor: saber a qué va cada uno permite cortar
+al que está a punto de ganar.
+
+El reparto usa un **RNG sembrado aparte** (`rngFor(seed, 0, 'missions')`). Si
+comiera tiradas del mismo flujo que el reparto del tablero, encender los
+objetivos cambiaría la posición inicial y dos mesas con la misma semilla dejarían
+de empezar igual. Hay un test que lo comprueba.
+
+## 9. Tests
 
 ```bash
 npm test                                    # todo

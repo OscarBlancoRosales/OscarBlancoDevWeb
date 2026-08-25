@@ -47,6 +47,7 @@ export class RiskLobby implements OnInit {
   tradeProgression: 'classic' | 'fixed' = 'classic';
   advancedTerrain = false;
   advancedUnits = false;
+  victory: 'conquest' | 'objectives' = 'conquest';
 
   /** Fichas de los terrenos, para la leyenda del modo avanzado. */
   readonly terrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]);
@@ -195,6 +196,7 @@ export class RiskLobby implements OnInit {
           tradeProgression: this.tradeProgression,
           advancedTerrain: this.advancedTerrain,
           advancedUnits: this.advancedUnits,
+          victory: this.victory,
         },
       });
 

@@ -18,6 +18,7 @@ import { createRng, rngFor, shuffle } from './rng';
 import { DEFAULT_MAX_TRADE_VALUE, buildDeck, isValidSet, takeCards, tradeValue } from './cards';
 import { maxAttackDice, resolveCombat } from './combat';
 import { battleRulesFor } from './terrain';
+import { assignMissions, isMissionComplete, missionProgress } from './missions';
 import {
   addUnit,
   applyCasualties,
@@ -50,6 +51,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   maxDefendDice: 2,
   advancedTerrain: false,
   advancedUnits: false,
+  victory: 'conquest',
 };
 
 /** Paleta de los jugadores: alto contraste sobre el fondo oscuro. */
@@ -167,6 +169,21 @@ export function createGame(options: CreateGameOptions): GameState {
     for (const player of state.players) player.reserve = startingArmies;
   }
 
+  // Los objetivos se reparten al final, con un RNG propio sembrado aparte: si
+  // consumieran tiradas del mismo flujo, encender los objetivos cambiaría el
+  // reparto del tablero y dos mesas con la misma semilla dejarían de empezar
+  // igual.
+  if (config.victory === 'objectives') {
+    state.missions = assignMissions(state, map, rngFor(seed, 0, 'missions'));
+    for (const player of state.players) {
+      pushEvent(state, {
+        type: 'game-start',
+        playerId: player.id,
+        text: `Objetivo de ${player.name}: ${state.missions[player.id].text}.`,
+      });
+    }
+  }
+
   return state;
 }
 
@@ -256,6 +273,26 @@ function advanceTurn(state: GameState, map: GameMap): void {
 function checkVictory(state: GameState, map: GameMap): boolean {
   const alive = state.players.filter((p) => !p.eliminated);
   const totalTerritories = map.territories.length;
+
+  // Por objetivos gana quien cumple el suyo, sin tener que barrer el mapa. Se
+  // comprueba antes que la conquista total porque es la condición más fácil de
+  // alcanzar, y el orden de la lista es el de la mesa, que es estable.
+  if (state.config.victory === 'objectives' && state.missions) {
+    for (const player of alive) {
+      if (!isMissionComplete(state, map, player.id)) continue;
+      state.winnerId = player.id;
+      state.phase = 'game-over';
+      pushEvent(state, {
+        type: 'win',
+        playerId: player.id,
+        text: `¡${player.name} cumple su objetivo y gana la partida! (${
+          missionProgress(state, map, player.id).text
+        })`,
+      });
+      return true;
+    }
+  }
+
   for (const player of alive) {
     if (territoriesOf(state, player.id).length === totalTerritories) {
       state.winnerId = player.id;
@@ -580,6 +617,7 @@ function handlePossibleElimination(
 ): void {
   if (territoriesOf(state, defenderId).length > 0) return;
   const defender = playerById(state, defenderId);
+  if (defender) defender.eliminatedBy = attackerId;
   const attacker = playerById(state, attackerId);
   if (!defender || defender.eliminated || !attacker) return;
 

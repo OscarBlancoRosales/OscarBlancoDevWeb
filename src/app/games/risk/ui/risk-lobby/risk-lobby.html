@@ -134,6 +134,18 @@
             </label>
 
             <label class="field-label">
+              <span>Cómo se gana</span>
+              <select class="field" [(ngModel)]="victory">
+                <option value="conquest">Conquista total (clásico)</option>
+                <option value="objectives">Por objetivos (partida más corta)</option>
+              </select>
+              <small>
+                Con objetivos, cada jugador tiene una meta propia y gana quien la cumpla. Son
+                públicas: sin servidor no hay forma de guardar un secreto.
+              </small>
+            </label>
+
+            <label class="field-label">
               <span>Valor de los canjes</span>
               <select class="field" [(ngModel)]="tradeProgression">
                 <option value="classic">Clásico (4, 6, 8, 10, 12, 15, +5…)</option>

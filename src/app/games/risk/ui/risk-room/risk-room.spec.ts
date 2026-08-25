@@ -42,6 +42,7 @@ async function createLocalRoom(
     mapId?: string;
     advancedTerrain?: boolean;
     advancedUnits?: boolean;
+    victory?: 'conquest' | 'objectives';
   } = {},
 ) {
   TestBed.resetTestingModule();
@@ -59,6 +60,7 @@ async function createLocalRoom(
       ...DEFAULT_CONFIG,
       advancedTerrain: options.advancedTerrain ?? false,
       advancedUnits: options.advancedUnits ?? false,
+      victory: options.victory ?? 'conquest',
     },
   });
   rooms.listenToRoom(meta.id);
@@ -409,6 +411,45 @@ describe('RiskRoom (la mesa)', () => {
 
         room.state!.territories['AB'].units = { blindado: 1 };
         expect(room.selectionOdds()!).toBeGreaterThan(plain);
+      } finally {
+        mounted.fixture.destroy();
+      }
+    });
+  });
+
+  describe('victoria por objetivos en la mesa', () => {
+    it('una mesa clásica no enseña objetivos', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+      expect(component.byObjectives).toBe(false);
+      expect(component.missions).toEqual([]);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.missions-panel')).toBeNull();
+    });
+
+    it('con objetivos se enseñan los de todos, con su progreso', async () => {
+      const created = await createLocalRoom({ victory: 'objectives' });
+      const mounted = await mountRoom(created.roomId, created.seatId);
+      try {
+        await mounted.component.fillWithBots();
+        await wait();
+        await mounted.component.startGame();
+        await wait(30);
+        mounted.fixture.detectChanges();
+
+        expect(mounted.component.byObjectives).toBe(true);
+        expect(mounted.component.missions).toHaveLength(4);
+        for (const entry of mounted.component.missions) {
+          expect(entry.text.length).toBeGreaterThan(5);
+          expect(entry.name.length).toBeGreaterThan(0);
+        }
+        const panel = mounted.fixture.nativeElement.querySelector('.missions-panel');
+        expect(panel).not.toBeNull();
+        expect(panel.querySelectorAll('.mission-row').length).toBe(4);
+        // El mío queda marcado.
+        expect(panel.querySelectorAll('.mission-row.me').length).toBe(1);
       } finally {
         mounted.fixture.destroy();
       }

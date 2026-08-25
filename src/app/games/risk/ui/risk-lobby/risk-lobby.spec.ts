@@ -231,6 +231,17 @@ describe('RiskLobby', () => {
       expect(meta.config.advancedUnits).toBe(false);
     });
 
+    it('la forma de ganar viaja a la configuración de la sala', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.playerName = 'Oscar';
+      expect(component.victory).toBe('conquest');
+      component.victory = 'objectives';
+      await component.createRoom(true);
+
+      const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(meta.config.victory).toBe('objectives');
+    });
+
     it('las tropas viajan a la configuración de la sala por su cuenta', async () => {
       vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
       component.playerName = 'Oscar';

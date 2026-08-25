@@ -7,7 +7,8 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "build:maps": "node --experimental-strip-types tools/run.mjs tools/build-spain-map.ts && node --experimental-strip-types tools/run.mjs tools/build-world-map.ts"
+    "build:maps": "node --experimental-strip-types tools/run.mjs tools/build-spain-map.ts && node --experimental-strip-types tools/run.mjs tools/build-world-map.ts && node --experimental-strip-types tools/run.mjs tools/build-catalonia-map.ts",
+    "deploy:rules": "firebase deploy --only database"
   },
   "prettier": {
     "printWidth": 100,

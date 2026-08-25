@@ -1319,3 +1319,61 @@
   border-color: rgba(255, 138, 101, 0.55);
   color: #ff8a65;
 }
+
+/* ===== OBJETIVOS ===== */
+
+.mission-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mission-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+}
+
+.mission-row.me {
+  border-color: rgba(0, 230, 118, 0.35);
+  background: rgba(0, 230, 118, 0.06);
+}
+
+.mission-row.done {
+  border-color: rgba(255, 215, 64, 0.55);
+  background: rgba(255, 215, 64, 0.08);
+}
+
+.mission-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.mission-who {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #e6edf3;
+}
+
+.mission-text {
+  font-size: 0.74rem;
+  line-height: 1.35;
+  color: #b9c4cc;
+}
+
+.mission-detail {
+  font-size: 0.7rem;
+  color: #6e7681;
+}
+
+.mission-row.done .mission-detail {
+  color: #ffd740;
+}
