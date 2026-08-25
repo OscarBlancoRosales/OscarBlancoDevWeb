@@ -18,6 +18,13 @@ export interface AiSettings {
   baseUrl?: string;
   /** Milisegundos antes de rendirse y usar el cerebro local. */
   timeoutMs?: number;
+  /**
+   * No llamar nunca a un modelo de pago. Encendido por defecto.
+   *
+   * El modelo se escribe a mano, así que sin esto un dedo torcido factura. Y si
+   * algún día se comparte una clave, un modelo de pago la vacía en una tarde.
+   */
+  freeOnly?: boolean;
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
@@ -26,6 +33,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   apiKey: '',
   model: 'deepseek/deepseek-chat-v3-0324:free',
   timeoutMs: 12000,
+  freeOnly: true,
 };
 
 export interface ModelOption {
@@ -115,7 +123,7 @@ export interface ChatMessage {
 
 export class AiError extends Error {
   constructor(
-    public code: 'no-key' | 'network' | 'timeout' | 'bad-response' | 'disabled',
+    public code: 'no-key' | 'network' | 'timeout' | 'bad-response' | 'disabled' | 'paid-model',
     message: string,
   ) {
     super(message);
@@ -185,6 +193,22 @@ function extractText(settings: AiSettings, payload: unknown): string {
   throw new AiError('bad-response', 'Respuesta sin contenido');
 }
 
+/**
+ * ¿Este modelo es gratuito?
+ *
+ * Tres formas de serlo: estar en la lista de gratuitos del proveedor, llevar el
+ * sufijo `:free` que OpenRouter le pone a los suyos, o correr en tu propia
+ * máquina (Ollama, LM Studio), donde no hay factura que valga.
+ */
+export function isFreeModel(provider: AiProvider, model: string): boolean {
+  const id = model.trim();
+  if (!id) return false;
+  if (FREE_MODELS[provider]?.some((option) => option.id === id)) return true;
+  if (provider === 'openrouter') return id.endsWith(':free');
+  if (provider === 'openai-compatible') return true;
+  return false;
+}
+
 /** Llama al modelo y devuelve el texto plano de la respuesta. */
 export async function chat(
   settings: AiSettings,
@@ -197,6 +221,12 @@ export async function chat(
   }
   if (settings.provider === 'openai-compatible' && !settings.baseUrl) {
     throw new AiError('no-key', 'Falta la URL base del servidor compatible');
+  }
+  if (settings.freeOnly !== false && !isFreeModel(settings.provider, settings.model)) {
+    throw new AiError(
+      'paid-model',
+      `"${settings.model}" no es un modelo gratuito. Elige uno de la lista o desactiva la restricción.`,
+    );
   }
 
   const doFetch = options.fetchImpl ?? globalThis.fetch;

@@ -288,6 +288,15 @@ Las jugadas las decide siempre el cerebro local, *inclinado* por lo que pide el 
 el modelo falla, tarda o contesta cualquier cosa, la partida sigue igual con el cerebro
 local. **Nunca se bloquea la mesa esperando a una API.**
 
+### Solo modelos gratuitos
+
+El identificador del modelo se escribe a mano, así que sin una barrera un dedo
+torcido factura. `freeOnly` viene encendido de fábrica y la petición **ni se
+envía** si el modelo no es gratuito: vale si está en la lista del proveedor, si
+lleva el sufijo `:free` que OpenRouter le pone a los suyos, o si corre en tu
+propia máquina (Ollama, LM Studio), donde no hay factura que valga. Quien quiera
+pagar puede, pero tiene que apagarlo a propósito.
+
 ### 4.3 El estratega
 
 Además de los bots, hay un consejero para el jugador humano: en cada fase de tu turno te

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   AiError,
+  AiProvider,
   AiSettings,
   DEFAULT_AI_SETTINGS,
   FREE_MODELS,
@@ -9,6 +10,7 @@ import {
   chat,
   clearAiSettings,
   extractJson,
+  isFreeModel,
   loadAiSettings,
   saveAiSettings,
 } from './ai-client';
@@ -265,5 +267,76 @@ describe('cliente de modelos de lenguaje', () => {
       expect(() => saveAiSettings(settings(), undefined)).not.toThrow();
       expect(() => clearAiSettings(undefined)).not.toThrow();
     });
+  });
+});
+
+describe('solo modelos gratuitos', () => {
+  it('acepta los de la lista de cada proveedor', () => {
+    for (const provider of Object.keys(FREE_MODELS) as AiProvider[]) {
+      for (const option of FREE_MODELS[provider]) {
+        expect(isFreeModel(provider, option.id), `${provider}/${option.id}`).toBe(true);
+      }
+    }
+  });
+
+  it('acepta cualquier modelo con el sufijo :free de OpenRouter', () => {
+    expect(isFreeModel('openrouter', 'algo/nuevo:free')).toBe(true);
+    expect(isFreeModel('openrouter', ' algo/nuevo:free ')).toBe(true);
+  });
+
+  it('rechaza los de pago', () => {
+    expect(isFreeModel('openrouter', 'openai/gpt-4o')).toBe(false);
+    expect(isFreeModel('openrouter', 'anthropic/claude-opus-4')).toBe(false);
+    expect(isFreeModel('groq', 'algo-que-no-esta')).toBe(false);
+    expect(isFreeModel('openrouter', '')).toBe(false);
+  });
+
+  it('un servidor propio no cuesta dinero, así que vale cualquiera', () => {
+    expect(isFreeModel('openai-compatible', 'llama3.2')).toBe(true);
+  });
+
+  it('la restricción viene puesta de fábrica', () => {
+    expect(DEFAULT_AI_SETTINGS.freeOnly).toBe(true);
+    expect(isFreeModel(DEFAULT_AI_SETTINGS.provider, DEFAULT_AI_SETTINGS.model)).toBe(true);
+  });
+
+  it('no se llama a un modelo de pago: ni se envía la petición', async () => {
+    let called = false;
+    const fetchImpl = (async () => {
+      called = true;
+      return new Response('{}');
+    }) as unknown as typeof fetch;
+
+    await expect(
+      chat(
+        { ...DEFAULT_AI_SETTINGS, enabled: true, apiKey: 'x', model: 'openai/gpt-4o' },
+        [{ role: 'user', content: 'hola' }],
+        { fetchImpl },
+      ),
+    ).rejects.toThrow(/no es un modelo gratuito/);
+    expect(called).toBe(false);
+  });
+
+  it('quien quiera pagar puede, pero tiene que decirlo a propósito', async () => {
+    let called = false;
+    const fetchImpl = (async () => {
+      called = true;
+      return new Response(JSON.stringify({ choices: [{ message: { content: 'ok' } }] }), {
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+
+    await chat(
+      {
+        ...DEFAULT_AI_SETTINGS,
+        enabled: true,
+        apiKey: 'x',
+        model: 'openai/gpt-4o',
+        freeOnly: false,
+      },
+      [{ role: 'user', content: 'hola' }],
+      { fetchImpl },
+    );
+    expect(called).toBe(true);
   });
 });
