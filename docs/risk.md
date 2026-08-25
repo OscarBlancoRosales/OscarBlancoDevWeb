@@ -134,7 +134,7 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
         ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
         ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
-          ".write": "!data.exists()",
+          ".write": "!data.exists() && auth != null",
           ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
           "seed": {
             ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
@@ -174,7 +174,7 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
         },
         "seats": {
           "$seatId": {
-            ".write": true,
+            ".write": "root.child('riskRooms').child($roomId).child('meta').exists()",
             "seatToken": {
               ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
             },
@@ -188,17 +188,17 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
         },
         "log": {
           "$entry": {
-            ".write": "!data.exists() && newData.exists()",
+            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
             ".validate": "newData.hasChildren(['action'])"
           }
         },
         "snapshot": {
-          ".write": "!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val())",
+          ".write": "root.child('riskRooms').child($roomId).child('meta').exists() && (!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val()))",
           ".validate": "newData.hasChildren(['upTo', 'state'])"
         },
         "chat": {
           "$message": {
-            ".write": "!data.exists() && newData.exists()",
+            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
             ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600 && newData.child('author').isString() && newData.child('author').val().length <= 40"
           }
         }
@@ -242,6 +242,13 @@ que sí hacen es cerrar lo que de verdad rompe una partida:
   igual o mayor, para que nadie devuelva la partida a un estado anterior.
 - **Topes de tamaño** en los nombres y en el texto del chat, para que un bucle no llene la
   base gratuita.
+
+- **Crear una sala exige sesión iniciada**, y dentro de una sala que no existe no se puede
+  escribir nada. Son las dos cosas que impiden que cualquiera llene la base gratuita: sin
+  la primera se crean salas a mansalva; sin la segunda se fabrican salas fantasma metiendo
+  asientos o jugadas en un identificador inventado, porque la validación del nodo padre
+  **no** se evalúa al escribir en un hijo. Jugar no exige cuenta: los invitados entran por
+  el enlace y escriben en una sala que ya existe.
 
 Y lo que **no** hacen, dicho claramente: quien conozca el identificador de una sala puede
 leerla, añadirle jugadas y mensajes, y liberar asientos. Sin backend no hay forma de

@@ -22,7 +22,7 @@
         ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
         ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
-          ".write": "!data.exists()",
+          ".write": "!data.exists() && auth != null",
           ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
           "seed": {
             ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
@@ -62,7 +62,7 @@
         },
         "seats": {
           "$seatId": {
-            ".write": true,
+            ".write": "root.child('riskRooms').child($roomId).child('meta').exists()",
             "seatToken": {
               ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
             },
@@ -76,17 +76,17 @@
         },
         "log": {
           "$entry": {
-            ".write": "!data.exists() && newData.exists()",
+            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
             ".validate": "newData.hasChildren(['action'])"
           }
         },
         "snapshot": {
-          ".write": "!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val())",
+          ".write": "root.child('riskRooms').child($roomId).child('meta').exists() && (!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val()))",
           ".validate": "newData.hasChildren(['upTo', 'state'])"
         },
         "chat": {
           "$message": {
-            ".write": "!data.exists() && newData.exists()",
+            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
             ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600 && newData.child('author').isString() && newData.child('author').val().length <= 40"
           }
         }

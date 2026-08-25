@@ -130,7 +130,7 @@ export function checkRules(rules, doc) {
   //    el estado inicial del que cuelga todo el log.
   need(risk?.meta?.roster?.['.write'] === '!data.exists()', 'meta/roster solo se escribe una vez');
   need(
-    risk?.meta?.['.write'] === '!data.exists()',
+    has(risk?.meta?.['.write'], '!data.exists()'),
     'meta completa solo se puede escribir al crear la sala',
   );
   need(
@@ -138,7 +138,29 @@ export function checkRules(rules, doc) {
     'El testigo de un asiento no puede cambiar una vez ocupado',
   );
 
-  // 9. No borrar las reglas de las otras secciones.
+  // 9. Crear una sala exige sesión, y no se escribe en salas que no existen.
+  //
+  //    Es lo que impide que cualquiera llene la base gratuita: sin lo primero se
+  //    crean salas a mansalva, y sin lo segundo se fabrican salas fantasma
+  //    metiendo asientos o jugadas en un id inventado (la validación del nodo
+  //    padre NO se evalúa al escribir en un hijo).
+  need(
+    has(risk?.meta?.['.write'], 'auth != null'),
+    'Crear una sala tiene que exigir sesión: si no, cualquiera llena la base',
+  );
+  for (const [nombre, rule] of [
+    ['seats', risk?.seats?.$seatId?.['.write']],
+    ['log', risk?.log?.$entry?.['.write']],
+    ['chat', risk?.chat?.$message?.['.write']],
+    ['snapshot', risk?.snapshot?.['.write']],
+  ]) {
+    need(
+      has(rule, "child('meta').exists()"),
+      `${nombre} deja escribir en salas que no existen: se podrían fabricar salas fantasma`,
+    );
+  }
+
+  // 10. No borrar las reglas de las otras secciones.
   //
   //    Subir este fichero SUSTITUYE el conjunto entero de la base. La primera
   //    versión se escribió mirando solo al RISK y se habría llevado por delante
@@ -150,7 +172,7 @@ export function checkRules(rules, doc) {
     );
   }
 
-  // 10. Avisos: cosas abiertas que no son del RISK y que conviene no olvidar.
+  // 11. Avisos: cosas abiertas que no son del RISK y que conviene no olvidar.
   if (rules?.rules?.rooms?.['.read'] === true || rules?.rules?.rooms?.['.write'] === true) {
     warnings.push(
       'El nodo `rooms` (Scrum Poker) concede lectura o escritura a nivel de nodo, no de ' +
@@ -215,6 +237,16 @@ function selfTest(good, doc) {
       'testigo de un asiento',
     ],
     [
+      'creación sin sesión',
+      (r) => (r.rules.riskRooms.$roomId.meta['.write'] = '!data.exists()'),
+      'exigir sesión',
+    ],
+    [
+      'salas fantasma por el log',
+      (r) => (r.rules.riskRooms.$roomId.log.$entry['.write'] = '!data.exists() && newData.exists()'),
+      'salas fantasma',
+    ],
+    [
       'otra sección borrada',
       (r) => delete r.rules['throwdown-timer'],
       'throwdown-timer',
@@ -256,5 +288,5 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log('Reglas de seguridad: en orden (10 grupos, y el comprobante se prueba a sí mismo).');
+console.log('Reglas de seguridad: en orden (11 grupos, y el comprobante se prueba a sí mismo).');
 for (const warning of warnings) console.warn(`AVISO: ${warning}`);
