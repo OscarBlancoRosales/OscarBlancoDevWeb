@@ -41,11 +41,11 @@
           },
           "status": {
             ".write": true,
-            ".validate": "newData.isString() && newData.val().length <= 20"
+            ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'paused' || newData.val() === 'finished')"
           },
           "updatedAt": {
             ".write": true,
-            ".validate": "newData.isNumber()"
+            ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val()) && newData.val() <= (now + 300000)"
           },
           "maxPlayers": {
             ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"

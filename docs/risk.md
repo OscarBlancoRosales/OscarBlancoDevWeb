@@ -153,11 +153,11 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
           },
           "status": {
             ".write": true,
-            ".validate": "newData.isString() && newData.val().length <= 20"
+            ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'paused' || newData.val() === 'finished')"
           },
           "updatedAt": {
             ".write": true,
-            ".validate": "newData.isNumber()"
+            ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val()) && newData.val() <= (now + 300000)"
           },
           "maxPlayers": {
             ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
@@ -270,7 +270,14 @@ elegancia si no está activo.
 > comprobación.
 
 `npm run check:rules` comprueba que el JSON de aquí arriba y el del fichero no se separen,
-y que sigan en pie los invariantes de la lista.
+que sigan en pie los invariantes de la lista, y que no falte ninguna sección.
+
+**Y se comprueba a sí mismo antes de nada.** Un guardián que no puede fallar no guarda
+nada: una errata en la ruta de una propiedad convierte una comprobación en un `undefined`
+que pasa de largo, y desde fuera se ve igual que "todo en orden". Así que primero estropea
+a propósito una copia de cada cosa que vigila y exige que salte la alarma. La primera vez
+que se ejecutó encontró un fallo suyo: con una regla booleana en vez de una cadena,
+reventaba en lugar de avisar.
 
 > Mientras las reglas no estén subidas, la sección sigue funcionando en **modo local**
 > (partidas contra la IA guardadas en el navegador). El lobby lo indica y no se queda
