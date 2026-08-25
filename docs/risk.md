@@ -113,12 +113,22 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
 {
   "rules": {
     "rooms": {
-      ".read": true,
-      ".write": true
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "throwdown-timer": {
+      "configs": {
+        ".read": true,
+        ".write": true
+      }
     },
     "riskRooms": {
       ".read": "auth != null && query.orderByChild === 'meta/ownerUid' && query.equalTo === auth.uid",
-      ".indexOn": ["meta/ownerUid"],
+      ".indexOn": [
+        "meta/ownerUid"
+      ],
       "$roomId": {
         ".read": true,
         ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
@@ -251,10 +261,13 @@ elegancia si no está activo.
 > base, no solo las del RISK. Subirlo **sustituye todo lo que haya ahora**, incluidas las
 > de `rooms`, que es el nodo del Scrum Poker.
 >
-> Antes de la primera subida, **copia las reglas que tengas** (consola de Firebase →
-> *Realtime Database* → *Reglas*) y guárdalas por si acaso. Si el Scrum Poker usa algo
-> distinto de lo que hay en este fichero, hay que fundir las dos cosas a mano antes de
-> subir, no sustituir a ciegas.
+> El fichero ya incluye las reglas de las otras secciones (`rooms` del Scrum Poker y
+> `throwdown-timer`), fundidas con las del RISK. La primera versión solo miraba al RISK y
+> se habría llevado por delante `throwdown-timer`; `npm run check:rules` ahora falla si
+> falta alguno de esos nodos, justamente para que no se repita.
+>
+> Si añades otra sección que use la base, acuérdate de meterla aquí **y** en esa
+> comprobación.
 
 `npm run check:rules` comprueba que el JSON de aquí arriba y el del fichero no se separen,
 y que sigan en pie los invariantes de la lista.

@@ -1,12 +1,22 @@
 {
   "rules": {
     "rooms": {
-      ".read": true,
-      ".write": true
+      "$roomId": {
+        ".read": true,
+        ".write": true
+      }
+    },
+    "throwdown-timer": {
+      "configs": {
+        ".read": true,
+        ".write": true
+      }
     },
     "riskRooms": {
       ".read": "auth != null && query.orderByChild === 'meta/ownerUid' && query.equalTo === auth.uid",
-      ".indexOn": ["meta/ownerUid"],
+      ".indexOn": [
+        "meta/ownerUid"
+      ],
       "$roomId": {
         ".read": true,
         ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",

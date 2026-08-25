@@ -94,14 +94,26 @@ require(
   'El testigo de un asiento no puede cambiar una vez ocupado',
 );
 
-// 8. El nodo del Scrum Poker sigue abierto, y eso hay que decirlo en voz alta
-//    cada vez: no puede pasar por "todo en orden".
+// 8. No borrar las reglas de las otras secciones.
+//
+//    Subir este fichero SUSTITUYE el conjunto entero de la base. La primera
+//    versión se escribió mirando solo al RISK y se habría llevado por delante
+//    `throwdown-timer`, dejando esa página sin escribir su configuración. Estas
+//    comprobaciones existen para que no vuelva a pasar.
+for (const node of ['rooms', 'throwdown-timer']) {
+  require(
+    rules.rules?.[node] !== undefined,
+    `Falta el nodo \`${node}\`: subir esto dejaría esa sección sin reglas`,
+  );
+}
+
+// 9. El Scrum Poker se lee sala a sala, no el nodo entero: quien tenga el
+//    identificador entra, pero nadie puede listarlas todas.
 const warnings = [];
-if (rules.rules?.rooms?.['.write'] === true || rules.rules?.rooms?.['.read'] === true) {
+if (rules.rules?.rooms?.['.read'] === true || rules.rules?.rooms?.['.write'] === true) {
   warnings.push(
-    'El nodo `rooms` (Scrum Poker) está abierto a lectura y escritura. Es como estaba ' +
-      'antes de este fichero, no un cambio: cerrarlo obliga a rehacer su limpieza de ' +
-      'salas viejas, que enumera el nodo entero. Decisión aparte, ver docs/risk.md.',
+    'El nodo `rooms` (Scrum Poker) permite leer o escribir a nivel de nodo, no de sala: ' +
+      'cualquiera podría listarlas todas. Debería concederse dentro de `$roomId`.',
   );
 }
 
@@ -110,5 +122,5 @@ if (problems.length > 0) {
   for (const problem of problems) console.error(`  - ${problem}`);
   process.exit(1);
 }
-console.log('Reglas de seguridad del RISK: en orden (7 grupos de comprobaciones).');
+console.log('Reglas de seguridad: en orden (9 grupos de comprobaciones).');
 for (const warning of warnings) console.warn(`AVISO: ${warning}`);
