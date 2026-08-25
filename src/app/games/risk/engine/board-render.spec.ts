@@ -3,7 +3,9 @@ import { arcBetween, clearRenderCache, renderMap, splitLabel } from './board-ren
 import { WORLD_MAP } from './maps/world.map';
 import { SPAIN_MAP } from './maps/spain.map';
 import { TINY_MAP } from './testing';
-import { deriveAdjacency } from './geometry';
+import { adjacencyByContact } from './geo/topology';
+import { contactThresholdFor } from './geo/contact';
+import { MultiPolygon, Point2 } from './geo/geometry2d';
 
 describe('preparación del dibujo del tablero', () => {
   beforeEach(() => clearRenderCache());
@@ -21,7 +23,6 @@ describe('preparación del dibujo del tablero', () => {
         expect(Number.isFinite(territory.label.x)).toBe(true);
         expect(Number.isFinite(territory.label.y)).toBe(true);
         expect(territory.nameLines.length).toBeGreaterThan(0);
-        expect(territory.size).toBeGreaterThan(0);
       }
     });
 
@@ -53,35 +54,41 @@ describe('preparación del dibujo del tablero', () => {
   });
 
   describe('rutas marítimas', () => {
-    it('solo dibuja ruta para las adyacencias que no se tocan', () => {
-      const rendered = renderMap(WORLD_MAP);
-      const hexes: Record<string, [number, number][]> = {};
-      for (const t of WORLD_MAP.territories) hexes[t.id] = t.hexes as [number, number][];
-      const touching = deriveAdjacency(hexes);
+    const routeKey = (a: string, b: string) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 
-      for (const route of rendered.routes) {
-        expect(touching[route.from]).not.toContain(route.to);
+    it('dibuja exactamente las conexiones que el mapa declara por mar', () => {
+      const rendered = renderMap(WORLD_MAP);
+      const declared = new Set((WORLD_MAP.seaRoutes ?? []).map(([a, b]) => routeKey(a, b)));
+      const drawn = new Set(rendered.routes.map((route) => routeKey(route.from, route.to)));
+      expect(drawn).toEqual(declared);
+    });
+
+    it('ninguna ruta une dos territorios que ya se tocan en el dibujo', () => {
+      // Si un salto por mar se dibujara entre dos siluetas pegadas, la línea de
+      // puntos sobraría y despistaría.
+      const shapes = Object.fromEntries(
+        WORLD_MAP.territories.map((t) => [t.id, parsePath(t.shape!)]),
+      );
+      const touching = adjacencyByContact(shapes, contactThresholdFor(WORLD_MAP.board!.width));
+      for (const [a, b] of WORLD_MAP.seaRoutes ?? []) {
+        expect(touching[a], `${a} y ${b} ya se tocan: sobra la ruta`).not.toContain(b);
       }
     });
 
-    it('cubre todas las adyacencias que no se tocan', () => {
-      const rendered = renderMap(WORLD_MAP);
-      const hexes: Record<string, [number, number][]> = {};
-      for (const t of WORLD_MAP.territories) hexes[t.id] = t.hexes as [number, number][];
-      const touching = deriveAdjacency(hexes);
-
-      const expected = new Set<string>();
+    it('toda adyacencia del tablero se ve: o pegada o con línea de puntos', () => {
+      const shapes = Object.fromEntries(
+        WORLD_MAP.territories.map((t) => [t.id, parsePath(t.shape!)]),
+      );
+      const touching = adjacencyByContact(shapes, contactThresholdFor(WORLD_MAP.board!.width));
+      const declared = new Set((WORLD_MAP.seaRoutes ?? []).map(([a, b]) => routeKey(a, b)));
       for (const territory of WORLD_MAP.territories) {
         for (const other of territory.adjacent) {
-          if (touching[territory.id]?.includes(other)) continue;
-          const key = territory.id < other ? `${territory.id}|${other}` : `${other}|${territory.id}`;
-          expected.add(key);
+          const visible =
+            (touching[territory.id]?.includes(other) ?? false) ||
+            declared.has(routeKey(territory.id, other));
+          expect(visible, `${territory.name} -> ${other} no se ve por ningún lado`).toBe(true);
         }
       }
-      const drawn = new Set(
-        rendered.routes.map((r) => (r.from < r.to ? `${r.from}|${r.to}` : `${r.to}|${r.from}`)),
-      );
-      expect(drawn).toEqual(expected);
     });
 
     it('incluye el puente Alaska - Kamchatka', () => {
@@ -97,6 +104,15 @@ describe('preparación del dibujo del tablero', () => {
       const rendered = renderMap(SPAIN_MAP);
       const keys = rendered.routes.map((r) => (r.from < r.to ? `${r.from}|${r.to}` : `${r.to}|${r.from}`));
       expect(new Set(keys).size).toBe(keys.length);
+    });
+
+    it('en España une las islas y las ciudades autónomas', () => {
+      const drawn = new Set(
+        renderMap(SPAIN_MAP).routes.map((r) => (r.from < r.to ? `${r.from}|${r.to}` : `${r.to}|${r.from}`)),
+      );
+      expect(drawn.has('PM|VL')).toBe(true);
+      expect(drawn.has('CD|GC')).toBe(true);
+      expect(drawn.has('CE|ML')).toBe(true);
     });
 
     it('cada ruta es un path válido', () => {
@@ -161,3 +177,18 @@ describe('preparación del dibujo del tablero', () => {
     });
   });
 });
+
+
+/** Convierte un `path` de solo M/L/Z en polígonos, para poder medirlos. */
+function parsePath(path: string): MultiPolygon {
+  const rings: Point2[][] = [];
+  for (const chunk of path.split('M').slice(1)) {
+    const points = chunk
+      .replace(/Z/g, '')
+      .split('L')
+      .map((pair) => pair.trim().split(/\s+/).map(Number) as Point2)
+      .filter((point) => point.length === 2 && point.every(Number.isFinite));
+    if (points.length >= 3) rings.push([...points, points[0]]);
+  }
+  return rings.map((ring) => [ring]);
+}

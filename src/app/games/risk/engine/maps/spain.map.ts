@@ -165,7 +165,6 @@ export const SPAIN_MAP: GameMap = {
   name: 'España por provincias',
   description:
     'Las 52 provincias españolas con sus fronteras reales, agrupadas por comunidad autónoma. Partidas largas y muy territoriales.',
-  hexRadius: 20,
   board: { width: SPAIN_BOARD_WIDTH, height: SPAIN_BOARD_HEIGHT },
   seaRoutes: SPAIN_SEA_ROUTES,
   maxPlayers: 6,

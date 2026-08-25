@@ -1,12 +1,10 @@
 import { GameMap, TerritoryId } from './types';
-import {
-  Hex,
-  Point,
-  deriveAdjacency,
-  hexesBounds,
-  labelPoint,
-  territoryPath,
-} from './geometry';
+
+/** Punto en coordenadas de pantalla. */
+export interface Point {
+  x: number;
+  y: number;
+}
 
 /**
  * Precálculo del dibujo de un mapa.
@@ -24,8 +22,6 @@ export interface RenderedTerritory {
   continentColor: string;
   path: string;
   label: Point;
-  /** Número de celdas: sirve para decidir cuánto texto cabe. */
-  size: number;
 }
 
 export interface RenderedRoute {
@@ -53,40 +49,24 @@ export function renderMap(map: GameMap): RenderedMap {
   const cached = cache.get(map.id);
   if (cached) return cached;
 
-  const radius = map.hexRadius;
-  const padding = radius * 1.2;
-
   const territories: RenderedTerritory[] = map.territories.map((territory) => {
     const continent = map.continents.find((c) => c.id === territory.continentId);
-    const hexes = territory.hexes ?? [];
-    // Si el mapa trae silueta real la usamos tal cual; si no, la derivamos del
-    // retículo hexagonal.
-    const usesShape = !!territory.shape;
     return {
       id: territory.id,
       name: territory.name,
       nameLines: splitLabel(territory.name),
       continentId: territory.continentId,
       continentColor: continent?.color ?? '#666666',
-      path: usesShape ? territory.shape! : territoryPath(hexes, radius, radius * 0.28),
-      label: territory.labelAnchor
-        ? { x: territory.labelAnchor[0], y: territory.labelAnchor[1] }
-        : labelPoint(hexes, radius),
-      size: usesShape ? 1 : hexes.length,
+      path: territory.shape,
+      label: { x: territory.labelAnchor[0], y: territory.labelAnchor[1] },
     };
   });
 
   const byId: Record<TerritoryId, RenderedTerritory> = {};
   for (const territory of territories) byId[territory.id] = territory;
 
-  // Rutas marítimas: las adyacencias que el dibujo no muestra pegadas.
-  // Con retículo se sabe por las celdas; con siluetas, por la distancia entre
-  // los puntos de etiqueta comparada con el tamaño del territorio.
-  const allHexes: Record<string, Hex[]> = {};
-  for (const territory of map.territories) allHexes[territory.id] = territory.hexes ?? [];
-  const touching = deriveAdjacency(allHexes);
-  const usesShapes = map.territories.some((territory) => !!territory.shape);
-
+  // Rutas marítimas: las conexiones que el mapa declara como saltos por mar,
+  // es decir, las que sobre el dibujo no llegan a tocarse.
   const routes: RenderedRoute[] = [];
   const seen = new Set<string>();
   for (const territory of map.territories) {
@@ -94,8 +74,7 @@ export function renderMap(map: GameMap): RenderedMap {
       const key = territory.id < other ? `${territory.id}|${other}` : `${other}|${territory.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (!usesShapes && touching[territory.id]?.includes(other)) continue;
-      if (usesShapes && !isSeaRoute(map, territory.id, other)) continue;
+      if (!isSeaRoute(map, territory.id, other)) continue;
       const a = byId[territory.id]?.label;
       const b = byId[other]?.label;
       if (!a || !b) continue;
@@ -103,9 +82,7 @@ export function renderMap(map: GameMap): RenderedMap {
     }
   }
 
-  const bounds = map.board
-    ? { minX: 0, minY: 0, width: map.board.width, height: map.board.height }
-    : hexesBounds(map.territories.flatMap((t) => t.hexes ?? []), radius, padding);
+  const bounds = { minX: 0, minY: 0, width: map.board.width, height: map.board.height };
   const rendered: RenderedMap = {
     mapId: map.id,
     territories,
@@ -120,9 +97,9 @@ export function renderMap(map: GameMap): RenderedMap {
 }
 
 /**
- * En los mapas con siluetas, una adyacencia es ruta marítima si el mapa la ha
- * declarado como tal. El dato lo trae el propio mapa, que es quien sabe qué
- * fronteras son de tierra y cuáles son un salto por mar.
+ * Una adyacencia es ruta marítima si el mapa la declara como tal. El dato lo
+ * trae el propio mapa, que es quien sabe qué conexiones son fronteras de tierra
+ * y cuáles son un salto por mar.
  */
 function isSeaRoute(map: GameMap, from: string, to: string): boolean {
   return (map.seaRoutes ?? []).some(

@@ -122,7 +122,6 @@ export const SPAIN_REGIONS_MAP: GameMap = {
   name: 'España por comunidades',
   description:
     'Las comunidades y ciudades autónomas con sus contornos reales, agrupadas en cinco macrozonas. La partida corta: menos frentes y más mordiente.',
-  hexRadius: 20,
   board: { width: SPAIN_BOARD_WIDTH, height: SPAIN_BOARD_HEIGHT },
   seaRoutes: SPAIN_REGION_SEA_ROUTES,
   maxPlayers: 5,

@@ -37,18 +37,10 @@ export interface Territory {
   continentId: ContinentId;
   /** Adyacencias canónicas (siempre simétricas, validado en tests). */
   adjacent: TerritoryId[];
-  /**
-   * Silueta del territorio: un `path` SVG ya en coordenadas de tablero.
-   * Es lo que usan los mapas con cartografía real.
-   */
-  shape?: string;
-  /** Punto interior donde va la etiqueta (viene calculado con la silueta). */
-  labelAnchor?: [number, number];
-  /**
-   * Celdas del retículo hexagonal, para los mapas que todavía se dibujan así.
-   * Se usa solo si no hay `shape`.
-   */
-  hexes?: Array<[number, number]>;
+  /** Silueta del territorio: un `path` SVG ya en coordenadas de tablero. */
+  shape: string;
+  /** Punto interior donde va la etiqueta, calculado a partir de la silueta. */
+  labelAnchor: [number, number];
 }
 
 export interface Continent {
@@ -63,10 +55,8 @@ export interface GameMap {
   id: string;
   name: string;
   description: string;
-  /** Radio del hexágono en unidades SVG (mapas con retículo). */
-  hexRadius: number;
-  /** Tamaño del lienzo, en los mapas dibujados con siluetas reales. */
-  board?: { width: number; height: number };
+  /** Tamaño del lienzo sobre el que están dibujadas las siluetas. */
+  board: { width: number; height: number };
   /**
    * Adyacencias que no son fronteras terrestres, sino saltos por mar. Se
    * dibujan como líneas de puntos entre los dos territorios.

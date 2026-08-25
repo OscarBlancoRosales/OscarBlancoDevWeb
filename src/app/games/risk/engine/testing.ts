@@ -1,5 +1,4 @@
 import { GameMap, GameState, GameAction, PlayerId, TerritoryId } from './types';
-import { parseHexArt } from './geometry';
 import { applyAction, createGame, CreateGameOptions, PlayerSeed } from './engine';
 
 /**
@@ -9,8 +8,22 @@ import { applyAction, createGame, CreateGameOptions, PlayerSeed } from './engine
  * continentes permiten comprobar reglas (bonificaciones, cercos, eliminaciones)
  * sin depender del tablero real.
  */
-const TINY_ART = ['A1 A2 A3', 'B1 B2 B3'];
-const TINY_HEXES = parseHexArt(TINY_ART);
+/** Rejilla de 3x2 casillas de 100x100, en el mismo formato que los mapas reales. */
+const CELL = 100;
+const TINY_LAYOUT: Record<string, [number, number]> = {
+  A1: [0, 0],
+  A2: [1, 0],
+  A3: [2, 0],
+  B1: [0, 1],
+  B2: [1, 1],
+  B3: [2, 1],
+};
+
+function cellShape(column: number, row: number): string {
+  const x = column * CELL;
+  const y = row * CELL;
+  return `M${x} ${y}L${x + CELL} ${y}L${x + CELL} ${y + CELL}L${x} ${y + CELL}Z`;
+}
 
 const TINY_ADJACENCY: Record<string, string[]> = {
   A1: ['A2', 'B1'],
@@ -25,15 +38,19 @@ export const TINY_MAP: GameMap = {
   id: 'tiny',
   name: 'Mapa de laboratorio',
   description: 'Mapa mínimo usado por los tests del motor.',
-  hexRadius: 20,
+  board: { width: 3 * CELL, height: 2 * CELL },
   maxPlayers: 3,
-  territories: Object.keys(TINY_ADJACENCY).map((id) => ({
-    id,
-    name: `Territorio ${id}`,
-    continentId: id.startsWith('A') ? 'alpha' : 'beta',
-    adjacent: TINY_ADJACENCY[id],
-    hexes: TINY_HEXES[id] ?? [],
-  })),
+  territories: Object.keys(TINY_ADJACENCY).map((id) => {
+    const [column, row] = TINY_LAYOUT[id];
+    return {
+      id,
+      name: `Territorio ${id}`,
+      continentId: id.startsWith('A') ? 'alpha' : 'beta',
+      adjacent: TINY_ADJACENCY[id],
+      shape: cellShape(column, row),
+      labelAnchor: [column * CELL + CELL / 2, row * CELL + CELL / 2] as [number, number],
+    };
+  }),
   continents: [
     { id: 'alpha', name: 'Alfa', bonus: 3, color: '#00e676', territoryIds: ['A1', 'A2', 'A3'] },
     { id: 'beta', name: 'Beta', bonus: 2, color: '#ff5252', territoryIds: ['B1', 'B2', 'B3'] },

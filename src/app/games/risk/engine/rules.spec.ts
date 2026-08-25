@@ -310,7 +310,8 @@ describe('reglas', () => {
             name: 'Isla',
             continentId: 'alpha',
             adjacent: [],
-            hexes: [[9, 9]],
+            shape: 'M0 0L10 0L10 10L0 10Z',
+            labelAnchor: [5, 5] as [number, number],
           },
         ],
       };

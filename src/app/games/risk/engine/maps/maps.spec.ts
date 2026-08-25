@@ -4,24 +4,10 @@ import { WORLD_MAP } from './world.map';
 import { SPAIN_MAP } from './spain.map';
 import { SPAIN_REGIONS_MAP } from './spain-regions.map';
 import { isMapConnected } from '../rules';
-import { deriveAdjacency, territoryPath, hexNeighbors } from '../geometry';
 import { adjacencyByContact } from '../geo/topology';
+import { contactThresholdFor } from '../geo/contact';
 import { MultiPolygon, Point2, pointInPolygon } from '../geo/geometry2d';
 import { GameMap } from '../types';
-
-/** ¿El mapa se dibuja con siluetas reales o con retículo hexagonal? */
-function usesShapes(map: GameMap): boolean {
-  return map.territories.every((territory) => !!territory.shape);
-}
-
-/** Adyacencia derivada del retículo, para contrastarla con la declarada. */
-function drawnAdjacency(map: GameMap): Record<string, string[]> {
-  const hexes: Record<string, [number, number][]> = {};
-  for (const territory of map.territories) {
-    hexes[territory.id] = (territory.hexes ?? []) as [number, number][];
-  }
-  return deriveAdjacency(hexes);
-}
 
 /** Las rutas marítimas declaradas por el mapa, normalizadas. */
 function seaRouteKeys(map: GameMap): Set<string> {
@@ -61,10 +47,11 @@ describe('registro de mapas', () => {
 });
 
 describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_name, map) => {
-  it('tiene nombre, descripción y radio positivo', () => {
+  it('tiene nombre, descripción y lienzo', () => {
     expect(map.name.length).toBeGreaterThan(0);
     expect(map.description.length).toBeGreaterThan(10);
-    expect(map.hexRadius).toBeGreaterThan(0);
+    expect(map.board.width).toBeGreaterThan(0);
+    expect(map.board.height).toBeGreaterThan(0);
   });
 
   it('admite entre 2 y 6 jugadores', () => {
@@ -83,71 +70,26 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
     for (const name of names) expect(name.trim().length).toBeGreaterThan(0);
   });
 
-  it('cada territorio tiene dibujo', () => {
+  it('cada territorio trae silueta y punto de etiqueta dentro del lienzo', () => {
     for (const territory of map.territories) {
-      const drawn = !!territory.shape || (territory.hexes?.length ?? 0) > 0;
-      expect(drawn, territory.name).toBe(true);
-    }
-  });
-
-  it('los mapas con siluetas traen lienzo y punto de etiqueta', () => {
-    if (!usesShapes(map)) return;
-    expect(map.board?.width).toBeGreaterThan(0);
-    expect(map.board?.height).toBeGreaterThan(0);
-    for (const territory of map.territories) {
-      expect(territory.labelAnchor, territory.name).toBeDefined();
-      const [x, y] = territory.labelAnchor!;
+      expect(territory.shape.length, territory.name).toBeGreaterThan(10);
+      const [x, y] = territory.labelAnchor;
       expect(x).toBeGreaterThanOrEqual(0);
-      expect(x).toBeLessThanOrEqual(map.board!.width);
+      expect(x).toBeLessThanOrEqual(map.board.width);
       expect(y).toBeGreaterThanOrEqual(0);
-      expect(y).toBeLessThanOrEqual(map.board!.height);
+      expect(y).toBeLessThanOrEqual(map.board.height);
     }
   });
 
   it('las siluetas son paths cerrados y sin valores raros', () => {
-    if (!usesShapes(map)) return;
     for (const territory of map.territories) {
-      const path = territory.shape!;
+      const path = territory.shape;
       expect(path.startsWith('M'), territory.name).toBe(true);
       expect(path.endsWith('Z'), territory.name).toBe(true);
       expect(path).not.toContain('NaN');
       expect(path).not.toContain('undefined');
       // Cada trozo dibujado abre con M y cierra con Z.
       expect((path.match(/M/g) ?? []).length).toBe((path.match(/Z/g) ?? []).length);
-    }
-  });
-
-  it('las celdas de cada territorio forman una región conexa', () => {
-    if (usesShapes(map)) return;
-    for (const territory of map.territories) {
-      const cells = new Set((territory.hexes ?? []).map(([c, r]) => `${c},${r}`));
-      const [start] = territory.hexes ?? [];
-      if (!start) continue;
-      const seen = new Set([`${start[0]},${start[1]}`]);
-      const queue = [start];
-      while (queue.length > 0) {
-        const [col, row] = queue.shift()!;
-        for (const [nc, nr] of hexNeighbors(col, row)) {
-          const cellKey = `${nc},${nr}`;
-          if (cells.has(cellKey) && !seen.has(cellKey)) {
-            seen.add(cellKey);
-            queue.push([nc, nr]);
-          }
-        }
-      }
-      expect(seen.size, `${territory.name} está partido en varias islas`).toBe(cells.size);
-    }
-  });
-
-  it('ninguna celda pertenece a dos territorios', () => {
-    if (usesShapes(map)) return;
-    const owner = new Map<string, string>();
-    for (const territory of map.territories) {
-      for (const [col, row] of territory.hexes ?? []) {
-        const cellKey = `${col},${row}`;
-        expect(owner.has(cellKey), `celda ${cellKey} duplicada en ${territory.name}`).toBe(false);
-        owner.set(cellKey, territory.id);
-      }
     }
   });
 
@@ -216,12 +158,12 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
   });
 
   it('cada continente es internamente conexo', () => {
+    const byId = new Map(map.territories.map((t) => [t.id, t]));
     for (const continent of map.continents) {
       const members = new Set(continent.territoryIds);
       const [start] = continent.territoryIds;
       const seen = new Set([start]);
       const queue = [start];
-      const byId = new Map(map.territories.map((t) => [t.id, t]));
       while (queue.length > 0) {
         const current = queue.shift()!;
         for (const other of byId.get(current)?.adjacent ?? []) {
@@ -235,36 +177,11 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
     }
   });
 
-  it('todo territorio dibujado como vecino lo es también en las reglas (sin fronteras falsas)', () => {
-    if (usesShapes(map)) return;
-    const drawn = drawnAdjacency(map);
-    const byId = new Map(map.territories.map((t) => [t.id, t]));
-    for (const [id, neighbours] of Object.entries(drawn)) {
-      for (const other of neighbours) {
-        expect(
-          byId.get(id)?.adjacent,
-          `${byId.get(id)?.name} y ${byId.get(other)?.name} se tocan en el dibujo pero no son vecinos`,
-        ).toContain(other);
-      }
-    }
-  });
-
-  it('genera un path SVG válido para cada territorio', () => {
-    if (usesShapes(map)) return;
-    for (const territory of map.territories) {
-      const path = territoryPath(territory.hexes ?? [], map.hexRadius);
-      expect(path.length, territory.name).toBeGreaterThan(10);
-      expect(path).not.toContain('NaN');
-      expect(path).not.toContain('undefined');
-    }
-  });
-
   it('toda adyacencia es frontera de tierra o ruta marítima declarada', () => {
-    if (!usesShapes(map)) return;
     const routes = seaRouteKeys(map);
     const land = adjacencyByContact(
-      Object.fromEntries(map.territories.map((t) => [t.id, parsePath(t.shape!)])),
-      1,
+      Object.fromEntries(map.territories.map((t) => [t.id, parsePath(t.shape)])),
+      contactThresholdFor(map.board.width),
     );
     for (const territory of map.territories) {
       for (const other of territory.adjacent) {
@@ -435,7 +352,7 @@ describe('mapa de España por comunidades', () => {
       }
     }
     const regionShapes = new Map(
-      SPAIN_REGIONS_MAP.territories.map((t) => [t.id, parsePath(t.shape!)]),
+      SPAIN_REGIONS_MAP.territories.map((t) => [t.id, parsePath(t.shape)]),
     );
     const nombres: Record<string, string> = { ce: 'ceuta', ml: 'melilla' };
 
@@ -444,7 +361,7 @@ describe('mapa de España por comunidades', () => {
       const regionId = nombres[regionOf.get(province.id)!] ?? regionOf.get(province.id)!;
       const shape = regionShapes.get(regionId);
       expect(shape, `sin silueta para ${regionId}`).toBeDefined();
-      const point = province.labelAnchor!;
+      const point = province.labelAnchor;
       const inside = shape!.some((polygon) => pointInPolygon(point, polygon));
       expect(inside, `${province.name} debería caer dentro de ${regionId}`).toBe(true);
       comprobadas++;

@@ -183,16 +183,18 @@ escriben en Firebase ni los ve el resto de la mesa.
 
 | Mapa | Territorios | Regiones | Dibujo | Ritmo |
 |---|---|---|---|---|
-| Todo el mundo | 42 | 6 continentes | retículo hexagonal | La partida larga de siempre |
+| Todo el mundo | 42 | 6 continentes | **cartografía real** | La partida larga de siempre |
 | España por provincias | 52 | 18 comunidades | **cartografía real** | Muy territorial, la más larga |
 | España por comunidades | 19 | 5 macrozonas | **cartografía real** | Partida rápida |
 
 ### De cartografía real a tablero
 
-Los mapas de España no se dibujan a mano: se generan de límites administrativos
-reales con `npm run build:maps` (ver `tools/build-spain-map.ts`). El proceso es
-una herramienta de desarrollo; en tiempo de ejecución el juego solo carga datos
-ya masticados (un `path` SVG y un punto de etiqueta por territorio).
+Ningún mapa se dibuja a mano: los tres se generan de cartografía real con
+`npm run build:maps` (`tools/build-spain-map.ts` para los de España, límites
+administrativos del IGN; `tools/build-world-map.ts` para el mundo, Natural
+Earth). El proceso es una herramienta de desarrollo; en tiempo de ejecución el
+juego solo carga datos ya masticados (un `path` SVG y un punto de etiqueta por
+territorio, 145 kB entre los tres y en un *chunk* aparte).
 
 ```
 GeoJSON de provincias
@@ -232,8 +234,32 @@ convexas, pero en una silueta real se sale fuera con facilidad (Galicia con las
 rías, la bahía de Cádiz) y la etiqueta acaba flotando en el mar.
 
 El resultado se contrasta contra las fronteras conocidas: las 109 que salen de la
-cartografía son todas reales, y de hecho corrigen dos que el dibujo hexagonal
-anterior se había inventado (A Coruña con Asturias, Girona con Tarragona).
+cartografía son todas reales, y de hecho corrigen dos que el esquema anterior se
+había inventado (A Coruña con Asturias, Girona con Tarragona).
+
+### El mundo: territorios que no son países
+
+El mapa del mundo pasa por el mismo molino, pero con un paso más al principio:
+los territorios del RISK no son países. «EE. UU. Occidental» son diecisiete
+estados, «Siam» son cinco países y «Ucrania» se come media Rusia. La tabla que
+une el atlas con el tablero está en `tools/world-territories.ts`, y los trozos se
+**funden** sobre la topología compartida igual que las provincias en sus
+comunidades: sin operaciones booleanas de polígonos, descartando los arcos
+interiores del grupo.
+
+Dos diferencias más con España:
+
+**Las adyacencias no salen de la geografía.** Son las canónicas del tablero de
+siempre, escritas a mano en `world.adjacency.ts`: el RISK une Alaska con
+Kamchatka y separa cosas que en el atlas se tocan. Aquí manda el juego. Lo que sí
+se calcula por contacto es **cuáles de esas conexiones hay que dibujar como línea
+de puntos**, que son exactamente las que sobre el mapa no llegan a tocarse.
+
+**Qué se deja fuera y por qué.** Kaliningrado (un exclave a 800 km de su
+territorio, sería una mancha suelta) y Hawái (no está en el tablero clásico). En
+cambio Crimea **sí** se dibuja: en este tablero Ucrania y la Rusia europea son el
+mismo territorio, así que incluirla es solo cerrar la costa del mar Negro —
+dejarla fuera abría un boquete.
 
 El mapa por comunidades no es un dibujo aparte: se obtiene **fundiendo** las
 provincias de cada comunidad sobre la misma topología (los arcos interiores del
@@ -245,16 +271,16 @@ comunidad.
 ### Añadir un mapa
 
 Un mapa es un archivo en `engine/maps/` registrado en `map-registry.ts`. Los
-tests de integridad se aplican solos a todos los mapas del registro. Hay dos
-formas de dar el dibujo:
+tests de integridad se aplican solos a todos los mapas del registro.
 
-- **`shape`**: un `path` SVG en coordenadas de tablero, más `labelAnchor` y
-  `board` con el tamaño del lienzo. Es lo que usan los mapas de España.
-- **`hexes`**: celdas de un retículo hexagonal escritas como arte ASCII, de las
-  que se derivan contorno y etiqueta. Es lo que usa todavía el mapa del mundo.
+Cada territorio da su dibujo en **`shape`** (un `path` SVG en coordenadas de
+tablero) y **`labelAnchor`** (dónde va el nombre), y el mapa declara en `board`
+el tamaño del lienzo. No hay otro formato: el renderizador
+(`engine/board-render.ts`) solo sabe de paths, y de ahí salen también el aura de
+los continentes y el resaltado de selección.
 
-En ambos casos, las adyacencias que no son fronteras de tierra se declaran en
-`seaRoutes` y se dibujan como líneas de puntos.
+Las adyacencias que no son fronteras de tierra se declaran en `seaRoutes` y se
+dibujan como líneas de puntos.
 
 ## 6. Tests
 
@@ -270,8 +296,8 @@ Qué se cubre:
 - **Combate**: distribuciones exactas de dados contrastadas contra una simulación
   independiente de 200 000 batallas.
 - **Geometría**: simplificación, topología compartida, fusión de territorios,
-  fronteras por contacto y polo de inaccesibilidad (82 tests sobre figuras
-  controladas, sin depender de datos reales).
+  fronteras por contacto y polo de inaccesibilidad, sobre figuras controladas y
+  sin depender de datos reales.
 - **Mapas**: integridad de los tres mapas (contigüidad, simetría, conexidad,
   continentes, fronteras falsas, paths válidos) y coherencia entre el mapa
   provincial y el de comunidades.

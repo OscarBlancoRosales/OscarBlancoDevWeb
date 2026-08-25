@@ -34,6 +34,7 @@ import {
   simplifyTopology,
 } from '../src/app/games/risk/engine/geo/topology';
 import { labelPointOfMulti } from '../src/app/games/risk/engine/geo/polylabel';
+import { contactThresholdFor } from '../src/app/games/risk/engine/geo/contact';
 import {
   boundsOfAll,
   fitTransform,
@@ -60,11 +61,11 @@ const SIMPLIFY_TOLERANCE = 1.1;
 /** Paralelo de referencia: el centro de España. */
 const REFERENCE_LATITUDE = 40;
 /**
- * Hasta qué distancia (en unidades de tablero, ~1 km cada una) se considera que
- * dos provincias se tocan. Las fronteras reales están a 0 y las provincias que
- * solo se acercan, a más de 20: el umbral no es delicado.
+ * Hasta qué distancia se considera que dos provincias se tocan. El criterio es
+ * compartido con los tests. Las fronteras reales están a 0 y las provincias que
+ * solo se acercan, a más de 20 unidades: no es un umbral delicado.
  */
-const CONTACT_THRESHOLD = 0.75;
+const CONTACT_THRESHOLD = contactThresholdFor(BOARD_WIDTH);
 
 /** Código INE de provincia -> identificador de territorio del juego. */
 const PROVINCE_IDS: Record<string, string> = {
