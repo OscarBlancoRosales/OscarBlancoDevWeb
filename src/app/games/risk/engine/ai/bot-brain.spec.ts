@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   advisorTip,
   attacksThisTurn,
+  effectiveAttackThreshold,
+  stalemateRelief,
   botCommentary,
   BOT_PROFILES,
   BOT_PROFILE_IDS,
@@ -84,6 +86,43 @@ describe('cerebro heurístico de la IA', () => {
 
     it('traitsOf usa el perfil oportunista por defecto', () => {
       expect(traitsOf(undefined)).toBe(BOT_PROFILES.oportunista);
+    });
+  });
+
+  describe('cuando la partida se enquista', () => {
+    it('las primeras rondas no relajan nada', () => {
+      expect(stalemateRelief(1)).toBe(0);
+      expect(stalemateRelief(12)).toBe(0);
+    });
+
+    it('a partir de ahí la guerra se va calentando', () => {
+      expect(stalemateRelief(20)).toBeGreaterThan(0);
+      expect(stalemateRelief(30)).toBeGreaterThan(stalemateRelief(20));
+    });
+
+    it('el alivio tiene tope', () => {
+      expect(stalemateRelief(100)).toBe(stalemateRelief(1000));
+      expect(stalemateRelief(1000)).toBeLessThanOrEqual(0.3);
+    });
+
+    it('hasta el más cauto acaba atacando', () => {
+      const cauto = BOT_PROFILES.cauto;
+      expect(effectiveAttackThreshold(cauto, 1)).toBe(cauto.attackThreshold);
+      expect(effectiveAttackThreshold(cauto, 60)).toBeLessThan(cauto.attackThreshold - 0.25);
+    });
+
+    it('nunca baja de un mínimo razonable', () => {
+      expect(
+        effectiveAttackThreshold(BOT_PROFILES.agresivo, 999, { thresholdShift: -1 }),
+      ).toBeGreaterThanOrEqual(0.2);
+    });
+
+    it('el sesgo del modelo se suma al alivio', () => {
+      const traits = BOT_PROFILES.oportunista;
+      expect(effectiveAttackThreshold(traits, 1, { thresholdShift: -0.12 })).toBeCloseTo(
+        traits.attackThreshold - 0.12,
+        6,
+      );
     });
   });
 
@@ -607,6 +646,27 @@ describe('cerebro heurístico de la IA', () => {
         expect(territory.ownerId).not.toBeNull();
       }
     }, 30000);
+
+    it('terminan en un abanico de semillas, mapas y número de jugadores', () => {
+      // Guarda contra los dos empates estructurales que se han medido y
+      // corregido: nadie ataca porque todos acumulan, y nadie puede ser
+      // eliminado porque el canje de cartas escalaba sin tope.
+      const casos: Array<[string, typeof TINY_MAP, number, number]> = [
+        ['mundo', WORLD_MAP, 2, 11],
+        ['mundo', WORLD_MAP, 4, 555],
+        ['mundo', WORLD_MAP, 6, 4242],
+        ['España', SPAIN_MAP, 4, 555],
+        ['España', SPAIN_MAP, 5, 909],
+        ['comunidades', SPAIN_REGIONS_MAP, 3, 101],
+        ['comunidades', SPAIN_REGIONS_MAP, 5, 909],
+      ];
+      const sinTerminar: string[] = [];
+      for (const [nombre, map, jugadores, semilla] of casos) {
+        const { finished, state } = selfPlay(map, jugadores, semilla, 25000);
+        if (!finished) sinTerminar.push(`${nombre} ${jugadores}j semilla ${semilla} (ronda ${state.round})`);
+      }
+      expect(sinTerminar, 'partidas que no terminan').toEqual([]);
+    }, 120000);
 
     it('la partida es reproducible con la misma semilla', () => {
       const first = selfPlay(TINY_MAP, 2, 31337);

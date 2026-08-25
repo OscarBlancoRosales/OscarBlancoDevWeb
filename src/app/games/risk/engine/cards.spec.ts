@@ -4,6 +4,7 @@ import {
   buildDeck,
   CARD_ICON,
   CARD_LABEL,
+  DEFAULT_MAX_TRADE_VALUE,
   findTradeableSet,
   isValidSet,
   takeCards,
@@ -117,10 +118,25 @@ describe('cartas', () => {
       expect(tradeValue(10)).toBe(40);
     });
 
-    it('es siempre creciente', () => {
-      for (let n = 0; n < 20; n++) {
+    it('crece hasta el tope y ahí se queda', () => {
+      for (let n = 0; n < 11; n++) {
         expect(tradeValue(n + 1)).toBeGreaterThan(tradeValue(n));
       }
+      expect(tradeValue(11)).toBe(45);
+      expect(tradeValue(12)).toBe(DEFAULT_MAX_TRADE_VALUE);
+      expect(tradeValue(50)).toBe(DEFAULT_MAX_TRADE_VALUE);
+      expect(tradeValue(500)).toBe(DEFAULT_MAX_TRADE_VALUE);
+    });
+
+    it('el tope evita que una partida larga se vuelva ineliminable', () => {
+      // Sin tope, el canje 131 daría 645 ejércitos: un jugador con un solo
+      // territorio se rehacía de golpe y la partida no terminaba nunca.
+      expect(tradeValue(131)).toBeLessThanOrEqual(DEFAULT_MAX_TRADE_VALUE);
+    });
+
+    it('el tope es configurable', () => {
+      expect(tradeValue(50, 'classic', 20)).toBe(20);
+      expect(tradeValue(0, 'classic', 20)).toBe(4);
     });
 
     it('la progresión fija siempre vale lo mismo', () => {

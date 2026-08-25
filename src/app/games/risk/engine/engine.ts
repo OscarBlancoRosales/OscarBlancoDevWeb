@@ -14,7 +14,7 @@ import {
   TerritoryId,
 } from './types';
 import { createRng, rngFor, shuffle } from './rng';
-import { buildDeck, isValidSet, takeCards, tradeValue } from './cards';
+import { DEFAULT_MAX_TRADE_VALUE, buildDeck, isValidSet, takeCards, tradeValue } from './cards';
 import { maxAttackDice, resolveCombat } from './combat';
 import {
   adjacencyOf,
@@ -33,6 +33,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   startingArmies: null,
   autoClaim: true,
   tradeProgression: 'classic',
+  maxTradeValue: DEFAULT_MAX_TRADE_VALUE,
   maxAttackDice: 3,
   maxDefendDice: 2,
 };
@@ -436,7 +437,11 @@ function applyTrade(state: GameState, playerId: PlayerId, cardIds: [string, stri
     throw new RuleError('invalid-set', 'Ese trío no es canjeable');
   }
 
-  const value = tradeValue(state.tradeCount, state.config.tradeProgression);
+  const value = tradeValue(
+    state.tradeCount,
+    state.config.tradeProgression,
+    state.config.maxTradeValue ?? DEFAULT_MAX_TRADE_VALUE,
+  );
   player.cards = player.cards.filter((card) => !cardIds.includes(card.id));
   state.discard.push(...trio);
   state.tradeCount++;

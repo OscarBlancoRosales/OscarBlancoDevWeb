@@ -37,10 +37,18 @@ export interface Territory {
   continentId: ContinentId;
   /** Adyacencias canónicas (siempre simétricas, validado en tests). */
   adjacent: TerritoryId[];
-  /** Celdas del retículo hexagonal que dibujan el territorio. */
-  hexes: Array<[number, number]>;
-  /** Punto de anclaje opcional para la etiqueta (si no, se usa el centroide). */
+  /**
+   * Silueta del territorio: un `path` SVG ya en coordenadas de tablero.
+   * Es lo que usan los mapas con cartografía real.
+   */
+  shape?: string;
+  /** Punto interior donde va la etiqueta (viene calculado con la silueta). */
   labelAnchor?: [number, number];
+  /**
+   * Celdas del retículo hexagonal, para los mapas que todavía se dibujan así.
+   * Se usa solo si no hay `shape`.
+   */
+  hexes?: Array<[number, number]>;
 }
 
 export interface Continent {
@@ -55,8 +63,15 @@ export interface GameMap {
   id: string;
   name: string;
   description: string;
-  /** Radio del hexágono en unidades SVG. */
+  /** Radio del hexágono en unidades SVG (mapas con retículo). */
   hexRadius: number;
+  /** Tamaño del lienzo, en los mapas dibujados con siluetas reales. */
+  board?: { width: number; height: number };
+  /**
+   * Adyacencias que no son fronteras terrestres, sino saltos por mar. Se
+   * dibujan como líneas de puntos entre los dos territorios.
+   */
+  seaRoutes?: Array<[TerritoryId, TerritoryId]>;
   territories: Territory[];
   continents: Continent[];
   /** Número máximo de jugadores soportado por el mapa. */
@@ -158,6 +173,15 @@ export interface GameConfig {
   autoClaim: boolean;
   /** Progresión del valor de los canjes. */
   tradeProgression: 'classic' | 'fixed';
+  /**
+   * Tope del valor de un canje.
+   *
+   * Sin tope, la progresión clásica (4, 6, 8… +5) se dispara en partidas largas:
+   * medido en auto-juego, al canje 131 cada trío daba 645 ejércitos, así que un
+   * jugador reducido a un solo territorio se rehacía de golpe y era imposible de
+   * eliminar. La partida no terminaba nunca.
+   */
+  maxTradeValue?: number;
   /** Permitir dados de defensa 2 con 2+ ejércitos (regla estándar). */
   maxAttackDice: number;
   maxDefendDice: number;

@@ -95,6 +95,38 @@ export function traitsOf(profile: BotProfile | undefined): ProfileTraits {
   return BOT_PROFILES[profile ?? 'oportunista'];
 }
 
+/** Ronda a partir de la cual se considera que la partida se está enquistando. */
+const STALEMATE_FROM_ROUND = 12;
+/** Cuánto se relaja el umbral por cada ronda de más, y hasta dónde. */
+const RELIEF_PER_ROUND = 0.015;
+const MAX_RELIEF = 0.3;
+
+/**
+ * Rebaja del listón de ataque cuando la partida se atasca.
+ *
+ * Sin esto hay un empate estable: si nadie ataca, todos acumulan ejércitos, las
+ * probabilidades de conquista bajan para todos y ya nadie vuelve a atacar nunca.
+ * Se veía en las mediciones: partidas de 700 rondas sin un solo ganador.
+ *
+ * La guerra se va calentando: a partir de cierta ronda cada turno que pasa hace
+ * a todo el mundo un poco más temerario, hasta que alguien rompe el frente.
+ * No es aleatorio ni depende del reloj, así que la partida sigue siendo
+ * reproducible.
+ */
+export function stalemateRelief(round: number): number {
+  return Math.min(MAX_RELIEF, Math.max(0, round - STALEMATE_FROM_ROUND) * RELIEF_PER_ROUND);
+}
+
+/** Umbral de ataque que aplica de verdad, con perfil, sesgo y atasco. */
+export function effectiveAttackThreshold(
+  traits: ProfileTraits,
+  round: number,
+  bias?: StrategyBias,
+): number {
+  const base = traits.attackThreshold + (bias?.thresholdShift ?? 0);
+  return Math.max(0.2, base - stalemateRelief(round));
+}
+
 // ===== ANÁLISIS DEL TABLERO =====
 
 export interface TerritoryThreat {
@@ -505,7 +537,7 @@ export function decideAction(
     }
     const options = rankedAttacks(state, map, playerId, profile, bias);
     const best = options[0];
-    const threshold = Math.max(0.25, traits.attackThreshold + (bias?.thresholdShift ?? 0));
+    const threshold = effectiveAttackThreshold(traits, state.round, bias);
     if (best && best.odds >= threshold) {
       return { type: 'attack', playerId, from: best.from, to: best.to, dice: best.dice };
     }
@@ -587,7 +619,7 @@ export function botCommentary(
     parts.push(`Me falta ${missingNames} para cerrar ${bestContinent.name} (+${bestContinent.bonus}).`);
   }
 
-  if (best && best.odds >= traitsOf(profile).attackThreshold) {
+  if (best && best.odds >= effectiveAttackThreshold(traitsOf(profile), state.round)) {
     const fromName = map.territories.find((t) => t.id === best.from)?.name ?? best.from;
     const toName = map.territories.find((t) => t.id === best.to)?.name ?? best.to;
     parts.push(

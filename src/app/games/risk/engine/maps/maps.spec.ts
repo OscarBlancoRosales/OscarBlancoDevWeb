@@ -5,13 +5,29 @@ import { SPAIN_MAP } from './spain.map';
 import { SPAIN_REGIONS_MAP } from './spain-regions.map';
 import { isMapConnected } from '../rules';
 import { deriveAdjacency, territoryPath, hexNeighbors } from '../geometry';
+import { adjacencyByContact } from '../geo/topology';
+import { MultiPolygon, Point2, pointInPolygon } from '../geo/geometry2d';
 import { GameMap } from '../types';
 
-/** Adyacencia derivada del dibujo, para contrastarla con la declarada. */
+/** ¿El mapa se dibuja con siluetas reales o con retículo hexagonal? */
+function usesShapes(map: GameMap): boolean {
+  return map.territories.every((territory) => !!territory.shape);
+}
+
+/** Adyacencia derivada del retículo, para contrastarla con la declarada. */
 function drawnAdjacency(map: GameMap): Record<string, string[]> {
   const hexes: Record<string, [number, number][]> = {};
-  for (const territory of map.territories) hexes[territory.id] = territory.hexes as [number, number][];
+  for (const territory of map.territories) {
+    hexes[territory.id] = (territory.hexes ?? []) as [number, number][];
+  }
   return deriveAdjacency(hexes);
+}
+
+/** Las rutas marítimas declaradas por el mapa, normalizadas. */
+function seaRouteKeys(map: GameMap): Set<string> {
+  return new Set(
+    (map.seaRoutes ?? []).map(([a, b]) => (a < b ? `${a}|${b}` : `${b}|${a}`)),
+  );
 }
 
 describe('registro de mapas', () => {
@@ -67,16 +83,46 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
     for (const name of names) expect(name.trim().length).toBeGreaterThan(0);
   });
 
-  it('cada territorio tiene al menos una celda dibujada', () => {
+  it('cada territorio tiene dibujo', () => {
     for (const territory of map.territories) {
-      expect(territory.hexes.length, territory.name).toBeGreaterThan(0);
+      const drawn = !!territory.shape || (territory.hexes?.length ?? 0) > 0;
+      expect(drawn, territory.name).toBe(true);
+    }
+  });
+
+  it('los mapas con siluetas traen lienzo y punto de etiqueta', () => {
+    if (!usesShapes(map)) return;
+    expect(map.board?.width).toBeGreaterThan(0);
+    expect(map.board?.height).toBeGreaterThan(0);
+    for (const territory of map.territories) {
+      expect(territory.labelAnchor, territory.name).toBeDefined();
+      const [x, y] = territory.labelAnchor!;
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(map.board!.width);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(map.board!.height);
+    }
+  });
+
+  it('las siluetas son paths cerrados y sin valores raros', () => {
+    if (!usesShapes(map)) return;
+    for (const territory of map.territories) {
+      const path = territory.shape!;
+      expect(path.startsWith('M'), territory.name).toBe(true);
+      expect(path.endsWith('Z'), territory.name).toBe(true);
+      expect(path).not.toContain('NaN');
+      expect(path).not.toContain('undefined');
+      // Cada trozo dibujado abre con M y cierra con Z.
+      expect((path.match(/M/g) ?? []).length).toBe((path.match(/Z/g) ?? []).length);
     }
   });
 
   it('las celdas de cada territorio forman una región conexa', () => {
+    if (usesShapes(map)) return;
     for (const territory of map.territories) {
-      const cells = new Set(territory.hexes.map(([c, r]) => `${c},${r}`));
-      const [start] = territory.hexes;
+      const cells = new Set((territory.hexes ?? []).map(([c, r]) => `${c},${r}`));
+      const [start] = territory.hexes ?? [];
+      if (!start) continue;
       const seen = new Set([`${start[0]},${start[1]}`]);
       const queue = [start];
       while (queue.length > 0) {
@@ -94,9 +140,10 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
   });
 
   it('ninguna celda pertenece a dos territorios', () => {
+    if (usesShapes(map)) return;
     const owner = new Map<string, string>();
     for (const territory of map.territories) {
-      for (const [col, row] of territory.hexes) {
+      for (const [col, row] of territory.hexes ?? []) {
         const cellKey = `${col},${row}`;
         expect(owner.has(cellKey), `celda ${cellKey} duplicada en ${territory.name}`).toBe(false);
         owner.set(cellKey, territory.id);
@@ -189,6 +236,7 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
   });
 
   it('todo territorio dibujado como vecino lo es también en las reglas (sin fronteras falsas)', () => {
+    if (usesShapes(map)) return;
     const drawn = drawnAdjacency(map);
     const byId = new Map(map.territories.map((t) => [t.id, t]));
     for (const [id, neighbours] of Object.entries(drawn)) {
@@ -202,11 +250,39 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
   });
 
   it('genera un path SVG válido para cada territorio', () => {
+    if (usesShapes(map)) return;
     for (const territory of map.territories) {
-      const path = territoryPath(territory.hexes, map.hexRadius);
+      const path = territoryPath(territory.hexes ?? [], map.hexRadius);
       expect(path.length, territory.name).toBeGreaterThan(10);
       expect(path).not.toContain('NaN');
       expect(path).not.toContain('undefined');
+    }
+  });
+
+  it('toda adyacencia es frontera de tierra o ruta marítima declarada', () => {
+    if (!usesShapes(map)) return;
+    const routes = seaRouteKeys(map);
+    const land = adjacencyByContact(
+      Object.fromEntries(map.territories.map((t) => [t.id, parsePath(t.shape!)])),
+      1,
+    );
+    for (const territory of map.territories) {
+      for (const other of territory.adjacent) {
+        const key = territory.id < other ? `${territory.id}|${other}` : `${other}|${territory.id}`;
+        const touching = land[territory.id]?.includes(other) ?? false;
+        expect(
+          touching || routes.has(key),
+          `${territory.name} y ${map.territories.find((t) => t.id === other)?.name} ni se tocan ni tienen ruta marítima`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it('las rutas marítimas declaradas existen como adyacencia', () => {
+    const byId = new Map(map.territories.map((t) => [t.id, t]));
+    for (const [a, b] of map.seaRoutes ?? []) {
+      expect(byId.get(a)?.adjacent, `${a} -> ${b}`).toContain(b);
+      expect(byId.get(b)?.adjacent, `${b} -> ${a}`).toContain(a);
     }
   });
 
@@ -343,15 +419,37 @@ describe('mapa de España por comunidades', () => {
     expect(SPAIN_REGIONS_MAP.continents).toHaveLength(5);
   });
 
-  it('reutiliza el dibujo del mapa provincial', () => {
-    const provincesByCommunity = new Map(
-      SPAIN_MAP.continents.map((continent) => [continent.id, continent.territoryIds]),
+  it('comparte lienzo con el mapa provincial', () => {
+    expect(SPAIN_REGIONS_MAP.board).toEqual(SPAIN_MAP.board);
+  });
+
+  it('cada provincia cae dentro de su comunidad', () => {
+    // Es la comprobación de que la fusión de siluetas es coherente con el mapa
+    // provincial y no un dibujo distinto: el punto de etiqueta de cada
+    // provincia tiene que caer dentro de la silueta de su comunidad.
+    const regionOf = new Map<string, string>();
+    for (const continent of SPAIN_MAP.continents) {
+      for (const id of continent.territoryIds) {
+        // Ceuta y Melilla van sueltas en el mapa por comunidades.
+        regionOf.set(id, continent.id === 'ceuta-melilla' ? id.toLowerCase() : continent.id);
+      }
+    }
+    const regionShapes = new Map(
+      SPAIN_REGIONS_MAP.territories.map((t) => [t.id, parsePath(t.shape!)]),
     );
-    const galicia = SPAIN_REGIONS_MAP.territories.find((t) => t.id === 'galicia')!;
-    const provinceCells = provincesByCommunity
-      .get('galicia')!
-      .flatMap((id) => SPAIN_MAP.territories.find((t) => t.id === id)!.hexes);
-    expect(galicia.hexes).toHaveLength(provinceCells.length);
+    const nombres: Record<string, string> = { ce: 'ceuta', ml: 'melilla' };
+
+    let comprobadas = 0;
+    for (const province of SPAIN_MAP.territories) {
+      const regionId = nombres[regionOf.get(province.id)!] ?? regionOf.get(province.id)!;
+      const shape = regionShapes.get(regionId);
+      expect(shape, `sin silueta para ${regionId}`).toBeDefined();
+      const point = province.labelAnchor!;
+      const inside = shape!.some((polygon) => pointInPolygon(point, polygon));
+      expect(inside, `${province.name} debería caer dentro de ${regionId}`).toBe(true);
+      comprobadas++;
+    }
+    expect(comprobadas).toBe(52);
   });
 
   it('es bastante más corto que el provincial', () => {
@@ -382,3 +480,20 @@ describe('mapa de España por comunidades', () => {
     expect(byId.get('ceuta')!.adjacent).toContain('melilla');
   });
 });
+
+
+/** Convierte un `path` de solo M/L/Z en polígonos, para poder medirlos. */
+function parsePath(path: string): MultiPolygon {
+  const rings: Point2[][] = [];
+  for (const chunk of path.split('M').slice(1)) {
+    const points = chunk
+      .replace(/Z/g, '')
+      .split('L')
+      .map((pair) => pair.trim().split(/\s+/).map(Number) as Point2)
+      .filter((point) => point.length === 2 && point.every(Number.isFinite));
+    if (points.length >= 3) {
+      rings.push([...points, points[0]]);
+    }
+  }
+  return rings.map((ring) => [ring]);
+}

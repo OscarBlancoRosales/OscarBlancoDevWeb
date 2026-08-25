@@ -181,37 +181,80 @@ escriben en Firebase ni los ve el resto de la mesa.
 
 ## 5. Los mapas
 
-| Mapa | Territorios | Regiones | Ritmo |
-|---|---|---|---|
-| Todo el mundo | 42 | 6 continentes | La partida larga de siempre |
-| España por provincias | 52 | 18 comunidades | Muy territorial, la más larga |
-| España por comunidades | 19 | 5 macrozonas | Partida rápida |
+| Mapa | Territorios | Regiones | Dibujo | Ritmo |
+|---|---|---|---|---|
+| Todo el mundo | 42 | 6 continentes | retículo hexagonal | La partida larga de siempre |
+| España por provincias | 52 | 18 comunidades | **cartografía real** | Muy territorial, la más larga |
+| España por comunidades | 19 | 5 macrozonas | **cartografía real** | Partida rápida |
 
-### Cómo se define un mapa
+### De cartografía real a tablero
 
-Los mapas son **datos**, no imágenes. Cada territorio es un conjunto de celdas de un
-retículo hexagonal que se escribe como arte ASCII:
+Los mapas de España no se dibujan a mano: se generan de límites administrativos
+reales con `npm run build:maps` (ver `tools/build-spain-map.ts`). El proceso es
+una herramienta de desarrollo; en tiempo de ejecución el juego solo carga datos
+ya masticados (un `path` SVG y un punto de etiqueta por territorio).
 
-```ts
-const ART = [
-  'AK AK NT NT NT GL GL GL .  .  .  .  ...',
-  '.  AK NT NT NT GL GL GL IC IC .  .  ...',
-];
+```
+GeoJSON de provincias
+   │
+   ├─ tirar islotes ........... A Coruña trae 1069 anillos; casi todos son rocas
+   │                            de un par de metros que en un tablero no se ven
+   ├─ Canarias al recuadro .... si se dibujan donde están, la península se queda
+   │                            en un tercio de la pantalla
+   ├─ proyectar y encajar ..... equirrectangular con paralelo 40°, a un lienzo
+   │                            de 1000 unidades de ancho
+   ├─ topología compartida .... las fronteras se extraen UNA vez como "arcos"
+   │                            (30 231 vértices de origen → 4183)
+   ├─ simplificar ............. cada arco una sola vez, así que las provincias
+   │                            vecinas siguen encajando sin rendijas
+   ├─ fronteras por contacto .. dos provincias son vecinas si sus siluetas se
+   │                            tocan (umbral 0,75 ud. ≈ 750 m)
+   └─ punto de etiqueta ....... polo de inaccesibilidad, no centroide
 ```
 
-De ahí se derivan el contorno (`geometry.ts` recorre las aristas del borde), el centroide
-para la etiqueta y las conexiones marítimas. Para añadir un mapa nuevo basta con crear un
-archivo en `engine/maps/` y registrarlo en `map-registry.ts`: los tests de integridad se
-aplican solos a todos los mapas del registro.
+Tres decisiones que merecen explicación:
 
-Hay dos formas de declarar las fronteras:
+**Por qué topología compartida y no simplificar provincia a provincia.** Si cada
+provincia se simplifica por su cuenta, la frontera común entre dos vecinas se
+simplifica dos veces y de formas distintas, y aparecen rendijas y solapes. Al
+extraer las fronteras como arcos y simplificar cada arco una única vez, las dos
+provincias que lo comparten siguen encajando por construcción.
 
-- **Explícita** (mapa del mundo): la adyacencia canónica del tablero original se escribe a
-  mano y un test comprueba que el dibujo no inventa fronteras que no existen.
-- **Derivada del dibujo** (mapas de España): son vecinos los que se tocan. Sin fronteras
-  falsas por construcción. Las conexiones por mar se declaran aparte.
+**Por qué las fronteras se miden por contacto y no por aristas compartidas.** La
+cartografía real está llena de uniones en T: Ávila y Valladolid se tocan de
+verdad, pero una tiene un vértice en mitad de la arista de la otra, así que no
+comparten ninguna arista. Medido sobre los datos: las fronteras reales están a
+distancia 0 y las provincias que solo se acercan están a más de 20 unidades. El
+umbral no es delicado.
 
----
+**Por qué polo de inaccesibilidad y no centroide.** El centroide vale para formas
+convexas, pero en una silueta real se sale fuera con facilidad (Galicia con las
+rías, la bahía de Cádiz) y la etiqueta acaba flotando en el mar.
+
+El resultado se contrasta contra las fronteras conocidas: las 109 que salen de la
+cartografía son todas reales, y de hecho corrigen dos que el dibujo hexagonal
+anterior se había inventado (A Coruña con Asturias, Girona con Tarragona).
+
+El mapa por comunidades no es un dibujo aparte: se obtiene **fundiendo** las
+provincias de cada comunidad sobre la misma topología (los arcos interiores del
+grupo aparecen dos veces y se descartan), así que las costas coinciden
+exactamente entre los dos mapas. Un test lo comprueba: el punto de etiqueta de
+cada una de las 52 provincias tiene que caer dentro de la silueta de su
+comunidad.
+
+### Añadir un mapa
+
+Un mapa es un archivo en `engine/maps/` registrado en `map-registry.ts`. Los
+tests de integridad se aplican solos a todos los mapas del registro. Hay dos
+formas de dar el dibujo:
+
+- **`shape`**: un `path` SVG en coordenadas de tablero, más `labelAnchor` y
+  `board` con el tamaño del lienzo. Es lo que usan los mapas de España.
+- **`hexes`**: celdas de un retículo hexagonal escritas como arte ASCII, de las
+  que se derivan contorno y etiqueta. Es lo que usa todavía el mapa del mundo.
+
+En ambos casos, las adyacencias que no son fronteras de tierra se declaran en
+`seaRoutes` y se dibujan como líneas de puntos.
 
 ## 6. Tests
 
@@ -226,8 +269,12 @@ Qué se cubre:
   eliminación, victoria, reparto manual, inmutabilidad, determinismo.
 - **Combate**: distribuciones exactas de dados contrastadas contra una simulación
   independiente de 200 000 batallas.
-- **Mapas**: integridad de los tres mapas (contigüidad, simetría, conexidad, continentes,
-  fronteras falsas, paths SVG válidos).
+- **Geometría**: simplificación, topología compartida, fusión de territorios,
+  fronteras por contacto y polo de inaccesibilidad (82 tests sobre figuras
+  controladas, sin depender de datos reales).
+- **Mapas**: integridad de los tres mapas (contigüidad, simetría, conexidad,
+  continentes, fronteras falsas, paths válidos) y coherencia entre el mapa
+  provincial y el de comunidades.
 - **IA**: legalidad de todas sus decisiones y **partidas completas de bots de principio a
   fin** en los tres mapas (garantiza que la IA no se atasca nunca).
 - **Sincronización**: reconstrucción del estado desde el log, snapshots, elección de

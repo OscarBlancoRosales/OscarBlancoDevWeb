@@ -1,42 +1,27 @@
-import { GameMap, Territory } from '../types';
-import { deriveAdjacency, Hex, parseHexArt } from '../geometry';
+import { GameMap, Territory, TerritoryId } from '../types';
+import {
+  SPAIN_BOARD_HEIGHT,
+  SPAIN_BOARD_WIDTH,
+  SPAIN_LAND_ADJACENCY,
+  SPAIN_SHAPES,
+} from './spain.shapes';
 
 /**
  * España por provincias: 52 territorios agrupados en comunidades autónomas
  * (que aquí hacen de "continentes" y dan bonificación).
  *
- * A diferencia del mapa del mundo, aquí las fronteras terrestres se derivan del
- * propio dibujo: el retículo está trazado con la posición real de cada provincia,
- * así que lo que se toca en pantalla es exactamente lo que se puede atacar. No
- * hay fronteras invisibles ni fronteras dibujadas por las que no se pueda pasar.
- * Las conexiones marítimas (islas, Ceuta y Melilla) se declaran aparte.
+ * Las siluetas son cartografía real: `npm run build:maps` descarga los límites
+ * provinciales, tira los islotes que en un tablero no se ven, simplifica sobre
+ * la topología compartida (para que las fronteras encajen sin rendijas) y
+ * calcula el punto de etiqueta de cada provincia. Aquí solo se les pone nombre,
+ * comunidad y las conexiones por mar, que la geografía no puede deducir.
+ *
+ * Las fronteras terrestres NO se declaran a mano: salen del contacto real entre
+ * siluetas. Un test las contrasta con las fronteras conocidas.
  */
-const ART = [
-  '.  AC AC AS AS AS CB CB BI SS',
-  'AC AC LU LU AS AS CB BI BI SS NA',
-  'PO AC LU LU LE LE CB BU VI VI NA HU',
-  'PO PO OU OU LE LE PL BU BU RI NA HU HU',
-  '.  OU OU ZA LE VA PL BU BU SO ZG ZG HU LL',
-  '.  .  ZA ZA ZA VA VA SG SO SO ZG ZG LL LL GI',
-  '.  .  SL SL SL SL AV SG GU GU ZG TE TA BR GI',
-  '.  .  SL SL CC AV AV MD GU GU TE TE TA TA',
-  '.  .  CC CC CC TO MD MD CU CU TE CS CS',
-  '.  BD CC CC TO TO TO CU CU CU VL CS .  PM PM',
-  '.  BD BD BD BD CR CR CR AB VL VL .  .  PM',
-  '.  HV BD CO CR CR JA AB AB AT AT',
-  '.  HV SV SV CO CO JA GR MU MU',
-  '.  CD CD MG MG GR GR GR AM',
-  '.  .  CD MG .  GR .  .  AM',
-  '',
-  'TF TF GC GC .  .  CE .  ML',
-];
 
-/** Celdas de cada provincia. Se reutilizan para el mapa por comunidades. */
-export const SPAIN_PROVINCE_HEXES: Record<string, Hex[]> = parseHexArt(ART);
-const HEXES = SPAIN_PROVINCE_HEXES;
-
-/** Conexiones marítimas que el dibujo no puede expresar. */
-const SEA_ROUTES: Array<[string, string]> = [
+/** Conexiones marítimas: lo único que el contacto entre siluetas no da. */
+export const SPAIN_SEA_ROUTES: Array<[TerritoryId, TerritoryId]> = [
   ['PM', 'VL'],
   ['PM', 'CS'],
   ['PM', 'TA'],
@@ -155,13 +140,12 @@ for (const meta of SPAIN_COMMUNITIES) {
   for (const id of meta.ids) CONTINENT_OF[id] = meta.id;
 }
 
-const LAND_ADJACENCY = deriveAdjacency(HEXES);
-
+/** Fronteras terrestres (de la cartografía) más las conexiones por mar. */
 const ADJACENCY: Record<string, string[]> = {};
 for (const id of Object.keys(SPAIN_PROVINCE_NAMES)) {
-  ADJACENCY[id] = [...(LAND_ADJACENCY[id] ?? [])];
+  ADJACENCY[id] = [...(SPAIN_LAND_ADJACENCY[id] ?? [])];
 }
-for (const [a, b] of SEA_ROUTES) {
+for (const [a, b] of SPAIN_SEA_ROUTES) {
   if (!ADJACENCY[a].includes(b)) ADJACENCY[a].push(b);
   if (!ADJACENCY[b].includes(a)) ADJACENCY[b].push(a);
 }
@@ -172,15 +156,18 @@ const territories: Territory[] = Object.keys(SPAIN_PROVINCE_NAMES).map((id) => (
   name: SPAIN_PROVINCE_NAMES[id],
   continentId: CONTINENT_OF[id],
   adjacent: ADJACENCY[id],
-  hexes: HEXES[id] ?? [],
+  shape: SPAIN_SHAPES[id].path,
+  labelAnchor: SPAIN_SHAPES[id].label,
 }));
 
 export const SPAIN_MAP: GameMap = {
   id: 'spain',
   name: 'España por provincias',
   description:
-    'Las 52 provincias españolas agrupadas por comunidad autónoma. Partidas largas y muy territoriales.',
+    'Las 52 provincias españolas con sus fronteras reales, agrupadas por comunidad autónoma. Partidas largas y muy territoriales.',
   hexRadius: 20,
+  board: { width: SPAIN_BOARD_WIDTH, height: SPAIN_BOARD_HEIGHT },
+  seaRoutes: SPAIN_SEA_ROUTES,
   maxPlayers: 6,
   territories,
   continents: SPAIN_COMMUNITIES.map((meta) => ({

@@ -48,15 +48,28 @@ export function isValidSet(cards: readonly Card[]): boolean {
   return unique.size === 1 || unique.size === 3;
 }
 
+/** Tope por defecto del valor de un canje: se alcanza en el decimotercero. */
+export const DEFAULT_MAX_TRADE_VALUE = 50;
+
 /**
  * Valor del canje número `tradeCount + 1`.
- * Progresión clásica: 4, 6, 8, 10, 12, 15 y a partir de ahí +5.
+ * Progresión clásica: 4, 6, 8, 10, 12, 15 y a partir de ahí +5, con tope.
+ *
+ * El tope no es cosmético: sin él, una partida larga acaba repartiendo cientos
+ * de ejércitos por trío y nadie puede ser eliminado nunca.
  */
-export function tradeValue(tradeCount: number, progression: 'classic' | 'fixed' = 'classic'): number {
+export function tradeValue(
+  tradeCount: number,
+  progression: 'classic' | 'fixed' = 'classic',
+  maxValue: number = DEFAULT_MAX_TRADE_VALUE,
+): number {
   if (progression === 'fixed') return 6;
   const ladder = [4, 6, 8, 10, 12, 15];
-  if (tradeCount < ladder.length) return ladder[tradeCount];
-  return 15 + 5 * (tradeCount - ladder.length + 1);
+  const value =
+    tradeCount < ladder.length
+      ? ladder[tradeCount]
+      : 15 + 5 * (tradeCount - ladder.length + 1);
+  return Math.min(value, maxValue);
 }
 
 /** Busca el primer trío canjeable de la mano (null si no hay ninguno). */

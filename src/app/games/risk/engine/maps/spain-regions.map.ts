@@ -1,49 +1,23 @@
-import { GameMap, Territory } from '../types';
-import { deriveAdjacency, Hex } from '../geometry';
-import { SPAIN_COMMUNITIES, SPAIN_PROVINCE_HEXES } from './spain.map';
+import { GameMap, Territory, TerritoryId } from '../types';
+import { SPAIN_BOARD_HEIGHT, SPAIN_BOARD_WIDTH } from './spain.shapes';
+import { SPAIN_REGION_ADJACENCY, SPAIN_REGION_SHAPES } from './spain-regions.shapes';
 
 /**
  * España por comunidades autónomas: 19 territorios.
  *
- * Es el mismo dibujo que el mapa provincial, pero fundiendo las provincias de
- * cada comunidad en un solo territorio. Sale gratis (las celdas ya están
- * trazadas) y cambia por completo el ritmo: en vez de una campaña larga de 52
- * frentes, una partida rápida de media hora.
+ * Es la misma cartografía que el mapa provincial, fundiendo las provincias de
+ * cada comunidad sobre la misma topología: las costas y las fronteras coinciden
+ * exactamente con las del otro mapa, no son dos dibujos distintos.
  *
- * Las comunidades se agrupan en cinco macrozonas que hacen de "continentes".
- */
-
-/**
- * Territorios del mapa: una comunidad autónoma cada uno.
+ * Ceuta y Melilla van sueltas: comparten comunidad pero están a 380 km la una de
+ * la otra, y un territorio de RISK tiene que ser una pieza continua.
  *
- * Ceuta y Melilla van por separado: comparten comunidad, pero están a 380 km la
- * una de la otra y un territorio de RISK tiene que ser una pieza continua.
+ * Cambia por completo el ritmo respecto al provincial: en vez de una campaña
+ * larga de 52 frentes, una partida corta.
  */
-interface RegionMeta {
-  id: string;
-  name: string;
-  /** Provincias del mapa provincial cuyas celdas se funden. */
-  provinces: string[];
-}
-
-const REGIONS: RegionMeta[] = [
-  ...SPAIN_COMMUNITIES.filter((community) => community.id !== 'ceuta-melilla').map((community) => ({
-    id: community.id,
-    name: community.name,
-    provinces: community.ids,
-  })),
-  { id: 'ceuta', name: 'Ceuta', provinces: ['CE'] },
-  { id: 'melilla', name: 'Melilla', provinces: ['ML'] },
-];
-
-/** Celdas de cada región: la unión de las de sus provincias. */
-const HEXES: Record<string, Hex[]> = {};
-for (const region of REGIONS) {
-  HEXES[region.id] = region.provinces.flatMap((provinceId) => SPAIN_PROVINCE_HEXES[provinceId] ?? []);
-}
 
 /** Conexiones marítimas entre comunidades. */
-const SEA_ROUTES: Array<[string, string]> = [
+export const SPAIN_REGION_SEA_ROUTES: Array<[TerritoryId, TerritoryId]> = [
   ['baleares', 'valenciana'],
   ['baleares', 'cataluna'],
   ['canarias', 'andalucia'],
@@ -51,6 +25,28 @@ const SEA_ROUTES: Array<[string, string]> = [
   ['melilla', 'andalucia'],
   ['ceuta', 'melilla'],
 ];
+
+const NAMES: Record<string, string> = {
+  galicia: 'Galicia',
+  asturias: 'Asturias',
+  cantabria: 'Cantabria',
+  'pais-vasco': 'País Vasco',
+  navarra: 'Navarra',
+  rioja: 'La Rioja',
+  aragon: 'Aragón',
+  cataluna: 'Cataluña',
+  valenciana: 'C. Valenciana',
+  murcia: 'Murcia',
+  'castilla-leon': 'Castilla y León',
+  madrid: 'Madrid',
+  'castilla-mancha': 'Castilla-La Mancha',
+  extremadura: 'Extremadura',
+  andalucia: 'Andalucía',
+  baleares: 'Illes Balears',
+  canarias: 'Canarias',
+  ceuta: 'Ceuta',
+  melilla: 'Melilla',
+};
 
 interface ZoneMeta {
   id: string;
@@ -60,6 +56,7 @@ interface ZoneMeta {
   ids: string[];
 }
 
+/** Las comunidades se agrupan en macrozonas, que hacen de "continentes". */
 const ZONES: ZoneMeta[] = [
   {
     id: 'cantabrica',
@@ -103,14 +100,9 @@ for (const zone of ZONES) {
   for (const id of zone.ids) ZONE_OF[id] = zone.id;
 }
 
-const NAMES: Record<string, string> = {};
-for (const region of REGIONS) NAMES[region.id] = region.name;
-
-const LAND_ADJACENCY = deriveAdjacency(HEXES);
-
 const ADJACENCY: Record<string, string[]> = {};
-for (const id of Object.keys(NAMES)) ADJACENCY[id] = [...(LAND_ADJACENCY[id] ?? [])];
-for (const [a, b] of SEA_ROUTES) {
+for (const id of Object.keys(NAMES)) ADJACENCY[id] = [...(SPAIN_REGION_ADJACENCY[id] ?? [])];
+for (const [a, b] of SPAIN_REGION_SEA_ROUTES) {
   if (!ADJACENCY[a].includes(b)) ADJACENCY[a].push(b);
   if (!ADJACENCY[b].includes(a)) ADJACENCY[b].push(a);
 }
@@ -121,15 +113,18 @@ const territories: Territory[] = Object.keys(NAMES).map((id) => ({
   name: NAMES[id],
   continentId: ZONE_OF[id],
   adjacent: ADJACENCY[id],
-  hexes: HEXES[id] ?? [],
+  shape: SPAIN_REGION_SHAPES[id].path,
+  labelAnchor: SPAIN_REGION_SHAPES[id].label,
 }));
 
 export const SPAIN_REGIONS_MAP: GameMap = {
   id: 'spain-regions',
   name: 'España por comunidades',
   description:
-    'Las comunidades y ciudades autónomas agrupadas en cinco macrozonas. La partida corta: menos frentes y más mordiente.',
+    'Las comunidades y ciudades autónomas con sus contornos reales, agrupadas en cinco macrozonas. La partida corta: menos frentes y más mordiente.',
   hexRadius: 20,
+  board: { width: SPAIN_BOARD_WIDTH, height: SPAIN_BOARD_HEIGHT },
+  seaRoutes: SPAIN_REGION_SEA_ROUTES,
   maxPlayers: 5,
   territories,
   continents: ZONES.map((zone) => ({

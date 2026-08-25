@@ -58,24 +58,34 @@ export function renderMap(map: GameMap): RenderedMap {
 
   const territories: RenderedTerritory[] = map.territories.map((territory) => {
     const continent = map.continents.find((c) => c.id === territory.continentId);
+    const hexes = territory.hexes ?? [];
+    // Si el mapa trae silueta real la usamos tal cual; si no, la derivamos del
+    // retículo hexagonal.
+    const usesShape = !!territory.shape;
     return {
       id: territory.id,
       name: territory.name,
       nameLines: splitLabel(territory.name),
       continentId: territory.continentId,
       continentColor: continent?.color ?? '#666666',
-      path: territoryPath(territory.hexes, radius, radius * 0.28),
-      label: labelPoint(territory.hexes, radius),
-      size: territory.hexes.length,
+      path: usesShape ? territory.shape! : territoryPath(hexes, radius, radius * 0.28),
+      label: territory.labelAnchor
+        ? { x: territory.labelAnchor[0], y: territory.labelAnchor[1] }
+        : labelPoint(hexes, radius),
+      size: usesShape ? 1 : hexes.length,
     };
   });
 
   const byId: Record<TerritoryId, RenderedTerritory> = {};
   for (const territory of territories) byId[territory.id] = territory;
 
+  // Rutas marítimas: las adyacencias que el dibujo no muestra pegadas.
+  // Con retículo se sabe por las celdas; con siluetas, por la distancia entre
+  // los puntos de etiqueta comparada con el tamaño del territorio.
   const allHexes: Record<string, Hex[]> = {};
-  for (const territory of map.territories) allHexes[territory.id] = territory.hexes;
+  for (const territory of map.territories) allHexes[territory.id] = territory.hexes ?? [];
   const touching = deriveAdjacency(allHexes);
+  const usesShapes = map.territories.some((territory) => !!territory.shape);
 
   const routes: RenderedRoute[] = [];
   const seen = new Set<string>();
@@ -84,7 +94,8 @@ export function renderMap(map: GameMap): RenderedMap {
       const key = territory.id < other ? `${territory.id}|${other}` : `${other}|${territory.id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (touching[territory.id]?.includes(other)) continue;
+      if (!usesShapes && touching[territory.id]?.includes(other)) continue;
+      if (usesShapes && !isSeaRoute(map, territory.id, other)) continue;
       const a = byId[territory.id]?.label;
       const b = byId[other]?.label;
       if (!a || !b) continue;
@@ -92,7 +103,9 @@ export function renderMap(map: GameMap): RenderedMap {
     }
   }
 
-  const bounds = hexesBounds(map.territories.flatMap((t) => t.hexes), radius, padding);
+  const bounds = map.board
+    ? { minX: 0, minY: 0, width: map.board.width, height: map.board.height }
+    : hexesBounds(map.territories.flatMap((t) => t.hexes ?? []), radius, padding);
   const rendered: RenderedMap = {
     mapId: map.id,
     territories,
@@ -104,6 +117,17 @@ export function renderMap(map: GameMap): RenderedMap {
   };
   cache.set(map.id, rendered);
   return rendered;
+}
+
+/**
+ * En los mapas con siluetas, una adyacencia es ruta marítima si el mapa la ha
+ * declarado como tal. El dato lo trae el propio mapa, que es quien sabe qué
+ * fronteras son de tierra y cuáles son un salto por mar.
+ */
+function isSeaRoute(map: GameMap, from: string, to: string): boolean {
+  return (map.seaRoutes ?? []).some(
+    ([a, b]) => (a === from && b === to) || (a === to && b === from),
+  );
 }
 
 /**
