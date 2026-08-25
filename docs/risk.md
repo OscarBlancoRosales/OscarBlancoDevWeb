@@ -80,10 +80,23 @@ rechaza todo (comprobado: 401 en `riskRooms`, en `rooms` y en la raíz). Las reg
 en **`database.rules.json`**, en la raíz del repositorio, listas para subir:
 
 ```bash
-npm i -g firebase-tools     # una vez
-firebase login              # una vez
-npm run deploy:rules
+npm run firebase:login   # una vez: abre el navegador y te pide la cuenta
+npm run check:rules      # comprueba los invariantes antes de subir nada
+npm run deploy:rules     # sube database.rules.json al proyecto
 ```
+
+No hace falta instalar nada: los scripts usan `npx --yes firebase-tools`, que se
+lo descarga solo la primera vez. El proyecto de destino está fijado en
+`.firebaserc` (`oscarblanco-scrum-poker`).
+
+Para comprobar que ha surtido efecto, sin abrir la consola:
+
+```bash
+curl "https://oscarblanco-scrum-poker-default-rtdb.europe-west1.firebasedatabase.app/riskRooms.json?shallow=true"
+```
+
+Antes de subirlas devuelve `Permission denied`; después, `null` (o la lista de
+salas). Ese `null` es la señal de que el juego online ya funciona.
 
 Es lo único que queda por hacer para que el juego online funcione, y solo lo puede hacer
 quien tenga acceso al proyecto de Firebase. Si prefieres pegarlas a mano, están también en
@@ -228,9 +241,13 @@ tanda porque obliga a activar un proveedor en la consola y a que la aplicación 
 elegancia si no está activo.
 
 > **Ojo al desplegar:** `database.rules.json` es el conjunto **completo** de reglas de la
-> base, no solo las del RISK. Subirlo sustituye también las de `rooms`, que es el nodo del
-> Scrum Poker. Están ahí tal como estaban, abiertas: cambiarlas es una decisión aparte y
-> tocaría revisar el Scrum Poker antes.
+> base, no solo las del RISK. Subirlo **sustituye todo lo que haya ahora**, incluidas las
+> de `rooms`, que es el nodo del Scrum Poker.
+>
+> Antes de la primera subida, **copia las reglas que tengas** (consola de Firebase →
+> *Realtime Database* → *Reglas*) y guárdalas por si acaso. Si el Scrum Poker usa algo
+> distinto de lo que hay en este fichero, hay que fundir las dos cosas a mano antes de
+> subir, no sustituir a ciegas.
 
 `npm run check:rules` comprueba que el JSON de aquí arriba y el del fichero no se separen,
 y que sigan en pie los invariantes de la lista.
