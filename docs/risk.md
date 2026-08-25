@@ -80,14 +80,21 @@ rechaza todo (comprobado: 401 en `riskRooms`, en `rooms` y en la raíz). Las reg
 en **`database.rules.json`**, en la raíz del repositorio, listas para subir:
 
 ```bash
-npm run firebase:login   # una vez: abre el navegador y te pide la cuenta
-npm run check:rules      # comprueba los invariantes antes de subir nada
-npm run deploy:rules     # sube database.rules.json al proyecto
+npm install -g firebase-tools   # una vez
+firebase login                  # una vez: abre el navegador
+npm run check:rules             # comprueba los invariantes antes de subir nada
+npm run deploy:rules            # sube database.rules.json al proyecto
 ```
 
-No hace falta instalar nada: los scripts usan `npx --yes firebase-tools`, que se
-lo descarga solo la primera vez. El proyecto de destino está fijado en
-`.firebaserc` (`oscarblanco-scrum-poker`).
+El proyecto de destino está fijado en `.firebaserc` (`oscarblanco-scrum-poker`).
+
+**Por qué la instalación es explícita y no `npx --yes firebase-tools`.** Se probó
+lo segundo, por ahorrar un comando, y se descartó: `npx --yes` se salta la
+confirmación y **descarga y ejecuta la última versión que haya en el registro en
+ese momento**, sin fijar versión y sin comprobación de integridad, justo en el
+comando con el que entregas tus credenciales de Google y despliegas en tu
+proyecto. Instalarla a mano es un comando más, se hace una vez, y actualizas
+cuando tú decides.
 
 Para comprobar que ha surtido efecto, sin abrir la consola:
 
