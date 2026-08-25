@@ -7,19 +7,58 @@
     "riskRooms": {
       ".read": true,
       "$roomId": {
-        ".write": true,
-        ".validate": "newData.hasChildren(['meta']) || !newData.exists()",
+        ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
+        ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
-          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])"
+          ".write": true,
+          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
+          "seed": {
+            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+          },
+          "mapId": {
+            ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+          },
+          "maxPlayers": {
+            ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "ownerName": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "$other": {
+            ".validate": true
+          }
+        },
+        "seats": {
+          "$seatId": {
+            ".write": true,
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "$other": {
+              ".validate": true
+            }
+          }
         },
         "log": {
           "$entry": {
+            ".write": "!data.exists() && newData.exists()",
             ".validate": "newData.hasChildren(['action'])"
           }
         },
+        "snapshot": {
+          ".write": "!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val())",
+          ".validate": "newData.hasChildren(['upTo', 'state'])"
+        },
         "chat": {
           "$message": {
-            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600"
+            ".write": "!data.exists() && newData.exists()",
+            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600 && newData.child('author').isString() && newData.child('author').val().length <= 40"
           }
         }
       }

@@ -264,6 +264,23 @@ describe('RiskLobby', () => {
       expect(localStorage.getItem('risk_seat_id')).toBe(firstSeat);
     });
 
+    it('una sala local siempre se puede borrar', async () => {
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      component.playerName = 'Oscar';
+      await component.createRoom(true);
+      await component.loadSavedRooms();
+      expect(component.canDelete(component.savedRooms[0])).toBe(true);
+    });
+
+    it('una sala online ajena no ofrece el botón de borrar', () => {
+      // Las reglas de la base solo dejan borrarla a quien la creó, así que el
+      // botón no debe prometer algo que va a ser rechazado.
+      const ajena = {
+        meta: { id: 'ABC', local: false, ownerUid: 'otra-persona' },
+      } as unknown as Parameters<typeof component.canDelete>[0];
+      expect(component.canDelete(ajena)).toBe(false);
+    });
+
     it('borrar una sala la quita de la lista', async () => {
       vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
       component.playerName = 'Oscar';

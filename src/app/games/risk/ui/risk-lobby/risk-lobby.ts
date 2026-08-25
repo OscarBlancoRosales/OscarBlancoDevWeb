@@ -277,9 +277,30 @@ export class RiskLobby implements OnInit {
     await this.router.navigate(['/juegos/risk/mesa'], { queryParams: { room: summary.meta.id } });
   }
 
+  /**
+   * ¿Puedo borrar esta sala?
+   *
+   * Las locales viven en este navegador y son mías. Las online solo las puede
+   * borrar quien las creó: las reglas de la base lo exigen, así que el botón no
+   * debe prometer algo que va a ser rechazado.
+   */
+  canDelete(summary: RoomSummary): boolean {
+    if (summary.meta.local) return true;
+    return this.isAdmin && summary.meta.ownerUid === this.ownerUid();
+  }
+
   async deleteRoom(summary: RoomSummary, event: Event): Promise<void> {
     event.stopPropagation();
-    await this.rooms.deleteRoom(summary.meta.id);
+    if (!this.canDelete(summary)) {
+      this.error = 'Esa sala solo la puede borrar quien la creó.';
+      return;
+    }
+    try {
+      await this.rooms.deleteRoom(summary.meta.id);
+      this.error = '';
+    } catch {
+      this.error = 'No se ha podido borrar la sala: la base de datos lo ha rechazado.';
+    }
     await this.loadSavedRooms();
     this.refreshView();
   }

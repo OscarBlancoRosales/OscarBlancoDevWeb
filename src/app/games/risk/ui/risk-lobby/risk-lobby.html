@@ -264,7 +264,13 @@
             <span class="status" [attr.data-status]="room.meta.status">
               {{ statusLabel(room.meta) }}
             </span>
-            <button class="ghost danger" type="button" (click)="deleteRoom(room, $event)" title="Borrar sala">
+            <button
+              class="ghost danger"
+              type="button"
+              *ngIf="canDelete(room)"
+              (click)="deleteRoom(room, $event)"
+              title="Borrar sala"
+            >
               ✕
             </button>
           </li>

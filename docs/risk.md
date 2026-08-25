@@ -99,19 +99,58 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
     "riskRooms": {
       ".read": true,
       "$roomId": {
-        ".write": true,
-        ".validate": "newData.hasChildren(['meta']) || !newData.exists()",
+        ".write": "!data.exists() || auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
+        ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
         "meta": {
-          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])"
+          ".write": true,
+          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
+          "seed": {
+            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+          },
+          "mapId": {
+            ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
+          },
+          "maxPlayers": {
+            ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
+          },
+          "name": {
+            ".validate": "newData.isString() && newData.val().length <= 80"
+          },
+          "ownerName": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "$other": {
+            ".validate": true
+          }
+        },
+        "seats": {
+          "$seatId": {
+            ".write": true,
+            "name": {
+              ".validate": "newData.isString() && newData.val().length <= 40"
+            },
+            "$other": {
+              ".validate": true
+            }
+          }
         },
         "log": {
           "$entry": {
+            ".write": "!data.exists() && newData.exists()",
             ".validate": "newData.hasChildren(['action'])"
           }
         },
+        "snapshot": {
+          ".write": "!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val())",
+          ".validate": "newData.hasChildren(['upTo', 'state'])"
+        },
         "chat": {
           "$message": {
-            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600"
+            ".write": "!data.exists() && newData.exists()",
+            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600 && newData.child('author').isString() && newData.child('author').val().length <= 40"
           }
         }
       }
@@ -120,14 +159,44 @@ la consola (*Realtime Database → Reglas*); es exactamente este JSON:
 }
 ```
 
-Si prefieres que **solo usuarios registrados** puedan crear salas y que los invitados solo
-puedan sentarse y jugar, cambia la escritura de `meta` a `"auth != null"`:
+### Qué protegen, y qué no
 
-```json
-"meta": { ".write": "auth != null" }
-```
+Las reglas tienen que dejar entrar a invitados **sin cuenta** (esa es toda la gracia del
+enlace de invitación), así que no pueden apoyarse en la autenticación para lo normal. Lo
+que sí hacen es cerrar lo que de verdad rompe una partida:
 
-> Mientras las reglas no estén abiertas, la sección sigue funcionando en **modo local**
+- **El log es de solo-añadir.** `!data.exists()` en cada entrada: se puede apuntar una
+  jugada nueva, pero nadie puede reescribir ni borrar una ya hecha. Es la regla más
+  importante de todas, porque el log **es** la partida: quien pudiera editarlo podría
+  reescribir el pasado de una mesa en curso. El chat va igual.
+- **La identidad de la sala es inmutable.** `seed`, `mapId` y `createdAt` no se pueden
+  cambiar una vez creada. Cambiar la semilla a mitad de partida desincronizaría a todos
+  los clientes de golpe, que es la forma más barata de reventar un lockstep.
+- **Borrar una sala ya no está al alcance de cualquiera.** Antes `.write: true` permitía
+  a quien fuera vaciar cualquier partida en curso. Ahora hace falta sesión iniciada (el
+  dueño) o que la sala lleve más de 30 días parada, que es lo que necesita la limpieza
+  automática.
+- **El punto de control no puede retroceder.** Solo se acepta un `snapshot` con un `upTo`
+  igual o mayor, para que nadie devuelva la partida a un estado anterior.
+- **Topes de tamaño** en los nombres y en el texto del chat, para que un bucle no llene la
+  base gratuita.
+
+Y lo que **no** hacen, dicho claramente: cualquiera que conozca el identificador de una
+sala puede leerla y añadirle jugadas y mensajes. Sin backend no hay forma de evitarlo — el
+motor vive en el cliente y los invitados no tienen cuenta. Lo que protege una partida es
+que el identificador es aleatorio y no se puede listar de forma útil, o sea el mismo
+modelo que un enlace secreto de Google Docs. Si algún día hace falta más, el camino es
+autenticación anónima de Firebase y reglas sobre `auth.uid`, no retocar estas.
+
+> **Ojo al desplegar:** `database.rules.json` es el conjunto **completo** de reglas de la
+> base, no solo las del RISK. Subirlo sustituye también las de `rooms`, que es el nodo del
+> Scrum Poker. Están ahí tal como estaban, abiertas: cambiarlas es una decisión aparte y
+> tocaría revisar el Scrum Poker antes.
+
+`npm run check:rules` comprueba que el JSON de aquí arriba y el del fichero no se separen,
+y que sigan en pie los invariantes de la lista.
+
+> Mientras las reglas no estén subidas, la sección sigue funcionando en **modo local**
 > (partidas contra la IA guardadas en el navegador). El lobby lo indica y no se queda
 > colgado esperando a la base de datos.
 
