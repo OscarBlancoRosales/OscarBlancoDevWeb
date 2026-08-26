@@ -59,7 +59,15 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'console.aboutExp': { es: 'Full Stack Developer con 2+ años de experiencia', en: 'Full Stack Developer with 2+ years of experience' },
   'console.aboutSpec': { es: 'Especializado en C#, Flutter y Angular', en: 'Specialized in C#, Flutter and Angular' },
   'console.aboutPassion': { es: 'Apasionado por crear soluciones innovadoras', en: 'Passionate about creating innovative solutions' },
+  'console.helpGames': {
+    es: '  juegos    - Abre la mesa de juegos (RISK)',
+    en: '  games     - Open the game table (RISK)',
+  },
   'console.projectsTitle': { es: '🚀 Proyectos destacados:', en: '🚀 Featured projects:' },
+  'console.projectGames': {
+    es: '  • Juegos - RISK completo con IA, mapas reales y modo histórico',
+    en: '  • Games - Full RISK with AI, real maps and a historical scenario',
+  },
   'console.projectPoker': { es: '  • Scrum Poker App - Aplicación de planning poker', en: '  • Scrum Poker App - Planning poker application' },
   'console.projectDni': { es: '  • DNI Generator - Generador de DNIs español', en: '  • DNI Generator - Spanish ID generator' },
   'console.projectPortfolio': { es: '  • Portfolio Web - Este portfolio interactivo', en: '  • Portfolio Web - This interactive portfolio' },

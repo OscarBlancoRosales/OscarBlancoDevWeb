@@ -249,6 +249,11 @@ export class Console implements OnInit, OnDestroy {
       case 'contact':
         this.showContact();
         break;
+      case 'juegos':
+      case 'games':
+      case 'risk':
+        this.router.navigate(['/juegos']);
+        break;
       default:
         this.terminalOutput.push(this.i18n.t('console.unknownCmd', { cmd: command }));
         break;
@@ -262,7 +267,8 @@ export class Console implements OnInit, OnDestroy {
       this.i18n.t('console.helpClear'),
       this.i18n.t('console.helpAbout'),
       this.i18n.t('console.helpProjects'),
-      this.i18n.t('console.helpContact')
+      this.i18n.t('console.helpContact'),
+      this.i18n.t('console.helpGames')
     );
   }
 
@@ -282,6 +288,7 @@ export class Console implements OnInit, OnDestroy {
   private showProjects(): void {
     this.terminalOutput.push(
       this.i18n.t('console.projectsTitle'),
+      this.i18n.t('console.projectGames'),
       this.i18n.t('console.projectPoker'),
       this.i18n.t('console.projectDni'),
       this.i18n.t('console.projectPortfolio'),
