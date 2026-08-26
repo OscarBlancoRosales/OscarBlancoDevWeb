@@ -1,5 +1,6 @@
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
@@ -31,10 +32,11 @@ import {
   templateUrl: './risk-lobby.html',
   styleUrl: './risk-lobby.css',
 })
-export class RiskLobby implements OnInit {
+export class RiskLobby implements OnInit, OnDestroy {
   readonly maps: GameMap[] = RISK_MAPS;
 
   isAdmin = false;
+  private subscription?: Subscription;
   invitedRoomId = '';
   invitedRoom: RoomMeta | null = null;
   invitedError = '';
@@ -72,6 +74,10 @@ export class RiskLobby implements OnInit {
     private cdr: ChangeDetectorRef,
   ) {}
 
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+  }
+
   /**
    * La aplicación corre sin zone.js, así que cualquier cambio que venga de una
    * promesa hay que pedirlo a mano; si no, la vista se queda congelada.
@@ -81,7 +87,19 @@ export class RiskLobby implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.isAdmin = !!localStorage.getItem('auth_token');
+    // La sesión de VERDAD, no una bandera del navegador.
+    //
+    // El resto del sitio mira `localStorage.auth_token`, que es un texto que
+    // cualquiera puede poner a mano desde la consola. Aquí se pregunta a
+    // Firebase, que es quien manda: la base solo acepta crear salas con una
+    // sesión real, así que fiarse de la bandera solo servía para enseñar un
+    // botón que luego iba a fallar. Además la sesión caduca y la bandera no.
+    this.subscription = this.auth.user$.subscribe((user) => {
+      this.isAdmin = !!user;
+      if (!this.roomName && user) this.roomName = `Partida de ${this.ownerName()}`;
+      this.refreshView();
+    });
+    this.isAdmin = !!this.auth.currentUser;
     this.playerName = localStorage.getItem('risk_player_name') ?? '';
     this.roomName = this.isAdmin ? `Partida de ${this.ownerName()}` : '';
 
@@ -144,13 +162,26 @@ export class RiskLobby implements OnInit {
     }
   }
 
+  /**
+   * Identificador del dueño de la sala. Vacío si no hay sesión.
+   *
+   * Nada de inventarse un `'admin'` de reserva: ese identificador acabaría
+   * escrito en `meta/ownerUid`, que es inmutable, y como las reglas solo dejan
+   * listar tus salas comparando con `auth.uid`, la sala quedaría creada pero
+   * invisible para siempre.
+   */
   ownerUid(): string {
-    return this.auth.currentUser?.uid ?? localStorage.getItem('user_name') ?? 'admin';
+    return this.auth.currentUser?.uid ?? '';
   }
 
   ownerName(): string {
-    const email = this.auth.currentUser?.email ?? localStorage.getItem('user_name') ?? 'Anfitrión';
+    const email = this.auth.currentUser?.email ?? 'Anfitrión';
     return email.split('@')[0];
+  }
+
+  /** Lleva a iniciar sesión y vuelve aquí después. */
+  goToLoginForRoom(): void {
+    this.router.navigate(['/auth'], { queryParams: { next: '/juegos/risk' } });
   }
 
   async loadSavedRooms(): Promise<void> {
@@ -188,6 +219,11 @@ export class RiskLobby implements OnInit {
     this.busy = true;
     this.error = '';
     try {
+      if (!local && !this.ownerUid()) {
+        this.error = 'Tu sesión ha caducado. Vuelve a iniciar sesión para crear salas online.';
+        this.busy = false;
+        return;
+      }
       const meta = await this.rooms.createRoom({
         name: this.roomName.trim() || `Partida de ${this.ownerName()}`,
         mapId: this.mapId,

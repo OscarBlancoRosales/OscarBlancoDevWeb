@@ -5,11 +5,30 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskLobby } from './risk-lobby';
 import { RISK_MAPS } from '../../engine/maps/map-registry';
 import { RiskRoomService } from '../../services/risk-room.service';
+import { FirebaseAuthService } from '../../../../firebase-auth.service';
+import { of } from 'rxjs';
 
 function routeWith(params: Record<string, string> = {}) {
   return {
     snapshot: { queryParamMap: convertToParamMap(params) },
   };
+}
+
+/** Monta el lobby con una sesión de Firebase de mentira pero con la forma real. */
+async function createLobbyWithUser(user: { uid: string; email: string } | null) {
+  await TestBed.configureTestingModule({
+    imports: [RiskLobby],
+    providers: [
+      provideRouter([]),
+      { provide: ActivatedRoute, useValue: routeWith({}) },
+      {
+        provide: FirebaseAuthService,
+        useValue: { user$: of(user), currentUser: user },
+      },
+    ],
+  }).compileComponents();
+  const fixture = TestBed.createComponent(RiskLobby);
+  return { fixture, component: fixture.componentInstance };
 }
 
 async function createLobby(params: Record<string, string> = {}) {
@@ -75,12 +94,42 @@ describe('RiskLobby', () => {
     expect(component.isAdmin).toBe(false);
   });
 
-  it('con sesión guardada sí', async () => {
-    localStorage.setItem('auth_token', 'x');
+  it('una bandera en el navegador NO te hace administrador', async () => {
+    // Era el fallo: el candado miraba `localStorage.auth_token`, un texto que
+    // cualquiera pone desde la consola del navegador. La base de datos exige una
+    // sesión de verdad, así que fiarse de la bandera solo servía para enseñar un
+    // botón que iba a fallar después.
+    localStorage.setItem('auth_token', 'me-lo-he-inventado');
     TestBed.resetTestingModule();
     const created = await createLobby();
     await created.component.ngOnInit();
+    expect(created.component.isAdmin).toBe(false);
+  });
+
+  it('con sesión de Firebase de verdad, sí', async () => {
+    TestBed.resetTestingModule();
+    const created = await createLobbyWithUser({ uid: 'uid-real', email: 'oscar@ejemplo.com' });
+    await created.component.ngOnInit();
     expect(created.component.isAdmin).toBe(true);
+    expect(created.component.ownerUid()).toBe('uid-real');
+    expect(created.component.ownerName()).toBe('oscar');
+  });
+
+  it('sin sesión, el dueño va vacío y no se inventa un identificador', async () => {
+    // Un `ownerUid` inventado quedaría escrito en `meta`, que es inmutable, y
+    // como las reglas solo dejan listar tus salas comparando con `auth.uid`, la
+    // sala quedaría creada pero invisible para siempre.
+    expect(component.ownerUid()).toBe('');
+  });
+
+  it('sin sesión no se llega a llamar a la base al crear online', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const rooms = TestBed.inject(RiskRoomService);
+    const create = vi.spyOn(rooms, 'createRoom');
+    component.playerName = 'Oscar';
+    await component.createRoom(false);
+    expect(create).not.toHaveBeenCalled();
+    expect(component.error).toContain('sesión');
   });
 
   it('traduce los estados de sala a español', () => {

@@ -238,11 +238,24 @@
           <button
             class="primary big"
             type="button"
+            *ngIf="isAdmin"
             (click)="createRoom(false)"
-            [disabled]="busy || !isAdmin"
-            [title]="isAdmin ? '' : 'Necesitas iniciar sesión para crear salas online'"
+            [disabled]="busy"
           >
             {{ busy ? 'Creando…' : '🌐 Crear sala online e invitar' }}
+          </button>
+          <!--
+            Sin sesión no se enseña un botón muerto: se enseña el camino. La base
+            de datos solo acepta crear salas con sesión real, así que dejarlo
+            pulsable solo servía para que fallara después.
+          -->
+          <button
+            class="primary big"
+            type="button"
+            *ngIf="!isAdmin"
+            (click)="goToLoginForRoom()"
+          >
+            🔒 Inicia sesión para crear sala online
           </button>
           <button class="primary big ghost-primary" type="button" (click)="createRoom(true)" [disabled]="busy">
             🤖 Jugar aquí contra la IA
