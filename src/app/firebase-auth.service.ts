@@ -7,7 +7,7 @@ import {
   User
 } from 'firebase/auth';
 import { auth } from './firebase.config';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 @Injectable({
@@ -17,10 +17,28 @@ export class FirebaseAuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   public user$ = this.userSubject.asObservable();
 
+  private settledSubject = new ReplaySubject<User | null>(1);
+
+  /**
+   * El usuario UNA VEZ Firebase ha terminado de restaurar la sesión guardada.
+   *
+   * `user$` arranca valiendo null y sigue valiendo null durante el instante en
+   * que Firebase lee la sesión del navegador, así que quien se suscriba nada
+   * más cargar la página recibe un null que NO significa "no hay sesión", sino
+   * "todavía no lo sé". Para encender un botón da igual (aparece un pestañeo
+   * más tarde), pero para EXPULSAR a alguien es fatal: echaría a la calle a un
+   * usuario con sesión válida que solo estaba recargando.
+   *
+   * Este observable no emite nada hasta que Firebase responde. Úsalo siempre
+   * que la decisión sea irreversible para el usuario (redirigir, denegar).
+   */
+  public settledUser$ = this.settledSubject.asObservable();
+
   constructor() {
     // Escuchar cambios de autenticación
     onAuthStateChanged(auth, (user) => {
       this.userSubject.next(user);
+      this.settledSubject.next(user);
     });
   }
 

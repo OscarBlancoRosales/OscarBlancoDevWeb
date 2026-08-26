@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { FirebaseAuthService } from '../firebase-auth.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 @Component({
@@ -10,17 +12,24 @@ import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
   templateUrl: './name-screen.html',
   styleUrl: './name-screen.css',
 })
-export class NameScreen implements OnInit {
+export class NameScreen implements OnInit, OnDestroy {
   nameForm: FormGroup;
   isLoading = false;
   showSuccess = false;
   roomId = '';
   inviteCode = '';
 
+  /** Cierto solo con sesión de Firebase confirmada. Quien crea sala es esta persona. */
+  isAdmin = false;
+
+  private sesion?: Subscription;
+
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private auth: FirebaseAuthService,
+    private cdr: ChangeDetectorRef
   ) {
     this.nameForm = this.fb.group({
       playerName: ['', [Validators.required, Validators.minLength(2)]]
@@ -33,18 +42,31 @@ export class NameScreen implements OnInit {
     // Verificar si viene por invitación (tiene parámetro room en la URL)
     const roomIdParam = this.route.snapshot.queryParamMap.get('room');
     this.isInvited = !!roomIdParam;
-    
-    // Si NO es invitado Y NO está autenticado, redirigir a login
-    if (!this.isInvited && !this.isAuthenticated()) {
-      this.router.navigate(['/auth']);
+
+    // Los invitados entran con el enlace, sin cuenta: ese es justo el sentido
+    // de invitar. Solo se exige sesión para CREAR sala.
+    if (this.isInvited) {
+      this.checkInvitation();
+      this.generateRoomInfo();
       return;
     }
 
-    // Verificar si viene por invitación primero
-    this.checkInvitation();
-    
-    // Generar o obtener ID de sala
-    this.generateRoomInfo();
+    // Esperamos a `settledUser$`, no a `user$`: este último vale null mientras
+    // Firebase restaura la sesión guardada, y actuar sobre ese null echaría a
+    // la calle a quien solo estaba recargando la página.
+    this.sesion = this.auth.settledUser$.subscribe((user) => {
+      this.isAdmin = !!user;
+      if (!user) {
+        this.router.navigate(['/auth'], { queryParams: { next: '/name-screen' } });
+        return;
+      }
+      this.generateRoomInfo();
+      this.cdr.markForCheck();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.sesion?.unsubscribe();
   }
 
   get playerName() {
@@ -52,14 +74,16 @@ export class NameScreen implements OnInit {
   }
 
   private generateRoomInfo(): void {
-    // Si ya tenemos roomId de la invitación, usarlo
+    // Si ya tenemos roomId (de la invitación o de una emisión anterior de la
+    // sesión), usarlo. Firebase reemite al refrescar el testigo, y sin esta
+    // salida la sala cambiaría de número bajo los pies del que ya la repartió.
     if (this.roomId) {
       this.inviteCode = this.generateInviteCode();
       return;
     }
-    
+
     // Admin siempre crea una nueva sala
-    if (this.isAuthenticated()) {
+    if (this.isAdmin) {
       this.roomId = this.generateRoomId();
       localStorage.setItem('current_room_id', this.roomId);
       // Marcar que este usuario es el creador de la sala
@@ -120,9 +144,5 @@ export class NameScreen implements OnInit {
       // Podríamos mostrar un toast o mensaje temporal
       console.log('Enlace copiado al portapapeles');
     });
-  }
-
-  private isAuthenticated(): boolean {
-    return localStorage.getItem('auth_token') !== null;
   }
 }
