@@ -169,6 +169,35 @@ describe('RiskRoom (la mesa)', () => {
     });
   });
 
+  describe('empezar la partida cuando algo falla', () => {
+    it('la alineación que se manda no lleva ningún undefined', async () => {
+      // Firebase lanza excepción con cualquier undefined, y un asiento humano no
+      // tiene `botProfile`. Era lo que hacía que empezar online no hiciera nada.
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const meta = TestBed.inject(RiskRoomService).listLocalRooms()[0].meta;
+      expect(JSON.stringify(meta.roster)).not.toContain('undefined');
+      const humano = (meta.roster ?? []).find((entry) => entry.kind === 'human');
+      expect(humano, 'debería haber un asiento humano').toBeDefined();
+      expect(JSON.stringify(humano)).not.toContain('undefined');
+    });
+
+    it('si la base rechaza, lo dice en pantalla en vez de no hacer nada', async () => {
+      const rooms = TestBed.inject(RiskRoomService);
+      vi.spyOn(rooms, 'updateMeta').mockRejectedValue(new Error('Permission denied'));
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait();
+
+      expect(component.errorMessage).toContain('No se ha podido empezar');
+      expect(component.errorMessage).toContain('Permission denied');
+    });
+  });
+
   describe('empezar la partida', () => {
     beforeEach(async () => {
       await component.fillWithBots();

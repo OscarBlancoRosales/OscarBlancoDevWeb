@@ -471,11 +471,11 @@ export class RiskRoomService {
       this.emitLocal(roomId);
       return;
     }
-    await push(ref(database, `${ROOMS_PATH}/${roomId}/log`), {
-      action,
-      by,
-      ts: serverTimestamp(),
-    });
+    await push(
+      ref(database, `${ROOMS_PATH}/${roomId}/log`),
+      // `ts` se deja fuera del saneado: es un marcador del servidor, no un dato.
+      { ...stripUndefined({ action, by }), ts: serverTimestamp() },
+    );
     await this.touch(roomId);
   }
 
@@ -485,11 +485,11 @@ export class RiskRoomService {
       this.localStore?.setSnapshot(roomId, upTo, state);
       return;
     }
-    await set(ref(database, `${ROOMS_PATH}/${roomId}/snapshot`), {
-      upTo,
-      state,
-      ts: Date.now(),
-    });
+    await set(
+      ref(database, `${ROOMS_PATH}/${roomId}/snapshot`),
+      // El estado va lleno de campos opcionales; sin limpiar, el SDK lanza.
+      stripUndefined({ upTo, state, ts: Date.now() }),
+    );
   }
 
   // ===== CHAT =====
@@ -611,10 +611,30 @@ export function mapChat(snapshot: DataSnapshot | { val(): unknown }): ChatEntry[
 }
 
 /** Firebase rechaza `undefined`: hay que limpiarlo antes de escribir. */
-export function stripUndefined<T extends object>(value: T): T {
+/**
+ * Quita los `undefined` a cualquier profundidad, antes de mandar nada a Firebase.
+ *
+ * El SDK LANZA EXCEPCIÓN si el valor contiene un `undefined` en cualquier sitio,
+ * y esto es un juego lleno de campos opcionales: `botProfile` no existe en un
+ * jugador humano, `units` solo aparece en modo avanzado, `missions` solo con
+ * objetivos... La versión anterior solo miraba el primer nivel, así que empezar
+ * una partida online reventaba al mandar la alineación, porque cada humano
+ * llevaba dentro un `botProfile: undefined`.
+ *
+ * Y no se veía en local: allí se guarda con `JSON.stringify`, que descarta los
+ * `undefined` sin decir nada. Por eso el modo local iba y el online no.
+ *
+ * Los arrays se conservan como arrays; un elemento `undefined` pasa a `null`
+ * para no descolocar los índices, de los que depende el orden de la mesa.
+ */
+export function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => (item === undefined ? null : stripUndefined(item))) as unknown as T;
+  }
+  if (value === null || typeof value !== 'object') return value;
   const out: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value)) {
-    if (item !== undefined) out[key] = item;
+  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
+    if (item !== undefined) out[key] = stripUndefined(item);
   }
   return out as T;
 }

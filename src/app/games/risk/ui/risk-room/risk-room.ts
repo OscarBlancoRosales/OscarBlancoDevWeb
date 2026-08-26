@@ -761,21 +761,32 @@ export class RiskRoom implements OnInit, OnDestroy {
    */
   async startGame(): Promise<void> {
     if (!this.canStart) return;
-    await this.assignColors();
-    const roster = seatsToRoster(
-      this.seats.map((seat, index) => ({
-        ...seat,
-        order: index,
-        color: PLAYER_COLORS[index % PLAYER_COLORS.length],
-      })),
-    );
-    await this.rooms.updateMeta(this.roomId, { roster, status: 'playing' });
-    await this.rooms.sendChat(this.roomId, {
-      authorId: 'system',
-      author: 'Sala',
-      kind: 'system',
-      text: '¡Que empiece la conquista! Suerte con los dados.',
-    });
+    // Empezar toca la base, y ahí puede fallar cualquier cosa: permisos, red,
+    // un dato que no le gusta. Antes el error se perdía y el botón se quedaba
+    // sin hacer nada, que es la peor manera de fallar.
+    this.errorMessage = '';
+    try {
+      await this.assignColors();
+      const roster = seatsToRoster(
+        this.seats.map((seat, index) => ({
+          ...seat,
+          order: index,
+          color: PLAYER_COLORS[index % PLAYER_COLORS.length],
+        })),
+      );
+      await this.rooms.updateMeta(this.roomId, { roster, status: 'playing' });
+      await this.rooms.sendChat(this.roomId, {
+        authorId: 'system',
+        author: 'Sala',
+        kind: 'system',
+        text: '¡Que empiece la conquista! Suerte con los dados.',
+      });
+    } catch (error) {
+      this.errorMessage = `No se ha podido empezar la partida: ${
+        (error as Error)?.message ?? 'error desconocido'
+      }`;
+      this.cdr.markForCheck();
+    }
   }
 
   /** Da a cada asiento un color distinto antes de empezar. */
