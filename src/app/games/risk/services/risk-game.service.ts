@@ -32,6 +32,34 @@ import { DerivedGame, deriveGame, electHostSeatId, shouldSnapshot } from './risk
  * hay dos clientes moviendo el mismo bot.
  */
 
+/**
+ * La jugada más tonta que el motor no puede rechazar, para desatascar un turno.
+ *
+ * Es la salida de emergencia, no una estrategia: se usa sólo cuando el bot no
+ * propone nada o cuando lo que propone no llega a la sala. Lo importante es que
+ * SIEMPRE sea legal, porque el sitio del que hay que salir es justo aquel en el
+ * que ninguna jugada entra.
+ *
+ * En reclutamiento no vale `end-phase`: el motor lo rechaza mientras quede
+ * reserva sin colocar, y ese fue el cuelgue. Se coloca un ejército en un
+ * territorio propio, que siempre se puede.
+ */
+function escapeAction(state: GameState, playerId: string): GameAction | null {
+  const player = playerById(state, playerId);
+  if (!player) return null;
+
+  if (state.phase === 'reinforce' && player.reserve > 0) {
+    const mine = Object.entries(state.territories).find(
+      ([, territory]) => territory.ownerId === playerId,
+    );
+    if (mine) {
+      return { type: 'deploy', playerId, territoryId: mine[0], armies: 1 };
+    }
+  }
+
+  return { type: 'end-phase', playerId };
+}
+
 @Injectable({ providedIn: 'root' })
 export class RiskGameService implements OnDestroy {
   private subscription?: Subscription;
@@ -82,7 +110,18 @@ export class RiskGameService implements OnDestroy {
   private advisedTurnKey = '';
   /** Jugadas seguidas de un bot que el motor ha rechazado. */
   private rejectedStreak = 0;
-  private stuckTurnKey = '';
+  /** Llave de la fase en la que se contaron esos rechazos. */
+  private rejectedKey = '';
+  /**
+   * Fases que ya hemos dado por imposibles y hemos saltado.
+   *
+   * Es un conjunto, no un valor suelto, y la llave lleva la FASE dentro. Antes
+   * era `ronda:jugador` a secas, y ahí estaba el cuelgue: al atascarse un bot
+   * en refuerzos marcábamos su turno entero, pasábamos de fase, y como la llave
+   * no cambiaba el bot ya no volvía a mover NUNCA. La mesa se quedaba muerta y
+   * no había forma de continuar.
+   */
+  private skippedPhases = new Set<string>();
   private currentBias: StrategyBias | undefined;
 
   constructor(private rooms: RiskRoomService) {}
@@ -132,8 +171,9 @@ export class RiskGameService implements OnDestroy {
     this.driving = false;
     this.plannedTurnKey = '';
     this.advisedTurnKey = '';
-    this.stuckTurnKey = '';
+    this.skippedPhases.clear();
     this.rejectedStreak = 0;
+    this.rejectedKey = '';
     this.currentBias = undefined;
     this.stateSubject.next(null);
     this.derivedSubject.next(null);
@@ -240,29 +280,41 @@ export class RiskGameService implements OnDestroy {
       return;
     }
 
-    const currentTurnKey = `${state.round}:${state.currentPlayerIndex}`;
-    // Si un bot se atasca (propone algo que el motor rechaza), no lo repetimos
-    // en bucle: eso llenaría el log de basura y dejaría la mesa colgada.
-    if (this.stuckTurnKey === currentTurnKey) return;
+    // El turno sirve para pedir UN plan a la IA; la fase, para saber si nos
+    // hemos atascado. Son llaves distintas a propósito: si el plan se pidiera
+    // por fase gastaríamos el triple de peticiones, y los modelos gratuitos
+    // devuelven 429 en cuanto se les aprieta.
+    const turnKey = `${state.round}:${state.currentPlayerIndex}`;
+    const phaseKey = `${turnKey}:${state.phase}`;
+    if (this.skippedPhases.has(phaseKey)) return;
 
     this.driving = true;
     try {
-      const turnKey = currentTurnKey;
       if (this.plannedTurnKey !== turnKey) {
         this.plannedTurnKey = turnKey;
         this.thinkingSubject.next(player.name);
-        const plan = await requestTurnPlan(state, this.map, player.id, this.aiSettings);
-        this.currentBias = plan.bias;
-        await this.rooms.sendChat(this.roomId, {
-          authorId: player.id,
-          author: player.name,
-          kind: 'bot',
-          text: plan.message,
-          origin: plan.source,
-        });
+        // El plan es ambiente, no reglas: si la IA no contesta el bot juega
+        // igual con su cabeza de siempre. Antes un 429 tiraba la excepción
+        // fuera de `driveBots`, se perdía el encadenado del final y el bot no
+        // volvía a mover en toda la partida.
+        try {
+          const plan = await requestTurnPlan(state, this.map, player.id, this.aiSettings);
+          this.currentBias = plan.bias;
+          await this.rooms.sendChat(this.roomId, {
+            authorId: player.id,
+            author: player.name,
+            kind: 'bot',
+            text: plan.message,
+            origin: plan.source,
+          });
+        } catch {
+          this.currentBias = undefined;
+        }
       }
 
-      const action = decideAction(state, this.map, player.id, this.currentBias);
+      const action =
+        decideAction(state, this.map, player.id, this.currentBias) ??
+        escapeAction(state, player.id);
       this.thinkingSubject.next(player.name);
       if (!action) {
         this.thinkingSubject.next(null);
@@ -278,22 +330,45 @@ export class RiskGameService implements OnDestroy {
       const after = this.stateSubject.value?.actionCount ?? before;
 
       if (after === before) {
+        // Los rechazos se cuentan por fase: arrastrarlos de una a otra hacía
+        // que un tropiezo en refuerzos condenara al ataque siguiente.
+        if (this.rejectedKey !== phaseKey) {
+          this.rejectedKey = phaseKey;
+          this.rejectedStreak = 0;
+        }
         this.rejectedStreak++;
+        // A la tercera se prueba la salida de emergencia: una jugada que el
+        // motor NO puede rechazar. Antes se mandaba `end-phase` a secas, y en
+        // reclutamiento eso se rechaza si queda reserva por colocar: la fase
+        // quedaba marcada como imposible, la jugada tampoco entraba, y la mesa
+        // se moría ahí. Hay que salir por donde el motor deja salir.
         if (this.rejectedStreak >= 3) {
-          this.stuckTurnKey = turnKey;
+          const escape = escapeAction(state, player.id);
+          if (escape) await this.rooms.pushAction(this.roomId, escape, player.id);
+          if (this.rejectedStreak === 3) {
+            await this.rooms.sendChat(this.roomId, {
+              authorId: 'system',
+              author: 'Sala',
+              kind: 'system',
+              text: `${player.name} no consigue mover y sale como puede.`,
+            });
+          }
+        }
+        // Nunca se da una fase por perdida para siempre: si lo que falla es la
+        // escritura, la jugada era buena y hay que reintentarla. Sólo se deja
+        // de insistir cuando la mesa lleva demasiado sin moverse, y aun así
+        // basta con que cambie el estado para volver a intentarlo.
+        if (this.rejectedStreak >= 40) {
+          this.skippedPhases.add(phaseKey);
           this.thinkingSubject.next(null);
-          await this.rooms.sendChat(this.roomId, {
-            authorId: 'system',
-            author: 'Sala',
-            kind: 'system',
-            text: `${player.name} no encuentra jugada válida y pasa el turno.`,
-          });
-          await this.rooms.pushAction(this.roomId, { type: 'end-phase', playerId: player.id }, player.id);
-          return;
         }
       } else {
         this.rejectedStreak = 0;
       }
+    } catch {
+      // Un corte de red al escribir en la sala tampoco puede matar la partida.
+      // Se suelta el turno y el siguiente cambio de estado lo reintenta.
+      this.thinkingSubject.next(null);
     } finally {
       this.driving = false;
     }
