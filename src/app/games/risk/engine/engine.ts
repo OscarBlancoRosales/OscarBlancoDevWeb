@@ -180,7 +180,7 @@ export function createGame(options: CreateGameOptions): GameState {
   });
 
   if (map.scenario) {
-    deployScenario(state, map);
+    deployScenario(state, map, startingArmies, rng);
     beginTurn(state, map, /* first */ true);
   } else if (config.autoClaim) {
     autoDistribute(state, map, startingArmies, rng);
@@ -215,31 +215,69 @@ export function createGame(options: CreateGameOptions): GameState {
  * hereda también las columnas confederadas. Así el escenario empieza siempre
  * completo, jueguen dos o cuatro.
  */
-function deployScenario(state: GameState, map: GameMap): void {
+/**
+ * Reparto de un escenario histórico: al azar y lo más parejo posible.
+ *
+ * Antes el reparto era el histórico, provincia por provincia. Como juego no se
+ * sostenía: los sublevados empezaban con 30 provincias y tres regiones enteras,
+ * lo que en RISK son 15 refuerzos por turno contra 7 desde la primera ronda.
+ * Medido en autopartidas, ganaban 91 de cada 100 con dos jugadores y 100 de
+ * cada 100 con cuatro, en nueve rondas. Eso no es una partida, es un trámite.
+ *
+ * Ahora el tablero se sortea. Las facciones, los bandos y la crónica siguen
+ * ahí -- que es lo que da el ambiente -- pero quién arranca con qué lo decide
+ * la baraja, y los dos frentes salen del mismo tamaño.
+ */
+function deployScenario(
+  state: GameState,
+  map: GameMap,
+  startingArmies: number,
+  rng: ReturnType<typeof createRng>,
+): void {
   const scenario = map.scenario!;
-  const byFaction = new Map<string, PlayerId>();
-  for (const player of state.players) {
-    if (player.factionId) byFaction.set(player.factionId, player.id);
-  }
+
   const bySide = new Map<string, PlayerId[]>();
-  for (const player of state.players) {
-    if (!player.side) continue;
-    bySide.set(player.side, [...(bySide.get(player.side) ?? []), player.id]);
+  for (const playerId of state.turnOrder) {
+    const player = playerById(state, playerId);
+    if (!player?.side) continue;
+    bySide.set(player.side, [...(bySide.get(player.side) ?? []), playerId]);
+  }
+  const sides = [...bySide.keys()];
+  if (sides.length === 0) {
+    autoDistribute(state, map, startingArmies, rng);
+    return;
   }
 
-  let spare = 0;
-  for (const territory of map.territories) {
-    const slot = scenario.deployment[territory.id];
-    if (!slot) continue;
-    const faction = scenario.factions.find((f) => f.id === slot.faction);
-    let ownerId = byFaction.get(slot.faction);
-    if (!ownerId && faction) {
-      const allies = bySide.get(faction.side) ?? [];
-      ownerId = allies[spare++ % Math.max(1, allies.length)];
-    }
-    if (!ownerId) continue;
-    state.territories[territory.id] = { ownerId, armies: slot.armies };
+  const shuffled = shuffle(
+    map.territories.map((t) => t.id),
+    rng,
+  );
+
+  // Primero se reparte entre BANDOS, no entre jugadores. Si fuera por jugadores
+  // y un bando llevara dos y el otro uno, el de dos se quedaría con el doble de
+  // tablero: el frente tiene que medir lo mismo pase lo que pase con las sillas.
+  const sideOffset = rng.int(0, sides.length - 1);
+  const perSide = new Map<string, TerritoryId[]>();
+  shuffled.forEach((territoryId, index) => {
+    const side = sides[(index + sideOffset) % sides.length];
+    perSide.set(side, [...(perSide.get(side) ?? []), territoryId]);
+  });
+
+  // Y dentro de cada bando, en rueda entre los suyos.
+  for (const side of sides) {
+    const members = bySide.get(side) ?? [];
+    const list = perSide.get(side) ?? [];
+    if (members.length === 0) continue;
+    const offset = rng.int(0, members.length - 1);
+    list.forEach((territoryId, index) => {
+      state.territories[territoryId] = {
+        ownerId: members[(index + offset) % members.length],
+        armies: 1,
+      };
+    });
   }
+
+  spreadArmies(state, state.turnOrder, startingArmies, rng);
 
   pushEvent(state, {
     type: 'game-start',
@@ -248,7 +286,47 @@ function deployScenario(state: GameState, map: GameMap): void {
   });
 }
 
-/** Reparto automático: territorios en rueda y el resto de ejércitos encima. */
+/**
+ * Reparte el montón de ejércitos de cada jugador sobre sus territorios.
+ *
+ * Dos decisiones viven aquí, y las dos son de equilibrio:
+ *
+ * 1. Compensación: menos tierras, más tropas. 42 territorios entre 4 no salen
+ *    exactos, y el que tiene una provincia menos perdía dos veces -- menos
+ *    tablero Y menos refuerzos cada turno. Cada territorio de menos vale ahora
+ *    un ejército de más, que es lo que cuesta ocupar uno.
+ *
+ * 2. El montón se echa AL AZAR, ejército por ejército. Antes iba en rueda, una
+ *    tropa a cada territorio por vuelta, y salía un 3 clavado en el 81% del
+ *    mapa con un máximo de 4. Un tablero plano no tiene ni plaza fuerte que
+ *    rodear ni hueco por donde entrar, que es de donde sale la estrategia.
+ *
+ * Sigue siendo determinista: las tiradas salen del generador sembrado, así que
+ * dos mesas con la misma semilla reparten idéntico. Devuelve a cuántos hubo que
+ * compensar, sólo para poder contarlo en pantalla.
+ */
+function spreadArmies(
+  state: GameState,
+  order: PlayerId[],
+  startingArmies: number,
+  rng: ReturnType<typeof createRng>,
+): number {
+  const counts = new Map(order.map((id) => [id, territoriesOf(state, id).length]));
+  const most = Math.max(0, ...counts.values());
+
+  for (const playerId of order) {
+    const owned = territoriesOf(state, playerId);
+    const compensation = most - (counts.get(playerId) ?? most);
+    let remaining = startingArmies + compensation - owned.length;
+    while (remaining > 0 && owned.length > 0) {
+      state.territories[owned[rng.int(0, owned.length - 1)]].armies++;
+      remaining--;
+    }
+  }
+
+  return order.filter((id) => (counts.get(id) ?? 0) < most).length;
+}
+
 function autoDistribute(
   state: GameState,
   map: GameMap,
@@ -271,30 +349,7 @@ function autoDistribute(
     state.territories[territoryId] = { ownerId, armies: 1 };
   });
 
-  // Compensación: menos tierras, más tropas.
-  //
-  // 42 territorios entre 4 no salen exactos, así que dos empiezan con once y dos
-  // con diez. Antes todos recibían los mismos ejércitos, y el que tenía una
-  // provincia menos salía perdiendo dos veces: menos tablero Y menos refuerzos
-  // por territorio cada turno. Ahora cada territorio de menos vale un ejército
-  // de más, que es lo que cuesta ocupar uno.
-  const counts = new Map(order.map((id) => [id, territoriesOf(state, id).length]));
-  const most = Math.max(...counts.values());
-
-  for (const playerId of order) {
-    const owned = territoriesOf(state, playerId);
-    const compensation = most - (counts.get(playerId) ?? most);
-    let remaining = startingArmies + compensation - owned.length;
-    // Reparto pseudoaleatorio pero equilibrado: rueda con desplazamiento.
-    let cursor = rng.int(0, Math.max(0, owned.length - 1));
-    while (remaining > 0 && owned.length > 0) {
-      state.territories[owned[cursor % owned.length]].armies++;
-      cursor++;
-      remaining--;
-    }
-  }
-
-  const compensated = order.filter((id) => (counts.get(id) ?? 0) < most).length;
+  const compensated = spreadArmies(state, order, startingArmies, rng);
   pushEvent(state, {
     type: 'deploy',
     playerId: null,

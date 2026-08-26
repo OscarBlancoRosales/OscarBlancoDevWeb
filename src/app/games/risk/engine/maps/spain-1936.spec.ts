@@ -112,18 +112,44 @@ describe('España 1936', () => {
   });
 
   describe('al empezar la partida', () => {
-    it('no reparte al azar: sale el mapa de julio del 36', () => {
-      const a = scenarioGame(4, 1);
-      const b = scenarioGame(4, 999);
-      // La semilla cambia el orden de turno, pero no quién tiene qué.
-      const owners = (state: GameState) =>
-        Object.fromEntries(
-          Object.entries(state.territories).map(([id, t]) => [
-            id,
-            state.players.find((p) => p.id === t.ownerId)!.side,
-          ]),
-        );
-      expect(owners(a)).toEqual(owners(b));
+    const sideOf = (state: GameState) =>
+      Object.fromEntries(
+        Object.entries(state.territories).map(([id, t]) => [
+          id,
+          state.players.find((p) => p.id === t.ownerId)!.side,
+        ]),
+      );
+
+    it('reparte al azar: cada semilla parte España por otro sitio', () => {
+      // Antes el reparto era el histórico y era siempre el mismo. Como juego no
+      // se sostenía: los sublevados salían con 30 provincias y tres regiones
+      // enteras, o sea 15 refuerzos por turno contra 7 desde la primera ronda.
+      // Medido en autopartidas, ganaban 91 de cada 100 a dos y 100 de cada 100
+      // a cuatro. El ambiente lo ponen las facciones y la crónica; el tablero
+      // se sortea.
+      expect(sideOf(scenarioGame(4, 1))).not.toEqual(sideOf(scenarioGame(4, 999)));
+    });
+
+    it('pero los dos frentes miden lo mismo', () => {
+      // Lo que no puede pasar es que el azar reparta 30 contra 22, que es de
+      // donde salía la paliza.
+      for (let seed = 1; seed <= 40; seed++) {
+        const state = scenarioGame(4, seed);
+        const porBando = new Map<string, number>();
+        for (const t of Object.values(state.territories)) {
+          const side = state.players.find((p) => p.id === t.ownerId)!.side!;
+          porBando.set(side, (porBando.get(side) ?? 0) + 1);
+        }
+        const tamaños = [...porBando.values()];
+        expect(Math.max(...tamaños) - Math.min(...tamaños), `semilla ${seed}`).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it('y con la misma semilla sale exactamente el mismo reparto', () => {
+      // El multijugador sin servidor depende de esto: dos mesas con la misma
+      // semilla tienen que empezar idénticas o el registro de acciones no
+      // reproduce la partida.
+      expect(sideOf(scenarioGame(4, 7))).toEqual(sideOf(scenarioGame(4, 7)));
     });
 
     it('nadie empieza sin territorios', () => {

@@ -993,6 +993,48 @@ describe('motor de RISK', () => {
       }
     });
 
+    it('los ejércitos salen desiguales, no uno igual en cada sitio', () => {
+      // El fallo que había: el montón se repartía en rueda, una tropa a cada
+      // territorio por vuelta, así que con 42 territorios entre 4 el 81% del
+      // mapa tenía exactamente 3 y el máximo era 4. Un tablero plano no tiene
+      // ni plaza fuerte que rodear ni hueco por donde entrar.
+      const reparto = new Map<number, number>();
+      for (let seed = 1; seed <= 40; seed++) {
+        const state = createGame({
+          map: WORLD_MAP,
+          seed,
+          players: Array.from({ length: 4 }, (_, i) => ({
+            id: `p${i}`,
+            name: `J${i}`,
+            kind: 'bot' as const,
+          })),
+        });
+        for (const territory of Object.values(state.territories)) {
+          reparto.set(territory.armies, (reparto.get(territory.armies) ?? 0) + 1);
+        }
+      }
+      const total = [...reparto.values()].reduce((a, b) => a + b, 0);
+      const parte = (n: number) => (reparto.get(n) ?? 0) / total;
+
+      // Hay de todo: guarniciones de una sola ficha y montones de verdad.
+      expect(parte(1)).toBeGreaterThan(0.05);
+      expect([...reparto.keys()].filter((n) => n >= 5).length).toBeGreaterThan(0);
+      // Y ningún valor acapara el mapa, que es justo lo que pasaba antes.
+      expect(Math.max(...[...reparto.keys()].map(parte))).toBeLessThan(0.5);
+    });
+
+    it('pero el total de cada jugador sigue siendo el que le toca', () => {
+      // Que el reparto sea al azar no puede cambiar cuántas tropas tiene cada
+      // uno: solo dónde están.
+      for (let seed = 1; seed <= 30; seed++) {
+        const rows = table(seed);
+        const most = Math.max(...rows.map((r) => r.territories));
+        for (const row of rows) {
+          expect(row.armies, `semilla ${seed}`).toBe(30 + (most - row.territories));
+        }
+      }
+    });
+
     it('quien tiene un territorio menos recibe un ejército más', () => {
       // Es la compensación que pedía el equilibrio: menos tierras, más tropas.
       for (let seed = 1; seed <= 30; seed++) {
