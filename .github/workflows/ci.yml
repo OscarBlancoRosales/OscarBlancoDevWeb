@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test
+
+      # Las herramientas de mapas son deterministas: si su salida cambia sin que
+      # nadie haya tocado la cartografía, algo se ha roto por el camino.
+      - name: Los mapas generados siguen siendo los mismos
+        run: |
+          npm run build:maps
+          git diff --exit-code -- packages/shared/src/engine/maps/
