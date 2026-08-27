@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { AppError } from '../errors';
-import { hashPassword, verifyPassword } from './password';
+import { hashPassword, verifyPassword, wastePasswordTime } from './password';
 import { generateToken, hashToken } from './tokens';
 import type { Mailer } from './mailer';
 import type { AuthRepository, UserRow } from './repository';
@@ -51,8 +51,24 @@ export class AuthService {
    */
   async register(input: { email: string; password: string; displayName: string }): Promise<void> {
     const email = normalizeEmail(input.email);
-    if (this.repository.findUserByEmail(email)) {
-      throw new AppError('email-ya-registrado', 'Ese correo ya está registrado.');
+
+    // Contestar "ese correo ya está registrado" convierte el alta en un
+    // comprobador de cuentas: se prueban mil correos y se sabe cuáles existen.
+    // Se contesta lo mismo siempre y se avisa al dueño de la cuenta, que es
+    // quien tiene derecho a enterarse del intento.
+    const existente = this.repository.findUserByEmail(email);
+    if (existente) {
+      await this.mailer.send({
+        to: existente.email,
+        subject: 'Alguien ha intentado registrarse con tu correo',
+        text:
+          `Hola ${existente.displayName}:\n\n` +
+          'Alguien ha intentado crear una cuenta en DevWeb con este correo, que ya ' +
+          'tiene una.\n\nSi has sido tú, entra con tu contraseña de siempre. Si la ' +
+          'has olvidado, pide una nueva desde la pantalla de acceso.\n\n' +
+          'Si no has sido tú, no tienes que hacer nada: tu cuenta no ha cambiado.',
+      });
+      return;
     }
 
     const user: UserRow = {
@@ -76,7 +92,7 @@ export class AuthService {
    */
   verifyEmail(token: string): void {
     const record = this.consumeEmailToken(token, 'verify');
-    this.repository.updateUserStatus(record.userId, 'active');
+    this.activar(record.userId);
   }
 
   /**
@@ -91,7 +107,13 @@ export class AuthService {
     client: ClientInfo,
   ): Promise<IssuedSession> {
     const user = this.repository.findUserByEmail(normalizeEmail(input.email));
-    const ok = user ? await verifyPassword(user.passwordHash, input.password) : false;
+
+    // Si no hay cuenta se gasta el mismo tiempo igualmente: comprobar Argon2
+    // con 19 MiB tarda lo suyo, y saltárselo hace que "no existe" se conteste
+    // en un milisegundo. El mensaje sería idéntico y el cronómetro lo delataría.
+    const ok = user
+      ? await verifyPassword(user.passwordHash, input.password)
+      : await wastePasswordTime(input.password).then(() => false);
 
     if (!user || !ok) {
       throw new AppError('credenciales-invalidas', 'Correo o contraseña incorrectos.');
@@ -162,9 +184,26 @@ export class AuthService {
    */
   async resetPassword(token: string, password: string): Promise<void> {
     const record = this.consumeEmailToken(token, 'reset');
+    this.activar(record.userId);
     this.repository.updatePassword(record.userId, await hashPassword(password));
-    this.repository.updateUserStatus(record.userId, 'active');
     this.repository.revokeAllForUser(record.userId, this.now());
+  }
+
+  /**
+   * Pasa una cuenta a activa, si le corresponde.
+   *
+   * Es el único sitio del servicio que escribe `active`, y por eso puede
+   * garantizar lo que importa: una cuenta bloqueada NO se desbloquea sola. Sin
+   * esta comprobación, pedir un cambio de contraseña —o usar un enlace de
+   * verificación viejo— sería una forma de levantarse el bloqueo uno mismo.
+   */
+  private activar(userId: string): void {
+    const user = this.repository.findUserById(userId);
+    if (!user) throw new AppError('token-invalido', 'El enlace no vale o ha caducado.');
+    if (user.status === 'blocked') {
+      throw new AppError('sin-permiso', 'Esta cuenta está bloqueada.');
+    }
+    if (user.status === 'pending') this.repository.updateUserStatus(userId, 'active');
   }
 
   currentUser(userId: string): PublicUser {

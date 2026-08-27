@@ -60,12 +60,29 @@ describe('AuthService', () => {
       expect(correo.enviados[0]?.text).toContain('https://oscarblancorosales.com/auth/verificar?token=');
     });
 
-    it('guarda el correo en minúsculas, para que no haya dos cuentas iguales', async () => {
+    it('no delata que un correo ya tiene cuenta', async () => {
       await auth.register(ALTA);
 
-      await expect(auth.register({ ...ALTA, email: 'OSCAR@EXAMPLE.COM' })).rejects.toMatchObject({
-        code: 'email-ya-registrado',
-      });
+      // No lanza: contestar distinto convertiría el alta en un comprobador de
+      // cuentas registradas.
+      await expect(auth.register({ ...ALTA, email: 'OSCAR@EXAMPLE.COM' })).resolves.toBeUndefined();
+
+      // Y no se ha creado una segunda cuenta con el mismo correo.
+      const cuentas = db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
+      expect(cuentas.n).toBe(1);
+    });
+
+    it('avisa al dueño de la cuenta del intento, que es quien debe enterarse', async () => {
+      await auth.register(ALTA);
+      await auth.register({ ...ALTA, email: 'OSCAR@EXAMPLE.COM' });
+
+      expect(correo.enviados).toHaveLength(2);
+      expect(correo.enviados[1]?.subject).toContain('intentado registrarse');
+      expect(correo.enviados[1]?.to).toBe('oscar@example.com');
+    });
+
+    it('el aviso del intento no lleva ningún enlace con token', () => {
+      expect(correo.enviados.every((mail) => !mail.text.includes('token='))).toBe(true);
     });
 
     it('la cuenta nace sin verificar y no deja entrar', async () => {
@@ -242,5 +259,99 @@ describe('AuthService', () => {
 
       await expect(auth.resetPassword(primero, 'una-contraseña-nueva-1')).rejects.toThrow(AppError);
     });
+  });
+});
+
+describe('una cuenta bloqueada sigue bloqueada', () => {
+  let db: Db;
+  let correo: ReturnType<typeof buzon>;
+  let auth: AuthService;
+
+  beforeEach(async () => {
+    db = openDatabase(':memory:');
+    correo = buzon();
+    auth = new AuthService({
+      repository: createAuthRepository(db),
+      mailer: correo,
+      publicWebUrl: 'https://oscarblancorosales.com',
+      refreshTtlDays: 30,
+    });
+    await auth.register(ALTA);
+    auth.verifyEmail(tokenDe(correo.enviados[0]));
+    db.prepare("UPDATE users SET status = 'blocked'").run();
+  });
+
+  it('no se desbloquea cambiando la contraseña', async () => {
+    await auth.requestPasswordReset(ALTA.email);
+    const token = tokenDe(correo.enviados[1]);
+
+    await expect(auth.resetPassword(token, 'una-contraseña-nueva-1')).rejects.toMatchObject({
+      code: 'sin-permiso',
+    });
+
+    const fila = db.prepare('SELECT status FROM users').get() as { status: string };
+    expect(fila.status).toBe('blocked');
+  });
+
+  it('y tampoco cambia la contraseña por el camino', async () => {
+    const antes = (db.prepare('SELECT password_hash AS h FROM users').get() as { h: string }).h;
+    await auth.requestPasswordReset(ALTA.email);
+
+    await auth
+      .resetPassword(tokenDe(correo.enviados[1]), 'una-contraseña-nueva-1')
+      .catch(() => undefined);
+
+    const despues = (db.prepare('SELECT password_hash AS h FROM users').get() as { h: string }).h;
+    expect(despues).toBe(antes);
+  });
+
+  it('no se desbloquea con un enlace de verificación viejo', async () => {
+    db.prepare("UPDATE users SET status = 'pending'").run();
+    await auth.register({ ...ALTA, email: 'otro@example.com', displayName: 'Otro' });
+    db.prepare("UPDATE users SET status = 'blocked' WHERE email = 'oscar@example.com'").run();
+
+    await auth.requestPasswordReset(ALTA.email);
+
+    await expect(
+      auth.resetPassword(tokenDe(correo.enviados[correo.enviados.length - 1]), 'otra-larga-1'),
+    ).rejects.toMatchObject({ code: 'sin-permiso' });
+  });
+});
+
+describe('el tiempo de respuesta no cuenta si la cuenta existe', () => {
+  it('tarda parecido con cuenta y sin cuenta', async () => {
+    const db = openDatabase(':memory:');
+    const auth = new AuthService({
+      repository: createAuthRepository(db),
+      mailer: buzon(),
+      publicWebUrl: 'https://oscarblancorosales.com',
+      refreshTtlDays: 30,
+    });
+    await auth.register(ALTA);
+    db.prepare("UPDATE users SET status = 'active'").run();
+
+    const medir = async (email: string): Promise<number> => {
+      const inicio = performance.now();
+      await auth.login({ email, password: 'contraseña-equivocada-1' }, CLIENTE).catch(() => undefined);
+      return performance.now() - inicio;
+    };
+
+    // Se calientan las dos rutas antes de medir: el señuelo se calcula una vez.
+    await medir(ALTA.email);
+    await medir('nadie@example.com');
+
+    const conCuenta = await medir(ALTA.email);
+    const sinCuenta = await medir('nadie@example.com');
+
+    // Que la ruta sin cuenta cueste tiempo de verdad es la mitad del arreglo:
+    // si ambas fueran instantáneas, la proporción saldría bien y no probaría nada.
+    expect(sinCuenta).toBeGreaterThan(5);
+    expect(conCuenta).toBeGreaterThan(5);
+
+    // Sin el señuelo, "sin cuenta" tardaría casi cero frente a decenas de
+    // milisegundos: la diferencia sería de un orden de magnitud, no de un 30 %.
+    expect(Math.max(conCuenta, sinCuenta) / Math.min(conCuenta, sinCuenta)).toBeLessThan(4);
+
+    db.close();
   });
 });

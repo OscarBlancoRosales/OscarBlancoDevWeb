@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { hash, verify } from '@node-rs/argon2';
 
 /**
@@ -31,4 +32,21 @@ export async function verifyPassword(hashed: string, password: string): Promise<
   } catch {
     return false;
   }
+}
+
+let señuelo: Promise<string> | null = null;
+
+/**
+ * Gasta el mismo tiempo que comprobar una contraseña de verdad.
+ *
+ * Sin esto, un correo que no existe se contesta en un milisegundo y uno que sí
+ * existe tarda lo que tarda Argon2 con 19 MiB. Un cronómetro basta para saber
+ * qué cuentas hay registradas, por mucho que el mensaje de error sea idéntico.
+ *
+ * El hash señuelo se calcula una sola vez, sobre una contraseña aleatoria que
+ * nadie conoce, y nunca coincide.
+ */
+export async function wastePasswordTime(password: string): Promise<void> {
+  señuelo ??= hashPassword(randomBytes(32).toString('hex'));
+  await verifyPassword(await señuelo, password);
 }
