@@ -11,5 +11,8 @@
   },
   "devDependencies": {
     "vitest": "^4.0.8"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.52"
   }
 }

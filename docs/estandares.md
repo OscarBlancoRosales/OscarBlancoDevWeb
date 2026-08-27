@@ -140,7 +140,14 @@ propia, con sus tests delante.
 
 ## 8. Fronteras entre paquetes
 
-`packages/shared` no puede importar Angular, RxJS, Firebase ni módulos de Node.
+`packages/shared` no puede importar Angular, RxJS, Firebase ni módulos de Node,
+ni nombrar `window`, `document` o `localStorage`. Para lo que de verdad depende
+del entorno está `platform.ts`, que es el único sitio donde se tocan.
+
+Su única dependencia es TypeBox, y está ahí por la regla del contrato único: los
+esquemas viven en `contracts/` y de ellos salen la validación del servidor y los
+tipos de la web. La web los importa con `import type`, así que no paga nada en el
+bundle.
 
 No es purismo: es la condición que lo hace consumible a la vez por el navegador y
 por el servidor. Una condición que solo vive en un documento se rompe sola, así
