@@ -33,7 +33,11 @@ export interface GameModule<TState, TAction> {
   /** El esquema de sus acciones. Lo que no encaje aquí no llega a `validate`. */
   readonly actionSchema: TSchema;
 
-  createState(seats: readonly Seat[]): TState;
+  /**
+   * El estado inicial. `config` es lo que se guardó al crear la sala: para
+   * RISK, el mapa y la semilla; para el planning poker, nada.
+   */
+  createState(seats: readonly Seat[], config: Readonly<Record<string, unknown>>): TState;
 
   /** `null` si la jugada es legal; el motivo si no lo es. */
   validate(state: TState, action: TAction, by: SeatId, seats: readonly Seat[]): RuleError | null;

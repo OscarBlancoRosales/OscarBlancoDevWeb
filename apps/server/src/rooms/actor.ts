@@ -15,6 +15,7 @@ export interface RoomActorOptions {
   readonly roomId: string;
   readonly module: GameModule<unknown, unknown>;
   readonly repository: RoomRepository;
+  readonly config: Readonly<Record<string, unknown>>;
   readonly now?: () => number;
 }
 
@@ -35,6 +36,7 @@ export class RoomActor {
   private readonly module: GameModule<unknown, unknown>;
   private readonly repository: RoomRepository;
   private readonly now: () => number;
+  private readonly config: Readonly<Record<string, unknown>>;
   private readonly suscriptores = new Set<Suscriptor>();
 
   private state: unknown;
@@ -46,6 +48,7 @@ export class RoomActor {
     this.roomId = options.roomId;
     this.module = options.module;
     this.repository = options.repository;
+    this.config = options.config;
     this.now = options.now ?? Date.now;
 
     const { state, seq } = this.rebuild();
@@ -73,7 +76,7 @@ export class RoomActor {
     const seats = this.seatsFromDb();
     const snapshot = this.repository.findSnapshot(this.roomId);
 
-    let state = snapshot ? snapshot.state : this.module.createState(seats);
+    let state = snapshot ? snapshot.state : this.module.createState(seats, this.config);
     let seq = snapshot?.upToSeq ?? 0;
 
     for (const event of this.repository.listEventsAfter(this.roomId, seq)) {
@@ -140,10 +143,20 @@ export class RoomActor {
       return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
     }
 
-    const rechazo = this.module.validate(this.state, accion, seatId, this.seats);
+    const rechazo = this.juzgar(accion, seatId);
     if (rechazo) return rechazo;
 
-    this.state = this.module.apply(this.state, accion, seatId, this.seats);
+    // `validate` acaba de decir que sí, así que esto no debería lanzar. Si lo
+    // hace, es un fallo del módulo y no de quien juega: se rechaza la jugada y
+    // la sala sigue en pie. Dejarlo salir tumbaría el proceso entero.
+    let siguiente: unknown;
+    try {
+      siguiente = this.module.apply(this.state, accion, seatId, this.seats);
+    } catch {
+      return { code: 'jugada-imposible', message: 'No se ha podido aplicar esa jugada.' };
+    }
+
+    this.state = siguiente;
     this.seq += 1;
 
     const at = this.now();
@@ -156,6 +169,24 @@ export class RoomActor {
 
     this.broadcast();
     return null;
+  }
+
+  /**
+   * Le pregunta al juego si la jugada vale.
+   *
+   * Un módulo puede decir que no de dos maneras: devolviendo el motivo, o
+   * lanzando. El motor de RISK lanza `RuleError`, así que aquí se recogen las
+   * dos y se traducen a lo mismo.
+   */
+  private juzgar(accion: unknown, seatId: SeatId): RuleError | null {
+    try {
+      return this.module.validate(this.state, accion, seatId, this.seats);
+    } catch (error) {
+      return {
+        code: 'jugada-ilegal',
+        message: error instanceof Error ? error.message : 'Jugada ilegal.',
+      };
+    }
   }
 
   /** Saca a alguien de la mesa y deja que el juego decida qué hacer con lo suyo. */

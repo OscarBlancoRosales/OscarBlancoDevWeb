@@ -17,6 +17,12 @@ const TS_EXTRA = {
   // Interpolar un número en una plantilla es normal y no esconde ningún
   // `[object Object]`. Prohibirlo solo produce `String(...)` por todas partes.
   '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+  // Quitar una clave con desestructuración deja una variable que nadie usa a
+  // propósito. Prefijarla con `_` es la forma estándar de decirlo.
+  '@typescript-eslint/no-unused-vars': [
+    'error',
+    { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true },
+  ],
 };
 
 /**
