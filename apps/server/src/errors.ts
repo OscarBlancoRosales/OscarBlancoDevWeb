@@ -67,6 +67,16 @@ export interface ErrorBody {
  * servidor dibujado para quien lo esté atacando.
  */
 export function registerErrorHandler(app: FastifyInstance): void {
+  // Fastify contesta las rutas desconocidas por su cuenta, con su propia forma
+  // de error. Si no se unifica aquí, el cliente tiene que saber distinguir dos
+  // formatos distintos según qué haya fallado.
+  app.setNotFoundHandler((request: FastifyRequest, reply: FastifyReply) => {
+    void reply.status(404).send({
+      code: 'no-encontrado',
+      message: `No existe ${request.method} ${request.url}.`,
+    } satisfies ErrorBody);
+  });
+
   app.setErrorHandler((error: unknown, request: FastifyRequest, reply: FastifyReply) => {
     if (error instanceof AppError) {
       const body: ErrorBody = {
@@ -87,10 +97,15 @@ export function registerErrorHandler(app: FastifyInstance): void {
       return;
     }
 
-    if (isRateLimitError(error)) {
-      void reply.status(429).send({
-        code: 'demasiadas-peticiones',
-        message: 'Demasiadas peticiones. Prueba dentro de un rato.',
+    // Fastify rechaza por su cuenta el cuerpo mal formado, el Content-Type que
+    // no entiende o el que llega más grande de lo permitido, y lo dice con un
+    // statusCode 4xx. Aplanarlo a 500 sería culpar al servidor de lo que ha
+    // mandado el cliente, y además esconde el motivo en el log.
+    const delCliente = clientStatus(error);
+    if (delCliente !== null) {
+      void reply.status(delCliente).send({
+        code: CODIGO_POR_ESTADO[delCliente] ?? 'peticion-invalida',
+        message: mensajeDe(error),
       } satisfies ErrorBody);
       return;
     }
@@ -110,7 +125,29 @@ function asValidationError(error: unknown): string | null {
   return typeof candidate.message === 'string' ? candidate.message : 'Petición inválida.';
 }
 
-function isRateLimitError(error: unknown): boolean {
-  if (typeof error !== 'object' || error === null) return false;
-  return (error as { statusCode?: unknown }).statusCode === 429;
+const CODIGO_POR_ESTADO: Readonly<Record<number, ErrorCode>> = {
+  400: 'peticion-invalida',
+  401: 'no-autenticado',
+  403: 'sin-permiso',
+  404: 'no-encontrado',
+  429: 'demasiadas-peticiones',
+};
+
+/** El código 4xx que el error ya traía, si traía alguno. */
+function clientStatus(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const status = (error as { statusCode?: unknown }).statusCode;
+  if (typeof status !== 'number' || status < 400 || status >= 500) return null;
+  return status;
+}
+
+/**
+ * Lo que se le cuenta al cliente sobre su propio error.
+ *
+ * Los mensajes de Fastify para estos casos hablan de la petición, no de las
+ * tripas del servidor, así que se pueden repetir tal cual.
+ */
+function mensajeDe(error: unknown): string {
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' && message.length > 0 ? message : 'Petición inválida.';
 }
