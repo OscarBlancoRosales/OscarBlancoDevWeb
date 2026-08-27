@@ -47,8 +47,14 @@ paso "Node"
 # Ubuntu 26.04 trae Node 22 en sus propios repositorios, así que no hace falta
 # NodeSource: una dependencia externa menos, y las actualizaciones de seguridad
 # de Node llegan por el mismo camino que las del resto del sistema.
+# `--no-install-recommends` no es un detalle: el paquete `npm` de Debian
+# recomienda node-gyp, que arrastra un compilador entero, y de ahí cuelgan
+# webpack, eslint, X11, mesa y hasta un emulador de terminal gráfico. En un
+# servidor sin pantalla eso son cientos de paquetes que parchear a cambio de
+# nada. Las dependencias nativas del servidor traen binarios precompilados, así
+# que el compilador no hace falta.
 if ! command -v node >/dev/null; then
-  apt-get install -y -qq nodejs npm
+  apt-get install -y -qq --no-install-recommends nodejs npm
 fi
 
 version=$(node -v)
@@ -114,6 +120,14 @@ install -d -m 755 /var/www/certbot
 install -m 644 "$REPO_DIR/infra/nginx/api.conf" /etc/nginx/sites-available/devweb-api.conf
 ln -sf /etc/nginx/sites-available/devweb-api.conf /etc/nginx/sites-enabled/devweb-api.conf
 rm -f /etc/nginx/sites-enabled/default
+
+# Instalar una configuración sin comprobarla deja el problema para la próxima
+# vez que alguien recargue nginx, que será justo cuando no lo esté mirando.
+if ! nginx -t; then
+  echo "La configuración de nginx no valida; se deja el servicio como estaba." >&2
+  exit 1
+fi
+systemctl reload nginx
 
 paso "Servicio"
 install -m 644 "$REPO_DIR/infra/systemd/devweb-api.service" /etc/systemd/system/devweb-api.service
