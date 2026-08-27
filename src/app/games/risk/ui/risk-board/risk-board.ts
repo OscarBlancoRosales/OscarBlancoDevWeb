@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
   Input,
+  OnDestroy,
   Output,
   ViewChild,
 } from '@angular/core';
@@ -48,7 +50,7 @@ export interface TerritoryTooltip {
   styleUrl: './risk-board.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RiskBoard {
+export class RiskBoard implements OnDestroy {
   @Input({ required: true }) set map(value: GameMap) {
     this._map = value;
     this.rendered = renderMap(value);
@@ -74,6 +76,15 @@ export class RiskBoard {
   /** Territorio resaltado por el chat o por la IA. */
   @Input() spotlight: TerritoryId | null = null;
   @Input() showNames = true;
+  /**
+   * Repetir mientras se mantiene pulsado.
+   *
+   * Lo enciende la sala sólo en la fase de refuerzos: es el gesto de los
+   * selectores de cantidad de toda la vida, y evita dar treinta toques para
+   * colocar treinta tropas. El tablero no sabe qué fase es; recibe el
+   * interruptor y ya está.
+   */
+  @Input() repeatOnHold = false;
   /** Modo avanzado: pinta la orografía y la explica en el cartel flotante. */
   @Input() set showTerrain(value: boolean) {
     this._showTerrain = value;
@@ -99,6 +110,12 @@ export class RiskBoard {
   readonly markedTerrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]).filter(
     (meta) => meta.id !== 'llanura',
   );
+
+  /**
+   * En modo zoneless nada repinta solo al vencer un temporizador, y aquí todo
+   * lo que pasa mientras el dedo está quieto viene de un temporizador.
+   */
+  constructor(private cdr: ChangeDetectorRef) {}
 
   @Output() territoryClick = new EventEmitter<TerritoryId>();
   @Output() territoryHover = new EventEmitter<TerritoryId | null>();
@@ -333,15 +350,75 @@ export class RiskBoard {
    */
   readonly TAP_MAX_MOVE = 8;
 
+  /** Cuánto se espera antes de empezar a repetir. */
+  readonly HOLD_FIRST_MS = 400;
+  /** Lo más rápido que llega a repetir. */
+  readonly HOLD_MIN_MS = 60;
+  /** Cuánto se recorta el intervalo en cada vuelta. */
+  readonly HOLD_STEP_MS = 15;
+  /** Cuánto hay que mantener el dedo para que salga la ficha informativa. */
+  readonly HOLD_INFO_MS = 500;
+
   /** Toque en curso: dónde empezó y si ya se ha ido de paseo. */
   private pendingTap: { id: TerritoryId; x: number; y: number; moved: boolean } | null = null;
+  private repeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private infoTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Coloca en cadena, cada vez más rápido, mientras no se suelte. */
+  private startRepeat(id: TerritoryId): void {
+    this.stopRepeat();
+    let delay = 150;
+    const tick = () => {
+      // Si el dedo se ha ido de paseo esto era un arrastre, no una cadena.
+      if (!this.pendingTap || this.pendingTap.moved) return this.stopRepeat();
+      this.territoryClick.emit(id);
+      this.cdr.markForCheck();
+      delay = Math.max(this.HOLD_MIN_MS, delay - this.HOLD_STEP_MS);
+      this.repeatTimer = setTimeout(tick, delay);
+    };
+    this.repeatTimer = setTimeout(tick, this.HOLD_FIRST_MS);
+  }
+
+  private stopRepeat(): void {
+    if (this.repeatTimer) clearTimeout(this.repeatTimer);
+    this.repeatTimer = null;
+  }
+
+  /**
+   * Ficha informativa al mantener pulsado, cuando no toca colocar.
+   *
+   * En el móvil no hay ratón, así que el cartel que sale al pasar por encima no
+   * aparece nunca. Ésta es su puerta de entrada con el dedo.
+   */
+  private startInfo(id: TerritoryId): void {
+    this.stopInfo();
+    this.infoTimer = setTimeout(() => {
+      if (!this.pendingTap || this.pendingTap.moved) return;
+      this.onTerritoryEnter(id);
+      this.cdr.markForCheck();
+    }, this.HOLD_INFO_MS);
+  }
+
+  private stopInfo(): void {
+    if (this.infoTimer) clearTimeout(this.infoTimer);
+    this.infoTimer = null;
+  }
+
+  ngOnDestroy(): void {
+    this.stopRepeat();
+    this.stopInfo();
+  }
 
   onTerritoryPointerDown(id: TerritoryId, event: PointerEvent): void {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     this.pendingTap = { id, x: event.clientX, y: event.clientY, moved: false };
+    if (this.repeatOnHold) this.startRepeat(id);
+    else this.startInfo(id);
   }
 
   onTerritoryPointerUp(id: TerritoryId, event: PointerEvent): void {
+    this.stopRepeat();
+    this.stopInfo();
     const tap = this.pendingTap;
     this.pendingTap = null;
     if (!tap || tap.id !== id || tap.moved) return;
@@ -355,7 +432,11 @@ export class RiskBoard {
     if (!tap) return;
     const dx = event.clientX - tap.x;
     const dy = event.clientY - tap.y;
-    if (Math.hypot(dx, dy) > this.TAP_MAX_MOVE) tap.moved = true;
+    if (Math.hypot(dx, dy) > this.TAP_MAX_MOVE) {
+      tap.moved = true;
+      this.stopRepeat();
+      this.stopInfo();
+    }
   }
 
   /**
@@ -426,6 +507,8 @@ export class RiskBoard {
   }
 
   onPointerUp(): void {
+    this.stopRepeat();
+    this.stopInfo();
     this.dragging = false;
     this.pendingTap = null;
   }

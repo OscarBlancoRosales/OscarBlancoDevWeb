@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskBoard } from './risk-board';
 import { WORLD_MAP } from '../../engine/maps/world.map';
 import { TINY_MAP, makeGame, setBoard } from '../../engine/testing';
@@ -113,6 +113,76 @@ describe('RiskBoard', () => {
       component.onPointerMove(pointer('pointermove', 100 + component.TAP_MAX_MOVE, 100));
       component.onTerritoryPointerUp('A2', pointer('pointerup', 100 + component.TAP_MAX_MOVE, 100));
       expect(emitidos).toEqual(['A2']);
+    });
+
+    describe('mantener pulsado', () => {
+      beforeEach(() => vi.useFakeTimers());
+      afterEach(() => vi.useRealTimers());
+
+      it('apagado, mantener pulsado no repite', () => {
+        const emitidos = escuchar();
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(3000);
+        component.onTerritoryPointerUp('A2', pointer('pointerup', 10, 10));
+        expect(emitidos).toEqual(['A2']);
+      });
+
+      it('encendido, la primera repetición tarda y luego se acelera', () => {
+        fixture.componentRef.setInput('repeatOnHold', true);
+        const emitidos = escuchar();
+
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(component.HOLD_FIRST_MS - 1);
+        expect(emitidos, 'ha repetido antes de tiempo').toEqual([]);
+
+        vi.advanceTimersByTime(1);
+        expect(emitidos).toEqual(['A2']);
+
+        vi.advanceTimersByTime(2000);
+        expect(emitidos.length, 'no se acelera').toBeGreaterThan(10);
+        expect(emitidos.every((id) => id === 'A2')).toBe(true);
+      });
+
+      it('soltar corta la cadena', () => {
+        fixture.componentRef.setInput('repeatOnHold', true);
+        const emitidos = escuchar();
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(1000);
+        const alSoltar = emitidos.length;
+        component.onTerritoryPointerUp('A2', pointer('pointerup', 10, 10));
+        vi.advanceTimersByTime(3000);
+        // Al soltar cuenta además el toque final, y ni uno más.
+        expect(emitidos.length).toBe(alSoltar + 1);
+      });
+
+      it('irse de paseo con el dedo corta la cadena y no cuenta el toque final', () => {
+        fixture.componentRef.setInput('repeatOnHold', true);
+        const emitidos = escuchar();
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(600);
+        const antes = emitidos.length;
+        expect(antes, 'no había empezado a repetir').toBeGreaterThan(0);
+        component.onPointerMove(pointer('pointermove', 200, 10));
+        vi.advanceTimersByTime(3000);
+        component.onTerritoryPointerUp('A2', pointer('pointerup', 200, 10));
+        expect(emitidos.length).toBe(antes);
+      });
+
+      it('sin repetición, mantener pulsado enseña la ficha del territorio', () => {
+        // En el móvil no hay ratón: sin esto, el cartel flotante que sale al
+        // pasar por encima no aparece jamás.
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(component.HOLD_INFO_MS);
+        expect(component.hovered).toBe('A2');
+        expect(component.tooltip).toBeTruthy();
+      });
+
+      it('con repetición encendida no sale la ficha: estás colocando', () => {
+        fixture.componentRef.setInput('repeatOnHold', true);
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        vi.advanceTimersByTime(component.HOLD_INFO_MS);
+        expect(component.hovered).toBeNull();
+      });
     });
 
     it('el clic del navegador ya no coloca por su cuenta', () => {
