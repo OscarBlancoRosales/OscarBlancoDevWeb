@@ -1,0 +1,71 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/server/**'
+      - 'packages/shared/**'
+      - 'infra/**'
+      - 'package-lock.json'
+      - '.github/workflows/deploy-api.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: produccion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # No se despliega lo que no pasa las pruebas, aunque el push venga de main.
+      - name: Comprobaciones
+        run: |
+          npm run lint
+          npm run typecheck
+          npm run test -w @devweb/server
+
+      # La entrega lleva un manifiesto propio con solo las dependencias de
+      # produccion del servidor, y su lockfile generado aqui. Reutilizar el del
+      # monorepo arrastraria a la VPS todo lo que necesita la web.
+      - name: Empaquetar la entrega
+        run: |
+          npm run build -w @devweb/server
+          mkdir -p release
+          cp apps/server/dist/server.mjs release/server.mjs
+          node tools/pack-server-manifest.mjs
+          npm install --prefix release --package-lock-only --omit=dev --no-audit --no-fund
+          tar -czf devweb-api.tar.gz -C release .
+
+      - name: Subir a la VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: devweb-api.tar.gz
+          target: /tmp
+
+      - name: Instalar y arrancar
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            sudo devweb-deploy /tmp/devweb-api.tar.gz
+            rm -f /tmp/devweb-api.tar.gz
+
+      - name: Comprobar que responde de verdad
+        run: curl -fsS --retry 5 --retry-delay 3 https://api.oscarblancorosales.com/health

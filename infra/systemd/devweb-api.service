@@ -1,0 +1,52 @@
+[Unit]
+Description=DevWeb API
+Documentation=https://github.com/OscarBlancoRosales/OscarBlancoDevWeb
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=devweb
+Group=devweb
+WorkingDirectory=/opt/devweb/current
+ExecStart=/usr/bin/node /opt/devweb/current/server.mjs
+EnvironmentFile=/etc/devweb/api.env
+
+Restart=always
+RestartSec=2
+# Si se reinicia cinco veces en un minuto, algo no se arregla reiniciando.
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# El proceso solo necesita leer su código y escribir su base de datos. Todo lo
+# demás que pueda tocar es superficie de ataque regalada.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectClock=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+ReadWritePaths=/var/lib/devweb
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+MemoryMax=512M
+TasksMax=256
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=devweb-api
+
+[Install]
+WantedBy=multi-user.target

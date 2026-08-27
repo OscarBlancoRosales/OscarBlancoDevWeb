@@ -7,6 +7,9 @@
  * con el cerebro heurístico local, que es gratis y no necesita red.
  */
 
+import { browserStorage, currentOrigin } from '../../platform';
+import type { KeyValueStorage } from '../../platform';
+
 export type AiProvider = 'openrouter' | 'groq' | 'gemini' | 'openai-compatible';
 
 export interface AiSettings {
@@ -159,7 +162,7 @@ function headersFor(settings: AiSettings): Record<string, string> {
   if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
   if (settings.provider === 'openrouter') {
     headers['HTTP-Referer'] =
-      typeof window !== 'undefined' ? window.location.origin : 'https://devweb.local';
+      currentOrigin('https://devweb.local');
     headers['X-Title'] = 'DevWeb Risk';
   }
   return headers;
@@ -438,7 +441,7 @@ export function withBundledKey(
 }
 
 /** ¿El jugador ha guardado alguna vez sus ajustes de IA? */
-export function hasStoredAiSettings(storage: Storage | undefined = safeStorage()): boolean {
+export function hasStoredAiSettings(storage: KeyValueStorage | undefined = browserStorage()): boolean {
   if (!storage) return false;
   try {
     return storage.getItem(STORAGE_KEY) !== null;
@@ -447,7 +450,7 @@ export function hasStoredAiSettings(storage: Storage | undefined = safeStorage()
   }
 }
 
-export function loadAiSettings(storage: Storage | undefined = safeStorage()): AiSettings {
+export function loadAiSettings(storage: KeyValueStorage | undefined = browserStorage()): AiSettings {
   if (!storage) return { ...DEFAULT_AI_SETTINGS };
   try {
     const raw = storage.getItem(STORAGE_KEY);
@@ -461,21 +464,14 @@ export function loadAiSettings(storage: Storage | undefined = safeStorage()): Ai
 
 export function saveAiSettings(
   settings: AiSettings,
-  storage: Storage | undefined = safeStorage(),
+  storage: KeyValueStorage | undefined = browserStorage(),
 ): void {
   if (!storage) return;
   storage.setItem(STORAGE_KEY, JSON.stringify(settings));
 }
 
-export function clearAiSettings(storage: Storage | undefined = safeStorage()): void {
+export function clearAiSettings(storage: KeyValueStorage | undefined = browserStorage()): void {
   if (!storage) return;
   storage.removeItem(STORAGE_KEY);
 }
 
-function safeStorage(): Storage | undefined {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : undefined;
-  } catch {
-    return undefined;
-  }
-}

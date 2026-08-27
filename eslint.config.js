@@ -21,7 +21,12 @@ const TS_EXTRA = {
  * esté después de la mudanza al monorepo. El motor de RISK cambia de carpeta,
  * no de edad.
  */
-const LEGACY_TS = ['apps/web/**/*.ts', 'src/**/*.ts', 'tools/**/*.ts', 'packages/shared/**/*.ts'];
+const LEGACY_TS = [
+  'apps/web/**/*.ts',
+  'src/**/*.ts',
+  'tools/**/*.ts',
+  'packages/shared/src/engine/**/*.ts',
+];
 const LEGACY_HTML = ['apps/web/**/*.html', 'src/**/*.html'];
 
 /**
@@ -88,6 +93,19 @@ export default tseslint.config(
     extends: [...angular.configs.templateRecommended],
     languageOptions: { parser: angular.templateParser },
     rules: asWarnings(angular.configs.templateRecommended),
+  },
+  {
+    files: ['packages/shared/**/*.ts'],
+    ignores: ['packages/shared/src/platform.ts'],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        ...['window', 'document', 'localStorage', 'sessionStorage', 'navigator'].map((name) => ({
+          name,
+          message: 'En el servidor no existe. Usa packages/shared/src/platform.ts.',
+        })),
+      ],
+    },
   },
   {
     files: ['packages/shared/**/*.ts'],

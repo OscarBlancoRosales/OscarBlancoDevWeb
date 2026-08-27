@@ -54,3 +54,5 @@ Thumbs.db
 # Clave de IA de la casa: se despliega, pero NO se versiona.
 # Ver docs/risk.md, sección de la IA.
 public/ai-key.json
+release/
+tmp-prueba/

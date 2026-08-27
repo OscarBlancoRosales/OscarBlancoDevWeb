@@ -1,0 +1,12 @@
+[Unit]
+Description=Copia diaria de la base de DevWeb
+
+[Timer]
+OnCalendar=daily
+# Si la máquina estaba apagada a la hora, se hace al arrancar. Un backup que
+# solo ocurre si el servidor estaba encendido a las 3 no es un backup.
+Persistent=true
+RandomizedDelaySec=30m
+
+[Install]
+WantedBy=timers.target

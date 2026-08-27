@@ -1,0 +1,13 @@
+[Unit]
+Description=Copia de seguridad de la base de DevWeb
+
+[Service]
+Type=oneshot
+User=devweb
+Group=devweb
+ExecStart=/usr/local/bin/devweb-backup
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/devweb
