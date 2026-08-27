@@ -19,6 +19,7 @@ import { createRoomRepository } from './rooms/repository';
 import { RoomService } from './rooms/service';
 import { roomRoutes } from './rooms/routes';
 import { roomSocket } from './rooms/ws';
+import { kvRoutes } from './kv/routes';
 import { healthRoutes } from './health/routes';
 
 export interface BuildOptions {
@@ -82,6 +83,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   await app.register(authRoutes({ service, config }));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
+  await app.register(kvRoutes(db));
 
   return app;
 }
