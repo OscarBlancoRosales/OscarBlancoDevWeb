@@ -198,6 +198,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
     for (const sub of this.subs) sub.unsubscribe();
     this.game.detach();
     this.rooms.disconnect();
@@ -379,6 +380,7 @@ export class RiskRoom implements OnInit, OnDestroy {
       if (!this.selectableTerritories.includes(id)) return;
       this.selectedFrom = id;
       this.deployAmount = Math.min(this.deployAmount, this.me?.reserve ?? 1) || 1;
+      this.queueDeploy(id);
       return;
     }
 
@@ -638,11 +640,78 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   async undoDeploy(all = false): Promise<void> {
+    await this.flushDeploy();
     if (this.placedCount === 0) return;
     await this.send({ type: 'undo-deploy', playerId: this.seatId, all });
   }
 
+  /**
+   * Cuánto se espera desde el último toque antes de mandar la colocación.
+   *
+   * Los toques se acumulan y salen en una sola acción. Uno por toque serían
+   * tantas escrituras en Firebase como toques, y otras tantas líneas de
+   * registro: online iría a trompicones y el historial quedaría ilegible.
+   */
+  readonly DEPLOY_FLUSH_MS = 350;
+
+  private pendingDeploy: { territoryId: TerritoryId; armies: number } | null = null;
+  private deployFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Lo que queda por colocar CONTANDO lo que aún no ha salido.
+   *
+   * La pantalla tiene que responder al dedo aunque la escritura tarde, así que
+   * el contador baja en el toque y no cuando la acción llega a la sala.
+   */
+  get reserveLeft(): number {
+    return Math.max(0, (this.me?.reserve ?? 0) - (this.pendingDeploy?.armies ?? 0));
+  }
+
+  private queueDeploy(territoryId: TerritoryId): void {
+    if (this.reserveLeft <= 0) return;
+    // Cambiar de destino cierra lo anterior: una acción por territorio.
+    if (this.pendingDeploy && this.pendingDeploy.territoryId !== territoryId) {
+      void this.flushDeploy();
+    }
+    this.pendingDeploy = {
+      territoryId,
+      armies: (this.pendingDeploy?.armies ?? 0) + 1,
+    };
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
+    this.deployFlushTimer = setTimeout(() => void this.flushDeploy(), this.DEPLOY_FLUSH_MS);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Manda de golpe todo lo acumulado.
+   *
+   * Se llama sola al dejar de tocar, y a mano antes de cualquier cosa que
+   * dependa de la reserva: deshacer, terminar la fase o colocar con el
+   * deslizador.
+   */
+  async flushDeploy(): Promise<void> {
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
+    this.deployFlushTimer = null;
+    const pending = this.pendingDeploy;
+    if (!pending) return;
+    try {
+      await this.send({
+        type: 'deploy',
+        playerId: this.seatId,
+        territoryId: pending.territoryId,
+        armies: pending.armies,
+      });
+    } finally {
+      // Se suelta pase lo que pase: si la acción se rechaza, `send` ya deja el
+      // aviso en pantalla y el contador tiene que volver a la verdad.
+      this.pendingDeploy = null;
+      this.cdr.markForCheck();
+    }
+  }
+
   async deploy(all = false): Promise<void> {
+    // Lo tocado va primero, o se contaría dos veces la misma reserva.
+    await this.flushDeploy();
     if (!this.selectedFrom || !this.me) return;
     const armies = all ? this.me.reserve : Math.min(this.deployAmount, this.me.reserve);
     if (armies <= 0) return;
@@ -680,6 +749,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   async endPhase(): Promise<void> {
+    await this.flushDeploy();
     this.clearSelection();
     await this.send({ type: 'end-phase', playerId: this.seatId });
   }

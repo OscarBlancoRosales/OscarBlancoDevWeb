@@ -533,6 +533,76 @@ describe('RiskRoom (la mesa)', () => {
       expect(component.state!.territories[target].armies).toBe(armies + reserve);
     });
 
+    describe('colocar a toques', () => {
+      it('varios toques mandan UNA sola acción', async () => {
+        // Un toque por acción serían tantas escrituras en Firebase como toques,
+        // y otras tantas líneas de registro: online iría a trompicones y el
+        // historial quedaría ilegible.
+        const game = TestBed.inject(RiskGameService);
+        const enviadas: Array<Record<string, unknown>> = [];
+        const espia = vi
+          .spyOn(game, 'play')
+          .mockImplementation(async (a) => void enviadas.push(a as never));
+        try {
+          const target = component.selectableTerritories[0];
+          const toques = component.me!.reserve;
+          expect(toques, 'sin reserva no hay nada que probar').toBeGreaterThan(1);
+          for (let i = 0; i < toques; i++) component.onTerritoryClick(target);
+          expect(enviadas, 'ha mandado antes de agrupar').toEqual([]);
+          await component.flushDeploy();
+          expect(enviadas).toHaveLength(1);
+          expect(enviadas[0]).toMatchObject({
+            type: 'deploy',
+            territoryId: target,
+            armies: toques,
+          });
+        } finally {
+          espia.mockRestore();
+        }
+      });
+
+      it('el contador baja en el toque, no al mandar', () => {
+        // La pantalla tiene que responder al dedo aunque la escritura tarde.
+        const antes = component.reserveLeft;
+        component.onTerritoryClick(component.selectableTerritories[0]);
+        expect(component.reserveLeft).toBe(antes - 1);
+      });
+
+      it('no se coloca más de lo que queda en reserva', () => {
+        const target = component.selectableTerritories[0];
+        const reserva = component.reserveLeft;
+        for (let i = 0; i < reserva + 5; i++) component.onTerritoryClick(target);
+        expect(component.reserveLeft).toBe(0);
+      });
+
+      it('cambiar de territorio vuelca lo anterior', async () => {
+        const game = TestBed.inject(RiskGameService);
+        const enviadas: Array<Record<string, unknown>> = [];
+        const espia = vi
+          .spyOn(game, 'play')
+          .mockImplementation(async (a) => void enviadas.push(a as never));
+        try {
+          const [uno, dos] = component.selectableTerritories;
+          component.onTerritoryClick(uno);
+          component.onTerritoryClick(dos);
+          await wait();
+          expect(enviadas).toHaveLength(1);
+          expect(enviadas[0]).toMatchObject({ territoryId: uno, armies: 1 });
+        } finally {
+          espia.mockRestore();
+        }
+      });
+
+      it('el volcado sale solo al dejar de tocar', async () => {
+        const target = component.selectableTerritories[0];
+        const antes = component.state!.territories[target].armies;
+        component.onTerritoryClick(target);
+        component.onTerritoryClick(target);
+        await wait(component.DEPLOY_FLUSH_MS + 30);
+        expect(component.state!.territories[target].armies).toBe(antes + 2);
+      });
+    });
+
     it('no puedo terminar la fase con reserva pendiente', () => {
       expect(component.canEndPhase()).toBe(false);
     });
