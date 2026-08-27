@@ -1,0 +1,7 @@
+<header class="hud" [class.my-turn]="myTurn">
+  <button class="hud-leave" type="button" (click)="leave.emit()">◀ Salir</button>
+  <span class="hud-round">{{ roundLabel }}</span>
+  <span class="hud-phase">{{ phaseLabel }}</span>
+  <span class="hud-turn">{{ turnLabel }}</span>
+  <button class="hud-settings" type="button" (click)="settings.emit()" aria-label="Ajustes">⚙</button>
+</header>
