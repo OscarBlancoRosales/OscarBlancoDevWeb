@@ -1,63 +1,71 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
+import { DocKind, makeDocument } from './dni';
 
 @Component({
   selector: 'app-dni-generator',
-  imports: [CommonModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './dni-generator.html',
   styleUrl: './dni-generator.css',
 })
-export class DniGenerator {
-  currentDni: string = '';
-  showCopiedMessage = false;
-  isGenerating = false;
+export class DniGenerator implements OnInit {
+  items: string[] = [];
+  kind: DocKind = 'dni';
+  amount = 5;
+  copiedAll = false;
+  copiedIndex = -1;
 
-  constructor(private cdr: ChangeDetectorRef, public i18n: I18nService) {
-    // Generar DNI inicial sin delay
-    this.currentDni = this.generateRandomDni();
+  constructor(
+    private cdr: ChangeDetectorRef,
+    public i18n: I18nService,
+  ) {}
+
+  ngOnInit(): void {
+    this.generate();
   }
 
-  generateNewDni(): void {
-    this.isGenerating = true;
+  generate(): void {
+    const cuantos = Math.max(1, Math.min(50, Number(this.amount) || 1));
+    this.items = Array.from({ length: cuantos }, () => makeDocument(this.kind));
+    this.copiedIndex = -1;
+    this.copiedAll = false;
+  }
+
+  setKind(kind: DocKind): void {
+    this.kind = kind;
+    this.generate();
+  }
+
+  async copyOne(valor: string, index: number): Promise<void> {
+    if (!(await this.toClipboard(valor))) return;
+    this.copiedIndex = index;
     this.cdr.detectChanges();
-    
-    // Simular delay para efecto visual
     setTimeout(() => {
-      this.currentDni = this.generateRandomDni();
-      this.isGenerating = false;
-      this.showCopiedMessage = false;
+      this.copiedIndex = -1;
       this.cdr.detectChanges();
-    }, 300);
+    }, 1400);
   }
 
-  private generateRandomDni(): string {
-    // Generar número aleatorio de 8 dígitos
-    const randomNumber = Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
-    
-    // Calcular letra de control DNI español
-    const letters = 'TRWAGMYFPDXBNJZSQVHLCKE';
-    const remainder = parseInt(randomNumber) % 23;
-    const controlLetter = letters[remainder];
-    
-    return `${randomNumber}${controlLetter}`;
+  async copyAll(): Promise<void> {
+    if (!this.items.length) return;
+    if (!(await this.toClipboard(this.items.join('\n')))) return;
+    this.copiedAll = true;
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      this.copiedAll = false;
+      this.cdr.detectChanges();
+    }, 1400);
   }
 
-  copyToClipboard(): void {
-    if (!this.currentDni) return;
-    
-    navigator.clipboard.writeText(this.currentDni).then(() => {
-      this.showCopiedMessage = true;
-      this.cdr.detectChanges();
-      
-      // Ocultar mensaje después de 2 segundos
-      setTimeout(() => {
-        this.showCopiedMessage = false;
-        this.cdr.detectChanges();
-      }, 2000);
-    }).catch(err => {
-      console.error('Error al copiar:', err);
-    });
+  private async toClipboard(texto: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(texto);
+      return true;
+    } catch {
+      // Sin permiso de portapapeles el valor sigue en pantalla: no es grave.
+      return false;
+    }
   }
 }

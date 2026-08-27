@@ -1,5 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
@@ -8,21 +7,25 @@ type LoremType = 'paragraphs' | 'sentences' | 'words';
 
 @Component({
   selector: 'app-lorem-generator',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './lorem-generator.html',
   styleUrl: './lorem-generator.css'
 })
-export class LoremGenerator {
+export class LoremGenerator implements OnInit {
   outputText = '';
   amount = 3;
   type: LoremType = 'paragraphs';
   startWithLorem = true;
+  /** Cada trozo en su línea, con guion delante. */
+  asList = false;
+  /** Envuelto en las etiquetas que le tocan, listo para pegar. */
+  html = false;
   copied = false;
 
   types: { value: LoremType; label: string }[] = [
-    { value: 'paragraphs', label: 'Párrafos' },
-    { value: 'sentences', label: 'Frases' },
-    { value: 'words', label: 'Palabras' }
+    { value: 'paragraphs', label: 'párrafos' },
+    { value: 'sentences', label: 'frases' },
+    { value: 'words', label: 'palabras' },
   ];
 
   private words = [
@@ -47,23 +50,59 @@ export class LoremGenerator {
     'beatae', 'vitae', 'dicta', 'explicabo', 'nemo', 'ipsam', 'voluptatem'
   ];
 
-  constructor(private cdr: ChangeDetectorRef, public i18n: I18nService) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    public i18n: I18nService,
+  ) {}
+
+  ngOnInit(): void {
+    this.generate();
+  }
+
+  setType(type: LoremType): void {
+    this.type = type;
+    this.generate();
+  }
 
   generate(): void {
-    const count = Math.max(1, Math.min(100, this.amount || 1));
+    const count = Math.max(1, Math.min(100, Number(this.amount) || 1));
 
+    let trozos: string[];
     switch (this.type) {
       case 'words':
-        this.outputText = this.generateWords(count);
+        trozos = [this.generateWords(count)];
         break;
       case 'sentences':
-        this.outputText = this.generateSentences(count);
+        trozos = this.generateSentences(count).split('. ').filter(Boolean).map((f) =>
+          f.endsWith('.') ? f : f + '.',
+        );
         break;
-      case 'paragraphs':
-        this.outputText = this.generateParagraphs(count);
-        break;
+      default:
+        trozos = this.generateParagraphs(count).split('\n\n');
     }
+
+    this.outputText = this.envolver(trozos);
+    this.copied = false;
     this.cdr.detectChanges();
+  }
+
+  /** Le da la forma pedida: lista, HTML, o texto pelado. */
+  private envolver(trozos: string[]): string {
+    if (this.asList) {
+      return this.html
+        ? '<ul>\n' + trozos.map((t) => `  <li>${t}</li>`).join('\n') + '\n</ul>'
+        : trozos.map((t) => `- ${t}`).join('\n');
+    }
+    if (this.html) {
+      return trozos.map((t) => `<p>${t}</p>`).join('\n');
+    }
+    return trozos.join(this.type === 'paragraphs' ? '\n\n' : ' ');
+  }
+
+  /** Cuánto se tarda en leerlo, a las 200 palabras por minuto de siempre. */
+  get readingTime(): string {
+    const minutos = Math.max(1, Math.round(this.wordCount / 200));
+    return `~${minutos} min`;
   }
 
   private generateWords(count: number): string {
@@ -135,19 +174,19 @@ export class LoremGenerator {
     return this.outputText.length;
   }
 
-  onTypeChange(): void {
-    this.outputText = '';
-    this.copied = false;
-  }
-
   async copyOutput(): Promise<void> {
     if (!this.outputText) return;
     try {
       await navigator.clipboard.writeText(this.outputText);
       this.copied = true;
-      setTimeout(() => { this.copied = false; this.cdr.detectChanges(); }, 1500);
       this.cdr.detectChanges();
-    } catch {}
+      setTimeout(() => {
+        this.copied = false;
+        this.cdr.detectChanges();
+      }, 1400);
+    } catch {
+      // Sin portapapeles el texto sigue en pantalla para copiarlo a mano.
+    }
   }
 
   clear(): void {

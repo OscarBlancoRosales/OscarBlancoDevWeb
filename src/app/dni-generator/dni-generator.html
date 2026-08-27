@@ -1,38 +1,48 @@
-<app-terminal-layout title="DNI Generator">
-  <div class="tool-content">
-    <div class="tool-card">
-      <h2 class="tool-title">{{ i18n.t('dni.title') }}</h2>
-      <p class="tool-subtitle">{{ i18n.t('dni.subtitle') }}</p>
+<app-terminal-layout title="dni">
+  <div class="tool">
+    <div class="tool-head">
+      <div class="tool-cmd">dni</div>
+      <div class="tool-sub">{{ i18n.t('dni.subtitle') }}</div>
+    </div>
 
-      <div class="dni-display">
-        <div class="dni-label">{{ i18n.t('dni.generated') }}</div>
-        <div class="dni-value" [class.generating]="isGenerating">
-          <span class="dni-number">{{ currentDni || '---------' }}</span>
-          <div class="loading-dots" *ngIf="isGenerating">
-            <span>.</span><span>.</span><span>.</span>
-          </div>
+    <div class="tool-flags">
+      <div class="flag">
+        <span class="flag-label">tipo</span>
+        <div class="seg">
+          <button class="seg-btn" [class.active]="kind === 'dni'" (click)="setKind('dni')">DNI</button>
+          <button class="seg-btn" [class.active]="kind === 'nie'" (click)="setKind('nie')">NIE</button>
         </div>
       </div>
-
-      <div class="controls">
-        <button class="btn btn-primary" (click)="generateNewDni()" [disabled]="isGenerating">
-          {{ isGenerating ? i18n.t('dni.generating') : i18n.t('dni.generateNew') }}
-        </button>
-        <button class="btn btn-accent" (click)="copyToClipboard()" [disabled]="!currentDni || isGenerating">
-          {{ i18n.t('common.copy') }}
-        </button>
-      </div>
-
-      <div class="copied-message" *ngIf="showCopiedMessage">
-        {{ i18n.t('dni.copiedMsg') }}
-      </div>
-
-      <div class="info-box">
-        <div class="info-title">{{ i18n.t('dni.info') }}</div>
-        <div class="info-text">
-          {{ i18n.t('dni.infoText') }}
-        </div>
+      <div class="flag">
+        <label class="flag-label" for="dni-count">{{ i18n.t('common.amount') }}</label>
+        <input id="dni-count" class="input input--sm" type="number" min="1" max="50"
+               [(ngModel)]="amount" (ngModelChange)="generate()" />
       </div>
     </div>
+
+    <div class="tool-actions">
+      <button class="btn btn--primary" (click)="generate()">{{ i18n.t('dni.generateNew') }}</button>
+      <button class="btn" (click)="copyAll()" [disabled]="!items.length">
+        {{ copiedAll ? i18n.t('common.copied') : i18n.t('common.copy') }}
+      </button>
+    </div>
+
+    @if (items.length) {
+      <div class="out">
+        <div class="out-head">
+          <span>{{ kind }} · {{ items.length }}</span>
+          <span>{{ i18n.t('uuid.clickToCopy') }}</span>
+        </div>
+        @for (item of items; track $index) {
+          <div class="row" (click)="copyOne(item, $index)">
+            <span class="row-index">{{ $index + 1 }}</span>
+            <span class="row-value dni-value">{{ item }}</span>
+            <span class="row-copy">{{ copiedIndex === $index ? i18n.t('common.copied') : '⧉' }}</span>
+          </div>
+        }
+      </div>
+    }
+
+    <p class="note note--muted dni-info">{{ i18n.t('dni.infoText') }}</p>
   </div>
 </app-terminal-layout>

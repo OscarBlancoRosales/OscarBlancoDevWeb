@@ -1,51 +1,65 @@
-<app-terminal-layout title="Lorem Ipsum Generator">
-  <div class="tool-content">
-    <div class="tool-card">
-      <h1 class="tool-title">{{ i18n.t('lorem.title') }}</h1>
-      <p class="tool-subtitle">{{ i18n.t('lorem.subtitle') }}</p>
+<app-terminal-layout title="lorem">
+  <div class="tool">
+    <div class="tool-head">
+      <div class="tool-cmd">lorem</div>
+      <div class="tool-sub">{{ i18n.t('lorem.subtitle') }}</div>
+    </div>
 
-      <div class="options-row">
-        <div class="option-group">
-          <label>{{ i18n.t('common.type') }}</label>
-          <div class="type-buttons">
-            <button *ngFor="let t of types"
-                    class="type-btn"
-                    [class.active]="type === t.value"
-                    (click)="type = t.value; onTypeChange()">
+    <div class="tool-flags">
+      <div class="flag">
+        <span class="flag-label">{{ i18n.t('common.type') }}</span>
+        <div class="seg">
+          @for (t of types; track t.value) {
+            <button class="seg-btn" [class.active]="type === t.value" (click)="setType(t.value)">
               {{ t.label }}
             </button>
-          </div>
-        </div>
-
-        <div class="option-group">
-          <label>{{ i18n.t('common.amount') }}</label>
-          <input type="number" [(ngModel)]="amount" min="1" max="100" class="amount-input">
+          }
         </div>
       </div>
 
-      <div class="checkbox-row">
-        <label class="checkbox-label">
-          <input type="checkbox" [(ngModel)]="startWithLorem">
+      <div class="flag">
+        <label class="flag-label" for="lorem-count">{{ i18n.t('common.amount') }}</label>
+        <input id="lorem-count" class="input input--sm" type="number" min="1" max="100"
+               [(ngModel)]="amount" (ngModelChange)="generate()" />
+      </div>
+
+      <div class="flag flag--checks">
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="startWithLorem" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
           <span>{{ i18n.t('lorem.startWith') }}</span>
         </label>
-      </div>
-
-      <div class="actions">
-        <button class="btn btn-primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
-        <button class="btn btn-secondary" (click)="clear()" *ngIf="outputText">{{ i18n.t('common.clear') }}</button>
-      </div>
-
-      <div class="output-section" *ngIf="outputText">
-        <div class="output-header">
-          <label>{{ i18n.t('common.result') }}</label>
-          <div class="output-stats">
-            <span class="stat">{{ wordCount }} {{ i18n.t('common.words') }}</span>
-            <span class="stat">{{ charCount }} {{ i18n.t('common.characters') }}</span>
-          </div>
-          <button class="copy-btn" (click)="copyOutput()">{{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}</button>
-        </div>
-        <div class="output-box">{{ outputText }}</div>
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="asList" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('lorem.asList') }}</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="html" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('lorem.asHtml') }}</span>
+        </label>
       </div>
     </div>
+
+    <div class="tool-actions">
+      <button class="btn btn--primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
+      <button class="btn" (click)="copyOutput()" [disabled]="!outputText">
+        {{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}
+      </button>
+      <button class="btn btn--danger" (click)="clear()" [disabled]="!outputText">
+        {{ i18n.t('common.clear') }}
+      </button>
+    </div>
+
+    @if (outputText) {
+      <div class="out">
+        <div class="out-head">
+          <span>{{ wordCount }} {{ i18n.t('common.words') }} · {{ charCount }} {{ i18n.t('common.characters') }}</span>
+          <span>{{ readingTime }}</span>
+        </div>
+        <div class="out-body lorem-body">{{ outputText }}</div>
+      </div>
+    }
   </div>
 </app-terminal-layout>

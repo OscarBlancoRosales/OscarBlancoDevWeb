@@ -252,6 +252,16 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'lorem.paragraphs': { es: 'Párrafos', en: 'Paragraphs' },
   'lorem.sentences': { es: 'Frases', en: 'Sentences' },
   'lorem.words': { es: 'Palabras', en: 'Words' },
+  'lorem.asList': { es: 'Como lista', en: 'As a list' },
+  'lorem.asHtml': { es: 'Con etiquetas HTML', en: 'With HTML tags' },
+  'qr.presets': { es: 'plantillas', en: 'presets' },
+  'qr.size': { es: 'tamaño', en: 'size' },
+  'qr.correction': { es: 'corrección', en: 'correction' },
+  'qr.transparent': { es: 'Fondo transparente', en: 'Transparent background' },
+  'qr.copyImage': { es: '⧉ Copiar imagen', en: '⧉ Copy image' },
+  'qr.empty': { es: 'Escribe algo arriba y el código aparece solo.', en: 'Type something above and the code shows up on its own.' },
+  'qr.tooLong': { es: 'Demasiado texto para un QR: prueba a acortarlo.', en: 'Too much text for a QR: try making it shorter.' },
+  'qr.copyFailed': { es: 'Este navegador no deja copiar imágenes. Descárgalo.', en: 'This browser will not copy images. Download it instead.' },
   'lorem.startWith': { es: 'Empezar con "Lorem ipsum..."', en: 'Start with "Lorem ipsum..."' },
 
   // === TIMESTAMP ===
