@@ -45,7 +45,7 @@ describe('rutas de autenticación', () => {
 
   async function entrar(): Promise<{ accessToken: string; cookie: string }> {
     const response = await post('/auth/acceso', { email: ALTA.email, password: ALTA.password });
-    const body = response.json();
+    const body = response.json<{ accessToken: string }>();
     const cookie = response.cookies.find((c) => c.name === REFRESH_COOKIE);
     return { accessToken: body.accessToken, cookie: `${REFRESH_COOKIE}=${cookie?.value ?? ''}` };
   }
@@ -100,7 +100,7 @@ describe('rutas de autenticación', () => {
         user: { email: ALTA.email, status: 'active' },
         expiresInSeconds: 600,
       });
-      expect((response.json()).accessToken).toBeTruthy();
+      expect(response.json<{ accessToken: string }>().accessToken).toBeTruthy();
     });
 
     it('la cookie de refresco es HttpOnly y SameSite=Lax', async () => {

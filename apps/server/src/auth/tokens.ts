@@ -41,8 +41,8 @@ interface Expirable {
  * bien porque son datos que ya conoce (su asiento, su identificador). Lo que la
  * firma garantiza es que no pueda cambiarlos por otros.
  *
- * Sirve tanto para el token de acceso como para el pase de invitado, que son el
- * mismo mecanismo con distinto contenido y distinta caducidad.
+ * Lo usa el token de acceso. Los pases de asiento NO van por aquí: son opacos
+ * y se guardan hasheados, para poder revocarlos borrando una fila.
  */
 export function signPayload(payload: Expirable & Record<string, unknown>, secret: string): string {
   const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
@@ -77,33 +77,11 @@ export interface AccessTokenPayload extends Expirable {
   readonly userId: string;
 }
 
-/**
- * El pase de un invitado a una sala concreta.
- *
- * No hay cuenta detrás, así que el token es la identidad entera. Va atado a una
- * sala y un asiento: sirve para eso y para nada más. Si se filtra, lo peor que
- * puede hacer alguien es sentarse en esa silla hasta que caduque.
- */
-export interface SeatTokenPayload extends Expirable {
-  readonly roomId: string;
-  readonly seatId: string;
-}
-
 export function isAccessToken(value: unknown): value is AccessTokenPayload {
   const candidate = asRecord(value);
   return (
     candidate !== null &&
     typeof candidate['userId'] === 'string' &&
-    typeof candidate['expiresAt'] === 'number'
-  );
-}
-
-export function isSeatToken(value: unknown): value is SeatTokenPayload {
-  const candidate = asRecord(value);
-  return (
-    candidate !== null &&
-    typeof candidate['roomId'] === 'string' &&
-    typeof candidate['seatId'] === 'string' &&
     typeof candidate['expiresAt'] === 'number'
   );
 }

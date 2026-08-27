@@ -96,11 +96,8 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
       case 'votar':
         return { ...state, votos: { ...state.votos, [by]: action.voto } };
 
-      case 'retirar-voto': {
-        const votos = { ...state.votos };
-        delete votos[by];
-        return { ...state, votos };
-      }
+      case 'retirar-voto':
+        return { ...state, votos: sinVotoDe(state.votos, by) };
 
       case 'revelar':
         return { ...state, revelado: true };
@@ -122,7 +119,7 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
    * Lo primero se salta con la consola del navegador abierta; lo segundo, no.
    */
   view(state, forSeat) {
-    const propio = state.votos[forSeat];
+    const propio = votoDe(state.votos, forSeat);
     return {
       asunto: state.asunto,
       revelado: state.revelado,
@@ -141,11 +138,31 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
    */
   onSeatLeave(state, seat) {
     if (!(seat in state.votos)) return state;
-    const votos = { ...state.votos };
-    delete votos[seat];
-    return { ...state, votos };
+    return { ...state, votos: sinVotoDe(state.votos, seat) };
   },
 };
+
+/**
+ * El voto de un asiento, si lo hay.
+ *
+ * `Record<SeatId, ScrumVote>` afirma que todo asiento tiene voto, y no es
+ * verdad: quien no ha votado no tiene entrada. Esta función es donde se dice
+ * la verdad, y por eso su tipo de retorno lleva el `undefined`.
+ */
+function votoDe(
+  votos: Readonly<Record<SeatId, ScrumVote>>,
+  seat: SeatId,
+): ScrumVote | undefined {
+  return votos[seat];
+}
+
+/** Los mismos votos menos el de ese asiento. Sin tocar el original. */
+function sinVotoDe(
+  votos: Readonly<Record<SeatId, ScrumVote>>,
+  seat: SeatId,
+): Record<SeatId, ScrumVote> {
+  return Object.fromEntries(Object.entries(votos).filter(([id]) => id !== seat));
+}
 
 function esCartaDeLaBaraja(valor: number): boolean {
   return (CARTAS_NUMERICAS as readonly number[]).includes(valor);

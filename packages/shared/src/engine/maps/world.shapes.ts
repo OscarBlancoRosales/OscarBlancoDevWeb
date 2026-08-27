@@ -12,7 +12,7 @@ export const WORLD_BOARD_WIDTH = 1400;
 export const WORLD_BOARD_HEIGHT = 623;
 
 /** Adyacencias del tablero que hay que dibujar como salto por mar. */
-export const WORLD_SEA_ROUTES: Array<[string, string]> = [
+export const WORLD_SEA_ROUTES: [string, string][] = [
   ['AK', 'KC'],
   ['BZ', 'NF'],
   ['CH', 'UR'],

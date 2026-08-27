@@ -116,6 +116,11 @@ export class RoomActor {
     this.broadcast();
   }
 
+  /** Si ese asiento tiene ahora mismo alguien al otro lado. */
+  conectado(seatId: SeatId): boolean {
+    return [...this.suscriptores].some((suscriptor) => suscriptor.seatId === seatId);
+  }
+
   get vacia(): boolean {
     return this.suscriptores.size === 0;
   }

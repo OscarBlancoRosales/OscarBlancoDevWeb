@@ -3,6 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import websocket from '@fastify/websocket';
 import type { FastifyInstance } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import type { Config } from './config';
@@ -14,6 +15,10 @@ import { authRoutes } from './auth/routes';
 import { AuthService } from './auth/service';
 import { createAuthRepository } from './auth/repository';
 import { createConsoleMailer, createSmtpMailer } from './auth/mailer';
+import { createRoomRepository } from './rooms/repository';
+import { RoomService } from './rooms/service';
+import { roomRoutes } from './rooms/routes';
+import { roomSocket } from './rooms/ws';
 import { healthRoutes } from './health/routes';
 
 export interface BuildOptions {
@@ -68,8 +73,15 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
     refreshTtlDays: config.REFRESH_TOKEN_TTL_DAYS,
   });
 
+  const rooms = new RoomService({ repository: createRoomRepository(db) });
+  app.addHook('onClose', () => { rooms.cerrar(); });
+
+  await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
+
   await app.register(healthRoutes(db));
   await app.register(authRoutes({ service, config }));
+  await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
+  await app.register(roomSocket(rooms));
 
   return app;
 }

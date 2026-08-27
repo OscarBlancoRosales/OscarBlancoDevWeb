@@ -14,6 +14,9 @@ const TS_EXTRA = {
   '@typescript-eslint/no-explicit-any': 'error',
   '@typescript-eslint/explicit-module-boundary-types': 'error',
   '@typescript-eslint/no-non-null-assertion': 'error',
+  // Interpolar un número en una plantilla es normal y no esconde ningún
+  // `[object Object]`. Prohibirlo solo produce `String(...)` por todas partes.
+  '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
 };
 
 /**
