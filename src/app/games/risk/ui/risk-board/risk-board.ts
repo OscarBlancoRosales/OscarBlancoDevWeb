@@ -361,6 +361,12 @@ export class RiskBoard implements OnDestroy {
 
   /** Toque en curso: dónde empezó y si ya se ha ido de paseo. */
   private pendingTap: { id: TerritoryId; x: number; y: number; moved: boolean } | null = null;
+  /**
+   * Qué hizo el último gesto de puntero: si emitió, o si fue un arrastre.
+   *
+   * Lo usa el respaldo del clic para no duplicar ni colar un arrastre.
+   */
+  private lastGesture: 'emitted' | 'dragged' | 'none' = 'none';
   private repeatTimer: ReturnType<typeof setTimeout> | null = null;
   private infoTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -421,7 +427,11 @@ export class RiskBoard implements OnDestroy {
     this.stopInfo();
     const tap = this.pendingTap;
     this.pendingTap = null;
-    if (!tap || tap.id !== id || tap.moved) return;
+    if (!tap || tap.id !== id || tap.moved) {
+      this.lastGesture = tap?.moved ? 'dragged' : 'none';
+      return;
+    }
+    this.lastGesture = 'emitted';
     event.stopPropagation();
     this.territoryClick.emit(id);
   }
@@ -440,14 +450,22 @@ export class RiskBoard implements OnDestroy {
   }
 
   /**
-   * El clic del navegador ya no coloca nada: manda `onTerritoryPointerUp`.
+   * El clic del navegador, como RESPALDO del gesto de puntero.
    *
-   * Se mantiene el manejador sólo para frenar la propagación, porque el `click`
-   * llega después del `pointerup` y sin pararlo el SVG lo recogería como si
-   * fuera un gesto sobre el fondo.
+   * Manda `onTerritoryPointerUp`, que es quien sabe distinguir un toque de un
+   * arrastre y quien permite colocar en cadena. Pero probando en el navegador
+   * de verdad hubo casos en que ese `pointerup` no llegaba al grupo del SVG y
+   * el mapa se quedaba mudo, así que el clic de toda la vida cierra el hueco.
+   *
+   * No puede duplicar: si el gesto ya emitió, éste calla. Y si el gesto fue un
+   * arrastre, calla también, que es justo lo que había que evitar en el móvil.
    */
-  onTerritoryClick(_id: TerritoryId, event: Event): void {
+  onTerritoryClick(id: TerritoryId, event: Event): void {
     event.stopPropagation();
+    const gesture = this.lastGesture;
+    this.lastGesture = 'none';
+    if (gesture !== 'none') return;
+    this.territoryClick.emit(id);
   }
 
   onTerritoryEnter(id: TerritoryId): void {

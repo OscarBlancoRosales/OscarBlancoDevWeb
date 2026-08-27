@@ -22,14 +22,29 @@
   gap: 12px;
   padding: 12px 14px 16px;
   /*
-   * `dvh` y no `vh`: en el móvil la barra del navegador aparece y desaparece, y
-   * con `vh` la barra de acción queda por debajo del borde de la pantalla justo
-   * cuando más falta hace.
+   * `100%` y no `100dvh`. Lo probé con `dvh` pensando en la barra del navegador
+   * del móvil y era peor: la mesa vive DENTRO del armazón del sitio, que ya se
+   * lleva su parte de alto, así que pedir la pantalla entera empujaba la barra
+   * de acción por debajo del borde. Quien manda en el alto es el armazón.
    */
-  height: 100dvh;
+  height: 100%;
   min-height: 0;
   overflow: hidden;
   color: var(--ink);
+}
+
+/*
+ * Jugando, el mapa llega hasta el borde. El relleno y la separación de la sala
+ * de espera aquí sólo le roban alto al tablero, que es lo único que importa.
+ *
+ * El `height: 100%` sólo funciona porque el cuerpo del armazón lleva ahora
+ * `min-height: 0`. Sin eso, aquel `flex: 1` crecía con su contenido, el 100%% se
+ * mordía la cola y la barra de acción acababa por debajo del borde.
+ */
+.room.playing {
+  padding: 0;
+  gap: 0;
+  height: 100%;
 }
 
 /* ===== CABECERA ===== */

@@ -132,6 +132,15 @@
 /* ===== BODY ===== */
 .terminal-body {
   flex: 1;
+  /*
+   * `min-height: 0` es imprescindible aquí. Sin él, un hijo de una columna
+   * flexible vale por defecto `min-height: auto`, o sea el alto de su
+   * contenido: el cuerpo crece con lo que le metas dentro y se sale de la
+   * ventana, y el `overflow-y` de abajo no llega a activarse nunca. Con esto,
+   * el cuerpo se queda en el hueco que le toca y es él quien hace scroll, que
+   * es lo que siempre se quiso.
+   */
+  min-height: 0;
   overflow-y: auto;
   color: #ccc;
   font-size: 14px;

@@ -1,7 +1,12 @@
 <app-terminal-layout [title]="meta?.name || 'RISK'">
-  <div class="room" *ngIf="meta; else loading">
-    <!-- ===================== CABECERA ===================== -->
-    <header class="room-header">
+  <div class="room" [class.playing]="inGame" *ngIf="meta; else loading">
+    <!--
+      ===================== CABECERA =====================
+      Sólo en la sala de espera. Durante la partida manda el mapa: la barra de
+      arriba ya lleva el nombre, la fase y el botón de salir, y esta cabecera se
+      quedaba aplastada contra el borde robándole alto al tablero.
+    -->
+    <header class="room-header" *ngIf="!inGame">
       <div class="header-left">
         <h1>{{ meta.name }}</h1>
         <span class="chip map">{{ map?.name }}</span>

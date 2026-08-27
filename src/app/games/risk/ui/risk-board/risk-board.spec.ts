@@ -185,12 +185,55 @@ describe('RiskBoard', () => {
       });
     });
 
-    it('el clic del navegador ya no coloca por su cuenta', () => {
-      // Manda el puntero. `onTerritoryClick` sólo queda para frenar la
-      // propagación, porque el clic llega después del pointerup.
+    it('el gesto llega DESDE EL DOM, no sólo llamando a los métodos', () => {
+      // Los demás tests de este bloque llaman a los manejadores a mano, así que
+      // prueban la lógica pero no el cableado. Éste lanza eventos de puntero
+      // de verdad sobre el SVG dibujado: si el enganche de la plantilla se
+      // rompe, el juego deja de responder al dedo y sólo se entera aquí.
       const emitidos = escuchar();
-      component.onTerritoryClick('A2', new MouseEvent('click'));
-      expect(emitidos).toEqual([]);
+      const grupo = fixture.nativeElement.querySelector('g.territory') as SVGGElement;
+      expect(grupo, 'no hay territorios dibujados').toBeTruthy();
+
+      const opciones = { bubbles: true, clientX: 50, clientY: 50, button: 0 };
+      grupo.dispatchEvent(new PointerEvent('pointerdown', opciones));
+      grupo.dispatchEvent(new PointerEvent('pointerup', opciones));
+
+      expect(emitidos).toHaveLength(1);
+    });
+
+    describe('el clic como respaldo', () => {
+      it('si el gesto de puntero no llegó, el clic coloca igual', () => {
+        // En el navegador de verdad hubo casos en que el `pointerup` no llegaba
+        // al grupo del SVG y el mapa se quedaba mudo. El clic cierra ese hueco.
+        const emitidos = escuchar();
+        component.onTerritoryClick('A2', new MouseEvent('click'));
+        expect(emitidos).toEqual(['A2']);
+      });
+
+      it('pero no duplica cuando el gesto ya ha colocado', () => {
+        const emitidos = escuchar();
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        component.onTerritoryPointerUp('A2', pointer('pointerup', 10, 10));
+        component.onTerritoryClick('A2', new MouseEvent('click'));
+        expect(emitidos).toEqual(['A2']);
+      });
+
+      it('y sigue sin colar un arrastre', () => {
+        // Lo importante: el respaldo no puede resucitar el fallo del móvil.
+        const emitidos = escuchar();
+        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
+        component.onPointerMove(pointer('pointermove', 200, 10));
+        component.onTerritoryPointerUp('A2', pointer('pointerup', 200, 10));
+        component.onTerritoryClick('A2', new MouseEvent('click'));
+        expect(emitidos).toEqual([]);
+      });
+
+      it('dos clics seguidos colocan dos', () => {
+        const emitidos = escuchar();
+        component.onTerritoryClick('A2', new MouseEvent('click'));
+        component.onTerritoryClick('A2', new MouseEvent('click'));
+        expect(emitidos).toEqual(['A2', 'A2']);
+      });
     });
   });
 
