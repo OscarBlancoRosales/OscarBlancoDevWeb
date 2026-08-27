@@ -115,6 +115,9 @@ export const COMMANDS: CommandDef[] = [
     group: 'nav',
     descKey: 'cmd.throwdown',
     route: '/tomelloso-throwdown-timer',
+    // Sigue estando y sigue funcionando, pero no se anuncia: es de andar por
+    // casa y no pinta nada en el menu de un portfolio.
+    hidden: true,
   },
   {
     id: 'login',

@@ -19,8 +19,8 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'menu.iconGenerator': { es: 'icon-generator', en: 'icon-generator' },
 
   // === COMMON ===
-  'common.copy': { es: '📋 Copiar', en: '📋 Copy' },
-  'common.copied': { es: '✓ Copiado', en: '✓ Copied' },
+  'common.copy': { es: '⧉ Copiar', en: '⧉ Copy' },
+  'common.copied': { es: '✓ copiado', en: '✓ copied' },
   'common.clear': { es: 'Limpiar', en: 'Clear' },
   'common.generate': { es: 'Generar', en: 'Generate' },
   'common.convert': { es: 'Convertir', en: 'Convert' },
@@ -148,6 +148,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'console.palettePlaceholder': { es: 'Buscar sección o comando...', en: 'Search section or command...' },
   'console.paletteEmpty': { es: 'Nada que se parezca a eso.', en: 'Nothing looks like that.' },
   'console.online': { es: 'online', en: 'online' },
+  'console.backHome': { es: 'Volver a la terminal', en: 'Back to the terminal' },
   'console.uptime': { es: 'Sesión', en: 'Session' },
 
   // === CONSOLA v2: juego, premios y ventana ===
@@ -283,8 +284,18 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'uuid.subtitle': { es: 'Genera identificadores únicos universales (UUID v4)', en: 'Generate universally unique identifiers (UUID v4)' },
   'uuid.uppercase': { es: 'MAYÚSCULAS', en: 'UPPERCASE' },
   'uuid.noDashes': { es: 'Sin guiones', en: 'No dashes' },
-  'uuid.copyAll': { es: '📋 Copiar todo', en: '📋 Copy all' },
+  'uuid.copyAll': { es: '⧉ Copiar todo', en: '⧉ Copy all' },
   'uuid.copiedAll': { es: '✓ Copiado todo', en: '✓ Copied all' },
+  'uuid.braces': { es: 'Entre llaves', en: 'Braces' },
+  'uuid.clickToCopy': { es: 'toca uno para copiarlo', en: 'tap one to copy it' },
+  'uuid.aboutV4': {
+    es: 'v4: azar puro. El de toda la vida, perfecto si el orden da igual.',
+    en: 'v4: pure randomness. The classic one, fine when order does not matter.',
+  },
+  'uuid.aboutV7': {
+    es: 'v7: lleva la hora delante, así que ordenarlos por texto es ordenarlos por fecha. Va mejor como clave primaria.',
+    en: 'v7: time goes first, so sorting them as text sorts them by date. Better as a primary key.',
+  },
 
   // === ICON GENERATOR ===
   'icon.title': { es: '> App Icon Generator', en: '> App Icon Generator' },

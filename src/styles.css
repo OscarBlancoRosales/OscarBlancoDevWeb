@@ -1,9 +1,463 @@
-/* You can add global styles to this file, and also import other style files */
-html, body {
+/* =========================================================================
+   Estilos globales.
+
+   Aquí vive la paleta del sitio entero. Los colores cuelgan del <html> según
+   el tema elegido en la consola, así que cualquier pantalla que use las
+   variables cambia de piel sola, sin enterarse de que existe un tema.
+   ========================================================================= */
+
+:root,
+html[data-theme='dev'] {
+  --bg: #0c0c0c;
+  --bg-soft: #151515;
+  --bg-chrome: #111;
+  --border: #333;
+  --text: #ccc;
+  --bright: #e8e8e8;
+  --muted: #888;
+  --accent: #0f0;
+  --accent-soft: rgba(0, 255, 0, 0.1);
+  --ok: #0f0;
+  --warn: #d7d76a;
+  --error: #ff5f57;
+  --link: #569cd6;
+  --glow: rgba(0, 255, 0, 0.35);
+}
+
+html[data-theme='ai'] {
+  --bg: #17150f;
+  --bg-soft: #1e1b15;
+  --bg-chrome: #131109;
+  --border: #302a20;
+  --text: #e6ddd1;
+  --bright: #fff6ea;
+  --muted: #8d8272;
+  --accent: #d97757;
+  --accent-soft: rgba(217, 119, 87, 0.14);
+  --ok: #8fbf73;
+  --warn: #e0b341;
+  --error: #e06c5a;
+  --link: #6ea8d8;
+  --glow: rgba(217, 119, 87, 0.35);
+}
+
+html[data-theme='matrix'] {
+  --bg: #030a05;
+  --bg-soft: #071a0d;
+  --bg-chrome: #020705;
+  --border: #10341c;
+  --text: #b9f5c9;
+  --bright: #e6ffee;
+  --muted: #4d8560;
+  --accent: #3bdc6a;
+  --accent-soft: rgba(59, 220, 106, 0.14);
+  --ok: #3bdc6a;
+  --warn: #b9d94a;
+  --error: #e04f4f;
+  --link: #6ff0a5;
+  --glow: rgba(59, 220, 106, 0.4);
+}
+
+html[data-theme='amber'] {
+  --bg: #170f04;
+  --bg-soft: #211705;
+  --bg-chrome: #120b03;
+  --border: #3a2a0c;
+  --text: #f2d29a;
+  --bright: #fff0cd;
+  --muted: #97764a;
+  --accent: #ffb340;
+  --accent-soft: rgba(255, 179, 64, 0.14);
+  --ok: #d6c14a;
+  --warn: #ffb340;
+  --error: #e07a4a;
+  --link: #ffd68a;
+  --glow: rgba(255, 179, 64, 0.35);
+}
+
+html[data-theme='ice'] {
+  --bg: #0a1018;
+  --bg-soft: #0f1824;
+  --bg-chrome: #070d14;
+  --border: #1c2b3d;
+  --text: #d6e6f5;
+  --bright: #f0f8ff;
+  --muted: #6b8199;
+  --accent: #4fb8ec;
+  --accent-soft: rgba(79, 184, 236, 0.14);
+  --ok: #57d6b0;
+  --warn: #e5c15c;
+  --error: #ee7676;
+  --link: #8fd4ff;
+  --glow: rgba(79, 184, 236, 0.35);
+}
+
+/* El premio del código Konami. */
+html[data-theme='vaporwave'] {
+  --bg: #14082a;
+  --bg-soft: #1e0f3d;
+  --bg-chrome: #0d0520;
+  --border: #3d1f6b;
+  --text: #f2d4ff;
+  --bright: #fff;
+  --muted: #9b6fc4;
+  --accent: #ff4fd8;
+  --accent-soft: rgba(255, 79, 216, 0.16);
+  --ok: #4ff0d0;
+  --warn: #ffe14f;
+  --error: #ff5f8f;
+  --link: #6ff0ff;
+  --glow: rgba(255, 79, 216, 0.5);
+}
+
+html,
+body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #0c0c0c;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Courier New', monospace;
+}
+
+/* La barra de scroll también es del tema, no del navegador. */
+* {
+  scrollbar-color: var(--border) transparent;
+  scrollbar-width: thin;
+}
+
+/* =========================================================================
+   PIEZAS DE HERRAMIENTA
+
+   Todas las herramientas se pintan con estas clases en vez de repetir cada
+   una sus propios colores. La idea es que una herramienta parezca la salida
+   de un comando: un prompt arriba, las opciones como banderas y el resultado
+   en bloque monoespaciado.
+   ========================================================================= */
+
+.tool {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 22px 20px 40px;
+}
+
+/* La cabecera es el comando que acabas de escribir */
+.tool-head {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tool-cmd {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.tool-cmd::before {
+  content: '❯';
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.tool-sub {
+  margin-top: 4px;
+  padding-left: 22px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Las opciones, como banderas de un comando */
+.tool-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+}
+
+.flag {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.flag-label {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.flag-label::before {
+  content: '--';
+  opacity: 0.55;
+}
+
+/* Campos de texto */
+.input,
+.textarea,
+.select {
+  padding: 8px 11px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--bright);
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.input:focus,
+.textarea:focus,
+.select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-soft);
+}
+
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input--sm {
+  width: 90px;
+}
+
+/* Interruptores en vez de casillas del sistema, que no van con el tema */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  user-select: none;
+}
+
+.check input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.check-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-soft);
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 1;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.check:hover .check-box {
+  border-color: var(--accent);
+}
+
+.check input:checked + .check-box::after {
+  content: '×';
+  font-weight: 700;
+}
+
+.check input:focus-visible + .check-box {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Botones */
+.btn {
+  padding: 8px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.btn--danger:hover:not(:disabled) {
+  color: var(--error);
+  border-color: var(--error);
+  background: transparent;
+}
+
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-bottom: 18px;
+}
+
+/* El resultado, como la salida de un comando */
+.out {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.out-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.out-body {
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--bright);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+/* Filas copiables */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--accent-soft);
+}
+
+.row-index {
+  flex-shrink: 0;
+  min-width: 30px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.row-value {
+  flex: 1;
+  min-width: 0;
+  color: var(--bright);
+  overflow-wrap: anywhere;
+}
+
+.row-copy {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.row:hover .row-copy {
+  color: var(--accent);
+}
+
+/* Avisos */
+.note {
+  padding: 9px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.note--ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.note--error {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.note--muted {
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  .tool {
+    padding: 16px 12px 32px;
+  }
+
+  .tool-cmd {
+    font-size: 15px;
+  }
+
+  .tool-flags {
+    gap: 12px 16px;
+  }
+
+  /* Con el pulgar hacen falta objetivos más grandes */
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .input,
+  .select {
+    padding: 10px 11px;
+    font-size: 14px;
+  }
+
+  .check-box {
+    width: 20px;
+    height: 20px;
+  }
 }

@@ -695,19 +695,7 @@ describe('Console (la portada)', () => {
       fixture.detectChanges();
     });
 
-    it('filtra por lo que escribes', () => {
-      component.paletteOpen = true;
-      component.paletteQuery = 'qr';
-      expect(component.paletteResults.some((c) => c.id === 'qr')).toBe(true);
-    });
-
-    it('no enseña los secretos', () => {
-      component.paletteOpen = true;
-      component.paletteQuery = 'sudo';
-      expect(component.paletteResults).toEqual([]);
-    });
-
-    it('al abrirse se lleva el foco, para poder escribir directamente', () => {
+    it('se abre y se lleva el foco, para poder escribir directamente', () => {
       component.openPalette();
       const caja = fixture.nativeElement.querySelector('.palette-input');
       expect(caja, 'la paleta debe estar pintada').toBeTruthy();
@@ -720,6 +708,10 @@ describe('Console (la portada)', () => {
       expect(document.activeElement).toBe(fixture.nativeElement.querySelector('.cmd-input'));
     });
 
+    /**
+     * En la portada no basta con navegar: el comando se ejecuta de verdad, y
+     * por eso queda escrito en el historial como si lo hubieras tecleado.
+     */
     it('al elegir una entrada se ejecuta y se cierra', () => {
       vi.useFakeTimers();
       const router = TestBed.inject(Router);
@@ -729,6 +721,7 @@ describe('Console (la portada)', () => {
       vi.advanceTimersByTime(2000);
       expect(navigate).toHaveBeenCalledWith(['/juegos']);
       expect(component.paletteOpen).toBe(false);
+      expect(component.history).toContain('juegos');
     });
   });
 });

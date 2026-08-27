@@ -1,75 +1,105 @@
-<div class="terminal-window" (click)="closeMenuIfOpen()">
-  <div class="terminal-titlebar">
-    <div class="titlebar-buttons">
-      <span class="btn-close"></span>
-      <span class="btn-minimize"></span>
-      <span class="btn-maximize"></span>
-    </div>
-    <div class="titlebar-title">{{ title }}</div>
-    <div class="titlebar-menu">
-      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#c60b1e"/><rect y="10" width="60" height="20" fill="#ffc400"/></svg></button>
-      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#00247d"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4"/><path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6"/></svg></button>
-      <button class="menu-btn" (click)="toggleMenu(); $event.stopPropagation()" title="Menu">
-        <span>≡</span>
+<div class="terminal-window">
+  <!-- ===== BARRA DE TÍTULO: la misma que la portada ===== -->
+  <div class="titlebar" (click)="closeMenuIfOpen()">
+    <button class="titlebar-left" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
+      <span class="tb-icon">❯_</span>
+      <span class="tb-path">oscar@obr</span>
+    </button>
+
+    <div class="titlebar-title">OBR Terminal{{ title ? ' — ' + title : '' }}</div>
+
+    <div class="titlebar-right">
+      <button
+        class="tb-btn"
+        (click)="openPalette(); $event.stopPropagation()"
+        [attr.aria-label]="i18n.t('console.paletteTitle')"
+        [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
+        ⌘
       </button>
-      <div class="menu-dropdown" *ngIf="menuOpen" (click)="$event.stopPropagation()">
-        <div class="menu-item" (click)="navigate('/', $event)">
-          <span class="menu-icon">&gt;</span> terminal
-        </div>
-        <div class="menu-item" (click)="navigate('/auth', $event)">
-          <span class="menu-icon">&gt;</span> scrum-poker
-        </div>
-        <div class="menu-item" (click)="navigate('/juegos', $event)">
-          <span class="menu-icon">&gt;</span> juegos
-        </div>
-        <div class="menu-item" (click)="navigate('/dni-generator', $event)">
-          <span class="menu-icon">&gt;</span> dni-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/qr-generator', $event)">
-          <span class="menu-icon">&gt;</span> qr-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/decoder', $event)">
-          <span class="menu-icon">&gt;</span> encoder-decoder
-        </div>
-        <div class="menu-item" (click)="navigate('/formatter', $event)">
-          <span class="menu-icon">&gt;</span> code-formatter
-        </div>
-        <div class="menu-item" (click)="navigate('/color-picker', $event)">
-          <span class="menu-icon">&gt;</span> color-picker
-        </div>
-        <div class="menu-item" (click)="navigate('/regex-tester', $event)">
-          <span class="menu-icon">&gt;</span> regex-tester
-        </div>
-        <div class="menu-item" (click)="navigate('/lorem-generator', $event)">
-          <span class="menu-icon">&gt;</span> lorem-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/timestamp', $event)">
-          <span class="menu-icon">&gt;</span> timestamp-converter
-        </div>
-        <div class="menu-item" (click)="navigate('/uuid-generator', $event)">
-          <span class="menu-icon">&gt;</span> uuid-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/icon-generator', $event)">
-          <span class="menu-icon">&gt;</span> icon-generator
-        </div>
+
+      <button
+        class="lang-btn"
+        [class.active]="i18n.lang === 'es'"
+        (click)="i18n.setLang('es'); $event.stopPropagation()"
+        title="Español"
+        aria-label="Español">
+        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+          <rect width="60" height="40" fill="#c60b1e" />
+          <rect y="10" width="60" height="20" fill="#ffc400" />
+        </svg>
+      </button>
+      <button
+        class="lang-btn"
+        [class.active]="i18n.lang === 'en'"
+        (click)="i18n.setLang('en'); $event.stopPropagation()"
+        title="English"
+        aria-label="English">
+        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+          <rect width="60" height="40" fill="#00247d" />
+          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
+          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
+          <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
+          <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
+        </svg>
+      </button>
+
+      <button
+        class="tb-btn"
+        (click)="toggleMenu(); $event.stopPropagation()"
+        [title]="i18n.t('console.sectionsTitle')"
+        aria-label="Menu">
+        ≡
+      </button>
+
+      <div class="win-ctrl">
+        <button class="win-btn win-btn--close" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
+          ✕
+        </button>
       </div>
+
+      @if (menuOpen) {
+        <div class="menu-dropdown" (click)="$event.stopPropagation()">
+          <div class="menu-item" (click)="goHome($event)">
+            <span class="menu-icon">❯</span>
+            <span class="menu-name">terminal</span>
+            <span class="menu-alt">home</span>
+          </div>
+          @for (item of menuItems; track item.id) {
+            <div class="menu-item" (click)="navigate(item.route!, $event)">
+              <span class="menu-icon">❯</span>
+              <span class="menu-name">{{ item.id }}</span>
+              <span class="menu-alt">{{ item.aliases[0] }}</span>
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 
+  <!-- ===== LA HERRAMIENTA ===== -->
   <div class="terminal-body">
     <ng-content></ng-content>
   </div>
 
-  <div class="terminal-statusbar" *ngIf="showStatusBar">
-    <div class="status-left">
-      <a href="https://github.com/oscarblanco-dev" target="_blank" class="status-link">[GitHub]</a>
-      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="status-link">[LinkedIn]</a>
-      <a href="mailto:oscar.blanco.r@gmail.com" class="status-link">[Email]</a>
+  <!-- ===== BARRA DE ESTADO ===== -->
+  @if (showStatusBar) {
+    <div class="statusbar">
+      <div class="status-left">
+        <a href="https://github.com/oscarblanco-dev" target="_blank" rel="noopener" class="status-link">GitHub</a>
+        <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" rel="noopener" class="status-link">LinkedIn</a>
+        <a href="mailto:oscar.blanco.r&#64;gmail.com" class="status-link">Email</a>
+      </div>
+      <div class="status-right">
+        <span class="status-item status-theme">{{ themes.current }}</span>
+        <span class="status-item">UTF-8</span>
+        <span class="status-item status-clock">{{ clock() }}</span>
+        <span class="status-item status-online"><span class="dot"></span>{{ i18n.t('console.online') }}</span>
+      </div>
     </div>
-    <div class="status-right">
-      <span class="status-item">UTF-8</span>
-      <span class="status-item">LF</span>
-      <span class="status-item">PowerShell</span>
-    </div>
-  </div>
+  }
+
+  <app-command-palette
+    [open]="paletteOpen"
+    (closed)="closePalette()"
+    (picked)="onPick($event)" />
 </div>

@@ -1,41 +1,75 @@
-<app-terminal-layout title="UUID Generator">
-  <div class="tool-content">
-    <div class="tool-card">
-      <h1 class="tool-title">{{ i18n.t('uuid.title') }}</h1>
-      <p class="tool-subtitle">{{ i18n.t('uuid.subtitle') }}</p>
+<app-terminal-layout title="uuid">
+  <div class="tool">
+    <div class="tool-head">
+      <div class="tool-cmd">uuid</div>
+      <div class="tool-sub">{{ i18n.t('uuid.subtitle') }}</div>
+    </div>
 
-      <div class="options-row">
-        <div class="option-group">
-          <label>{{ i18n.t('common.amount') }}</label>
-          <input type="number" [(ngModel)]="amount" min="1" max="100" class="amount-input">
-        </div>
-
-        <div class="option-group checkboxes">
-          <label class="checkbox-label">
-            <input type="checkbox" [(ngModel)]="uppercase">
-            <span>{{ i18n.t('uuid.uppercase') }}</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" [(ngModel)]="noDashes">
-            <span>{{ i18n.t('uuid.noDashes') }}</span>
-          </label>
+    <div class="tool-flags">
+      <div class="flag">
+        <label class="flag-label" for="uuid-version">version</label>
+        <div class="seg" id="uuid-version">
+          <button class="seg-btn" [class.active]="version === 'v4'" (click)="setVersion('v4')">v4</button>
+          <button class="seg-btn" [class.active]="version === 'v7'" (click)="setVersion('v7')">v7</button>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="btn btn-primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
-        <button class="btn btn-secondary" (click)="copyAll()" *ngIf="uuids.length > 1">
-          {{ copied ? i18n.t('uuid.copiedAll') : i18n.t('uuid.copyAll') }}
-        </button>
+      <div class="flag">
+        <label class="flag-label" for="uuid-count">{{ i18n.t('common.amount') }}</label>
+        <input
+          id="uuid-count"
+          class="input input--sm"
+          type="number"
+          min="1"
+          max="100"
+          [(ngModel)]="amount"
+          (ngModelChange)="generate()" />
       </div>
 
-      <div class="uuid-list" *ngIf="uuids.length">
-        <div class="uuid-item" *ngFor="let uuid of uuids; let i = index" (click)="copySingle(uuid, i)">
-          <span class="uuid-index">#{{ i + 1 }}</span>
-          <span class="uuid-value">{{ uuid }}</span>
-          <span class="uuid-copy">{{ copiedIndex === i ? '✓' : '📋' }}</span>
-        </div>
+      <div class="flag flag--checks">
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="uppercase" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('uuid.uppercase') }}</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="noDashes" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('uuid.noDashes') }}</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="braces" (ngModelChange)="generate()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('uuid.braces') }}</span>
+        </label>
       </div>
     </div>
+
+    <p class="note note--muted version-note">
+      {{ version === 'v7' ? i18n.t('uuid.aboutV7') : i18n.t('uuid.aboutV4') }}
+    </p>
+
+    <div class="tool-actions">
+      <button class="btn btn--primary" (click)="generate()">{{ i18n.t('common.generate') }}</button>
+      <button class="btn" (click)="copyAll()" [disabled]="!uuids.length">
+        {{ copied ? i18n.t('uuid.copiedAll') : i18n.t('uuid.copyAll') }}
+      </button>
+    </div>
+
+    @if (uuids.length) {
+      <div class="out">
+        <div class="out-head">
+          <span>{{ version }} · {{ uuids.length }}</span>
+          <span>{{ i18n.t('uuid.clickToCopy') }}</span>
+        </div>
+        @for (uuid of uuids; track $index) {
+          <div class="row" (click)="copySingle(uuid, $index)">
+            <span class="row-index">{{ $index + 1 }}</span>
+            <span class="row-value">{{ uuid }}</span>
+            <span class="row-copy">{{ copiedIndex === $index ? i18n.t('common.copied') : '⧉' }}</span>
+          </div>
+        }
+      </div>
+    }
   </div>
 </app-terminal-layout>

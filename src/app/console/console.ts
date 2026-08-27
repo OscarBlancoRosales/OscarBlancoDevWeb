@@ -9,10 +9,12 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CommandPalette } from '../shared/command-palette/command-palette';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 // AfterViewInit va aparte: solo hace falta para dejar el cursor puesto.
 import { I18nService } from '../services/i18n.service';
+import { SECRET_THEME, Theme, ThemeService } from '../services/theme.service';
 import {
   CommandDef,
   COMMANDS,
@@ -67,15 +69,10 @@ export interface OutLine {
   delay?: number;
 }
 
-export const THEMES = ['dev', 'ai', 'amber', 'ice', 'matrix', 'vaporwave'] as const;
-export type Theme = (typeof THEMES)[number];
-/** El que se gana con el código Konami: no sale en la lista. */
-const SECRET_THEME: Theme = 'vaporwave';
 
 /** Lo que tarda en «viajar»: suficiente para ver el rastro, no para aburrir. */
 const NAV_DELAY_MS = 320;
 const HISTORY_KEY = 'console_history';
-const THEME_KEY = 'console_theme';
 const SNAKE_BEST_KEY = 'console_snake_best';
 const RUN_BEST_KEY = 'console_run_best';
 const HISTORY_MAX = 60;
@@ -112,7 +109,7 @@ export const LOGO: string[] = [
 
 @Component({
   selector: 'app-console',
-  imports: [CommonModule],
+  imports: [CommonModule, CommandPalette],
   templateUrl: './console.html',
   styleUrl: './console.css',
 })
@@ -121,7 +118,6 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   output: OutLine[] = [];
   currentCommand = '';
   history: string[] = [];
-  theme: Theme = 'dev';
 
   menuOpen = false;
   paletteOpen = false;
@@ -150,7 +146,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   readonly startedAt = Date.now();
 
   @ViewChild('cmdInput') private cmdInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('paletteInput') private paletteInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(CommandPalette) private palette?: CommandPalette;
   @ViewChild('body') private body?: ElementRef<HTMLElement>;
   @ViewChild('rain') private rain?: ElementRef<HTMLCanvasElement>;
 
@@ -170,9 +166,9 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     public i18n: I18nService,
+    public themes: ThemeService,
   ) {
     this.history = this.readStored(HISTORY_KEY, [] as string[]);
-    this.theme = this.readTheme();
     this.gameBest = Number(this.readStored(SNAKE_BEST_KEY, 0)) || 0;
     this.runBest = Number(this.readStored(RUN_BEST_KEY, 0)) || 0;
   }
@@ -599,14 +595,17 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   private doTheme(target?: string): void {
     if (!target) return this.listThemes();
 
-    const elegido = target.toLowerCase() as Theme;
-    if (!THEMES.includes(elegido)) {
+    if (!this.themes.set(target.toLowerCase() as Theme)) {
       this.say('error', 'console.themeUnknown', { theme: target });
       this.listThemes();
       return;
     }
-    this.setTheme(elegido);
-    this.say('ok', 'console.themeSet', { theme: elegido });
+    this.say('ok', 'console.themeSet', { theme: this.theme });
+  }
+
+  /** El tema lo lleva el sitio entero; la consola solo lo consulta. */
+  get theme(): Theme {
+    return this.themes.current;
   }
 
   /**
@@ -615,9 +614,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
    */
   private listThemes(): void {
     this.say('title', 'console.themesTitle');
-    for (const tema of THEMES) {
-      // El que se gana con el Konami no se anuncia hasta que se tiene.
-      if (tema === SECRET_THEME && this.theme !== SECRET_THEME) continue;
+    for (const tema of this.themes.listed()) {
       this.output.push({
         kind: 'theme',
         raw: tema,
@@ -639,15 +636,6 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       });
     }
     this.say('muted', 'console.eggsFooter');
-  }
-
-  private setTheme(tema: Theme): void {
-    this.theme = tema;
-    try {
-      localStorage.setItem(THEME_KEY, tema);
-    } catch {
-      // Navegar en privado no debería costarte el tema.
-    }
   }
 
   private doLang(target?: string): void {
@@ -1059,7 +1047,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
     if (this.konamiAt === KONAMI.length) {
       this.konamiAt = 0;
-      this.setTheme(SECRET_THEME);
+      this.themes.set(SECRET_THEME);
       this.say('ok', 'console.konami');
       this.say('muted', 'console.konamiHint');
       this.refresh();
@@ -1100,55 +1088,23 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   // ===== PALETA DE COMANDOS =====
 
-  /**
-   * El atributo autofocus solo vale al cargar la página, y esta caja nace
-   * después: hay que pintarla y enfocarla a mano o lo que escribas se cuela en
-   * la terminal de detrás.
-   */
   openPalette(): void {
     this.paletteOpen = true;
-    this.paletteQuery = '';
     this.refresh();
-    this.paletteInput?.nativeElement.focus();
+    this.palette?.focus();
   }
 
   closePalette(): void {
     this.paletteOpen = false;
-    this.paletteQuery = '';
     this.refresh();
     this.focusInput();
   }
 
-  get paletteResults(): CommandDef[] {
-    const q = this.paletteQuery.trim().toLowerCase();
-    const todos = visibleCommands();
-    if (!q) return todos;
-    const coincide = (cmd: CommandDef) =>
-      [cmd.id, ...cmd.aliases, this.i18n.t(cmd.descKey).toLowerCase()].some((texto) =>
-        texto.includes(q),
-      );
-    return todos
-      .filter(coincide)
-      .sort((a, b) => Number(b.id.startsWith(q)) - Number(a.id.startsWith(q)));
-  }
-
+  /** En la portada, elegir en la paleta es ejecutar el comando de verdad. */
   runFromPalette(id: string): void {
     this.closePalette();
     this.setCommand(id);
     this.executeCommand();
-  }
-
-  onPaletteKey(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      this.closePalette();
-      return;
-    }
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      const primero = this.paletteResults[0];
-      if (primero) this.runFromPalette(primero.id);
-    }
   }
 
   // ===== MENÚ Y VARIOS =====
@@ -1255,14 +1211,6 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private readTheme(): Theme {
-    try {
-      const guardado = localStorage.getItem(THEME_KEY) as Theme;
-      return THEMES.includes(guardado) ? guardado : 'dev';
-    } catch {
-      return 'dev';
-    }
-  }
 }
 
 /** El trozo con el que empiezan todos: lo que el tabulador puede añadir. */

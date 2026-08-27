@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { routes } from '../app.routes';
-import { COMMANDS, completions, findCommand, navCommands, suggest } from './commands';
+import {
+  COMMANDS,
+  completions,
+  findCommand,
+  navCommands,
+  suggest,
+  visibleCommands,
+} from './commands';
 
 /**
  * El registro de comandos es la única fuente de verdad de la consola: de aquí
@@ -47,6 +54,21 @@ describe('registro de comandos', () => {
   it('cada comando trae descripción para la ayuda', () => {
     const mudos = COMMANDS.filter((c) => !c.descKey).map((c) => c.id);
     expect(mudos).toEqual([]);
+  });
+});
+
+describe('lo que no se anuncia', () => {
+  it('el cronometro de Tomelloso no sale en el menu', () => {
+    expect(navCommands().map((c) => c.id)).not.toContain('throwdown');
+  });
+
+  it('ni en la ayuda', () => {
+    expect(visibleCommands().map((c) => c.id)).not.toContain('throwdown');
+  });
+
+  it('pero escribiendolo se llega igual', () => {
+    expect(findCommand('throwdown')?.route).toBe('/tomelloso-throwdown-timer');
+    expect(findCommand('wod')?.route).toBe('/tomelloso-throwdown-timer');
   });
 });
 
