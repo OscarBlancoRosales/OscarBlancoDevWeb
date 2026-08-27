@@ -215,6 +215,8 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'decoder.title': { es: '> Encoder / Decoder', en: '> Encoder / Decoder' },
   'decoder.subtitle': { es: 'Codifica y decodifica texto en múltiples formatos', en: 'Encode and decode text in multiple formats' },
   'decoder.mode': { es: 'Modo', en: 'Mode' },
+  'decoder.swap': { es: 'Dar la vuelta', en: 'Swap' },
+  'decoder.swapHint': { es: 'Manda el resultado a la entrada y cambia el sentido', en: 'Send the result to the input and flip the direction' },
   'decoder.encode': { es: 'Codificar', en: 'Encode' },
   'decoder.decode': { es: 'Decodificar', en: 'Decode' },
   'decoder.inputPlaceholder': { es: 'Introduce el texto...', en: 'Enter text...' },
@@ -223,6 +225,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   // === FORMATTER ===
   'formatter.title': { es: '> Code Formatter', en: '> Code Formatter' },
   'formatter.subtitle': { es: 'Formatea y minifica código en varios lenguajes', en: 'Format and minify code in various languages' },
+  'formatter.savings': { es: 'De {from} a {to} caracteres · {pct}% menos', en: 'From {from} to {to} characters · {pct}% smaller' },
   'formatter.format': { es: 'Formatear', en: 'Format' },
   'formatter.minify': { es: 'Minificar', en: 'Minify' },
   'formatter.inputPlaceholder': { es: 'Pega tu código aquí...', en: 'Paste your code here...' },

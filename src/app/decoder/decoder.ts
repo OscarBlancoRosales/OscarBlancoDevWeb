@@ -1,5 +1,4 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
@@ -9,7 +8,7 @@ type Direction = 'encode' | 'decode';
 
 @Component({
   selector: 'app-decoder',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './decoder.html',
   styleUrl: './decoder.css'
 })
@@ -153,6 +152,27 @@ export class Decoder {
     this.outputText = '';
     this.errorMessage = '';
     this.copied = false;
+  }
+
+  setMode(mode: Mode): void {
+    this.mode = mode;
+    this.onModeChange();
+  }
+
+  setDirection(direction: Direction): void {
+    this.direction = direction;
+    this.process();
+  }
+
+  /**
+   * Pasa el resultado a la entrada y da la vuelta al sentido: comprobar que
+   * lo codificado vuelve a lo de antes es lo primero que hace cualquiera.
+   */
+  swap(): void {
+    if (!this.outputText) return;
+    this.inputText = this.outputText;
+    this.direction = this.direction === 'encode' ? 'decode' : 'encode';
+    this.process();
   }
 
   onModeChange(): void {
