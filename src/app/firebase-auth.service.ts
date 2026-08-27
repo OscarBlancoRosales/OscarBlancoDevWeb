@@ -1,6 +1,5 @@
 import { Injectable } from '@angular/core';
 import { 
-  getAuth, 
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
@@ -45,7 +44,7 @@ export class FirebaseAuthService {
   // Login con email y password
   async signIn(email: string, password: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       return { success: true };
     } catch (error: any) {
       let errorMessage = 'Error al iniciar sesión';

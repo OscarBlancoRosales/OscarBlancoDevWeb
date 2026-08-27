@@ -183,7 +183,7 @@ export function localPlan(
       thresholdShift: 0,
     },
     source: 'local',
-    fallbackReason,
+    ...(fallbackReason !== undefined && { fallbackReason }),
   };
 }
 
@@ -208,7 +208,7 @@ export async function requestTurnPlan(
   try {
     const { text } = await chatWithFallback(settings, messages, {
       maxTokens: 700,
-      fetchImpl: options.fetchImpl,
+      ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
     const parsed = extractJson<RawPlan>(text);
     const clean = sanitizePlan(parsed, map, state, playerId);
@@ -228,7 +228,7 @@ export async function requestTurnPlan(
  * partida nunca se queda sin crónica.
  */
 export async function requestChronicle(
-  context: ChronicleContext,
+  _context: ChronicleContext,
   fallback: string,
   settings: AiSettings,
   options: { fetchImpl?: typeof fetch } = {},
@@ -243,7 +243,7 @@ export async function requestChronicle(
   try {
     const { text } = await chatWithFallback(settings, messages, {
       maxTokens: 600,
-      fetchImpl: options.fetchImpl,
+      ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
     const parsed = extractJson<{ mensaje?: unknown }>(text);
     const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
@@ -273,7 +273,7 @@ export async function requestAdvice(
   try {
     const { text } = await chatWithFallback(settings, messages, {
       maxTokens: 600,
-      fetchImpl: options.fetchImpl,
+      ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
     const parsed = extractJson<{ mensaje?: unknown }>(text);
     const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';

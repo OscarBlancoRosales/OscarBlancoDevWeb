@@ -62,7 +62,7 @@ function escapeAction(state: GameState, playerId: string): GameAction | null {
 
 @Injectable({ providedIn: 'root' })
 export class RiskGameService implements OnDestroy {
-  private subscription?: Subscription;
+  private subscription: Subscription | undefined;
   private map: GameMap | null = null;
 
   private stateSubject = new BehaviorSubject<GameState | null>(null);

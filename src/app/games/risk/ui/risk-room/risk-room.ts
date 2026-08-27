@@ -10,7 +10,6 @@ import {
   RiskRoomService,
   RoomMeta,
   RoomSeat,
-  localSeatToken,
 } from '../../services/risk-room.service';
 import { BOT_SPEEDS, RiskGameService } from '../../services/risk-game.service';
 import { DerivedGame, seatsToRoster } from '../../services/risk-sync';
@@ -348,7 +347,7 @@ export class RiskRoom implements OnInit, OnDestroy {
     const map = this.map;
     if (state.phase === 'attack') {
       return attackTargets(state, map, this.selectedFrom, this.me.id).filter(
-        (id) => state.territories[this.selectedFrom!].armies >= 2,
+        () => state.territories[this.selectedFrom!].armies >= 2,
       );
     }
     if (state.phase === 'fortify') {

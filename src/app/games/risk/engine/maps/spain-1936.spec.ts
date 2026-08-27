@@ -6,7 +6,7 @@ import {
   SPAIN_1936_SIDES,
 } from './spain-1936.map';
 import { SPAIN_MAP } from './spain.map';
-import { applyAction, createGame, currentPlayer, DEFAULT_CONFIG } from '../engine';
+import { applyAction, createGame, currentPlayer } from '../engine';
 import {
   areAllies,
   borderTerritories,

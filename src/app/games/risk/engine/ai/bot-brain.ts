@@ -196,7 +196,7 @@ export function threatMap(
 function threatWeight(
   state: GameState,
   map: GameMap,
-  playerId: PlayerId,
+  _playerId: PlayerId,
   id: TerritoryId,
   enemies: TerritoryId[],
 ): number {

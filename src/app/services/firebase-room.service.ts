@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { database } from '../firebase.config';
-import { ref, set, onValue, off, push, update, remove } from 'firebase/database';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { ref, set, onValue, update, remove } from 'firebase/database';
+import { BehaviorSubject } from 'rxjs';
 
 export interface Player {
   id: string;

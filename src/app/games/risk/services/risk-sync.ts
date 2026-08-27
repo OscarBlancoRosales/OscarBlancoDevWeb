@@ -27,7 +27,7 @@ export function seatsToPlayers(seats: readonly RoomSeat[]): PlayerSeed[] {
       id: seat.id,
       name: seat.name,
       kind: seat.kind,
-      botProfile: seat.botProfile,
+      ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
       seatToken: seat.seatToken,
       color: seat.color,
     }));
@@ -39,7 +39,7 @@ export function rosterToPlayers(roster: readonly RosterEntry[]): PlayerSeed[] {
     id: entry.id,
     name: entry.name,
     kind: entry.kind,
-    botProfile: entry.botProfile,
+    ...(entry.botProfile !== undefined && { botProfile: entry.botProfile }),
     seatToken: entry.seatToken,
     color: entry.color,
   }));
@@ -53,7 +53,7 @@ export function seatsToRoster(seats: readonly RoomSeat[]): RosterEntry[] {
       id: seat.id,
       name: seat.name,
       kind: seat.kind,
-      botProfile: seat.botProfile,
+      ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
       color: seat.color,
       seatToken: seat.seatToken,
     }));

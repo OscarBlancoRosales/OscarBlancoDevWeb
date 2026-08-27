@@ -33,7 +33,7 @@ function terrainMap(terrains: Partial<Record<string, Terrain>>): GameMap {
     seaRoutes: [['A1', 'B3']],
     territories: TINY_MAP.territories.map((territory) => ({
       ...territory,
-      terrain: terrains[territory.id],
+      ...(terrains[territory.id] !== undefined && { terrain: terrains[territory.id] }),
       adjacent:
         territory.id === 'A1'
           ? [...territory.adjacent, 'B3']

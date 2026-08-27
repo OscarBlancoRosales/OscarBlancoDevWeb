@@ -12,7 +12,7 @@ import {
   transformMulti,
   unionBounds,
 } from './project';
-import { MultiPolygon, Point2, Ring, boundsOfPoints } from './geometry2d';
+import { MultiPolygon, Point2, Ring } from './geometry2d';
 
 function square(x: number, y: number, size: number): Ring {
   return [

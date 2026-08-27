@@ -387,6 +387,8 @@ export interface BundledKeys {
 let bundledCache: BundledKeys | null = null;
 
 /** Lee la clave de la casa, si el despliegue trae una. Se pide una sola vez. */
+const BUNDLED_PROVIDERS = ['openrouter', 'groq', 'gemini'] as const;
+
 export async function fetchBundledKeys(
   fetchImpl: typeof fetch | undefined = globalThis.fetch,
 ): Promise<BundledKeys> {
@@ -395,13 +397,14 @@ export async function fetchBundledKeys(
   try {
     const response = await fetchImpl('ai-key.json', { cache: 'no-store' });
     if (!response.ok) return (bundledCache = {});
-    const parsed = (await response.json()) as BundledKeys;
-    bundledCache = {
-      openrouter: typeof parsed?.openrouter === 'string' ? parsed.openrouter.trim() : undefined,
-      groq: typeof parsed?.groq === 'string' ? parsed.groq.trim() : undefined,
-      gemini: typeof parsed?.gemini === 'string' ? parsed.gemini.trim() : undefined,
-    };
-    return bundledCache;
+    const parsed = (await response.json()) as BundledKeys | null;
+    const keys: BundledKeys = {};
+    for (const provider of BUNDLED_PROVIDERS) {
+      const value = parsed?.[provider];
+      if (typeof value === 'string') keys[provider] = value.trim();
+    }
+    bundledCache = keys;
+    return keys;
   } catch {
     return (bundledCache = {});
   }

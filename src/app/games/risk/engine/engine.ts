@@ -119,8 +119,8 @@ export function createGame(options: CreateGameOptions): GameState {
     name: seedPlayer.name,
     color: seedPlayer.color ?? PLAYER_COLORS[index % PLAYER_COLORS.length],
     kind: seedPlayer.kind,
-    botProfile: seedPlayer.botProfile,
-    seatToken: seedPlayer.seatToken,
+    ...(seedPlayer.botProfile !== undefined && { botProfile: seedPlayer.botProfile }),
+    ...(seedPlayer.seatToken !== undefined && { seatToken: seedPlayer.seatToken }),
     cards: [],
     eliminated: false,
     reserve: 0,
@@ -777,7 +777,7 @@ function handlePossibleElimination(
   state: GameState,
   defenderId: PlayerId,
   attackerId: PlayerId,
-  map: GameMap,
+  _map: GameMap,
 ): void {
   if (territoriesOf(state, defenderId).length > 0) return;
   const defender = playerById(state, defenderId);

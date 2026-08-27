@@ -351,7 +351,7 @@ export class RiskRoomService {
       id: seatId,
       name: seat.name.trim().slice(0, 24) || 'Jugador',
       kind: seat.kind ?? 'human',
-      botProfile: seat.botProfile,
+      ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
       seatToken: seat.seatToken,
       color: seat.color,
       order,

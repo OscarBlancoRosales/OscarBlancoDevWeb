@@ -121,8 +121,8 @@ un valor por defecto cómodo para producción y un punto de entrada para el test
 Cero tolerancia.
 
 **Avisos (no bloquean, pero no pueden crecer):** las mismas reglas sobre el código
-que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1337 al
-escribir esto, y `--max-warnings 1337` impide que suban.
+que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1323 al
+escribir esto, y `--max-warnings 1323` impide que suban.
 
 El motivo de no ponerlos como error es práctico: son más de mil, la mayoría
 aserciones `!` e interpolaciones sin tipo. Un repositorio en rojo permanente
@@ -131,7 +131,7 @@ es avisar de lo nuevo.
 
 **Cuando se arregla deuda, se baja el número.** El trinquete solo aprieta.
 
-Hay 91 avisos que `eslint --fix` arreglaría solo. No se han aplicado a propósito:
+Hay 90 avisos que `eslint --fix` arreglaría solo. No se han aplicado a propósito:
 algunos de esos arreglos —`||` a `??`, por ejemplo— cambian comportamiento en los
 casos límite, y esta fase se comprometió a no cambiar ninguno. Es una tarea
 propia, con sus tests delante.

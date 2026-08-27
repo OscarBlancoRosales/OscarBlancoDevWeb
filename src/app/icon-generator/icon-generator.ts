@@ -211,7 +211,6 @@ export class IconGenerator {
     for (const entry of sizeMap) {
       for (const idiomEntry of entry.idioms) {
         for (const scale of idiomEntry.scales) {
-          const px = Math.round(entry.base * scale);
           let filename: string;
           if (entry.base === 1024) {
             filename = 'Icon-1024.png';
