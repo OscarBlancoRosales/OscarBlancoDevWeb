@@ -1,5 +1,4 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
@@ -7,7 +6,7 @@ import { I18nService } from '../services/i18n.service';
 
 @Component({
   selector: 'app-regex-tester',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './regex-tester.html',
   styleUrl: './regex-tester.css'
 })
