@@ -13,36 +13,36 @@ import {
 } from '../../services/risk-room.service';
 import { BOT_SPEEDS, RiskGameService } from '../../services/risk-game.service';
 import { DerivedGame, seatsToRoster } from '../../services/risk-sync';
-import { getMap } from '../../engine/maps/map-registry';
+import { getMap } from '@devweb/shared/engine/maps/map-registry';
 import {
   Card,
   GameMap,
   GameState,
   PlayerState,
   TerritoryId,
-} from '../../engine/types';
+} from '@devweb/shared/engine/types';
 import {
   PLAYER_COLORS,
   currentPlayer,
   legalActionTypes,
   mustTrade,
   playerById,
-} from '../../engine/engine';
+} from '@devweb/shared/engine/engine';
 import {
   areConnected,
   attackSources,
   attackTargets,
   reinforcementBreakdown,
   territoriesOf,
-} from '../../engine/rules';
-import { conquestOdds, maxAttackDice } from '../../engine/combat';
-import { approachOf, battleRulesFor, TERRAIN_META } from '../../engine/terrain';
-import { hasUnit, infantryOf, UNIT_KINDS, UNIT_META } from '../../engine/units';
+} from '@devweb/shared/engine/rules';
+import { conquestOdds, maxAttackDice } from '@devweb/shared/engine/combat';
+import { approachOf, battleRulesFor, TERRAIN_META } from '@devweb/shared/engine/terrain';
+import { hasUnit, infantryOf, UNIT_KINDS, UNIT_META } from '@devweb/shared/engine/units';
 import { NarratorService, TTS_VOICES } from '../../services/narrator';
-import { missionProgress } from '../../engine/missions';
-import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
-import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
-import { BotProfile } from '../../engine/types';
+import { missionProgress } from '@devweb/shared/engine/missions';
+import { CARD_ICON, CARD_LABEL, isValidSet } from '@devweb/shared/engine/cards';
+import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '@devweb/shared/engine/ai/bot-brain';
+import { BotProfile } from '@devweb/shared/engine/types';
 import {
   AiSettings,
   FREE_MODELS,
@@ -51,7 +51,7 @@ import {
   AiProvider,
   loadAiSettings,
   saveAiSettings,
-} from '../../engine/ai/ai-client';
+} from '@devweb/shared/engine/ai/ai-client';
 
 type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
 

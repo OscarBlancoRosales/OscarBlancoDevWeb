@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Games } from './games';
-import { RISK_MAPS } from './risk/engine/maps/map-registry';
+import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
 
 describe('Games (portada de juegos)', () => {
   let fixture: ComponentFixture<Games>;

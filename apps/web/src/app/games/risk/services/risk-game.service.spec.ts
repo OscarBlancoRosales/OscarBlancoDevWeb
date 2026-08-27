@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BehaviorSubject } from 'rxjs';
-import { GameConfig, GameState } from '../engine/types';
+import { GameConfig, GameState } from '@devweb/shared/engine/types';
 import { RiskGameService } from './risk-game.service';
 import { RiskRoomService, RoomMeta, RoomSeat, LoggedActionEntry } from './risk-room.service';
-import { DEFAULT_CONFIG } from '../engine/engine';
-import { decideAction } from '../engine/ai/bot-brain';
-import { getMap } from '../engine/maps/map-registry';
+import { DEFAULT_CONFIG } from '@devweb/shared/engine/engine';
+import { decideAction } from '@devweb/shared/engine/ai/bot-brain';
+import { getMap } from '@devweb/shared/engine/maps/map-registry';
 
 const MAPA = 'spain-regions';
 

@@ -1,9 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { RiskBoard } from './risk-board';
-import { WORLD_MAP } from '../../engine/maps/world.map';
-import { TINY_MAP, makeGame, setBoard } from '../../engine/testing';
-import { GameState } from '../../engine/types';
+import { WORLD_MAP } from '@devweb/shared/engine/maps/world.map';
+import { TINY_MAP, makeGame, setBoard } from '@devweb/shared/engine/testing';
+import { GameState } from '@devweb/shared/engine/types';
 
 describe('RiskBoard', () => {
   let fixture: ComponentFixture<RiskBoard>;

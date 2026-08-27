@@ -1,5 +1,5 @@
-import { GameConfig, GameMap, GameState } from '../engine/types';
-import { PlayerSeed, applyAction, createGame } from '../engine/engine';
+import { GameConfig, GameMap, GameState } from '@devweb/shared/engine/types';
+import { PlayerSeed, applyAction, createGame } from '@devweb/shared/engine/engine';
 import { LoggedActionEntry, RoomMeta, RoomSeat, RoomSnapshot, RosterEntry } from './risk-room.service';
 
 /**

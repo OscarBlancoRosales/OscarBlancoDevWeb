@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { AiSettings } from '../engine/ai/ai-client';
+import { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 
 /**
  * Narrador de la crónica de guerra: voz de verdad, generada por un modelo.

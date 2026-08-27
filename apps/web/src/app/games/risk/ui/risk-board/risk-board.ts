@@ -8,9 +8,9 @@ import {
   ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { GameMap, GameState, TerritoryId } from '../../engine/types';
-import { RenderedMap, RenderedTerritory, renderMap } from '../../engine/board-render';
-import { conquestOdds } from '../../engine/combat';
+import { GameMap, GameState, TerritoryId } from '@devweb/shared/engine/types';
+import { RenderedMap, RenderedTerritory, renderMap } from '@devweb/shared/engine/board-render';
+import { conquestOdds } from '@devweb/shared/engine/combat';
 import {
   ApproachKind,
   approachOf,
@@ -18,8 +18,8 @@ import {
   TerrainMeta,
   TERRAINS,
   TERRAIN_META,
-} from '../../engine/terrain';
-import { UNIT_KINDS, UNIT_META, UnitMeta } from '../../engine/units';
+} from '@devweb/shared/engine/terrain';
+import { UNIT_KINDS, UNIT_META, UnitMeta } from '@devweb/shared/engine/units';
 
 export interface TerritoryTooltip {
   name: string;

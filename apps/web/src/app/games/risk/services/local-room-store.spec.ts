@@ -8,7 +8,7 @@ import {
   toSeatList,
 } from './local-room-store';
 import { RoomMeta, RoomSeat } from './risk-room.service';
-import { DEFAULT_CONFIG } from '../engine/engine';
+import { DEFAULT_CONFIG } from '@devweb/shared/engine/engine';
 
 function fakeStorage(): Storage {
   const data = new Map<string, string>();

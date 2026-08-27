@@ -1,4 +1,4 @@
-import { GameAction, GameState } from '../engine/types';
+import { GameAction, GameState } from '@devweb/shared/engine/types';
 import { ChatEntry, LoggedActionEntry, RoomMeta, RoomSeat, RoomSnapshot } from './risk-room.service';
 
 /**

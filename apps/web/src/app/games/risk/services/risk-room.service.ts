@@ -15,7 +15,7 @@ import {
   update,
 } from 'firebase/database';
 import { database } from '../../../firebase.config';
-import { GameAction, GameConfig, GameState, PlayerKind, BotProfile } from '../engine/types';
+import { GameAction, GameConfig, GameState, PlayerKind, BotProfile } from '@devweb/shared/engine/types';
 import {
   LOCAL_PREFIX,
   LocalRoomStore,

@@ -1,19 +1,19 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, Subscription, combineLatest } from 'rxjs';
-import { GameAction, GameMap, GameState } from '../engine/types';
-import { currentPlayer, playerById } from '../engine/engine';
-import { decideAction, StrategyBias } from '../engine/ai/bot-brain';
-import { requestAdvice, requestChronicle, requestTurnPlan } from '../engine/ai/ai-orchestrator';
-import { chronicleFor, hasChronicle } from '../engine/ai/chronicle';
-import { rngFor } from '../engine/rng';
+import { GameAction, GameMap, GameState } from '@devweb/shared/engine/types';
+import { currentPlayer, playerById } from '@devweb/shared/engine/engine';
+import { decideAction, StrategyBias } from '@devweb/shared/engine/ai/bot-brain';
+import { requestAdvice, requestChronicle, requestTurnPlan } from '@devweb/shared/engine/ai/ai-orchestrator';
+import { chronicleFor, hasChronicle } from '@devweb/shared/engine/ai/chronicle';
+import { rngFor } from '@devweb/shared/engine/rng';
 import {
   AiSettings,
   fetchBundledKeys,
   hasStoredAiSettings,
   loadAiSettings,
   withBundledKey,
-} from '../engine/ai/ai-client';
-import { getMap } from '../engine/maps/map-registry';
+} from '@devweb/shared/engine/ai/ai-client';
+import { getMap } from '@devweb/shared/engine/maps/map-registry';
 import {
   ChatEntry,
   RiskRoomService,

@@ -3,7 +3,7 @@ import { ActivatedRoute, provideRouter, Router } from '@angular/router';
 import { convertToParamMap } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskLobby } from './risk-lobby';
-import { RISK_MAPS } from '../../engine/maps/map-registry';
+import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
 import { RiskRoomService } from '../../services/risk-room.service';
 import { FirebaseAuthService } from '../../../../firebase-auth.service';
 import { of } from 'rxjs';

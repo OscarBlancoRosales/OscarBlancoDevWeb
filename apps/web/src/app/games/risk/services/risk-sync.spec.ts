@@ -9,11 +9,11 @@ import {
   shouldSnapshot,
 } from './risk-sync';
 import { LoggedActionEntry, RoomMeta, RoomSeat } from './risk-room.service';
-import { DEFAULT_CONFIG, applyAction, currentPlayer } from '../engine/engine';
-import { GameAction } from '../engine/types';
-import { getMap } from '../engine/maps/map-registry';
-import { decideAction } from '../engine/ai/bot-brain';
-import { territoriesOf } from '../engine/rules';
+import { DEFAULT_CONFIG, applyAction, currentPlayer } from '@devweb/shared/engine/engine';
+import { GameAction } from '@devweb/shared/engine/types';
+import { getMap } from '@devweb/shared/engine/maps/map-registry';
+import { decideAction } from '@devweb/shared/engine/ai/bot-brain';
+import { territoriesOf } from '@devweb/shared/engine/rules';
 
 const map = getMap('world');
 

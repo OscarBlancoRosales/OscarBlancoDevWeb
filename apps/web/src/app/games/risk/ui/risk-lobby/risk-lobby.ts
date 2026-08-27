@@ -5,12 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
 import { FirebaseAuthService } from '../../../../firebase-auth.service';
-import { RISK_MAPS } from '../../engine/maps/map-registry';
-import { DEFAULT_CONFIG, PLAYER_COLORS, createGame } from '../../engine/engine';
-import { GameMap, GameState } from '../../engine/types';
+import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
+import { DEFAULT_CONFIG, PLAYER_COLORS, createGame } from '@devweb/shared/engine/engine';
+import { GameMap, GameState } from '@devweb/shared/engine/types';
 import { RiskBoard } from '../risk-board/risk-board';
-import { TERRAINS, TERRAIN_META } from '../../engine/terrain';
-import { UNIT_KINDS, UNIT_META } from '../../engine/units';
+import { TERRAINS, TERRAIN_META } from '@devweb/shared/engine/terrain';
+import { UNIT_KINDS, UNIT_META } from '@devweb/shared/engine/units';
 import {
   RiskRoomService,
   RoomMeta,

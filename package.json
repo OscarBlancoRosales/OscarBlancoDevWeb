@@ -10,10 +10,10 @@
   "scripts": {
     "start": "npm run start -w @devweb/web",
     "build": "npm run build -w @devweb/web",
-    "test": "npm run test -w @devweb/web",
-    "lint": "eslint . --max-warnings 1323",
+    "test": "npm run test -w @devweb/shared && npm run test -w @devweb/web",
+    "lint": "eslint . --max-warnings 1274",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.spec.json --noEmit && tsc -p tsconfig.tools.json --noEmit",
+    "typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.spec.json --noEmit && tsc -p tools/tsconfig.json --noEmit",
     "build:maps": "node --experimental-strip-types tools/run.mjs tools/build-spain-map.ts && node --experimental-strip-types tools/run.mjs tools/build-world-map.ts",
     "check:rules": "node tools/check-rules.mjs",
     "deploy:rules": "firebase deploy --only database"

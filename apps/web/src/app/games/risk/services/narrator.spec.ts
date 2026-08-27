@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { NarratorService, TTS_MODEL, TTS_VOICES } from './narrator';
-import { AiSettings, DEFAULT_AI_SETTINGS } from '../engine/ai/ai-client';
+import { AiSettings, DEFAULT_AI_SETTINGS } from '@devweb/shared/engine/ai/ai-client';
 
 function settings(overrides: Partial<AiSettings> = {}): AiSettings {
   return { ...DEFAULT_AI_SETTINGS, enabled: true, apiKey: 'clave', ...overrides };

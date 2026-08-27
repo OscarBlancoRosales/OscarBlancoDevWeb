@@ -4,8 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskRoom } from './risk-room';
 import { RiskRoomService } from '../../services/risk-room.service';
 import { RiskGameService } from '../../services/risk-game.service';
-import { DEFAULT_CONFIG, PLAYER_COLORS } from '../../engine/engine';
-import { territoriesOf } from '../../engine/rules';
+import { DEFAULT_CONFIG, PLAYER_COLORS } from '@devweb/shared/engine/engine';
+import { territoriesOf } from '@devweb/shared/engine/rules';
 
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 

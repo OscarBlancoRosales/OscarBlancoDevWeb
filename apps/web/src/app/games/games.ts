@@ -2,7 +2,7 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
-import { RISK_MAPS } from './risk/engine/maps/map-registry';
+import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
 
 interface GameCard {
   id: string;
