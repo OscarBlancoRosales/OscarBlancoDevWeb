@@ -43,12 +43,24 @@ APT::Periodic::Unattended-Upgrade "1";
 EOF
 systemctl enable --now unattended-upgrades
 
-paso "Node 22"
-if ! command -v node >/dev/null || [[ "$(node -v)" != v22.* ]]; then
-  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-  apt-get install -y -qq nodejs
+paso "Node"
+# Ubuntu 26.04 trae Node 22 en sus propios repositorios, así que no hace falta
+# NodeSource: una dependencia externa menos, y las actualizaciones de seguridad
+# de Node llegan por el mismo camino que las del resto del sistema.
+if ! command -v node >/dev/null; then
+  apt-get install -y -qq nodejs npm
+fi
+
+version=$(node -v)
+node_mayor=${version#v}
+node_mayor=${node_mayor%%.*}
+if (( node_mayor < 22 )); then
+  echo "Node $(node -v) es demasiado antiguo: hace falta la 22 o superior." >&2
+  echo "Instálalo desde https://deb.nodesource.com y vuelve a ejecutar esto." >&2
+  exit 1
 fi
 node -v
+npm -v
 
 paso "Usuario de servicio $APP_USER"
 # Sin shell y sin home propio: esta cuenta existe para correr un proceso, no
