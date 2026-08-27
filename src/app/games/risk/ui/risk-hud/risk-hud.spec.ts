@@ -33,6 +33,18 @@ describe('RiskHud', () => {
     expect(fixture.nativeElement.querySelector('.hud.my-turn')).toBeNull();
   });
 
+  it('avisa de quién está pensando', () => {
+    // Sin esto, un bot que tarda parece una partida colgada.
+    fixture.componentRef.setInput('thinking', 'Bot 1');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.hud-thinking').textContent).toContain('Bot 1');
+  });
+
+  it('y no dice nada cuando no piensa nadie', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.hud-thinking')).toBeNull();
+  });
+
   it('salir avisa hacia fuera', () => {
     fixture.detectChanges();
     let salido = false;

@@ -5,6 +5,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
 import { RiskBoard } from '../risk-board/risk-board';
+import { RiskHud } from '../risk-hud/risk-hud';
+import { RiskScoreboard, ScoreRow } from '../risk-scoreboard/risk-scoreboard';
+import { RiskPanel } from '../risk-panel/risk-panel';
+import { RiskActionBar, PanelId } from '../risk-action-bar/risk-action-bar';
 import {
   ChatEntry,
   RiskRoomService,
@@ -62,7 +66,16 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
  */
 @Component({
   selector: 'app-risk-room',
-  imports: [CommonModule, FormsModule, TerminalLayout, RiskBoard],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TerminalLayout,
+    RiskBoard,
+    RiskHud,
+    RiskScoreboard,
+    RiskPanel,
+    RiskActionBar,
+  ],
   templateUrl: './risk-room.html',
   styleUrl: './risk-room.css',
 })
@@ -297,6 +310,60 @@ export class RiskRoom implements OnInit, OnDestroy {
       .filter((entry) => !!entry.player);
   }
 
+  /** Filas del marcador compacto, en el orden de la clasificación. */
+  get scoreRows(): ScoreRow[] {
+    return this.scoreboard.map((entry) => ({
+      id: entry.player.id,
+      name: entry.player.name,
+      color: entry.player.color,
+      territories: entry.territories,
+      armies: entry.armies,
+      eliminated: entry.player.eliminated,
+    }));
+  }
+
+  /** Quién mueve ahora, para marcarlo en el marcador. */
+  get currentPlayerId(): string {
+    return this.active?.id ?? '';
+  }
+
+  /** Frase de turno para la barra de arriba. */
+  get turnLabel(): string {
+    if (!this.active) return '';
+    if (this.handedToAi && this.active.id === this.seatId) return 'La IA juega por ti';
+    return this.isMyTurn ? 'Es tu turno' : `Turno de ${this.active.name}`;
+  }
+
+  /**
+   * Mantener pulsado sólo coloca tropas en refuerzos y cuando te toca.
+   *
+   * Fuera de ahí, mantener el dedo sobre un territorio enseña su ficha en vez
+   * de colocar. El tablero no sabe de fases, así que se decide aquí.
+   */
+  get repeatOnHold(): boolean {
+    return this.isMyTurn && this.state?.phase === 'reinforce';
+  }
+
+  /** Panel abierto, si hay alguno. Sólo uno: dos taparían el mapa. */
+  openPanel: PanelId | null = null;
+
+  togglePanel(id: PanelId): void {
+    this.openPanel = this.openPanel === id ? null : id;
+  }
+
+  /**
+   * Al llegar tu turno se cierra el panel que estuviera abierto.
+   *
+   * Con el mapa tapado por el chat, el turno te llega y no te enteras.
+   */
+  private lastTurnWasMine = false;
+
+  private closePanelOnMyTurn(): void {
+    const mine = this.isMyTurn;
+    if (mine && !this.lastTurnWasMine) this.openPanel = null;
+    this.lastTurnWasMine = mine;
+  }
+
   territoryCount(playerId: string): number {
     return this.state ? territoriesOf(this.state, playerId).length : 0;
   }
@@ -313,6 +380,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   targetTerritories: TerritoryId[] = [];
 
   private recomputeSelection(): void {
+    this.closePanelOnMyTurn();
     this.selectableTerritories = this.computeSelectable();
     this.targetTerritories = this.computeTargets();
     // Tras cada ronda de combate el origen tiene menos ejércitos, así que el

@@ -14,6 +14,13 @@ export class RiskHud {
   @Input() phaseLabel = '';
   @Input() turnLabel = '';
   @Input() myTurn = false;
+  /**
+   * Quién está pensando ahora mismo, si hay alguien.
+   *
+   * Vivía en el banner de turno de la columna que se ha eliminado. Sin esto, un
+   * bot que tarda parece una partida colgada.
+   */
+  @Input() thinking = '';
   @Output() leave = new EventEmitter<void>();
   @Output() settings = new EventEmitter<void>();
 }

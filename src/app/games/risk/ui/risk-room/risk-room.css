@@ -21,7 +21,12 @@
   flex-direction: column;
   gap: 12px;
   padding: 12px 14px 16px;
-  height: 100%;
+  /*
+   * `dvh` y no `vh`: en el móvil la barra del navegador aparece y desaparece, y
+   * con `vh` la barra de acción queda por debajo del borde de la pantalla justo
+   * cuando más falta hace.
+   */
+  height: 100dvh;
   min-height: 0;
   overflow: hidden;
   color: var(--ink);
@@ -442,44 +447,57 @@
 
 /* ===== PARTIDA ===== */
 
+/*
+ * El mapa es el fondo y ocupa todo; lo demás flota encima.
+ *
+ * Antes eran tres columnas y, por debajo de 1024px, la página se apilaba en un
+ * scroll donde el mapa quedaba a 320px de alto y la barra de acción a medio
+ * kilómetro del territorio que estabas mirando. En un móvil no se jugaba.
+ */
 .game {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 320px;
-  gap: 12px;
+  position: relative;
+  display: block;
   flex: 1;
   min-height: 0;
-}
-
-.players-column,
-.side-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.board-column {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-  /* Recorta en vez de empujar: la barra de acción no puede salirse de pantalla. */
   overflow: hidden;
+  border-radius: 10px;
 }
 
-/* El tablero es lo único que cede espacio: la barra de acción y la tira de
-   combate deben quedar siempre visibles. */
-.board-column app-risk-board {
-  flex: 1 1 auto;
-  min-height: 160px;
+.board-layer {
+  position: absolute;
+  inset: 0;
   display: block;
-  overflow: hidden;
 }
 
-.action-bar,
-.combat-strip {
-  flex: 0 0 auto;
+/*
+ * Las hojas de fase (ataque, reagrupar, ocupación) van justo encima de la barra
+ * de abajo, no pegadas al borde: ahí es donde está mirando el jugador cuando
+ * acaba de tocar un territorio.
+ */
+.sheet-layer {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 60px;
+  z-index: 23;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.sheet-layer > * {
+  pointer-events: auto;
+}
+
+.error.floating {
+  position: absolute;
+  left: 50%;
+  bottom: 64px;
+  transform: translateX(-50%);
+  z-index: 40;
+  margin: 0;
+  max-width: 90%;
 }
 
 /* ===== BANNER DE TURNO ===== */
@@ -644,11 +662,15 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
-  padding: 10px 12px;
-  min-height: 56px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Vacía no debe dejar un recuadro flotando sobre el mapa. */
+.action-bar:empty {
+  display: none;
 }
 
 .action-bar.my-turn {
@@ -1157,15 +1179,13 @@
 
 /* ===== SCROLLBARS ===== */
 
-.players-column::-webkit-scrollbar,
-.side-column::-webkit-scrollbar,
+.panel-body::-webkit-scrollbar,
 .chat-feed::-webkit-scrollbar,
 .event-feed::-webkit-scrollbar {
   width: 7px;
 }
 
-.players-column::-webkit-scrollbar-thumb,
-.side-column::-webkit-scrollbar-thumb,
+.panel-body::-webkit-scrollbar-thumb,
 .chat-feed::-webkit-scrollbar-thumb,
 .event-feed::-webkit-scrollbar-thumb {
   background: #2b3a33;
@@ -1173,42 +1193,6 @@
 }
 
 /* ===== RESPONSIVE ===== */
-
-@media (max-width: 1280px) {
-  .game {
-    grid-template-columns: 210px minmax(0, 1fr) 280px;
-  }
-}
-
-@media (max-width: 1024px) {
-  /* En pantallas estrechas la mesa se apila y la página entera hace scroll. */
-  .room {
-    height: auto;
-    overflow: visible;
-  }
-
-  .game {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(320px, 55vh) auto;
-  }
-
-  .board-column {
-    overflow: visible;
-  }
-
-  .board-column app-risk-board {
-    min-height: 320px;
-  }
-
-  .players-column,
-  .side-column {
-    overflow: visible;
-  }
-
-  .waiting {
-    grid-template-columns: 1fr;
-  }
-}
 
 @media (max-width: 640px) {
   .room {
