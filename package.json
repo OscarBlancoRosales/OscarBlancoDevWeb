@@ -1,18 +1,22 @@
 {
-  "name": "dev-web",
+  "name": "devweb",
   "version": "0.0.0",
+  "private": true,
+  "packageManager": "npm@11.6.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "npm run start -w @devweb/web",
+    "build": "npm run build -w @devweb/web",
+    "test": "npm run test -w @devweb/web",
     "lint": "eslint . --max-warnings 1323",
     "lint:fix": "eslint . --fix",
-    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test",
+    "typecheck": "tsc -p apps/web/tsconfig.app.json --noEmit && tsc -p apps/web/tsconfig.spec.json --noEmit && tsc -p tsconfig.tools.json --noEmit",
     "build:maps": "node --experimental-strip-types tools/run.mjs tools/build-spain-map.ts && node --experimental-strip-types tools/run.mjs tools/build-world-map.ts",
-    "deploy:rules": "firebase deploy --only database",
-    "check:rules": "node tools/check-rules.mjs"
+    "check:rules": "node tools/check-rules.mjs",
+    "deploy:rules": "firebase deploy --only database"
   },
   "prettier": {
     "printWidth": 100,
@@ -26,36 +30,11 @@
       }
     ]
   },
-  "private": true,
-  "packageManager": "npm@11.6.2",
-  "dependencies": {
-    "@angular/common": "^21.1.0",
-    "@angular/compiler": "^21.1.0",
-    "@angular/core": "^21.1.0",
-    "@angular/forms": "^21.1.0",
-    "@angular/platform-browser": "^21.1.0",
-    "@angular/router": "^21.1.0",
-    "firebase": "^12.8.0",
-    "jszip": "^3.10.1",
-    "pica": "^9.0.1",
-    "qrcode": "^1.5.4",
-    "rxjs": "~7.8.0",
-    "tslib": "^2.3.0"
-  },
   "devDependencies": {
-    "@angular/build": "^21.1.2",
-    "@angular/cli": "^21.1.2",
-    "@angular/compiler-cli": "^21.1.0",
     "@eslint/js": "^10.0.1",
-    "@types/jszip": "^3.4.0",
-    "@types/pica": "^9.0.5",
-    "@types/qrcode": "^1.5.6",
     "angular-eslint": "^21.4.0",
     "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
-    "jsdom": "^27.1.0",
-    "typescript": "~5.9.2",
-    "typescript-eslint": "^8.68.0",
-    "vitest": "^4.0.8"
+    "typescript-eslint": "^8.68.0"
   }
 }

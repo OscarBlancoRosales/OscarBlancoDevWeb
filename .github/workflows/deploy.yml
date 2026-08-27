@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
@@ -31,14 +31,15 @@ jobs:
 
       - name: Build
         run: npx ng build --configuration production --base-href /
+        working-directory: apps/web
 
       - name: Copy index.html to 404.html for SPA routing
-        run: cp dist/DevWeb/browser/index.html dist/DevWeb/browser/404.html
+        run: cp apps/web/dist/DevWeb/browser/index.html apps/web/dist/DevWeb/browser/404.html
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist/DevWeb/browser
+          path: apps/web/dist/DevWeb/browser
 
   deploy:
     environment:

@@ -15,16 +15,16 @@
  */
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { MultiPolygon, Point2, dropTinyHoles, dropTinyPolygons } from '../src/app/games/risk/engine/geo/geometry2d';
+import { MultiPolygon, Point2, dropTinyHoles, dropTinyPolygons } from '../apps/web/src/app/games/risk/engine/geo/geometry2d';
 import {
   adjacencyByContact,
   buildTopology,
   mergeFeatures,
   rebuildAll,
   simplifyTopology,
-} from '../src/app/games/risk/engine/geo/topology';
-import { labelPointOfMulti } from '../src/app/games/risk/engine/geo/polylabel';
-import { contactThresholdFor } from '../src/app/games/risk/engine/geo/contact';
+} from '../apps/web/src/app/games/risk/engine/geo/topology';
+import { labelPointOfMulti } from '../apps/web/src/app/games/risk/engine/geo/polylabel';
+import { contactThresholdFor } from '../apps/web/src/app/games/risk/engine/geo/contact';
 import {
   boundsOfAll,
   fitTransform,
@@ -32,8 +32,8 @@ import {
   multiPolygonToPath,
   projectEquirectangular,
   transformMulti,
-} from '../src/app/games/risk/engine/geo/project';
-import { WORLD_ADJACENCY, WORLD_NAMES } from '../src/app/games/risk/engine/maps/world.adjacency';
+} from '../apps/web/src/app/games/risk/engine/geo/project';
+import { WORLD_ADJACENCY, WORLD_NAMES } from '../apps/web/src/app/games/risk/engine/maps/world.adjacency';
 import {
   EXCLUDED_SUBDIVISIONS,
   RUSSIA_ASIA,
@@ -42,7 +42,7 @@ import {
 } from './world-territories';
 
 const ROOT = process.cwd();
-const OUTPUT = join(ROOT, 'src/app/games/risk/engine/maps/world.shapes.ts');
+const OUTPUT = join(ROOT, 'apps/web/src/app/games/risk/engine/maps/world.shapes.ts');
 const SOURCES = {
   countries: {
     file: join(ROOT, '.cache', 'ne_50m_admin_0_countries.geojson'),

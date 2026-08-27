@@ -24,7 +24,7 @@ import {
   dropTinyHoles,
   dropTinyPolygons,
   ringArea,
-} from '../src/app/games/risk/engine/geo/geometry2d';
+} from '../apps/web/src/app/games/risk/engine/geo/geometry2d';
 import {
   adjacencyByContact,
   buildTopology,
@@ -32,9 +32,9 @@ import {
   mergeFeatures,
   rebuildAll,
   simplifyTopology,
-} from '../src/app/games/risk/engine/geo/topology';
-import { labelPointOfMulti } from '../src/app/games/risk/engine/geo/polylabel';
-import { contactThresholdFor } from '../src/app/games/risk/engine/geo/contact';
+} from '../apps/web/src/app/games/risk/engine/geo/topology';
+import { labelPointOfMulti } from '../apps/web/src/app/games/risk/engine/geo/polylabel';
+import { contactThresholdFor } from '../apps/web/src/app/games/risk/engine/geo/contact';
 import {
   boundsOfAll,
   fitTransform,
@@ -42,7 +42,7 @@ import {
   projectEquirectangular,
   transformMulti,
   mapMultiPolygon,
-} from '../src/app/games/risk/engine/geo/project';
+} from '../apps/web/src/app/games/risk/engine/geo/project';
 
 // La herramienta se empaqueta a un temporal antes de ejecutarse, así que las
 // rutas van contra el directorio del proyecto (de donde lanza npm), no contra
@@ -51,8 +51,8 @@ const ROOT = process.cwd();
 const CACHE = join(ROOT, '.cache', 'spain-provinces.geojson');
 const SOURCE_URL =
   'https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/spain-provinces.geojson';
-const OUTPUT = join(ROOT, 'src/app/games/risk/engine/maps/spain.shapes.ts');
-const OUTPUT_REGIONS = join(ROOT, 'src/app/games/risk/engine/maps/spain-regions.shapes.ts');
+const OUTPUT = join(ROOT, 'apps/web/src/app/games/risk/engine/maps/spain.shapes.ts');
+const OUTPUT_REGIONS = join(ROOT, 'apps/web/src/app/games/risk/engine/maps/spain-regions.shapes.ts');
 
 /** Ancho del tablero en unidades SVG. El alto sale de la proporción real. */
 const BOARD_WIDTH = 1000;
