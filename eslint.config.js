@@ -89,5 +89,33 @@ export default tseslint.config(
     languageOptions: { parser: angular.templateParser },
     rules: asWarnings(angular.configs.templateRecommended),
   },
+  {
+    files: ['packages/shared/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@angular/*'],
+              message: 'shared no puede depender del framework: lo consume también el servidor.',
+            },
+            {
+              group: ['rxjs', 'rxjs/*'],
+              message: 'shared es dominio puro; los observables viven en la web.',
+            },
+            {
+              group: ['node:*'],
+              message: 'shared no puede depender de Node: lo consume también el navegador.',
+            },
+            {
+              group: ['firebase', 'firebase/*'],
+              message: 'shared no habla con ningún backend.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 );
