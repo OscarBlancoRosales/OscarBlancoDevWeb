@@ -62,13 +62,36 @@ herramienta, no es una regla, es una intención.
 
 ### Tipado
 
-Sobre el `strict: true` actual se añade:
+El nivel de rigor se decidió midiendo, no por gusto. Cada flag se contó sobre el
+código real antes de aceptarlo:
 
-```
-noUncheckedIndexedAccess     exactOptionalPropertyTypes
-noUnusedLocals               noUnusedParameters
-verbatimModuleSyntax         noImplicitOverride (ya está)
-```
+| Flag | Errores hoy | Dónde se activa |
+|---|---|---|
+| `exactOptionalPropertyTypes` | 7 | Todo el monorepo |
+| `noUnusedLocals` + `noUnusedParameters` | 16 | Todo el monorepo |
+| `verbatimModuleSyntax` | 189 (135 en el motor) | `packages/shared` y `apps/server` |
+| `noUncheckedIndexedAccess` | 282 (200 en el motor) | Solo `apps/server` |
+
+Los 23 primeros errores se arreglan a mano en la fase 0. Los 189 de
+`verbatimModuleSyntax` son todos TS1484 y los corrige `eslint --fix`.
+
+**`verbatimModuleSyntax` no se activa en `apps/web`**, y la razón importa: la web
+usa inyección por constructor en 19 ficheros y `inject()` en ninguno. El flag
+convertiría `import { ChangeDetectorRef }` en `import type`, y Angular necesita
+ese símbolo como valor para construir la fábrica de inyección. El resultado sería
+una web rota en runtime con los 1089 tests en verde, que es la peor forma
+posible de romper algo. En `packages/shared` sí se activa: el motor no tiene ni
+un decorador de Angular. Migrar la web a `inject()` desbloquea el flag y queda
+anotado como deuda.
+
+`noUncheckedIndexedAccess` queda **fuera de la fase 0 y activado solo en
+`apps/server`**, donde el código nace con él. En el código existente son 282
+accesos a arrays dentro de la lógica de combate, cartas y misiones: arreglarlos
+tiene riesgo real de cambiar comportamiento y merece su propio plan y su propia
+revisión, no ir de polizón en una reorganización de carpetas.
+
+Las dos deudas quedan escritas en `docs/estandares.md` con su motivo, para que
+sean decisiones consultables y no olvidos.
 
 `any` está prohibido por ESLint, sin excepciones silenciosas: si hiciera falta,
 se escribe `unknown` y se estrecha validando. En las fronteras del sistema —HTTP,
@@ -151,7 +174,7 @@ no con disciplina.
 
 El movimiento de Angular a `apps/web` toca `angular.json`, los `tsconfig` y la
 ruta de artefacto de `.github/workflows/deploy.yml`. Se hace en la fase 0, con
-los 36 ficheros de tests verdes antes y después, y sin ningún cambio de
+los 1089 tests verdes antes y después, y sin ningún cambio de
 comportamiento.
 
 ---
@@ -293,7 +316,7 @@ sitio a medias entre dos backends.
 
 | # | Qué | Terminada cuando |
 |---|-----|------------------|
-| 0 | Reglas, monorepo y extracción de `shared` | Los 36 specs pasan, la web se despliega igual, cero cambios de comportamiento |
+| 0 | Reglas, monorepo y extracción de `shared` | Los 1089 tests de los 36 ficheros pasan, la web se despliega igual, cero cambios de comportamiento |
 | 1 | VPS, nginx, TLS, systemd, `/health` | `https://api.oscarblancorosales.com/health` responde y el despliegue automático funciona |
 | 2 | Autenticación completa | Registro, verificación, login, refresh con rotación, logout y reset, con tests |
 | 3 | Núcleo de salas, WebSocket y Scrum Poker | Se juega una partida entera contra el backend propio, y los votos ocultos no salen del servidor |
