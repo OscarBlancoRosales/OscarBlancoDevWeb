@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Cero cambios de comportamiento.** Esta fase mueve y configura. No corrige bugs, no renombra símbolos del dominio, no cambia lógica de juego.
-- **Línea base inviolable:** `36 ficheros de test, 1089 tests, 0 fallos`. Cualquier tarea que la baje se revierte, no se ajusta el test.
+- **Línea base inviolable:** `36 ficheros de test, 1042 tests, 0 fallos`. Cualquier tarea que la baje se revierte, no se ajusta el test.
 - **La caché de Angular miente.** Un fallo de compilación inexplicable —por ejemplo `TS2339` sobre una propiedad que existe— casi siempre es `.angular/cache` rancia. Antes de investigar nada, `rm -rf .angular/cache out-tsc` y repetir.
 - **`verbatimModuleSyntax` NO se activa en `apps/web`.** La web usa inyección por constructor en 19 ficheros y `inject()` en cero. El flag convertiría los imports de DI en `import type` y rompería Angular en runtime con los tests en verde.
 - **`noUncheckedIndexedAccess` NO se activa en esta fase.** Son 282 errores, 200 dentro del motor. Tiene su propio plan.
@@ -153,7 +153,7 @@ Contenido obligatorio, cada sección con su porqué:
 - [ ] **Step 6: Verificar que los tests siguen verdes**
 
 Run: `npx ng test --watch=false 2>&1 | tail -5`
-Expected: `Test Files 36 passed (36)` y `Tests 1089 passed (1089)`
+Expected: `Test Files 36 passed (36)` y `Tests 1042 passed (1042)`
 
 - [ ] **Step 7: Commit**
 
@@ -212,7 +212,7 @@ Expected: sin salida y código de salida 0
 - [ ] **Step 6: Verificar que no se ha roto nada**
 
 Run: `npx ng test --watch=false 2>&1 | tail -5`
-Expected: `Tests 1089 passed (1089)`
+Expected: `Tests 1042 passed (1042)`
 
 - [ ] **Step 7: Commit**
 
@@ -377,7 +377,7 @@ Expected: build correcto y el fichero existe.
 - [ ] **Step 8: Verificar los tests**
 
 Run: `npm test 2>&1 | tail -5`
-Expected: `Test Files 36 passed (36)` y `Tests 1089 passed (1089)`
+Expected: `Test Files 36 passed (36)` y `Tests 1042 passed (1042)`
 
 - [ ] **Step 9: Actualizar el workflow de despliegue**
 
@@ -560,7 +560,7 @@ Expected: sin resultados.
 npm run build
 npm test 2>&1 | tail -5
 ```
-Expected: build correcto y `Tests 1089 passed (1089)`
+Expected: build correcto y `Tests 1042 passed (1042)`
 
 - [ ] **Step 7: Activar `verbatimModuleSyntax` en el paquete compartido**
 
@@ -606,7 +606,7 @@ npm run build
 npm test 2>&1 | tail -5
 npm run typecheck
 ```
-Expected: build correcto, `Tests 1089 passed (1089)`, typecheck limpio.
+Expected: build correcto, `Tests 1042 passed (1042)`, typecheck limpio.
 
 - [ ] **Step 11: Commit**
 
@@ -741,7 +741,7 @@ npm run lint
 npm run typecheck
 npm test 2>&1 | tail -5
 ```
-Expected: los tres pasan y `Tests 1089 passed (1089)`.
+Expected: los tres pasan y `Tests 1042 passed (1042)`.
 
 Si `npm run lint` falla por la deuda de partida anotada en la tarea 1, este es el momento de decidirlo con el dueño del repositorio: o se arregla, o el paso de lint arranca acotado a `packages/shared` y `apps/server`. No se silencian reglas para que pase.
 
@@ -759,7 +759,7 @@ git commit -m "Las reglas se comprueban en cada pull request, no cuando alguien 
 La fase 0 está terminada cuando:
 
 - `npm ci && npm run lint && npm run typecheck && npm test` pasa desde cero.
-- `Tests 1089 passed (1089)` — el mismo número que antes de empezar.
+- `Tests 1042 passed (1042)` — el mismo número que antes de empezar.
 - `npm run build` produce `apps/web/dist/DevWeb/browser/index.html`.
 - `npm run build:maps` no cambia ningún fichero versionado.
 - El despliegue a GitHub Pages publica la web igual que antes, en `oscarblancorosales.com`.

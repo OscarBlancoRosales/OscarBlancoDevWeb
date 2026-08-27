@@ -5,6 +5,9 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "lint": "eslint . --max-warnings 1337",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc -p tsconfig.app.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "build:maps": "node --experimental-strip-types tools/run.mjs tools/build-spain-map.ts && node --experimental-strip-types tools/run.mjs tools/build-world-map.ts",
@@ -43,11 +46,16 @@
     "@angular/build": "^21.1.2",
     "@angular/cli": "^21.1.2",
     "@angular/compiler-cli": "^21.1.0",
+    "@eslint/js": "^10.0.1",
     "@types/jszip": "^3.4.0",
     "@types/pica": "^9.0.5",
     "@types/qrcode": "^1.5.6",
+    "angular-eslint": "^21.4.0",
+    "eslint": "^10.9.1",
+    "eslint-config-prettier": "^10.1.8",
     "jsdom": "^27.1.0",
     "typescript": "~5.9.2",
+    "typescript-eslint": "^8.68.0",
     "vitest": "^4.0.8"
   }
 }

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/tools",
+    "types": ["node"],
+    "module": "preserve",
+    "moduleResolution": "bundler"
+  },
+  "include": ["tools/**/*.ts"]
+}
