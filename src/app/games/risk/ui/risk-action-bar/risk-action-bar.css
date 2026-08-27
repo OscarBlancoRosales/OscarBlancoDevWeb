@@ -1,0 +1,95 @@
+.bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 22;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 12px;
+  background: linear-gradient(rgba(4, 10, 8, 0), rgba(4, 10, 8, 0.92) 45%);
+  font-size: 13px;
+}
+
+.bar.my-turn {
+  border-top: 1px solid rgba(0, 255, 140, 0.35);
+}
+
+.bar-phase {
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+}
+
+.bar-reserve {
+  font-size: 16px;
+  font-weight: 700;
+  color: #00e676;
+}
+
+.bar-reserve.spent {
+  color: inherit;
+  opacity: 0.5;
+}
+
+.bar-hint {
+  opacity: 0.7;
+}
+
+.bar-panels {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+
+.bar-panel {
+  position: relative;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 255, 140, 0.25);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 17px;
+  /* 44px: lo mínimo para que un dedo acierte sin pelearse. */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.bar-panel.active {
+  border-color: #00e676;
+  background: rgba(0, 255, 140, 0.15);
+}
+
+.bar-badge {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.bar-undo,
+.bar-end {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 255, 140, 0.25);
+  border-radius: 8px;
+  color: inherit;
+  cursor: pointer;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.bar-end:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+@media (max-width: 640px) {
+  /* En un móvil la instrucción se aprende al primer toque y luego estorba. */
+  .bar-hint {
+    display: none;
+  }
+}
