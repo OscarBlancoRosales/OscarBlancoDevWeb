@@ -323,9 +323,50 @@ export class RiskBoard {
 
   // ===== INTERACCIÓN =====
 
-  onTerritoryClick(id: TerritoryId, event: Event): void {
+  /**
+   * Cuánto puede moverse un dedo y seguir contando como toque, en píxeles.
+   *
+   * Sin este umbral, arrastrar el mapa en el móvil termina en un clic sobre el
+   * territorio donde levantas el dedo: mueves el mapa y colocas una tropa sin
+   * querer. Ocho píxeles es lo que tiembla una mano, no lo que se mueve un
+   * gesto.
+   */
+  readonly TAP_MAX_MOVE = 8;
+
+  /** Toque en curso: dónde empezó y si ya se ha ido de paseo. */
+  private pendingTap: { id: TerritoryId; x: number; y: number; moved: boolean } | null = null;
+
+  onTerritoryPointerDown(id: TerritoryId, event: PointerEvent): void {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    this.pendingTap = { id, x: event.clientX, y: event.clientY, moved: false };
+  }
+
+  onTerritoryPointerUp(id: TerritoryId, event: PointerEvent): void {
+    const tap = this.pendingTap;
+    this.pendingTap = null;
+    if (!tap || tap.id !== id || tap.moved) return;
     event.stopPropagation();
     this.territoryClick.emit(id);
+  }
+
+  /** Marca el toque como arrastre en cuanto se aleja del punto de partida. */
+  private trackTapMovement(event: PointerEvent): void {
+    const tap = this.pendingTap;
+    if (!tap) return;
+    const dx = event.clientX - tap.x;
+    const dy = event.clientY - tap.y;
+    if (Math.hypot(dx, dy) > this.TAP_MAX_MOVE) tap.moved = true;
+  }
+
+  /**
+   * El clic del navegador ya no coloca nada: manda `onTerritoryPointerUp`.
+   *
+   * Se mantiene el manejador sólo para frenar la propagación, porque el `click`
+   * llega después del `pointerup` y sin pararlo el SVG lo recogería como si
+   * fuera un gesto sobre el fondo.
+   */
+  onTerritoryClick(_id: TerritoryId, event: Event): void {
+    event.stopPropagation();
   }
 
   onTerritoryEnter(id: TerritoryId): void {
@@ -376,6 +417,9 @@ export class RiskBoard {
   }
 
   onPointerMove(event: PointerEvent): void {
+    // Antes del `if`: el toque hay que seguirlo aunque no se esté arrastrando
+    // el mapa, porque el dedo se mueve igual.
+    this.trackTapMovement(event);
     if (!this.dragging) return;
     this.panX = this.panStartX + (event.clientX - this.dragStartX);
     this.panY = this.panStartY + (event.clientY - this.dragStartY);
@@ -383,6 +427,7 @@ export class RiskBoard {
 
   onPointerUp(): void {
     this.dragging = false;
+    this.pendingTap = null;
   }
 
   onTouchStart(event: TouchEvent): void {

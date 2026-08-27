@@ -72,11 +72,56 @@ describe('RiskBoard', () => {
     expect(component.classesFor(component.rendered!.byId['B2'])['dimmed']).toBe(true);
   });
 
-  it('emite el territorio pulsado', () => {
-    let emitted: string | null = null;
-    component.territoryClick.subscribe((id) => (emitted = id));
-    component.onTerritoryClick('A2', new MouseEvent('click'));
-    expect(emitted).toBe('A2');
+  describe('toque contra arrastre', () => {
+    function pointer(type: string, x: number, y: number): PointerEvent {
+      return new PointerEvent(type, { clientX: x, clientY: y, button: 0, bubbles: true });
+    }
+
+    function escuchar(): string[] {
+      const emitidos: string[] = [];
+      component.territoryClick.subscribe((id) => emitidos.push(id));
+      return emitidos;
+    }
+
+    it('un toque limpio avisa del territorio', () => {
+      const emitidos = escuchar();
+      component.onTerritoryPointerDown('A2', pointer('pointerdown', 100, 100));
+      component.onTerritoryPointerUp('A2', pointer('pointerup', 102, 101));
+      expect(emitidos).toEqual(['A2']);
+    });
+
+    it('arrastrar el mapa NO coloca nada', () => {
+      // Era el fallo en móvil: mover el mapa terminaba en un clic sobre el
+      // territorio donde levantabas el dedo, y te colocaba una tropa.
+      const emitidos = escuchar();
+      component.onTerritoryPointerDown('A2', pointer('pointerdown', 100, 100));
+      component.onPointerMove(pointer('pointermove', 140, 100));
+      component.onTerritoryPointerUp('A2', pointer('pointerup', 140, 100));
+      expect(emitidos).toEqual([]);
+    });
+
+    it('levantar el dedo en otro territorio no cuenta', () => {
+      const emitidos = escuchar();
+      component.onTerritoryPointerDown('A2', pointer('pointerdown', 100, 100));
+      component.onTerritoryPointerUp('A3', pointer('pointerup', 101, 100));
+      expect(emitidos).toEqual([]);
+    });
+
+    it('justo en el umbral todavía es toque', () => {
+      const emitidos = escuchar();
+      component.onTerritoryPointerDown('A2', pointer('pointerdown', 100, 100));
+      component.onPointerMove(pointer('pointermove', 100 + component.TAP_MAX_MOVE, 100));
+      component.onTerritoryPointerUp('A2', pointer('pointerup', 100 + component.TAP_MAX_MOVE, 100));
+      expect(emitidos).toEqual(['A2']);
+    });
+
+    it('el clic del navegador ya no coloca por su cuenta', () => {
+      // Manda el puntero. `onTerritoryClick` sólo queda para frenar la
+      // propagación, porque el clic llega después del pointerup.
+      const emitidos = escuchar();
+      component.onTerritoryClick('A2', new MouseEvent('click'));
+      expect(emitidos).toEqual([]);
+    });
   });
 
   describe('cartel flotante', () => {
