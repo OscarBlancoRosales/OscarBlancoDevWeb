@@ -34,7 +34,7 @@ export const COMMANDS: CommandDef[] = [
   },
   {
     id: 'poker',
-    aliases: ['scrum', 'scrum-poker', 'planning', 'estimacion'],
+    aliases: ['scrum-poker', 'scrum', 'planning', 'estimacion'],
     group: 'nav',
     descKey: 'cmd.poker',
     route: '/auth',
@@ -144,7 +144,7 @@ export const COMMANDS: CommandDef[] = [
   },
   { id: 'contact', aliases: ['contacto', 'email', 'mail'], group: 'info', descKey: 'cmd.contact' },
   { id: 'social', aliases: ['links', 'redes'], group: 'info', descKey: 'cmd.social' },
-  { id: 'neofetch', aliases: ['fetch', 'banner'], group: 'info', descKey: 'cmd.neofetch' },
+  { id: 'neofetch', aliases: ['fetch', 'ficha'], group: 'info', descKey: 'cmd.neofetch' },
 
   // === SISTEMA ===
   { id: 'help', aliases: ['ayuda', '?', 'h'], group: 'system', descKey: 'cmd.help', args: '[cmd]' },
@@ -165,7 +165,29 @@ export const COMMANDS: CommandDef[] = [
   { id: 'clear', aliases: ['cls', 'limpiar'], group: 'system', descKey: 'cmd.clear' },
 
   // === SECRETOS ===
+  // No salen en la ayuda ni en el autocompletado, pero «easteregg» los destapa
+  // todos de golpe para quien no quiera seguir adivinando.
+  {
+    id: 'easteregg',
+    aliases: ['eastereggs', 'secretos', 'secrets', 'huevos'],
+    group: 'secret',
+    descKey: 'cmd.easteregg',
+  },
+  { id: 'snake', aliases: ['serpiente', 'juego'], group: 'secret', descKey: 'cmd.snake' },
+  {
+    id: 'runner',
+    aliases: ['dino', 'correr', 'bugrunner'],
+    group: 'secret',
+    descKey: 'cmd.runner',
+  },
   { id: 'matrix', aliases: [], group: 'secret', descKey: 'cmd.matrix' },
+  { id: 'hack', aliases: ['hackerman'], group: 'secret', descKey: 'cmd.hack' },
+  { id: 'glitch', aliases: [], group: 'secret', descKey: 'cmd.glitch' },
+  { id: 'sl', aliases: ['tren'], group: 'secret', descKey: 'cmd.sl' },
+  { id: 'cowsay', aliases: ['vaca'], group: 'secret', descKey: 'cmd.cowsay', args: '<texto>' },
+  { id: 'fortune', aliases: ['suerte'], group: 'secret', descKey: 'cmd.fortune' },
+  { id: 'banner', aliases: ['gigante'], group: 'secret', descKey: 'cmd.banner', args: '<texto>' },
+  { id: 'top', aliases: ['htop', 'procesos'], group: 'secret', descKey: 'cmd.top' },
   { id: 'sudo', aliases: [], group: 'secret', descKey: 'cmd.sudo' },
   { id: 'coffee', aliases: ['cafe'], group: 'secret', descKey: 'cmd.coffee' },
   { id: 'vim', aliases: ['nano', 'emacs'], group: 'secret', descKey: 'cmd.vim' },

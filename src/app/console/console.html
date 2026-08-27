@@ -1,146 +1,295 @@
-<div class="terminal-window" (click)="closeMenuIfOpen()">
-  <!-- Barra de título de la terminal -->
-  <div class="terminal-titlebar">
-    <div class="titlebar-buttons">
-      <span class="btn-close"></span>
-      <span class="btn-minimize"></span>
-      <span class="btn-maximize"></span>
+<div
+  class="terminal-window"
+  [attr.data-theme]="theme"
+  [class.navigating]="navigating"
+  [class.glitching]="glitchOn"
+  [class.powered-off]="poweredOff">
+  <!-- ===== BARRA DE TÍTULO ===== -->
+  <div class="titlebar" (click)="closeMenuIfOpen()">
+    <div class="titlebar-left">
+      <span class="tb-icon">❯_</span>
+      <span class="tb-path">oscar@obr</span>
     </div>
-    <div class="titlebar-title">Oscar Blanco — Terminal</div>
-    <div class="titlebar-menu">
-      <button class="lang-btn" [class.active]="i18n.lang === 'es'" (click)="i18n.setLang('es'); $event.stopPropagation()" title="Español" *ngIf="showMenu"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#c60b1e"/><rect y="10" width="60" height="20" fill="#ffc400"/></svg></button>
-      <button class="lang-btn" [class.active]="i18n.lang === 'en'" (click)="i18n.setLang('en'); $event.stopPropagation()" title="English" *ngIf="showMenu"><svg viewBox="0 0 60 40" width="20" height="14"><rect width="60" height="40" fill="#00247d"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6"/><path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4"/><path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10"/><path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6"/></svg></button>
-      <button class="menu-btn" (click)="toggleMenu(); $event.stopPropagation()" *ngIf="showMenu" title="Menu">
-        <span>≡</span>
+
+    <div class="titlebar-title">OBR Terminal — Oscar Blanco Rosales</div>
+
+    <div class="titlebar-right">
+      <button
+        class="tb-btn"
+        (click)="openPalette(); $event.stopPropagation()"
+        [attr.aria-label]="i18n.t('console.paletteTitle')"
+        [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
+        ⌘
       </button>
-      <div class="menu-dropdown" *ngIf="menuOpen" (click)="$event.stopPropagation()">
-        <div class="menu-item" (click)="navigate('/auth', $event)">
-          <span class="menu-icon">&gt;</span> scrum-poker
-        </div>
-        <div class="menu-item" (click)="navigate('/juegos', $event)">
-          <span class="menu-icon">&gt;</span> juegos
-        </div>
-        <div class="menu-item" (click)="navigate('/dni-generator', $event)">
-          <span class="menu-icon">&gt;</span> dni-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/qr-generator', $event)">
-          <span class="menu-icon">&gt;</span> qr-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/decoder', $event)">
-          <span class="menu-icon">&gt;</span> encoder-decoder
-        </div>
-        <div class="menu-item" (click)="navigate('/formatter', $event)">
-          <span class="menu-icon">&gt;</span> code-formatter
-        </div>
-        <div class="menu-item" (click)="navigate('/color-picker', $event)">
-          <span class="menu-icon">&gt;</span> color-picker
-        </div>
-        <div class="menu-item" (click)="navigate('/regex-tester', $event)">
-          <span class="menu-icon">&gt;</span> regex-tester
-        </div>
-        <div class="menu-item" (click)="navigate('/lorem-generator', $event)">
-          <span class="menu-icon">&gt;</span> lorem-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/timestamp', $event)">
-          <span class="menu-icon">&gt;</span> timestamp-converter
-        </div>
-        <div class="menu-item" (click)="navigate('/uuid-generator', $event)">
-          <span class="menu-icon">&gt;</span> uuid-generator
-        </div>
-        <div class="menu-item" (click)="navigate('/icon-generator', $event)">
-          <span class="menu-icon">&gt;</span> icon-generator
-        </div>
+
+      <button
+        class="lang-btn"
+        [class.active]="i18n.lang === 'es'"
+        (click)="i18n.setLang('es'); $event.stopPropagation()"
+        title="Español"
+        aria-label="Español">
+        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+          <rect width="60" height="40" fill="#c60b1e" />
+          <rect y="10" width="60" height="20" fill="#ffc400" />
+        </svg>
+      </button>
+      <button
+        class="lang-btn"
+        [class.active]="i18n.lang === 'en'"
+        (click)="i18n.setLang('en'); $event.stopPropagation()"
+        title="English"
+        aria-label="English">
+        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+          <rect width="60" height="40" fill="#00247d" />
+          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
+          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
+          <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
+          <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
+        </svg>
+      </button>
+
+      <button
+        class="tb-btn"
+        (click)="toggleMenu(); $event.stopPropagation()"
+        [title]="i18n.t('console.sectionsTitle')"
+        aria-label="Menu">
+        ≡
+      </button>
+
+      <!-- Controles de ventana: no son de adorno, cada uno hace algo -->
+      <div class="win-ctrl">
+        <button class="win-btn" (click)="toggleFold(); $event.stopPropagation()" [title]="i18n.t('console.winFold')">─</button>
+        <button class="win-btn" (click)="toggleFullscreen(); $event.stopPropagation()" [title]="i18n.t('console.winFull')">▢</button>
+        <button class="win-btn win-btn--close" (click)="powerOff(); $event.stopPropagation()" [title]="i18n.t('console.winOff')">✕</button>
       </div>
+
+      @if (menuOpen) {
+        <div class="menu-dropdown" (click)="$event.stopPropagation()">
+          @for (item of menuItems; track item.id) {
+            <div class="menu-item" (click)="navigate(item.route!, $event)">
+              <span class="menu-icon">❯</span>
+              <span class="menu-name">{{ item.id }}</span>
+              <span class="menu-alt">{{ item.aliases[0] }}</span>
+            </div>
+          }
+        </div>
+      }
     </div>
   </div>
 
-  <!-- Cuerpo de la terminal -->
-  <div class="terminal-body" [class.visible]="terminalOn" #terminalBody>
-    <!-- Línea de comando inicial con cursor parpadeando -->
-    <div class="line" *ngIf="showPrompt && !typingCommand">
-      <span class="prompt">PS C:\git\Oscar&gt;</span>
-      <span class="cursor blinking">█</span>
-    </div>
-
-    <!-- Comando que se escribe automáticamente -->
-    <div class="line" *ngIf="typingCommand">
-      <span class="prompt">PS C:\git\Oscar&gt;</span>
-      <span class="cmd">{{ typedText }}</span>
-      <span class="cursor blinking">█</span>
-    </div>
-
-    <!-- Resultado del comando data -->
-    <div class="line" *ngIf="showData">
-      <span class="prompt">PS C:\git\Oscar&gt;</span>
-      <span class="cmd">{{ fullCommand }}</span>
-    </div>
-
-    <!-- Datos personales estilo ipconfig -->
-    <div class="data-block" *ngIf="showData">
-      <div class="data-line" *ngFor="let line of displayedLines"
-           [class.section-title]="line && !line.startsWith('   ') && line.trim().length > 0">{{ line }}</div>
-    </div>
-
-    <!-- Redes sociales como comandos con links clicables -->
-    <div *ngIf="showSocial" class="social-block">
-      <div class="line">
-        <span class="prompt">PS C:\git\Oscar&gt;</span>
-        <span class="cmd">social --links</span>
-      </div>
-      <div class="social-row">
-        <span class="social-label">  GitHub</span>
-        <a href="https://github.com/oscarblanco-dev" target="_blank" class="social-value">https://github.com/oscarblanco-dev</a>
-      </div>
-      <div class="social-row">
-        <span class="social-label">  LinkedIn</span>
-        <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="social-value">https://linkedin.com/in/oscar-blanco</a>
-      </div>
-      <div class="social-row">
-        <span class="social-label">  Email</span>
-        <a href="mailto:oscar.blanco.r@gmail.com" class="social-value">oscar.blanco.r&#64;gmail.com</a>
+  <!-- ===== CUERPO ===== -->
+  <div class="terminal-body" (click)="onBodyClick()" #body>
+    <!-- Cabecera: las iniciales en bloques y la ficha al lado -->
+    <div class="header" [class.header--mini]="folded">
+      <pre class="logo" aria-label="Oscar Blanco Rosales">@for (fila of logo; track $index) {{{ fila }}
+}</pre>
+      <div class="header-info">
+        <div class="header-title">Oscar Blanco Rosales <span class="header-ver">v2</span></div>
+        <div class="header-sub">Full Stack Developer · oscarblancorosales.com</div>
+        <div class="header-meta">C# · Angular · Flutter · Firebase</div>
       </div>
     </div>
 
-    <!-- Mensaje de bienvenida a terminal interactiva -->
-    <div class="line" *ngIf="showInteractiveTerminal">
-      <span class="prompt">PS C:\git\Oscar&gt;</span>
-      <span class="cmd">terminal --interactive</span>
-    </div>
-    <div class="line success" *ngIf="showInteractiveTerminal">
-      {{ i18n.t('console.interactiveOn') }}
-    </div>
+    @if (!folded) {
+      <!-- Salida de la terminal -->
+      <div class="stream" aria-live="polite">
+        @for (line of output; track line) {
+          <div
+            class="line line--{{ line.kind }}"
+            [class.staggered]="line.delay"
+            [style.animation-delay.ms]="line.delay || 0">
+            @switch (line.kind) {
+              @case ('cmd') {
+                <span class="prompt">❯</span><span class="cmd-text">{{ lineText(line) }}</span>
+              }
+              @case ('kv') {
+                <span class="kv-label">{{ lineLabel(line) }}</span>
+                <span class="kv-dots"></span>
+                <span class="kv-value">{{ lineText(line) }}</span>
+              }
+              @case ('art') {
+                <pre class="art">{{ lineText(line) }}</pre>
+              }
+              @case ('theme') {
+                <span class="swatch" [attr.data-theme]="line.raw"></span>
+                <span class="kv-label swatch-name">{{ lineLabel(line) }}</span>
+                <span class="kv-dots"></span>
+                <span class="kv-value">{{ lineText(line) }}</span>
+              }
+              @case ('link') {
+                @if (lineLabel(line)) {
+                  <span class="kv-label">{{ lineLabel(line) }}</span>
+                  <span class="kv-dots"></span>
+                }
+                <a class="out-link" [href]="line.href" target="_blank" rel="noopener">{{ lineText(line) }}</a>
+              }
+              @default {
+                <span class="out-text">{{ lineText(line) }}</span>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
 
-    <!-- Output de comandos del usuario -->
-    <div class="line output" *ngFor="let line of terminalOutput">{{ line }}</div>
+    <!-- ===== SNAKE ===== -->
+    @if (game) {
+      <div class="game" (click)="$event.stopPropagation(); focusInput()">
+        <div class="game-head">
+          <span class="game-title">SNAKE</span>
+          <span class="game-score">{{ i18n.t('console.snakeScore') }}: {{ game.score }}</span>
+          <span class="game-best">{{ i18n.t('console.snakeBest') }}: {{ gameBest }}</span>
+        </div>
+        <pre class="game-board">@for (fila of gameRows; track $index) {{{ fila }}
+}</pre>
+        @if (game.over) {
+          <div class="game-over">
+            <span class="game-over-text">{{ i18n.t('console.snakeOver') }}</span>
+            <button class="game-btn" (click)="restartGame()">{{ i18n.t('console.snakeAgain') }}</button>
+          </div>
+        }
+        <div class="game-pad">
+          <button class="pad-btn pad-up" (click)="steer('up')" aria-label="↑">▲</button>
+          <button class="pad-btn pad-left" (click)="steer('left')" aria-label="←">◀</button>
+          <button class="pad-btn pad-right" (click)="steer('right')" aria-label="→">▶</button>
+          <button class="pad-btn pad-down" (click)="steer('down')" aria-label="↓">▼</button>
+          <button class="pad-btn pad-quit" (click)="quitGame()">{{ i18n.t('console.snakeQuit') }}</button>
+        </div>
+      </div>
+    }
 
-    <!-- Input de terminal interactiva -->
-    <div class="input-line" *ngIf="showInteractiveTerminal">
-      <span class="prompt">PS C:\git\Oscar&gt;</span>
+    <!-- ===== RUNNER ===== -->
+    @if (run) {
+      <div class="game runner" (click)="$event.stopPropagation(); runJump()">
+        <div class="game-head">
+          <span class="game-title">BUG RUNNER</span>
+          <span class="game-score">{{ run.distance }} m</span>
+          <span class="game-best">{{ i18n.t('console.snakeBest') }}: {{ runBest }} m</span>
+          <span class="run-hearts">{{ runHearts }}</span>
+          @if (run.shield > 0) {
+            <span class="run-shield">{{ i18n.t('console.runShield') }}</span>
+          }
+        </div>
+        <pre class="game-board runner-board" [class.shielded]="run.shield > 0">@for (fila of runRows; track $index) {{{ fila }}
+}</pre>
+        @if (run.over) {
+          <div class="game-over">
+            <span class="game-over-text">{{ i18n.t('console.runOver') }}</span>
+            <button class="game-btn" (click)="restartRun(); $event.stopPropagation()">
+              {{ i18n.t('console.snakeAgain') }}
+            </button>
+          </div>
+        }
+        <div class="game-pad run-pad">
+          <button class="pad-btn pad-jump" (click)="runJump(); $event.stopPropagation()">
+            {{ i18n.t('console.runJump') }}
+          </button>
+          <button class="pad-btn pad-duck" (click)="runDuck(); $event.stopPropagation()">
+            {{ i18n.t('console.runDuck') }}
+          </button>
+          <button class="pad-btn pad-quit" (click)="quitRun(); $event.stopPropagation()">
+            {{ i18n.t('console.snakeQuit') }}
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- Línea de entrada -->
+    <div class="input-line" [class.hidden]="game || run">
+      <span class="prompt">❯</span>
       <span class="input-wrapper">
-        <span class="input-mirror">{{ currentCommand }}</span>
-        <span class="cursor blinking">█</span>
+        <span class="input-mirror">{{ currentCommand }}</span><span class="ghost">{{ ghost }}</span
+        ><span class="cursor" [class.blinking]="!navigating">█</span>
+        @if (!currentCommand) {
+          <span class="input-placeholder">{{ i18n.t('console.placeholder') }}</span>
+        }
       </span>
       <input
+        #cmdInput
         type="text"
         class="cmd-input"
-        [(ngModel)]="currentCommand"
+        [value]="currentCommand"
+        (input)="onInput($event)"
         (keydown)="onCommandInput($event)"
-        [placeholder]="i18n.t('console.typeCommand')"
-        autofocus>
+        (keyup)="onRunKeyUp($event)"
+        [attr.aria-label]="i18n.t('console.placeholder')"
+        autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
+        spellcheck="false"
+        enterkeyhint="go"
+        autofocus />
     </div>
   </div>
 
-  <!-- Barra inferior de la terminal -->
-  <div class="terminal-statusbar">
+  <!-- ===== CHIPS DE SUGERENCIA ===== -->
+  @if (!game && !run) {
+    <div class="chips" role="toolbar" [attr.aria-label]="i18n.t('console.candidates')">
+      @for (s of suggestions; track $index) {
+        <button class="chip" (click)="applySuggestion(s)">{{ s }}</button>
+      }
+      <button class="chip chip--palette" (click)="openPalette()">⌘</button>
+    </div>
+  }
+
+  <!-- ===== BARRA DE ESTADO ===== -->
+  <div class="statusbar">
     <div class="status-left">
-      <a href="https://github.com/oscarblanco-dev" target="_blank" class="status-link" title="GitHub">[GitHub]</a>
-      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" class="status-link" title="LinkedIn">[LinkedIn]</a>
-      <a href="mailto:oscar.blanco.r@gmail.com" class="status-link" title="Email">[Email]</a>
+      <a href="https://github.com/oscarblanco-dev" target="_blank" rel="noopener" class="status-link">GitHub</a>
+      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" rel="noopener" class="status-link">LinkedIn</a>
+      <a href="mailto:oscar.blanco.r&#64;gmail.com" class="status-link">Email</a>
     </div>
     <div class="status-right">
+      <span class="status-item status-theme">{{ theme }}</span>
       <span class="status-item">UTF-8</span>
       <span class="status-item">LF</span>
-      <span class="status-item">PowerShell</span>
+      <span class="status-item status-clock">{{ clock() }}</span>
+      <span class="status-item status-online"><span class="dot"></span>{{ i18n.t('console.online') }}</span>
     </div>
   </div>
+
+  <!-- ===== PALETA DE COMANDOS ===== -->
+  @if (paletteOpen) {
+    <div class="palette-backdrop" (click)="closePalette()">
+      <div class="palette" (click)="$event.stopPropagation()" role="dialog" [attr.aria-label]="i18n.t('console.paletteTitle')">
+        <input
+          #paletteInput
+          class="palette-input"
+          type="text"
+          [value]="paletteQuery"
+          (input)="paletteQuery = $any($event.target).value"
+          (keydown)="onPaletteKey($event)"
+          [placeholder]="i18n.t('console.palettePlaceholder')"
+          autocomplete="off"
+          spellcheck="false" />
+        <div class="palette-list">
+          @for (cmd of paletteResults; track cmd.id) {
+            <button class="palette-item" (click)="runFromPalette(cmd.id)">
+              <span class="palette-group palette-group--{{ cmd.group }}">{{ cmd.group }}</span>
+              <span class="palette-name">{{ cmd.id }}</span>
+              <span class="palette-desc">{{ describe(cmd) }}</span>
+            </button>
+          } @empty {
+            <div class="palette-empty">{{ i18n.t('console.paletteEmpty') }}</div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ===== LLUVIA DE MATRIX ===== -->
+  @if (matrixOn) {
+    <div class="matrix-layer" (click)="stopMatrix()">
+      <canvas #rain class="matrix-canvas"></canvas>
+      <div class="matrix-hint">{{ i18n.t('console.matrixHint') }}</div>
+    </div>
+  }
+
+  <!-- ===== MONITOR APAGADO ===== -->
+  @if (poweredOff) {
+    <div class="power-off" (click)="powerOn()">
+      <div class="power-dot"></div>
+      <div class="power-hint">{{ i18n.t('console.poweredOff') }}</div>
+    </div>
+  }
 </div>
