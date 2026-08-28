@@ -23,6 +23,14 @@ export const CreateRoomRequest = Type.Object(
     name: Type.String({ minLength: 1, maxLength: 80 }),
     displayName: DisplayName,
     config: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+    /**
+     * Los rivales que no son personas, por su nombre.
+     *
+     * Se piden al crear la sala y no después porque un juego que empieza en
+     * cuanto está la mesa —la flota arranca al desplegar los dos bandos— no
+     * tiene un momento posterior en el que sentar a nadie.
+     */
+    bots: Type.Optional(Type.Array(DisplayName, { maxItems: 8 })),
   },
   SIN_EXTRAS,
 );
