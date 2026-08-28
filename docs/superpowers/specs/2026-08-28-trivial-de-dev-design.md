@@ -67,9 +67,14 @@ eso no hay nada que enviar.
 
 La cuenta atrás sigue existiendo en la pantalla: aprieta igual, pero no puntúa.
 
-En las estimaciones no hay acierto binario: quien más se acerca se lleva 100, y
-el resto cobra en proporción a lo lejos que quedó, hasta cero. Bordar la cifra
-exacta suma 20 de propina.
+En las estimaciones no hay acierto binario: se cobra en proporción a lo cerca
+que se queda uno, hasta cero. Bordar la cifra exacta suma 20 de propina.
+
+Y cada pregunta declara su **margen**: el error a partir del cual ya no puntúa.
+Sin él, la proporción se mide contra la propia respuesta y la prueba deja de
+discriminar —en «¿de qué año es git?», cualquiera que dijera un año del siglo
+XXI se llevaría un noventa y nueve por ciento—. Veinte de error es fallar en un
+año y es bordarlo en «cuántas líneas tiene»; eso solo lo sabe la pregunta.
 
 No se resta por fallar. Restar hace que la gente deje de contestar, y un
 concurso en el que nadie arriesga no tiene gracia.
