@@ -38,6 +38,43 @@ export interface TerritoryTooltip {
   matchup: string[];
 }
 
+/** Una ficha de tropa especializada, ya colocada en su sitio. */
+export interface TerritoryUnitView {
+  x: number;
+  glyph: string;
+  color: string;
+}
+
+/** Un territorio con todo lo que necesita la plantilla, ya calculado. */
+export interface TerritoryView {
+  id: TerritoryId;
+  path: string;
+  continentColor: string;
+  nameLines: readonly string[];
+  badgeTransform: string;
+  fill: string;
+  armies: number;
+  classes: Record<string, boolean>;
+  mine: boolean;
+  spotlit: boolean;
+  terrainGlyph: string | null;
+  terrainTint: string;
+  units: TerritoryUnitView[];
+}
+
+/** De qué depende lo que se ve. Si nada de esto cambia, no hay que repintar. */
+interface ViewInputs {
+  rendered: RenderedMap | null;
+  state: GameState | null;
+  selected: TerritoryId | null;
+  selectable: readonly TerritoryId[];
+  targets: readonly TerritoryId[];
+  spotlight: TerritoryId | null;
+  hovered: TerritoryId | null;
+  myPlayerId: string;
+  showTerrain: boolean;
+}
+
 /**
  * Tablero: dibuja el mapa en SVG y recoge los clics.
  *
@@ -233,12 +270,32 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
     return !!this.myPlayerId && this.state?.territories[id]?.ownerId === this.myPlayerId;
   }
 
+  /**
+   * Conjuntos en lugar de `includes()`.
+   *
+   * Preguntar por los cuarenta y dos territorios recorriendo un array los
+   * cuarenta y dos convierte el pintado en cuadrático. El conjunto se rehace
+   * sólo cuando la sala manda una lista distinta, no en cada consulta.
+   */
+  private selectableSet = new Set<TerritoryId>();
+  private selectableFrom: readonly TerritoryId[] | null = null;
+  private targetsSet = new Set<TerritoryId>();
+  private targetsFrom: readonly TerritoryId[] | null = null;
+
   isSelectable(id: TerritoryId): boolean {
-    return this.selectable.includes(id);
+    if (this.selectableFrom !== this.selectable) {
+      this.selectableFrom = this.selectable;
+      this.selectableSet = new Set(this.selectable);
+    }
+    return this.selectableSet.has(id);
   }
 
   isTarget(id: TerritoryId): boolean {
-    return this.targets.includes(id);
+    if (this.targetsFrom !== this.targets) {
+      this.targetsFrom = this.targets;
+      this.targetsSet = new Set(this.targets);
+    }
+    return this.targetsSet.has(id);
   }
 
   classesFor(territory: RenderedTerritory): Record<string, boolean> {
@@ -256,6 +313,73 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
         this.selected !== territory.id,
     };
   }
+
+  private viewsCache: TerritoryView[] = [];
+  private viewsFrom: ViewInputs | null = null;
+
+  /**
+   * Todo lo que hay que saber para pintar un territorio, ya calculado.
+   *
+   * La plantilla NO puede llamar a funciones por territorio: son ocho llamadas
+   * por cada uno y por cada ciclo de detección de cambios, y una de ellas
+   * construye un objeto nuevo que obliga a `ngClass` a comparar siempre. Con el
+   * mapa del mundo, pasar el ratón por encima costaba cientos de llamadas.
+   *
+   * Se recalcula sólo cuando cambia algo que se ve, y se compara por identidad
+   * para que funcione tanto si la sala pasa las entradas por `setInput` como si
+   * se asignan a pelo. Mientras nada cambie devuelve el mismo array, así que
+   * `*ngFor` tampoco rehace nada.
+   */
+  get views(): TerritoryView[] {
+    const now: ViewInputs = {
+      rendered: this.rendered,
+      state: this._state,
+      selected: this.selected,
+      selectable: this.selectable,
+      targets: this.targets,
+      spotlight: this.spotlight,
+      hovered: this.hovered,
+      myPlayerId: this.myPlayerId,
+      showTerrain: this._showTerrain,
+    };
+    const before = this.viewsFrom;
+    if (before && (Object.keys(now) as (keyof ViewInputs)[]).every((k) => before[k] === now[k])) {
+      return this.viewsCache;
+    }
+    this.viewsFrom = now;
+    this.viewsCache = this.buildViews();
+    return this.viewsCache;
+  }
+
+  private buildViews(): TerritoryView[] {
+    const rendered = this.rendered;
+    if (!rendered) return [];
+    return rendered.territories.map((territory) => {
+      const units = this.unitsOf(territory.id);
+      return {
+        id: territory.id,
+        path: territory.path,
+        continentColor: territory.continentColor,
+        nameLines: territory.nameLines,
+        badgeTransform: `translate(${territory.label.x} ${territory.label.y})`,
+        fill: this.ownerColorOf(territory.id),
+        armies: this.armiesOf(territory.id),
+        classes: this.classesFor(territory),
+        mine: this.isMine(territory.id),
+        spotlit: this.spotlight === territory.id,
+        terrainGlyph: this.terrainGlyphOf(territory),
+        terrainTint: this.terrainTintOf(territory),
+        units: units.map((meta, index) => ({
+          x: this.unitOffsetX(index, units.length),
+          glyph: meta.glyph,
+          color: meta.color,
+        })),
+      };
+    });
+  }
+
+  trackView = (_: number, view: TerritoryView) => view.id;
+  trackUnitView = (index: number, unit: TerritoryUnitView) => `${index}:${unit.glyph}`;
 
   /** Recalcula el cartel flotante. Se llama en los pocos sitios que lo cambian. */
   private updateTooltip(): void {

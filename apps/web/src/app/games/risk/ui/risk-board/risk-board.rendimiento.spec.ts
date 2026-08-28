@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskBoard } from './risk-board';
 import { WORLD_MAP } from '@devweb/shared/engine/maps/world.map';
 
@@ -110,5 +110,41 @@ describe('RiskBoard: coste de arrastrar el mapa', () => {
     // Cuatro píxeles: lo que tiembla una mano, no un gesto de arrastre.
     await arrastrar(4);
     expect(transformActual()).toBe(antes);
+  });
+
+  /**
+   * Lo que cuesta un repintado.
+   *
+   * Cuando la plantilla llamaba a `classesFor()` por territorio, cada ciclo de
+   * detección de cambios costaba una llamada por país aunque no hubiera
+   * cambiado absolutamente nada. Se vigila con `classesFor` porque es la más
+   * cara de las ocho: construía un objeto nuevo cada vez.
+   */
+  describe('lo que cuesta repintar sin que cambie nada', () => {
+    /**
+     * Tocar un territorio ensucia la vista y obliga a repintar. Es lo que pasa
+     * treinta veces por turno colocando tropas. Antes, cada uno de esos toques
+     * recalculaba los cuarenta y dos países aunque el tablero siguiera igual.
+     */
+    it('tocar un territorio repinta, pero no recalcula ni un país', async () => {
+      const espia = vi.spyOn(fixture.componentInstance, 'classesFor');
+      const territorio = fixture.nativeElement.querySelector('g.territory') as SVGGElement;
+      territorio.dispatchEvent(
+        new PointerEvent('pointerdown', { clientX: 400, clientY: 300, bubbles: true }),
+      );
+      territorio.dispatchEvent(
+        new PointerEvent('pointerup', { clientX: 400, clientY: 300, bubbles: true }),
+      );
+      await fixture.whenStable();
+
+      expect(espia).not.toHaveBeenCalled();
+    });
+
+    it('pero en cuanto cambia algo que se ve, se recalcula entero', () => {
+      const espia = vi.spyOn(fixture.componentInstance, 'classesFor');
+      fixture.componentRef.setInput('myPlayerId', 'p1');
+      fixture.detectChanges();
+      expect(espia.mock.calls.length).toBe(WORLD_MAP.territories.length);
+    });
   });
 });

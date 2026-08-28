@@ -52,16 +52,16 @@
       <!-- Territorios -->
       <g class="territories">
         <g
-          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          *ngFor="let territory of views; trackBy: trackView"
           class="territory"
-          [ngClass]="classesFor(territory)"
+          [ngClass]="territory.classes"
           (click)="onTerritoryClick(territory.id, $event)"
           (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
           (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >
-          <path class="territory-fill" [attr.d]="territory.path" [attr.fill]="ownerColorOf(territory.id)" />
+          <path class="territory-fill" [attr.d]="territory.path" [attr.fill]="territory.fill" />
           <path
             class="territory-continent"
             [attr.d]="territory.path"
@@ -74,19 +74,19 @@
       <!-- Fichas de ejércitos -->
       <g class="armies">
         <g
-          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          *ngFor="let territory of views; trackBy: trackView"
           class="army-badge"
-          [class.mine]="isMine(territory.id)"
-          [class.spotlight]="spotlight === territory.id"
-          [attr.transform]="'translate(' + territory.label.x + ' ' + territory.label.y + ')'"
+          [class.mine]="territory.mine"
+          [class.spotlight]="territory.spotlit"
+          [attr.transform]="territory.badgeTransform"
           (click)="onTerritoryClick(territory.id, $event)"
           (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
           (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >
-          <circle class="badge-ring" r="11" [attr.fill]="ownerColorOf(territory.id)" />
-          <text class="badge-text" y="4">{{ armiesOf(territory.id) }}</text>
+          <circle class="badge-ring" r="11" [attr.fill]="territory.fill" />
+          <text class="badge-text" y="4">{{ territory.armies }}</text>
           <!--
             Orografía: un glifo, no una trama sobre la silueta. Rellenar 42
             contornos de país con un patrón SVG deja el navegador clavado varios
@@ -95,10 +95,10 @@
           -->
           <text
             class="badge-terrain"
-            *ngIf="terrainGlyphOf(territory) as glyph"
+            *ngIf="territory.terrainGlyph as glyph"
             x="13"
             y="-6"
-            [attr.fill]="terrainTintOf(territory)"
+            [attr.fill]="territory.terrainTint"
           >
             {{ glyph }}
           </text>
@@ -108,9 +108,9 @@
           -->
           <g class="badge-units">
             <text
-              *ngFor="let unit of unitsOf(territory.id); let i = index; trackBy: trackUnit"
+              *ngFor="let unit of territory.units; trackBy: trackUnitView"
               class="badge-unit"
-              [attr.x]="unitOffsetX(i, unitsOf(territory.id).length)"
+              [attr.x]="unit.x"
               y="-13"
               [attr.fill]="unit.color"
             >
