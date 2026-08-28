@@ -85,19 +85,21 @@ describe('FlotaRoomService', () => {
   it('crear contra un bot lo pide con su nivel', async () => {
     await service.crear('Mesa', 'Óscar', 'almirante');
 
-    expect(rooms.crear).toHaveBeenCalledWith(
-      expect.objectContaining({
-        game: 'flota',
-        bots: ['Almirante'],
-        config: expect.objectContaining({ nivelBot: 'almirante' }),
-      }),
-    );
+    const enviado = rooms.crear.mock.calls[0]?.[0] as {
+      game: string;
+      bots?: string[];
+      config?: { nivelBot?: string };
+    };
+    expect(enviado.game).toBe('flota');
+    expect(enviado.bots).toEqual(['Almirante']);
+    expect(enviado.config?.nivelBot).toBe('almirante');
     expect(socket.conectar).toHaveBeenCalledWith('sala-1', 'pase-1');
   });
 
   it('crear para jugar con otra persona no sienta bots', async () => {
     await service.crear('Mesa', 'Óscar', null);
-    expect(rooms.crear).toHaveBeenCalledWith(expect.not.objectContaining({ bots: expect.anything() }));
+    const enviado = rooms.crear.mock.calls[0]?.[0] as { bots?: string[] };
+    expect(enviado.bots).toBeUndefined();
   });
 
   it('cada sala lleva su propia semilla', async () => {

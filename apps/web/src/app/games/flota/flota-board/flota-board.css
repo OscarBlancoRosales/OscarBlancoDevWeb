@@ -1,0 +1,89 @@
+* {
+  box-sizing: border-box;
+}
+
+.tablero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.titulo {
+  color: #0f0;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Once columnas: la de las cifras y las diez del tablero. El ancho sale de la
+   caja disponible para que el tablero entero quepa en un móvil estrecho. */
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 2px;
+  max-width: 420px;
+}
+
+.cabecera,
+.hueco {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #0a0;
+  font-size: 11px;
+  aspect-ratio: 1;
+}
+
+.celda {
+  aspect-ratio: 1;
+  border: 1px solid #1e2a1e;
+  background: #0b0f0b;
+  color: #6f6;
+  font-size: 13px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease;
+}
+
+.celda.pulsable {
+  cursor: crosshair;
+}
+
+.celda.pulsable:hover {
+  background: #14301a;
+  border-color: #0f0;
+}
+
+/* Tu propio barco: relleno tenue, para leer la silueta sin gritar. */
+.celda.barco {
+  background: #1b2a1b;
+  border-color: #2f4a2f;
+}
+
+.celda.agua {
+  color: #4a6a8a;
+  background: #0a1220;
+  border-color: #16263a;
+}
+
+.celda.tocado {
+  color: #ffb300;
+  background: #2a1e05;
+  border-color: #6a4a00;
+}
+
+/* El barco hundido entero cambia de color: es como se lee su tamaño sin que
+   nadie tenga que decir cuál era. */
+.celda.hundido {
+  color: #ff5252;
+  background: #3a0f0f;
+  border-color: #8a2020;
+}
+
+.marca {
+  line-height: 1;
+}

@@ -1,0 +1,159 @@
+* {
+  box-sizing: border-box;
+}
+
+.lobby {
+  padding: 20px 22px 32px;
+  color: #ccc;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.cabecera {
+  padding-bottom: 16px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #232323;
+}
+
+.cabecera h1 {
+  color: #0f0;
+  font-size: 24px;
+  margin: 0 0 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 22px rgba(0, 255, 0, 0.3);
+}
+
+.prompt {
+  color: #0a0;
+  margin-right: 6px;
+}
+
+.subtitulo {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid #232323;
+  background: #0b0b0b;
+  padding: 20px;
+}
+
+.panel h2 {
+  color: #0f0;
+  font-size: 15px;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #888;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+input[type='text'] {
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+input[type='text']:focus {
+  outline: none;
+  border-color: #0a0;
+}
+
+.rivales {
+  border: 1px solid #232323;
+  padding: 12px;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rivales legend {
+  color: #888;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  padding: 0 6px;
+}
+
+.rival {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  border: 1px solid transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.rival.elegido {
+  border-color: #0a0;
+  background: #0d160d;
+}
+
+.rival input {
+  grid-row: span 2;
+  accent-color: #0f0;
+}
+
+.rival .nombre {
+  color: #cfc;
+  font-size: 14px;
+}
+
+.rival .descripcion {
+  color: #777;
+  font-size: 12px;
+}
+
+.accion {
+  border: 1px solid #0a0;
+  background: #0d160d;
+  color: #0f0;
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.accion:hover:not(:disabled) {
+  background: #123012;
+}
+
+.accion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.aviso {
+  border: 1px solid #6a2020;
+  background: #1a0b0b;
+  color: #f88;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.explicacion {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+}

@@ -51,13 +51,19 @@ export class Games {
       id: 'hundir-la-flota',
       name: 'Hundir la flota',
       tagline: 'Coordenadas, faroles y mucha paciencia',
-      description: 'Tableros ocultos, disparos por turnos y estadísticas de puntería al final.',
+      description:
+        'Tableros ocultos, disparos por turnos y estadísticas de puntería al final. Los barcos ' +
+        'que siguen a flote no viajan al navegador de nadie: los guarda el servidor.',
       icon: '🚢',
       players: '2 jugadores',
       duration: '10 – 20 min',
-      route: null,
-      status: 'en-obras',
-      highlights: ['En diseño'],
+      route: '/juegos/flota',
+      status: 'listo',
+      highlights: [
+        'Tres bots: grumete, marino y almirante',
+        'El tablero del rival no sale del servidor',
+        'Puntería de los dos al terminar',
+      ],
     },
     {
       id: 'trivial',

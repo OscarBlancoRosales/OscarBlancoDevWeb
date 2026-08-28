@@ -1,0 +1,67 @@
+<app-terminal-layout title="Hundir la flota">
+  <div class="lobby">
+    <header class="cabecera">
+      <h1><span class="prompt">&gt;</span> Hundir la flota</h1>
+      <p class="subtitulo">
+        Coordenadas, faroles y mucha paciencia. Los barcos del rival no salen del servidor: no
+        están escondidos en tu navegador, es que no llegan.
+      </p>
+    </header>
+
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    @if (invitacion()) {
+      <!-- Llegar por un enlace: solo hace falta un nombre. -->
+      <section class="panel">
+        <h2>Te han invitado a una partida</h2>
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Invitado" />
+        </label>
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="unirse()">
+          {{ trabajando() ? 'Entrando…' : 'Entrar en la mesa' }}
+        </button>
+      </section>
+    } @else if (conSesion()) {
+      <section class="panel">
+        <h2>Nueva partida</h2>
+
+        <label>
+          Nombre de la mesa
+          <input type="text" [(ngModel)]="nombreSala" maxlength="80" />
+        </label>
+
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Anfitrión" />
+        </label>
+
+        <fieldset class="rivales">
+          <legend>Contra quién</legend>
+          @for (opcion of rivales; track opcion.id) {
+            <label class="rival" [class.elegido]="rival === opcion.id">
+              <input type="radio" name="rival" [value]="opcion.id" [(ngModel)]="rival" />
+              <span class="nombre">{{ opcion.nombre }}</span>
+              <span class="descripcion">{{ opcion.descripcion }}</span>
+            </label>
+          }
+        </fieldset>
+
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="crear()">
+          {{ trabajando() ? 'Abriendo…' : 'Abrir la mesa' }}
+        </button>
+      </section>
+    } @else if (sesionResuelta()) {
+      <section class="panel">
+        <h2>Hace falta una cuenta para abrir una mesa</h2>
+        <p class="explicacion">
+          Solo para crearla: una sala sin dueño es una sala que nadie puede cerrar. Para jugar en
+          una mesa ajena basta con el enlace.
+        </p>
+        <a class="accion" routerLink="/auth">Entrar</a>
+      </section>
+    }
+  </div>
+</app-terminal-layout>
