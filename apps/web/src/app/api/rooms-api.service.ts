@@ -12,6 +12,8 @@ export class RoomsApiService {
     name: string;
     displayName: string;
     config?: Record<string, unknown>;
+    /** Los rivales que no son personas. Se sientan al crear la sala o nunca. */
+    bots?: readonly string[];
   }): Promise<SeatGrant> {
     return this.api.request<SeatGrant>({
       method: 'POST',
@@ -21,6 +23,7 @@ export class RoomsApiService {
         name: input.name,
         displayName: input.displayName,
         ...(input.config !== undefined && { config: input.config }),
+        ...(input.bots !== undefined && { bots: input.bots }),
       },
     });
   }
