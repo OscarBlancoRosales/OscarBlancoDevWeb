@@ -234,6 +234,10 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   // === COLOR PICKER ===
   'color.title': { es: '> Color Picker', en: '> Color Picker' },
   'color.subtitle': { es: 'Conversor de colores HEX / RGB / HSL con paleta', en: 'HEX / RGB / HSL color converter with palette' },
+  'color.shades': { es: 'Escala de luminosidad', en: 'Lightness scale' },
+  'color.harmony': { es: 'Colores que combinan', en: 'Matching colors' },
+  'color.base': { es: 'base', en: 'base' },
+  'color.complement': { es: 'opuesto', en: 'opposite' },
   'color.random': { es: 'Aleatorio', en: 'Random' },
   'color.palette': { es: 'Paleta de luminosidad', en: 'Lightness palette' },
 
