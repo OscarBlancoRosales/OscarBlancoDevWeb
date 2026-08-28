@@ -1,5 +1,4 @@
-import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
@@ -14,11 +13,32 @@ const TICKS_PER_MS = 10000n;
 
 @Component({
   selector: 'app-timestamp-converter',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './timestamp-converter.html',
   styleUrl: './timestamp-converter.css'
 })
-export class TimestampConverter {
+export class TimestampConverter implements OnInit, OnDestroy {
+  /**
+   * El epoch de ahora mismo, corriendo. La mitad de las veces que se abre
+   * esta herramienta es solo para copiar este número.
+   */
+  nowUnix = Math.floor(Date.now() / 1000);
+  private nowTimer?: ReturnType<typeof setInterval>;
+  private destroyed = false;
+
+  ngOnInit(): void {
+    this.nowTimer = setInterval(() => {
+      if (this.destroyed) return;
+      this.nowUnix = Math.floor(Date.now() / 1000);
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    if (this.nowTimer) clearInterval(this.nowTimer);
+  }
+
   // Picker fields (native date + time inputs)
   pickerDate = '';   // YYYY-MM-DD for <input type="date">
   pickerTime = '';   // HH:mm for <input type="time">
@@ -175,6 +195,26 @@ export class TimestampConverter {
     this.inputType = 'unix';
     this.inputValue = now.toString();
     this.convert();
+  }
+
+  setType(tipo: string): void {
+    this.inputType = tipo;
+    this.onTypeChange();
+    this.convert();
+  }
+
+  /** El ejemplo cambia con el tipo: cada formato tiene su pinta. */
+  get placeholder(): string {
+    switch (this.inputType) {
+      case 'millis':
+        return 'Ej: 1700000000000';
+      case 'ticks':
+        return 'Ej: 638363520000000000';
+      case 'iso':
+        return 'Ej: 2024-01-15T12:30:00Z';
+      default:
+        return 'Ej: 1700000000';
+    }
   }
 
   onTypeChange(): void {

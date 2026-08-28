@@ -270,6 +270,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   // === TIMESTAMP ===
   'ts.title': { es: '> Timestamp Converter', en: '> Timestamp Converter' },
   'ts.subtitle': { es: 'Convierte entre Unix, millis, .NET Ticks, ISO 8601 y más', en: 'Convert between Unix, millis, .NET Ticks, ISO 8601 and more' },
+  'ts.rightNow': { es: 'ahora mismo', en: 'right now' },
   'ts.pickDateTime': { es: 'Seleccionar fecha y hora', en: 'Select date and time' },
   'ts.convertValue': { es: 'Convertir valor', en: 'Convert value' },
   'ts.invalidValue': { es: 'Valor inválido para el formato seleccionado', en: 'Invalid value for selected format' },
