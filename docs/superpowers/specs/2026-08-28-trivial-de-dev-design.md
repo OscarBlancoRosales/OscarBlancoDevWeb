@@ -55,9 +55,17 @@ puntúa y cómo se pinta.
 
 ## 2. La puntuación
 
-Acertar da **100 puntos**. Responder pronto da hasta **50 más**, en proporción
-al tiempo que quedaba: contestar al segundo vale bastante más que contestar
-cuando se acaba el reloj, y contestar mal no resta nunca.
+Acertar da **100 puntos**. Y ser de los primeros en acertar da hasta **50 más**:
+50 al primero, 35 al segundo, 20 al tercero, 5 al cuarto y nada al resto.
+
+El bonus va por **orden de llegada** y no por cronómetro, y es una decisión, no
+una simplificación. El motor es puro —mismo estado y misma jugada, mismo
+resultado— y por eso no puede mirar el reloj; si el tiempo lo midiera el
+cliente, la jugada llevaría dentro un «he tardado 0 ms» que nadie puede
+desmentir. El orden lo decide el servidor al aplicar cada respuesta, y contra
+eso no hay nada que enviar.
+
+La cuenta atrás sigue existiendo en la pantalla: aprieta igual, pero no puntúa.
 
 En las estimaciones no hay acierto binario: quien más se acerca se lleva 100, y
 el resto cobra en proporción a lo lejos que quedó, hasta cero. Bordar la cifra
@@ -112,8 +120,12 @@ Sala, invitación por enlace y entre dos y ocho jugadores. Se puede jugar en
 solitario contra la máquina.
 
 Cada partida son diez rondas. En cada una: el presentador la anuncia, se abre la
-pregunta, se responde, se cierra por respuestas o por tiempo, y se enseña el
-resultado con los puntos. Al final, la clasificación y la despedida.
+pregunta, se responde, y la ronda se cierra sola en cuanto han contestado todos
+los que están en la mesa. Entonces se enseña el resultado con los puntos y
+cualquiera pasa a la siguiente. Al final, la clasificación y la despedida.
+
+Si alguien se queda sin contestar, quien abrió la sala puede pasar de todos
+modos: la partida no se queda colgada esperando a quien cerró la pestaña.
 
 Los bots contestan con `botAction`, que ya existe y que ya mueve el servidor:
 aciertan según su nivel y tardan un rato variable, porque un rival que responde
