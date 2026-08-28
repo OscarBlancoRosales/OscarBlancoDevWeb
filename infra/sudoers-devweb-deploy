@@ -1,0 +1,9 @@
+# El despliegue automático necesita ejecutar un comando como root sin poder
+# escribir una contraseña. Se le da exactamente ese comando y ninguno más.
+#
+# Dar NOPASSWD a `sudo` entero convertiría la clave de despliegue de GitHub en
+# acceso de root a la máquina: quien se hiciera con ella podría hacer cualquier
+# cosa. Así, lo peor que puede hacer es desplegar.
+#
+# Va en /etc/sudoers.d/devweb-deploy con permisos 440.
+ubuntu ALL=(root) NOPASSWD: /usr/local/bin/devweb-deploy

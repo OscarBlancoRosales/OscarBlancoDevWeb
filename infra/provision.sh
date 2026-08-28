@@ -133,6 +133,16 @@ paso "Servicio"
 install -m 644 "$REPO_DIR/infra/systemd/devweb-api.service" /etc/systemd/system/devweb-api.service
 install -m 755 "$REPO_DIR/infra/backup.sh" /usr/local/bin/devweb-backup
 install -m 755 "$REPO_DIR/infra/deploy.sh" /usr/local/bin/devweb-deploy
+
+# Permiso para desplegar sin contraseña, y solo para desplegar. `visudo -c`
+# antes de instalarlo: un fichero de sudoers con una errata puede dejar la
+# máquina sin sudo para nadie, y entonces no hay forma de arreglarlo desde fuera.
+if visudo -cqf "$REPO_DIR/infra/sudoers-devweb-deploy"; then
+  install -m 440 -o root -g root "$REPO_DIR/infra/sudoers-devweb-deploy" /etc/sudoers.d/devweb-deploy
+else
+  echo "El fichero de sudoers no valida; NO se instala." >&2
+  exit 1
+fi
 install -m 644 "$REPO_DIR/infra/systemd/devweb-backup.service" /etc/systemd/system/devweb-backup.service
 install -m 644 "$REPO_DIR/infra/systemd/devweb-backup.timer" /etc/systemd/system/devweb-backup.timer
 systemctl daemon-reload
