@@ -13,6 +13,10 @@ export interface Seat {
   readonly displayName: string;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** Posición en la mesa. Fija el orden de turno donde el juego lo use. */
+  readonly order: number;
+  /** Lo que el juego necesita del asiento y las salas no interpretan. */
+  readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 /**

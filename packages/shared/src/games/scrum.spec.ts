@@ -4,8 +4,8 @@ import { resumir, ScrumVote, scrumModule } from './scrum';
 import type { ScrumState, ScrumView } from './scrum';
 import type { Seat } from './module';
 
-const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true };
-const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true };
+const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true, order: 0 };
+const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true, order: 1 };
 const MESA = [ANA, LUIS];
 
 function conVotos(votos: ScrumState['votos'], revelado = false): ScrumState {

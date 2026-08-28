@@ -4,8 +4,8 @@ import type { RiskView } from './risk';
 import type { GameAction, GameState } from '../engine/types';
 import type { Seat } from './module';
 
-const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true };
-const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true };
+const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true, order: 0 };
+const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true, order: 1 };
 const MESA = [ANA, LUIS];
 const CONFIG = { mapId: 'spain-regions', seed: 7 };
 
@@ -64,6 +64,16 @@ describe('nadie juega en nombre de otro', () => {
       enTurno,
       MESA,
     );
+
+    expect(error?.code).not.toBe('no-eres-tu');
+  });
+
+  it('a un bot sí se le mueve desde otro asiento: alguien tiene que pensarlo', () => {
+    const BOT: Seat = { id: 'bot', displayName: 'Bot', isBot: true, connected: false, order: 2 };
+    const mesa = [ANA, LUIS, BOT];
+    const state = riskModule.createState(mesa, CONFIG);
+
+    const error = riskModule.validate(state, { type: 'end-phase', playerId: 'bot' }, 'ana', mesa);
 
     expect(error?.code).not.toBe('no-eres-tu');
   });

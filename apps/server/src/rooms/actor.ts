@@ -1,10 +1,19 @@
 import { Value } from '@sinclair/typebox/value';
 import type { GameModule, RuleError, Seat, SeatId } from '@devweb/shared/games/module';
-import type { RoomStatus, SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
+import type {
+  ChatEntry,
+  ChatKind,
+  RoomStatus,
+  SeatInfo,
+  ServerMessage,
+} from '@devweb/shared/contracts/rooms';
 import type { RoomRepository } from './repository';
 
 /** Cada cuántas acciones se guarda una foto del estado. */
 export const SNAPSHOT_CADA = 40;
+
+/** Cuántos mensajes de chat se mandan al entrar. Los viejos quedan en la base. */
+export const CHAT_MAXIMO = 200;
 
 export interface Suscriptor {
   readonly seatId: SeatId;
@@ -93,7 +102,49 @@ export class RoomActor {
       displayName: seat.displayName,
       isBot: seat.isBot,
       connected: false,
+      order: seat.order,
+      meta: seat.meta,
     }));
+  }
+
+  /** Lo dicho en la sala, para mandarlo entero al que llega. */
+  private chat(): ChatEntry[] {
+    return this.repository.listChat(this.roomId, CHAT_MAXIMO).map((fila) => ({
+      seq: fila.seq,
+      authorId: fila.authorId,
+      author: fila.author,
+      kind: fila.kind,
+      text: fila.text,
+      at: fila.at,
+      ...(fila.origin !== null && { origin: fila.origin }),
+    }));
+  }
+
+  /**
+   * Añade algo al chat y lo reparte.
+   *
+   * El nombre del autor lo pone el servidor a partir del asiento, no el
+   * cliente: si no, cualquiera podría hablar firmando con el nombre de otro.
+   */
+  decir(seatId: SeatId, texto: string, kind: ChatKind, origin?: string): void {
+    const asiento = this.seats.find((seat) => seat.id === seatId);
+    if (!asiento) return;
+
+    this.repository.appendChat(this.roomId, {
+      seq: this.repository.lastChatSeq(this.roomId) + 1,
+      authorId: seatId,
+      author: asiento.displayName,
+      kind,
+      text: texto,
+      origin: origin ?? null,
+      at: this.now(),
+    });
+    this.repartirChat();
+  }
+
+  repartirChat(): void {
+    const mensaje: ServerMessage = { tipo: 'chat', entradas: this.chat() };
+    for (const suscriptor of this.suscriptores) suscriptor.send(mensaje);
   }
 
   refreshSeats(): void {
@@ -111,12 +162,20 @@ export class RoomActor {
     this.suscriptores.add(suscriptor);
     this.refreshSeats();
     this.broadcast();
+    // Quien llega a mitad de partida necesita lo que ya se ha hablado, o el
+    // chat aparece vacío como si nadie hubiera dicho nada.
+    suscriptor.send({ tipo: 'chat', entradas: this.chat() });
   }
 
   unsubscribe(suscriptor: Suscriptor): void {
     this.suscriptores.delete(suscriptor);
     this.refreshSeats();
     this.broadcast();
+  }
+
+  /** Si ese asiento lo mueve un programa y no una persona. */
+  esBot(seatId: SeatId): boolean {
+    return this.seats.some((seat) => seat.id === seatId && seat.isBot);
   }
 
   /** Si ese asiento tiene ahora mismo alguien al otro lado. */
@@ -237,5 +296,7 @@ function toSeatInfo(seat: Seat): SeatInfo {
     displayName: seat.displayName,
     isBot: seat.isBot,
     connected: seat.connected,
+    order: seat.order,
+    ...(seat.meta !== undefined && { meta: seat.meta }),
   };
 }

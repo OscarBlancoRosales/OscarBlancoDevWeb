@@ -4,7 +4,7 @@ import { RISK_MAPS } from '../engine/maps/map-registry';
 import { RuleError as EngineRuleError } from '../engine/types';
 import type { GameAction, GameMap, GameState, PlayerState } from '../engine/types';
 import type { PlayerSeed } from '../engine/engine';
-import type { GameModule, RuleError, SeatId } from './module';
+import type { GameModule, RuleError, Seat, SeatId } from './module';
 
 /**
  * Los tipos de acción que el motor entiende.
@@ -85,8 +85,8 @@ export const riskModule: GameModule<GameState, GameAction> = {
    * y volver a aplicarlo en `apply` da exactamente el mismo resultado. Cuesta
    * una pasada de más y ahorra tener las reglas escritas dos veces.
    */
-  validate(state, action, by) {
-    const suplantacion = suplantando(action, by);
+  validate(state, action, by, seats) {
+    const suplantacion = suplantando(action, by, seats);
     if (suplantacion) return suplantacion;
 
     const map = mapaPorId(state.mapId);
@@ -148,21 +148,26 @@ function verJugador(player: PlayerState, forSeat: SeatId): RiskPlayerView {
 }
 
 /**
- * Nadie juega en nombre de otro.
+ * Nadie juega en nombre de otra persona. Los bots son otra cosa.
  *
  * Cada acción del motor lleva dentro un `playerId`, y ese campo lo escribe el
  * cliente. El motor comprueba que a ese jugador le toque, pero no puede
  * comprobar quién ha mandado el mensaje: para él, la acción llega sin remite.
+ * Sin esta comprobación bastaría con mandar la jugada del rival cuando le toca
+ * a él para jugarle el turno entero.
  *
- * Sin esta línea, bastaría con mandar la jugada del rival cuando le toca a él
- * para jugarle el turno entero. Es exactamente el agujero que un servidor
- * autoritativo existe para tapar, y el único que el motor compartido no puede
- * tapar solo.
+ * Los asientos de bot sí se pueden mover desde otro asiento, porque es
+ * exactamente como funciona el juego: uno de los clientes conectados hace de
+ * anfitrión y calcula sus jugadas. Que el servidor los moviera solo sería otra
+ * cosa —mejor, pero otra—, y hoy los bots ya se paran si no queda nadie.
  */
-function suplantando(action: GameAction, by: SeatId): RuleError | null {
-  return action.playerId === by
-    ? null
-    : { code: 'no-eres-tu', message: 'No puedes jugar en nombre de otro.' };
+function suplantando(action: GameAction, by: SeatId, seats: readonly Seat[]): RuleError | null {
+  if (action.playerId === by) return null;
+
+  const objetivo = seats.find((seat) => seat.id === action.playerId);
+  if (objetivo?.isBot) return null;
+
+  return { code: 'no-eres-tu', message: 'No puedes jugar en nombre de otro.' };
 }
 
 function mapaPorId(mapId: string): GameMap | undefined {

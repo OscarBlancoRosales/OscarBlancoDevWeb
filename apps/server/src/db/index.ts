@@ -2,12 +2,14 @@ import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import Database from 'better-sqlite3';
 import { sql as inicial } from './migrations/001-inicial';
+import { sql as asientosYChat } from './migrations/002-asientos-y-chat';
 
 export type Db = Database.Database;
 
 /** En orden. Nunca se edita una ya aplicada: se añade la siguiente. */
 const MIGRATIONS: readonly { readonly name: string; readonly sql: string }[] = [
   { name: '001-inicial', sql: inicial },
+  { name: '002-asientos-y-chat', sql: asientosYChat },
 ];
 
 /**

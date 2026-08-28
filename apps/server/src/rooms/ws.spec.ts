@@ -5,7 +5,7 @@ import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
 import type { FastifyInstance } from 'fastify';
 import type { ScrumView } from '@devweb/shared/games/scrum';
-import type { SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
+import type { ChatEntry, SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
 
 const config = loadConfig({
@@ -77,6 +77,14 @@ class Cliente {
 
   esperarRechazo(): Promise<ServerMessage> {
     return this.esperar((m) => m.tipo === 'rechazada', 'un rechazo');
+  }
+
+  async chat(cuantas: number): Promise<ChatEntry[]> {
+    const mensaje = await this.esperar(
+      (m) => m.tipo === 'chat' && m.entradas.length >= cuantas,
+      `${cuantas} entradas de chat`,
+    );
+    return (mensaje as { entradas: ChatEntry[] }).entradas;
   }
 
   cerrar(): void {
@@ -281,5 +289,50 @@ describe('una partida de scrum poker por WebSocket', () => {
     });
 
     ana.cerrar();
+  });
+
+  describe('hablar en la sala', () => {
+    it('lo dicho llega a todos con el nombre que pone el servidor', async () => {
+      const oscar = await Cliente.conectar(urlDe(anfitrion));
+      const ana = await Cliente.conectar(urlDe(invitada));
+
+      ana.enviar({ tipo: 'chat', texto: 'yo lo veo un 13' });
+      const entradas = await oscar.chat(1);
+
+      expect(entradas[0]).toMatchObject({
+        seq: 1,
+        authorId: invitada.seatId,
+        author: 'Ana',
+        kind: 'player',
+        text: 'yo lo veo un 13',
+      });
+
+      oscar.cerrar();
+      ana.cerrar();
+    });
+
+    it('firmar con el asiento de otra persona no cuela', async () => {
+      const ana = await Cliente.conectar(urlDe(invitada));
+
+      ana.enviar({ tipo: 'chat', texto: 'lo dijo Óscar', comoAsiento: anfitrion.seatId });
+      const rechazo = await ana.esperarRechazo();
+
+      expect(rechazo).toMatchObject({ tipo: 'rechazada', code: 'no-eres-tu' });
+      ana.cerrar();
+    });
+
+    it('quien llega tarde recibe lo que ya se había hablado', async () => {
+      const ana = await Cliente.conectar(urlDe(invitada));
+      ana.enviar({ tipo: 'chat', texto: 'empezamos' });
+      await ana.chat(1);
+
+      const oscar = await Cliente.conectar(urlDe(anfitrion));
+      const entradas = await oscar.chat(1);
+
+      expect(entradas.map((entrada) => entrada.text)).toEqual(['empezamos']);
+
+      oscar.cerrar();
+      ana.cerrar();
+    });
   });
 });

@@ -30,6 +30,15 @@ export const SeatInfo = Type.Object({
   displayName: DisplayName,
   isBot: Type.Boolean(),
   connected: Type.Boolean(),
+  order: Type.Integer(),
+  /**
+   * Lo que el juego necesita del asiento y las salas no saben interpretar.
+   *
+   * En RISK son el color, el perfil del bot y quién creó la sala. Va como saco
+   * opaco a propósito: una columna por cada cosa que se le ocurra al juego
+   * siguiente convertiría la tabla de asientos en un vertedero.
+   */
+  meta: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
 });
 
 export const RoomInfo = Type.Object({
@@ -37,6 +46,8 @@ export const RoomInfo = Type.Object({
   game: GameId,
   name: Type.String(),
   status: RoomStatus,
+  /** Lo que se decidió antes de empezar: mapa, semilla, reglas de la casa. */
+  config: Type.Record(Type.String(), Type.Unknown()),
   seats: Type.Array(SeatInfo),
   createdAt: Type.Integer(),
   updatedAt: Type.Integer(),
@@ -56,13 +67,67 @@ export const SeatGrant = Type.Object({
 
 export const RoomList = Type.Object({ rooms: Type.Array(RoomInfo) });
 
+export const AddSeatRequest = Type.Object(
+  {
+    displayName: DisplayName,
+    isBot: Type.Boolean(),
+    meta: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  },
+  SIN_EXTRAS,
+);
+
+export const UpdateSeatRequest = Type.Object(
+  {
+    displayName: Type.Optional(DisplayName),
+    meta: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  },
+  SIN_EXTRAS,
+);
+
+export const UpdateRoomRequest = Type.Object(
+  {
+    name: Type.Optional(Type.String({ minLength: 1, maxLength: 80 })),
+    status: Type.Optional(RoomStatus),
+    config: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  },
+  SIN_EXTRAS,
+);
+
+export const ChatKind = Type.Union([
+  Type.Literal('player'),
+  Type.Literal('bot'),
+  Type.Literal('system'),
+  Type.Literal('advisor'),
+]);
+
+export const ChatEntry = Type.Object({
+  seq: Type.Integer(),
+  authorId: Type.String(),
+  author: Type.String(),
+  kind: ChatKind,
+  text: Type.String(),
+  origin: Type.Optional(Type.String()),
+  at: Type.Integer(),
+});
+
 // ---------------------------------------------------------------------------
 // Protocolo del WebSocket
 // ---------------------------------------------------------------------------
 
-/** Del cliente al servidor. Lo único que puede hacer es proponer una jugada. */
+/** Del cliente al servidor: proponer una jugada, o decir algo. */
 export const ClientMessage = Type.Union([
   Type.Object({ tipo: Type.Literal('accion'), accion: Type.Unknown() }, SIN_EXTRAS),
+  Type.Object(
+    {
+      tipo: Type.Literal('chat'),
+      texto: Type.String({ minLength: 1, maxLength: 600 }),
+      kind: Type.Optional(ChatKind),
+      /** Quién habla: un asiento de bot al que este cliente está moviendo. */
+      comoAsiento: Type.Optional(Type.String({ maxLength: 64 })),
+      origin: Type.Optional(Type.String({ maxLength: 16 })),
+    },
+    SIN_EXTRAS,
+  ),
   Type.Object({ tipo: Type.Literal('ping') }, SIN_EXTRAS),
 ]);
 
@@ -88,9 +153,18 @@ export const ServerMessage = Type.Union([
     { tipo: Type.Literal('rechazada'), code: Type.String(), message: Type.String() },
     SIN_EXTRAS,
   ),
+  Type.Object(
+    { tipo: Type.Literal('chat'), entradas: Type.Array(ChatEntry) },
+    SIN_EXTRAS,
+  ),
   Type.Object({ tipo: Type.Literal('pong') }, SIN_EXTRAS),
 ]);
 
+export type AddSeatRequest = Static<typeof AddSeatRequest>;
+export type UpdateSeatRequest = Static<typeof UpdateSeatRequest>;
+export type UpdateRoomRequest = Static<typeof UpdateRoomRequest>;
+export type ChatKind = Static<typeof ChatKind>;
+export type ChatEntry = Static<typeof ChatEntry>;
 export type GameId = Static<typeof GameId>;
 export type RoomStatus = Static<typeof RoomStatus>;
 export type SeatInfo = Static<typeof SeatInfo>;

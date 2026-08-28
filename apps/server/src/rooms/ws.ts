@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import { Value } from '@sinclair/typebox/value';
 import { ClientMessage } from '@devweb/shared/contracts/rooms';
+import type { ClientMessage as MensajeDelCliente } from '@devweb/shared/contracts/rooms';
 import type { FastifyPluginCallbackTypebox } from '@fastify/type-provider-typebox';
 import type { ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { RoomService } from './service';
@@ -60,6 +61,22 @@ export function roomSocket(service: RoomService): FastifyPluginCallbackTypebox {
           return;
         }
 
+        if (mensaje.tipo === 'chat') {
+          // Se puede hablar por un bot de la sala —los bots comentan su jugada—
+          // pero no por otra persona: eso sería ponerle palabras en la boca.
+          const comoAsiento = mensaje.comoAsiento ?? seatId;
+          if (comoAsiento !== seatId && !actor.esBot(comoAsiento)) {
+            suscriptor.send({
+              tipo: 'rechazada',
+              code: 'no-eres-tu',
+              message: 'No puedes hablar por otra persona.',
+            });
+            return;
+          }
+          actor.decir(comoAsiento, mensaje.texto, mensaje.kind ?? 'player', mensaje.origin);
+          return;
+        }
+
         const rechazo = actor.submit(seatId, mensaje.accion);
         if (rechazo) {
           suscriptor.send({ tipo: 'rechazada', code: rechazo.code, message: rechazo.message });
@@ -91,7 +108,7 @@ export function roomSocket(service: RoomService): FastifyPluginCallbackTypebox {
   };
 }
 
-function parse(raw: Buffer): { tipo: 'accion'; accion: unknown } | { tipo: 'ping' } | null {
+function parse(raw: Buffer): MensajeDelCliente | null {
   try {
     const parsed: unknown = JSON.parse(raw.toString('utf8'));
     return Value.Check(ClientMessage, parsed) ? parsed : null;
