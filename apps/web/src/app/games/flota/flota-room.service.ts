@@ -1,9 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 import { RoomSocket } from '../../api/room-socket';
 import { RoomsApiService } from '../../api/rooms-api.service';
+
+export type { PaseDeSala } from '../pase-guardado';
 import type { Signal } from '@angular/core';
 import type { SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { Barco, FlotaView, Nivel } from '@devweb/shared/games/flota/tipos';
+import type { PaseDeSala } from '../pase-guardado';
 
 /** Cómo se llama cada bot en la mesa. */
 const NOMBRE_DEL_BOT: Readonly<Record<Nivel, string>> = {
@@ -11,12 +14,6 @@ const NOMBRE_DEL_BOT: Readonly<Record<Nivel, string>> = {
   marino: 'Marino',
   almirante: 'Almirante',
 };
-
-export interface PaseDeSala {
-  readonly roomId: string;
-  readonly seatId: string;
-  readonly seatToken: string;
-}
 
 /**
  * La sala de Hundir la flota contra el backend propio.

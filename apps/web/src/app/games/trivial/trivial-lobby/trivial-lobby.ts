@@ -5,12 +5,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { AuthApiService } from '../../../api/auth-api.service';
-import { FlotaRoomService } from '../flota-room.service';
+import { TrivialRoomService } from '../trivial-room.service';
 import { guardarPase } from '../../pase-guardado';
-import type { Nivel } from '@devweb/shared/games/flota/tipos';
+import type { NivelBot } from '@devweb/shared/games/trivial/tipos';
 
 interface OpcionDeRival {
-  readonly id: Nivel | 'persona';
+  readonly id: NivelBot | 'persona';
   readonly nombre: string;
   readonly descripcion: string;
 }
@@ -18,49 +18,47 @@ interface OpcionDeRival {
 const RIVALES: readonly OpcionDeRival[] = [
   {
     id: 'persona',
-    nombre: 'Otra persona',
-    descripcion: 'Se crea la sala y se comparte el enlace. Quien entre no necesita cuenta.',
+    nombre: 'Otra gente',
+    descripcion: 'Se abre la mesa y se comparte el enlace. Quien entre no necesita cuenta.',
   },
-  { id: 'novato', nombre: 'Grumete', descripcion: 'Dispara donde le da. Se le gana casi solo.' },
-  { id: 'marino', nombre: 'Marino', descripcion: 'En cuanto te toca un barco, va a rematarlo.' },
+  { id: 'pardillo', nombre: 'Pardillo', descripcion: 'Contesta a lo que salga. Se le gana solo.' },
+  { id: 'apanado', nombre: 'Apañado', descripcion: 'Sabe lo justo. Falla lo que fallarías tú.' },
   {
-    id: 'almirante',
-    nombre: 'Almirante',
-    descripcion: 'Barre el tablero en damero y remata sin fallar. Duele.',
+    id: 'sabelotodo',
+    nombre: 'Sabelotodo',
+    descripcion: 'Se las sabe casi todas y contesta el primero. Duele.',
   },
 ];
 
 /**
- * Puerta de entrada a Hundir la flota.
+ * Puerta de entrada al Trivial de dev.
  *
- * Dos caminos, como en el resto de los juegos: quien tiene cuenta crea la mesa
- * y elige rival, y quien llega por un enlace solo pone su nombre.
+ * Igual que el resto de los juegos: quien tiene cuenta abre la mesa y elige
+ * contra quién, y quien llega por un enlace solo pone su nombre.
  */
 @Component({
-  selector: 'app-flota-lobby',
+  selector: 'app-trivial-lobby',
   imports: [CommonModule, FormsModule, RouterLink, TerminalLayout],
-  templateUrl: './flota-lobby.html',
-  styleUrl: './flota-lobby.css',
+  templateUrl: './trivial-lobby.html',
+  styleUrl: './trivial-lobby.css',
 })
-export class FlotaLobby implements OnInit, OnDestroy {
+export class TrivialLobby implements OnInit, OnDestroy {
   readonly rivales = RIVALES;
 
   readonly conSesion = signal(false);
   readonly sesionResuelta = signal(false);
   readonly trabajando = signal(false);
   readonly error = signal('');
-
-  /** La sala a la que se invita, si se ha llegado por un enlace. */
   readonly invitacion = signal('');
 
-  nombreSala = 'Mesa de guerra';
+  nombreSala = 'Concurso de la retro';
   nombreJugador = '';
-  rival: Nivel | 'persona' = 'marino';
+  rival: NivelBot | 'persona' = 'apanado';
 
   private suscripcion?: Subscription;
 
   constructor(
-    private readonly sala: FlotaRoomService,
+    private readonly sala: TrivialRoomService,
     private readonly auth: AuthApiService,
     private readonly router: Router,
     private readonly ruta: ActivatedRoute,
@@ -87,12 +85,12 @@ export class FlotaLobby implements OnInit, OnDestroy {
 
     try {
       const pase = await this.sala.crear(
-        this.nombreSala.trim() || 'Mesa de guerra',
+        this.nombreSala.trim() || 'Concurso de la retro',
         this.nombreJugador.trim() || 'Anfitrión',
         this.rival === 'persona' ? null : this.rival,
       );
       guardarPase(pase);
-      await this.router.navigate(['/juegos/flota/mesa'], { queryParams: { sala: pase.roomId } });
+      await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });
     } catch (error) {
       this.error.set(mensajeDe(error));
     } finally {
@@ -108,10 +106,10 @@ export class FlotaLobby implements OnInit, OnDestroy {
     try {
       const pase = await this.sala.unirse(
         this.invitacion(),
-        this.nombreJugador.trim() || 'Invitado',
+        this.nombreJugador.trim() || 'Concursante',
       );
       guardarPase(pase);
-      await this.router.navigate(['/juegos/flota/mesa'], { queryParams: { sala: pase.roomId } });
+      await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });
     } catch (error) {
       this.error.set(mensajeDe(error));
     } finally {
@@ -121,5 +119,5 @@ export class FlotaLobby implements OnInit, OnDestroy {
 }
 
 function mensajeDe(error: unknown): string {
-  return error instanceof Error ? error.message : 'No se ha podido abrir la sala.';
+  return error instanceof Error ? error.message : 'No se ha podido abrir la mesa.';
 }

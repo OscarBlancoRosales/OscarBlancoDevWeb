@@ -4,7 +4,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@angular/core';
 import { FlotaRoom } from './flota-room';
 import { FlotaRoomService } from '../flota-room.service';
-import { guardarPase, olvidarPase } from '../pase-guardado';
+import { guardarPase, olvidarPase } from '../../pase-guardado';
 import { indice, tableroVacio } from '@devweb/shared/games/flota/reglas';
 import type { FlotaView } from '@devweb/shared/games/flota/tipos';
 

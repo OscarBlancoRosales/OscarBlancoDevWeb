@@ -38,6 +38,16 @@ export const routes: Routes = [
     loadComponent: () => import('./games/games').then((m) => m.Games),
   },
   {
+    path: 'juegos/trivial',
+    loadComponent: () =>
+      import('./games/trivial/trivial-lobby/trivial-lobby').then((m) => m.TrivialLobby),
+  },
+  {
+    path: 'juegos/trivial/mesa',
+    loadComponent: () =>
+      import('./games/trivial/trivial-room/trivial-room').then((m) => m.TrivialRoom),
+  },
+  {
     path: 'juegos/risk',
     loadComponent: () => import('./games/risk/ui/risk-lobby/risk-lobby').then((m) => m.RiskLobby),
   },

@@ -29,6 +29,8 @@ describe('registro de comandos', () => {
     'juegos/risk/mesa', // necesita una sala ya creada
     'juegos/flota', // el lobby se abre desde /juegos
     'juegos/flota/mesa', // necesita una sala ya creada
+    'juegos/trivial', // el lobby se abre desde /juegos
+    'juegos/trivial/mesa', // necesita una sala ya creada
   ]);
 
   it('toda ruta navegable tiene un comando que lleva a ella', () => {

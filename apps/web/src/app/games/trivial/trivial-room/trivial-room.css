@@ -1,0 +1,263 @@
+* {
+  box-sizing: border-box;
+}
+
+.mesa {
+  padding: 20px 22px 32px;
+  color: #ccc;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.fase {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.titular h1 {
+  color: #0f0;
+  font-size: 20px;
+  margin: 0 0 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 22px rgba(0, 255, 0, 0.3);
+}
+
+.prompt {
+  color: #0a0;
+  margin-right: 6px;
+}
+
+.pie {
+  margin: 0;
+  color: #aaa;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pie strong {
+  color: #cfc;
+}
+
+/* El presentador va en ámbar: es quien lleva el show, y no es el juego. */
+.presentador {
+  border-left: 3px solid #b8860b;
+  background: #14120a;
+  margin: 0 0 22px;
+  padding: 12px 16px;
+}
+
+.presentador .quien {
+  color: #b8860b;
+  font-size: 10px;
+  letter-spacing: 2px;
+}
+
+.presentador p {
+  margin: 6px 0 0;
+  color: #e8d9a0;
+  font-size: 14px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.codigo {
+  background: #0a0a0a;
+  border: 1px solid #232323;
+  padding: 14px 16px;
+  margin: 0;
+  overflow-x: auto;
+  color: #9cf;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.opciones {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.opcion {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #2a2a2a;
+  background: #101010;
+  color: #ccc;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.opcion:hover:not(:disabled) {
+  border-color: #0a0;
+  color: #cfc;
+}
+
+.opcion:disabled {
+  cursor: default;
+}
+
+.opcion .letra {
+  color: #0a0;
+  font-weight: bold;
+  min-width: 16px;
+}
+
+/* La buena en verde y la tuya con el borde a rayas: si coinciden, se ve de un
+   vistazo que acertaste, y si no, se ven las dos a la vez. */
+.opcion.buena {
+  border-color: #0a0;
+  background: #0d1a0d;
+  color: #9f9;
+}
+
+.opcion.tuya {
+  border-style: dashed;
+  border-color: #b8860b;
+}
+
+.opcion.tuya.buena {
+  border-style: solid;
+}
+
+.estimacion {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.estimacion label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #888;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+input[type='number'] {
+  background: #0f0f0f;
+  border: 1px solid #2a2a2a;
+  color: #ccc;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 15px;
+  width: 180px;
+}
+
+input[type='number']:focus {
+  outline: none;
+  border-color: #0a0;
+}
+
+.solucion {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  border-top: 1px solid #232323;
+  padding-top: 16px;
+}
+
+.explicacion {
+  margin: 0;
+  color: #9c9;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.resultados,
+.clasificacion {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.resultados li,
+.clasificacion li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #1a1a1a;
+  padding: 7px 2px;
+  font-size: 14px;
+}
+
+.clasificacion {
+  margin-top: 26px;
+  border-top: 1px solid #232323;
+  padding-top: 14px;
+}
+
+.clasificacion li.tu .nombre {
+  color: #0f0;
+}
+
+.clasificacion .puntos,
+.resultados .ganados {
+  color: #0f0;
+}
+
+.resultados .ganados.cero {
+  color: #666;
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  border: 1px solid #2a2a2a;
+  background: #101010;
+  color: #ccc;
+  padding: 10px 15px;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #0a0;
+  color: #cfc;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.principal {
+  border-color: #0a0;
+  background: #0d160d;
+  color: #0f0;
+}
+
+button.principal:hover:not(:disabled) {
+  background: #123012;
+}
+
+.enlace {
+  border-style: dashed;
+}
+
+.aviso {
+  border: 1px solid #6a4a00;
+  background: #1a1405;
+  color: #fc6;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}

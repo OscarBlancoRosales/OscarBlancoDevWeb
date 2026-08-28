@@ -4,6 +4,7 @@ import { RoomsApiService } from '../../api/rooms-api.service';
 import type { Signal } from '@angular/core';
 import type { SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { NivelBot, TrivialView } from '@devweb/shared/games/trivial/tipos';
+import type { PaseDeSala } from '../pase-guardado';
 
 /** Cómo se llama cada rival de mesa. */
 const NOMBRE_DEL_BOT: Readonly<Record<NivelBot, string>> = {
@@ -11,12 +12,6 @@ const NOMBRE_DEL_BOT: Readonly<Record<NivelBot, string>> = {
   apanado: 'Apañado',
   sabelotodo: 'Sabelotodo',
 };
-
-export interface PaseDeSala {
-  readonly roomId: string;
-  readonly seatId: string;
-  readonly seatToken: string;
-}
 
 /**
  * La sala del Trivial contra el backend propio.
