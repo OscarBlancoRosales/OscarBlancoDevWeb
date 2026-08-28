@@ -34,10 +34,23 @@ RestrictSUIDSGID=true
 RestrictRealtime=true
 RestrictNamespaces=true
 LockPersonality=true
-MemoryDenyWriteExecute=true
 RemoveIPC=true
+
+# MemoryDenyWriteExecute NO se pone aquí, y no es un olvido.
+#
+# Prohíbe que un proceso tenga memoria escribible y ejecutable a la vez. Es una
+# protección excelente contra la inyección de código... y es incompatible con
+# cualquier runtime con JIT. V8 compila JavaScript a código máquina en memoria y
+# lo ejecuta: es literalmente lo que esa opción impide. Con ella puesta, Node no
+# arranca, aborta con V8_Fatal y deja un volcado de memoria.
+
 ReadWritePaths=/var/lib/devweb
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# AF_NETLINK hace falta para que la resolución de nombres funcione: libc lo usa
+# para enumerar las interfaces de red antes de resolver. Sin él, el día que el
+# servidor tenga que hablar con el relay de correo, fallaría con un error de DNS
+# que no apunta a ninguna parte.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
 SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 
