@@ -294,3 +294,50 @@ button.roster-row:hover,
 .avatar.sin-cara {
   background: rgba(0, 0, 0, 0.5);
 }
+
+/*
+  En un móvil las fichas se quedan en caras.
+  Medido a 390 px: con nombre, dos números y la barra, la columna se comía la
+  mitad del ancho de la pantalla y el mapa se quedaba en una rendija. La cara
+  ya dice de quién es cada ficha —para eso está— y el número de tropas es lo
+  único que se mira de reojo. El nombre aparece al abrir la conversación, que
+  es cuando hace falta.
+*/
+@media (max-width: 640px) {
+  .roster {
+    width: auto;
+    padding: 4px 4px 12px;
+  }
+
+  .roster-row {
+    grid-template-columns: 34px auto;
+    gap: 4px;
+    padding: 1px 2px;
+    min-height: 40px;
+  }
+
+  .roster-row .row-name,
+  .roster-row .row-bar {
+    display: none;
+  }
+
+  /* De los dos números se queda el de tropas, que es el que dice quién manda. */
+  .roster-row .row-num:not(.muted) {
+    display: none;
+  }
+
+  .roster-row .row-num.muted {
+    opacity: 1;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* Al abrir el hilo sí se ve de quién es: la hoja ocupa el ancho entero. */
+  .roster-row.open .row-name {
+    display: block;
+    position: absolute;
+    left: 40px;
+    right: 4px;
+    font-size: 11px;
+  }
+}

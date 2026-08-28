@@ -115,11 +115,19 @@ describe('RiskBoard', () => {
       expect(emitidos).toEqual(['A2']);
     });
 
+    /**
+     * Mantener pulsado ya NO coloca en cadena.
+     *
+     * Medido en un móvil de verdad: un toque normal dura más de 400 ms, que era
+     * el umbral para empezar a repetir, así que colocabas dos tropas sin querer
+     * y sin saber por qué. Colocar muchas se hace ahora con el paso `− n +` que
+     * sale pegado al territorio, que es predecible y se ve.
+     */
     describe('mantener pulsado', () => {
       beforeEach(() => vi.useFakeTimers());
       afterEach(() => vi.useRealTimers());
 
-      it('apagado, mantener pulsado no repite', () => {
+      it('mantener pulsado no coloca de más: un toque es una tropa', () => {
         const emitidos = escuchar();
         component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
         vi.advanceTimersByTime(3000);
@@ -127,63 +135,15 @@ describe('RiskBoard', () => {
         expect(emitidos).toEqual(['A2']);
       });
 
-      it('encendido, la primera repetición tarda y luego se acelera', () => {
-        fixture.componentRef.setInput('repeatOnHold', true);
-        const emitidos = escuchar();
-
-        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
-        vi.advanceTimersByTime(component.HOLD_FIRST_MS - 1);
-        expect(emitidos, 'ha repetido antes de tiempo').toEqual([]);
-
-        vi.advanceTimersByTime(1);
-        expect(emitidos).toEqual(['A2']);
-
-        vi.advanceTimersByTime(2000);
-        expect(emitidos.length, 'no se acelera').toBeGreaterThan(10);
-        expect(emitidos.every((id) => id === 'A2')).toBe(true);
-      });
-
-      it('soltar corta la cadena', () => {
-        fixture.componentRef.setInput('repeatOnHold', true);
-        const emitidos = escuchar();
-        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
-        vi.advanceTimersByTime(1000);
-        const alSoltar = emitidos.length;
-        component.onTerritoryPointerUp('A2', pointer('pointerup', 10, 10));
-        vi.advanceTimersByTime(3000);
-        // Al soltar cuenta además el toque final, y ni uno más.
-        expect(emitidos.length).toBe(alSoltar + 1);
-      });
-
-      it('irse de paseo con el dedo corta la cadena y no cuenta el toque final', () => {
-        fixture.componentRef.setInput('repeatOnHold', true);
-        const emitidos = escuchar();
-        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
-        vi.advanceTimersByTime(600);
-        const antes = emitidos.length;
-        expect(antes, 'no había empezado a repetir').toBeGreaterThan(0);
-        component.onPointerMove(pointer('pointermove', 200, 10));
-        vi.advanceTimersByTime(3000);
-        component.onTerritoryPointerUp('A2', pointer('pointerup', 200, 10));
-        expect(emitidos.length).toBe(antes);
-      });
-
-      it('sin repetición, mantener pulsado enseña la ficha del territorio', () => {
-        // En el móvil no hay ratón: sin esto, el cartel flotante que sale al
-        // pasar por encima no aparece jamás.
+      it('y enseña la ficha del territorio, que en el móvil no hay otra forma', () => {
+        // Sin ratón no hay «pasar por encima»: mantener el dedo es la puerta.
         component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
         vi.advanceTimersByTime(component.HOLD_INFO_MS);
         expect(component.hovered).toBe('A2');
         expect(component.tooltip).toBeTruthy();
       });
-
-      it('con repetición encendida no sale la ficha: estás colocando', () => {
-        fixture.componentRef.setInput('repeatOnHold', true);
-        component.onTerritoryPointerDown('A2', pointer('pointerdown', 10, 10));
-        vi.advanceTimersByTime(component.HOLD_INFO_MS);
-        expect(component.hovered).toBeNull();
-      });
     });
+
 
     it('el gesto llega DESDE EL DOM, no sólo llamando a los métodos', () => {
       // Los demás tests de este bloque llaman a los manejadores a mano, así que

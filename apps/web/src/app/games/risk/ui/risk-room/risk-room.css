@@ -1482,3 +1482,79 @@
   background: #eef2ee;
   margin-bottom: 6px;
 }
+
+/* ===================== EL PASO DE TROPAS ===================== */
+
+/*
+  Grande a propósito. Es el control que más se usa en todo el juego y el que
+  más veces se toca seguidas: si falla un toque de cada cinco, la fase entera
+  se vuelve una pelea.
+*/
+.play-row.stepper {
+  gap: 10px;
+}
+
+.step-btn {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(0, 255, 140, 0.45);
+  border-radius: 12px;
+  background: rgba(0, 255, 140, 0.12);
+  color: #00e676;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  /* Sin esto, mantener pulsado en un móvil selecciona el signo. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.step-btn:active:not(:disabled) {
+  background: rgba(0, 255, 140, 0.28);
+}
+
+.step-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.step-count {
+  min-width: 34px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-left {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  /*
+    El rastro, a una línea.
+    Tres líneas de conversación sobre el mapa en una pantalla de 390 px tapan
+    justo la mitad de abajo, que es por donde se juega con el pulgar.
+  */
+  .trail {
+    max-width: 78vw;
+  }
+
+  .trail-line:not(:last-child) {
+    display: none;
+  }
+
+  /*
+    El paso de tropas nunca por debajo del bloque de fase.
+    Anclado a un territorio que queda fuera de la pantalla por arriba, la
+    tarjeta se pegaba al borde superior y aterrizaba encima de la ronda, de la
+    fase y de las fichas a la vez.
+  */
+  .play-card {
+    max-width: min(300px, 92vw);
+  }
+}

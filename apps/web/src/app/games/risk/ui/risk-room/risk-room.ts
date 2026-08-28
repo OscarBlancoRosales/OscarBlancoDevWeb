@@ -1,4 +1,13 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import {
+  AfterViewChecked,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -97,7 +106,7 @@ const GLIFO_ESTRATEGA = '🧠';
   templateUrl: './risk-room.html',
   styleUrl: './risk-room.css',
 })
-export class RiskRoom implements OnInit, OnDestroy {
+export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   roomId = '';
   seatId = '';
   meta: RoomMeta | null = null;
@@ -218,6 +227,23 @@ export class RiskRoom implements OnInit, OnDestroy {
     );
 
     void this.rooms.markPresence(this.roomId, this.seatId);
+  }
+
+  @ViewChild('boardEl') private boardRef?: RiskBoard;
+  @ViewChild('hudEl', { read: ElementRef }) private hudRef?: ElementRef<HTMLElement>;
+
+  /**
+   * Le dice al tablero qué trozo de pantalla no debe tapar.
+   *
+   * Se hace aquí y no con un enlace en la plantilla a propósito: el `@ViewChild`
+   * no existe en el primer pintado, y enlazarlo cambiaría un valor ya
+   * comprobado en ese mismo ciclo —el NG0100 de toda la vida—. Como sólo se lee
+   * al colocar algo anclado, asignarlo a pelo es más simple y no le cuesta un
+   * repintado a nadie.
+   */
+  ngAfterViewChecked(): void {
+    const bloque = this.hudRef?.nativeElement ?? null;
+    if (this.boardRef && this.boardRef.avoid !== bloque) this.boardRef.avoid = bloque;
   }
 
   @HostListener('window:beforeunload')
@@ -352,7 +378,9 @@ export class RiskRoom implements OnInit, OnDestroy {
       case 'setup-deploy':
         return 'Refuerza un territorio tuyo';
       case 'reinforce':
-        return this.reserveLeft > 0 ? 'Toca tus territorios · mantén pulsado para varias' : '';
+        // Ya no se mantiene pulsado: un toque es una tropa, y para poner
+        // varias está el paso que sale pegado al territorio.
+        return this.reserveLeft > 0 && !this.selectedFrom ? 'Toca tus territorios' : '';
       case 'attack':
         return this.selectedFrom ? '' : 'Elige desde dónde atacas (hacen falta 2 ejércitos)';
       case 'fortify':
@@ -380,15 +408,6 @@ export class RiskRoom implements OnInit, OnDestroy {
     return this.isMyTurn ? 'Es tu turno' : `Turno de ${this.active.name}`;
   }
 
-  /**
-   * Mantener pulsado sólo coloca tropas en refuerzos y cuando te toca.
-   *
-   * Fuera de ahí, mantener el dedo sobre un territorio enseña su ficha en vez
-   * de colocar. El tablero no sabe de fases, así que se decide aquí.
-   */
-  get repeatOnHold(): boolean {
-    return this.isMyTurn && this.state?.phase === 'reinforce';
-  }
 
   /** Panel abierto, si hay alguno. Sólo uno: dos taparían el mapa. */
   openPanel: PanelId | null = null;
@@ -779,6 +798,45 @@ export class RiskRoom implements OnInit, OnDestroy {
    */
   get reserveLeft(): number {
     return Math.max(0, (this.me?.reserve ?? 0) - (this.pendingDeploy?.armies ?? 0));
+  }
+
+  /**
+   * Cuántas tropas llevas puestas en ese territorio este turno.
+   *
+   * Cuenta lo ya enviado y lo que todavía está esperando a salir, porque el
+   * número que se ve tiene que ser el que hay, no el que ha llegado a la sala.
+   */
+  placedAt(territoryId: TerritoryId): number {
+    const enviadas = (this.state?.placedThisTurn ?? [])
+      .filter((entrada) => entrada.territoryId === territoryId)
+      .reduce((suma, entrada) => suma + entrada.armies, 0);
+    const esperando =
+      this.pendingDeploy?.territoryId === territoryId ? this.pendingDeploy.armies : 0;
+    return enviadas + esperando;
+  }
+
+  /** Una más en el territorio que tienes delante. Es lo que hace el `+`. */
+  addOne(territoryId: TerritoryId): void {
+    this.errorMessage = '';
+    this.queueDeploy(territoryId);
+  }
+
+  /**
+   * Una menos. Es el deshacer, y vive donde está el error.
+   *
+   * Si todavía no ha salido, se quita de lo acumulado y no llega a viajar. Si
+   * ya salió, se deshace la última colocación, que es ésta: acabas de tocarla.
+   */
+  async removeOne(territoryId: TerritoryId): Promise<void> {
+    this.errorMessage = '';
+    const esperando = this.pendingDeploy;
+    if (esperando?.territoryId === territoryId && esperando.armies > 0) {
+      const quedan = esperando.armies - 1;
+      this.pendingDeploy = quedan > 0 ? { territoryId, armies: quedan } : null;
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.placedAt(territoryId) > 0) await this.undoDeploy(false);
   }
 
   private queueDeploy(territoryId: TerritoryId): void {

@@ -118,6 +118,14 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     return this._state;
   }
   private _state: GameState | null = null;
+
+  /**
+   * Un trozo de pantalla que lo anclado no debe tapar.
+   *
+   * Lo pone la sala con su bloque de fase. El tablero no sabe qué es ni por qué
+   * importa: sólo que ahí no se pinta encima.
+   */
+  @Input() avoid: HTMLElement | null = null;
   @Input() selected: TerritoryId | null = null;
   @Input() selectable: readonly TerritoryId[] = [];
   @Input() targets: readonly TerritoryId[] = [];
@@ -125,15 +133,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   /** Territorio resaltado por el chat o por la IA. */
   @Input() spotlight: TerritoryId | null = null;
   @Input() showNames = true;
-  /**
-   * Repetir mientras se mantiene pulsado.
-   *
-   * Lo enciende la sala sólo en la fase de refuerzos: es el gesto de los
-   * selectores de cantidad de toda la vida, y evita dar treinta toques para
-   * colocar treinta tropas. El tablero no sabe qué fase es; recibe el
-   * interruptor y ya está.
-   */
-  @Input() repeatOnHold = false;
   /** Modo avanzado: pinta la orografía y la explica en el cartel flotante. */
   @Input() set showTerrain(value: boolean) {
     this._showTerrain = value;
@@ -184,6 +183,9 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.detachGestures();
     this.svgRef = ref;
     this.attachGestures();
+    // Con el SVG ya medido se puede saber cuánto hay que acercar para llenar la
+    // pantalla. Antes de que exista, `resetView` no tiene nada que medir.
+    if (ref) this.resetView();
   }
   svgRef: ElementRef<SVGSVGElement> | undefined;
 
@@ -263,10 +265,37 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     if (box) {
       left = Math.min(Math.max(margin, left), Math.max(margin, box.width - card.width - margin));
       top = Math.min(top, Math.max(margin, box.height - card.height - margin));
+      top = this.pushBelowObstacle(left, top, card, box);
     }
 
     el.style.left = `${left}px`;
     el.style.top = `${top}px`;
+  }
+
+  /**
+   * Baja la tarjeta si fuera a taparle la cara al bloque de fase.
+   *
+   * En una pantalla ancha nunca se tocan; en un móvil de 390 px el bloque llega
+   * hasta la mitad de la altura, y una tarjeta anclada a un territorio de
+   * arriba aterrizaba encima de la ronda, la fase y el turno a la vez. Sólo
+   * baja si de verdad se solapan: empujarla siempre la alejaría del territorio
+   * sin motivo.
+   */
+  private pushBelowObstacle(left: number, top: number, card: DOMRect, box: DOMRect): number {
+    const estorbo = this.avoid?.getBoundingClientRect();
+    if (!estorbo) return top;
+
+    const izquierda = box.left + left;
+    const arriba = box.top + top;
+    const seTocan =
+      izquierda < estorbo.right &&
+      estorbo.left < izquierda + card.width &&
+      arriba < estorbo.bottom &&
+      estorbo.top < arriba + card.height;
+    if (!seTocan) return top;
+
+    const debajo = estorbo.bottom - box.top + this.ANCHOR_MARGIN;
+    return Math.min(debajo, Math.max(this.ANCHOR_MARGIN, box.height - card.height));
   }
 
   private screenPointOf(id: TerritoryId | null): { x: number; y: number } | null {
@@ -304,6 +333,9 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     svg.addEventListener('pointerdown', this.onPointerDown);
     svg.addEventListener('pointermove', this.onPointerMove);
     svg.addEventListener('pointerup', this.onPointerUp);
+    // Un dedo que el sistema se lleva —una llamada, un gesto del sistema— no
+    // manda . Sin esto, el mapa se queda creyendo que sigue apoyado.
+    svg.addEventListener('pointercancel', this.onPointerUp);
     svg.addEventListener('pointerleave', this.onPointerLeave);
     // `passive: false` porque estos tres llaman a `preventDefault()`.
     svg.addEventListener('wheel', this.onWheel, { passive: false });
@@ -319,6 +351,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     svg.removeEventListener('pointerdown', this.onPointerDown);
     svg.removeEventListener('pointermove', this.onPointerMove);
     svg.removeEventListener('pointerup', this.onPointerUp);
+    svg.removeEventListener('pointercancel', this.onPointerUp);
     svg.removeEventListener('pointerleave', this.onPointerLeave);
     svg.removeEventListener('wheel', this.onWheel);
     svg.removeEventListener('touchstart', this.onTouchStart);
@@ -371,11 +404,50 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     return `translate(${this.panX} ${this.panY}) scale(${this.zoom})`;
   }
 
+  /**
+   * Cuánto se deja acercar la vista de entrada para llenar la pantalla.
+   *
+   * Con `xMidYMid meet` el mapa se encoge hasta caber entero, y en un móvil
+   * vertical eso deja el tablero en una franja pequeña en medio de una pantalla
+   * negra: las fichas salen diminutas y no se lee ni un número. Entrar llenando
+   * es lo que hace cualquier mapa en un móvil. El tope existe para que en un
+   * teléfono muy alargado no se entre mirando tres países.
+   */
+  readonly MAX_ZOOM_INICIAL = 2.2;
+
   resetView(): void {
-    this.zoom = 1;
+    this.zoom = this.zoomParaLlenar();
     this.panX = 0;
     this.panY = 0;
+    this.centrarVista();
     this.paintView();
+  }
+
+  /**
+   * Lo que hay que acercar para que el mapa cubra la pantalla en vez de caber
+   * dentro. Uno si ya la llena, que es el caso de una pantalla ancha.
+   */
+  private zoomParaLlenar(): number {
+    const caja = this.svgRef?.nativeElement.getBoundingClientRect();
+    const viewBox = this.rendered?.viewBox?.split(/[\s,]+/).map(Number);
+    if (!caja || !viewBox || viewBox.length !== 4 || !caja.width || !caja.height) return 1;
+    const [, , ancho, alto] = viewBox as [number, number, number, number];
+    if (!ancho || !alto) return 1;
+    const cabe = Math.min(caja.width / ancho, caja.height / alto);
+    const cubre = Math.max(caja.width / ancho, caja.height / alto);
+    if (!cabe) return 1;
+    return Math.min(this.MAX_ZOOM_INICIAL, Math.max(1, cubre / cabe));
+  }
+
+  /** Deja el centro del mapa en el centro de la pantalla tras acercar. */
+  private centrarVista(): void {
+    const viewBox = this.rendered?.viewBox?.split(/[\s,]+/).map(Number);
+    if (!viewBox || viewBox.length !== 4) return;
+    const [x, y, ancho, alto] = viewBox as [number, number, number, number];
+    const centroX = x + ancho / 2;
+    const centroY = y + alto / 2;
+    this.panX = centroX - centroX * this.zoom;
+    this.panY = centroY - centroY * this.zoom;
   }
 
   // ===== ESTADO DE CADA TERRITORIO =====
@@ -660,12 +732,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
    */
   readonly TAP_MAX_MOVE = 8;
 
-  /** Cuánto se espera antes de empezar a repetir. */
-  readonly HOLD_FIRST_MS = 400;
-  /** Lo más rápido que llega a repetir. */
-  readonly HOLD_MIN_MS = 60;
-  /** Cuánto se recorta el intervalo en cada vuelta. */
-  readonly HOLD_STEP_MS = 15;
   /** Cuánto hay que mantener el dedo para que salga la ficha informativa. */
   readonly HOLD_INFO_MS = 500;
 
@@ -677,28 +743,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
    * Lo usa el respaldo del clic para no duplicar ni colar un arrastre.
    */
   private lastGesture: 'emitted' | 'dragged' | 'none' = 'none';
-  private repeatTimer: ReturnType<typeof setTimeout> | null = null;
   private infoTimer: ReturnType<typeof setTimeout> | null = null;
-
-  /** Coloca en cadena, cada vez más rápido, mientras no se suelte. */
-  private startRepeat(id: TerritoryId): void {
-    this.stopRepeat();
-    let delay = 150;
-    const tick = () => {
-      // Si el dedo se ha ido de paseo esto era un arrastre, no una cadena.
-      if (!this.pendingTap || this.pendingTap.moved) return this.stopRepeat();
-      this.territoryClick.emit(id);
-      this.cdr.markForCheck();
-      delay = Math.max(this.HOLD_MIN_MS, delay - this.HOLD_STEP_MS);
-      this.repeatTimer = setTimeout(tick, delay);
-    };
-    this.repeatTimer = setTimeout(tick, this.HOLD_FIRST_MS);
-  }
-
-  private stopRepeat(): void {
-    if (this.repeatTimer) clearTimeout(this.repeatTimer);
-    this.repeatTimer = null;
-  }
 
   /**
    * Ficha informativa al mantener pulsado, cuando no toca colocar.
@@ -721,7 +766,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopRepeat();
     this.stopInfo();
     this.detachGestures();
   }
@@ -729,12 +773,10 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   onTerritoryPointerDown(id: TerritoryId, event: PointerEvent): void {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     this.pendingTap = { id, x: event.clientX, y: event.clientY, moved: false };
-    if (this.repeatOnHold) this.startRepeat(id);
-    else this.startInfo(id);
+    this.startInfo(id);
   }
 
   onTerritoryPointerUp(id: TerritoryId, event: PointerEvent): void {
-    this.stopRepeat();
     this.stopInfo();
     // El `stopPropagation()` de abajo impide que el mapa se entere de que se ha
     // levantado el dedo, así que hay que desarmarlo aquí. Si no, el mapa cree
@@ -761,7 +803,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     const dy = event.clientY - tap.y;
     if (Math.hypot(dx, dy) > this.TAP_MAX_MOVE) {
       tap.moved = true;
-      this.stopRepeat();
       this.stopInfo();
     }
   }
@@ -802,9 +843,42 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   onWheel = (event: WheelEvent): void => {
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
-    this.applyZoom(factor, event.offsetX, event.offsetY);
+    this.zoomAround(factor, event.clientX, event.clientY);
   };
 
+  /**
+   * Pasa un punto de la pantalla al sistema de coordenadas del mapa.
+   *
+   * Hace falta porque `panX`/`panY` viven en unidades del `viewBox` y lo que
+   * llega de un dedo o de la rueda son píxeles de pantalla. Con
+   * `preserveAspectRatio` el mapa se escala y se centra, así que entre los dos
+   * sistemas hay un factor Y unas bandas: mezclarlos hacía que al acercar el
+   * mapa se fuera hacia arriba o hacia abajo en vez de quedarse donde estabas
+   * mirando. Medido: 81 píxeles de desvío vertical en un móvil.
+   */
+  private toMapSpace(clientX: number, clientY: number): { x: number; y: number } | null {
+    const ctm = this.svgRef?.nativeElement.getScreenCTM?.();
+    if (!ctm) return null;
+    const inversa = ctm.inverse();
+    return {
+      x: inversa.a * clientX + inversa.c * clientY + inversa.e,
+      y: inversa.b * clientX + inversa.d * clientY + inversa.f,
+    };
+  }
+
+  /** Acerca o aleja dejando quieto el punto de pantalla que se le indique. */
+  private zoomAround(factor: number, clientX: number, clientY: number): void {
+    const punto = this.toMapSpace(clientX, clientY);
+    if (!punto) {
+      // Sin maquetación no hay forma de saber dónde está ese punto; se acerca
+      // sobre el centro del mapa, que es lo menos sorprendente.
+      this.applyZoom(factor, this.panX, this.panY);
+      return;
+    }
+    this.applyZoom(factor, punto.x, punto.y);
+  }
+
+  /** El origen va en coordenadas del mapa, no de la pantalla. */
   private applyZoom(factor: number, originX: number, originY: number): void {
     const next = Math.min(4, Math.max(0.6, this.zoom * factor));
     const applied = next / this.zoom;
@@ -814,18 +888,52 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.paintView();
   }
 
+  /** Los botones acercan sobre el centro de lo que se está viendo. */
   zoomIn(): void {
-    const el = this.svgRef?.nativeElement;
-    this.applyZoom(1.2, (el?.clientWidth ?? 600) / 2, (el?.clientHeight ?? 400) / 2);
+    this.zoomOnCentre(1.2);
   }
 
   zoomOut(): void {
-    const el = this.svgRef?.nativeElement;
-    this.applyZoom(1 / 1.2, (el?.clientWidth ?? 600) / 2, (el?.clientHeight ?? 400) / 2);
+    this.zoomOnCentre(1 / 1.2);
   }
+
+  private zoomOnCentre(factor: number): void {
+    const caja = this.svgRef?.nativeElement.getBoundingClientRect();
+    if (!caja) return this.applyZoom(factor, this.panX, this.panY);
+    this.zoomAround(factor, caja.left + caja.width / 2, caja.top + caja.height / 2);
+  }
+
+  /**
+   * Dedos apoyados ahora mismo.
+   *
+   * Un ratón manda un puntero y nunca dos; un móvil manda uno por dedo. Sin
+   * llevar la cuenta, el segundo dedo de un pellizco reiniciaba el punto de
+   * arrastre y el mapa daba un salto lateral en mitad del zoom.
+   */
+  private activePointers = new Set<number>();
 
   onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
+    this.activePointers.add(event.pointerId);
+
+    // Con dos dedos manda el pellizco: desplazar y acercar a la vez no es un
+    // gesto, es una pelea.
+    if (this.activePointers.size > 1) {
+      this.panArmed = false;
+      this.dragging = false;
+      this.pendingTap = null;
+      this.stopInfo();
+      return;
+    }
+
+    // El dedo puede salirse del mapa a mitad de arrastre —en un móvil el mapa
+    // llega al borde de la pantalla— y sin capturarlo se perderían sus eventos.
+    try {
+      this.svgRef?.nativeElement.setPointerCapture(event.pointerId);
+    } catch {
+      // Un navegador que no lo permita no es motivo para no arrastrar.
+    }
+
     // Armado, todavía no arrastrando: hasta que el dedo no se aleja de verdad
     // esto puede acabar siendo un toque.
     this.panArmed = true;
@@ -837,6 +945,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   };
 
   onPointerMove = (event: PointerEvent): void => {
+    if (this.activePointers.size > 1) return;
     // Antes del `if`: el toque hay que seguirlo aunque no se esté arrastrando
     // el mapa, porque el dedo se mueve igual.
     this.trackTapMovement(event);
@@ -855,8 +964,9 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.paintView();
   };
 
-  onPointerUp = (): void => {
-    this.stopRepeat();
+  onPointerUp = (event?: PointerEvent): void => {
+    if (event) this.activePointers.delete(event.pointerId);
+    else this.activePointers.clear();
     this.stopInfo();
     this.panArmed = false;
     this.dragging = false;
@@ -864,13 +974,19 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
   };
 
   /**
-   * El dedo o el ratón se salen del mapa.
+   * El puntero se sale del mapa.
    *
-   * Aquí sí hace falta avisar a Angular: apagar el cartel flotante es un cambio
-   * que se ve.
+   * Sólo apaga el cartel flotante: NO corta el gesto. Al capturar el puntero
+   * para que un arrastre sobreviva al borde de la pantalla, el navegador lanza
+   * un `pointerleave` sobre el SVG en cuanto reasigna el destino del evento; si
+   * aquí se diera el gesto por terminado, arrastrar dejaría de mover el mapa y
+   * un toque corto no llegaría a colocar nada. El gesto lo cierra `pointerup`,
+   * que con la captura llega siempre.
+   *
+   * Aquí sí hace falta avisar a Angular: apagar el cartel es un cambio que se
+   * ve.
    */
   onPointerLeave = (): void => {
-    this.onPointerUp();
     if (this.hovered === null) return;
     this.onTerritoryLeave();
     this.cdr.markForCheck();
@@ -888,10 +1004,15 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     const distance = touchDistance(event);
     const factor = distance / this.pinchDistance;
     this.pinchDistance = distance;
-    const rect = (event.target as Element)?.getBoundingClientRect?.();
-    const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2 - (rect?.left ?? 0);
-    const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2 - (rect?.top ?? 0);
-    this.applyZoom(factor, centerX, centerY);
+    // El punto entre los dos dedos, en coordenadas de pantalla: `zoomAround`
+    // ya se encarga de pasarlo al sistema del mapa. Antes se restaba a mano la
+    // caja de `event.target` —el país donde empezó el pellizco— y el mapa se
+    // iba de lado al acercar.
+    this.zoomAround(
+      factor,
+      (event.touches[0].clientX + event.touches[1].clientX) / 2,
+      (event.touches[0].clientY + event.touches[1].clientY) / 2,
+    );
   };
 
   onTouchEnd = (): void => {

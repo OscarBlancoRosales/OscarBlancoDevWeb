@@ -641,10 +641,34 @@ describe('RiskRoom (la mesa)', () => {
       expect(new Set(fichas.map((r) => r.portrait)).size).toBe(fichas.length);
     });
 
-    it('la repetición al mantener pulsado sólo se ofrece en refuerzos y en tu turno', () => {
-      expect(component.repeatOnHold).toBe(
-        component.isMyTurn && component.state!.phase === 'reinforce',
-      );
+    /**
+     * Colocar tropas: un toque es una tropa, y para poner muchas está el paso
+     * `− n +` pegado al territorio.
+     *
+     * Antes se mantenía pulsado para colocar en cadena, y medido en un móvil un
+     * toque normal —450 ms— colocaba dos: ponías de más sin saber por qué.
+     */
+    it('el paso cuenta lo puesto en ese territorio, y el − lo quita', async () => {
+      if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
+
+      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      expect(component.placedAt(mio)).toBe(0);
+
+      component.onTerritoryClick(mio);
+      expect(component.placedAt(mio), 'un toque, una tropa').toBe(1);
+
+      component.addOne(mio);
+      expect(component.placedAt(mio)).toBe(2);
+
+      await component.removeOne(mio);
+      expect(component.placedAt(mio)).toBe(1);
+    });
+
+    it('y el paso se ancla al territorio que estás tocando', () => {
+      if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
+      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      component.onTerritoryClick(mio);
+      expect(component.anchorTerritory).toBe(mio);
     });
 
     /**

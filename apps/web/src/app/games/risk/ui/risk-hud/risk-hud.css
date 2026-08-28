@@ -127,6 +127,16 @@ button.hud-phase {
   opacity: 1;
 }
 
+/*
+  Con el dedo no hay `hover`: atenuar «hasta que pases por encima» deja salir,
+  historial y ajustes atenuados para siempre. Medido en un móvil: 0,7 fijo.
+*/
+@media (hover: none) {
+  .hud-line.tools {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 640px) {
   /*
     Medido a 390 px: sin este tope, el bloque de fase llegaba hasta la mitad de

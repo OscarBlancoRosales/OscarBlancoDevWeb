@@ -216,6 +216,17 @@
   opacity: 1;
 }
 
+/*
+  Con el dedo no hay `hover`, así que atenuar algo «hasta que pases por encima»
+  es atenuarlo para siempre. Medido en un móvil: los botones de vista se
+  quedaban al 45 % de opacidad y no había forma de subirlos.
+*/
+@media (hover: none) {
+  .board-controls {
+    opacity: 1;
+  }
+}
+
 .board-controls button {
   width: 30px;
   height: 30px;
@@ -374,5 +385,17 @@
   .board-controls button {
     width: 44px;
     height: 44px;
+  }
+}
+
+/*
+  Con el dedo, acercar y alejar se hace con dos dedos.
+  Dos botones más ocupando el borde derecho son dos cosas que estorban para
+  hacer lo que ya se hace pellizcando. Se queda el de centrar, que no tiene
+  gesto equivalente y saca de un apuro cuando te has perdido en el mapa.
+*/
+@media (hover: none) {
+  .board-controls button:not(:last-child) {
+    display: none;
   }
 }
