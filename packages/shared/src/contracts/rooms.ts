@@ -124,6 +124,17 @@ export const ChatEntry = Type.Object({
 
 /** Del cliente al servidor: proponer una jugada, o decir algo. */
 export const ClientMessage = Type.Union([
+  /**
+   * Lo primero que se dice al conectar: el pase del asiento.
+   *
+   * Va aquí y no en la URL porque una URL acaba escrita en el log de nginx y en
+   * el de la aplicación, en claro y en disco. Hasta que este mensaje llega, la
+   * conexión no recibe nada de la sala.
+   */
+  Type.Object(
+    { tipo: Type.Literal('hola'), pase: Type.String({ minLength: 8, maxLength: 200 }) },
+    SIN_EXTRAS,
+  ),
   Type.Object({ tipo: Type.Literal('accion'), accion: Type.Unknown() }, SIN_EXTRAS),
   Type.Object(
     {

@@ -86,7 +86,10 @@ export class RoomSocket {
     if (!this.destino) return;
     const { roomId, seatToken } = this.destino;
 
-    const url = `${apiSocketUrl()}/ws?sala=${encodeURIComponent(roomId)}&pase=${encodeURIComponent(seatToken)}`;
+    // En la URL solo la sala. El pase va en el primer mensaje: una URL acaba
+    // escrita en el log del proxy y en el de la aplicación, y ahí no puede
+    // haber credenciales.
+    const url = `${apiSocketUrl()}/ws?sala=${encodeURIComponent(roomId)}`;
     this.estado.next('conectando');
 
     // Fuera de la zona de Angular, y no solo la construcción: zone.js decide
@@ -94,16 +97,19 @@ export class RoomSocket {
     // haría que cada mensaje disparase detección de cambios, y en una partida
     // eso es constante. Lo que hay que repintar vuelve a la zona al recibirlo.
     this.zone.runOutsideAngular(() => {
-      this.montar(url);
+      this.montar(url, seatToken);
     });
   }
 
-  private montar(url: string): void {
+  private montar(url: string, seatToken: string): void {
     const socket = new WebSocket(url);
     this.socket = socket;
 
     socket.onopen = (): void => {
       this.intentos = 0;
+      // Lo primero, decir quién eres. Va aquí y no en la reconexión de más
+      // arriba porque hay que decirlo también al volver de una caída.
+      socket.send(JSON.stringify({ tipo: 'hola', pase: seatToken }));
       this.zone.run(() => {
         this.estado.next('abierta');
       });

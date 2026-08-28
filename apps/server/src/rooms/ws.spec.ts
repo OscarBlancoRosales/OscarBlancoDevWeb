@@ -33,18 +33,24 @@ class Cliente {
     });
   }
 
-  static conectar(url: string): Promise<Cliente> {
+  /** Se conecta y se identifica, que es lo que hace el navegador. */
+  static conectar(url: string, pase: string): Promise<Cliente> {
     return new Promise((resolve, reject) => {
       const socket = new WebSocket(url);
       const cliente = new Cliente(socket);
-      socket.once('open', () => { resolve(cliente); });
+      socket.once('open', () => {
+        socket.send(JSON.stringify({ tipo: 'hola', pase }));
+        resolve(cliente);
+      });
       socket.once('error', reject);
     });
   }
 
-  static rechazo(url: string): Promise<number> {
+  /** Se conecta, se identifica mal, y devuelve con qué código lo echan. */
+  static rechazo(url: string, saludo: unknown): Promise<number> {
     return new Promise((resolve) => {
       const socket = new WebSocket(url);
+      socket.once('open', () => { socket.send(JSON.stringify(saludo)); });
       socket.on('close', (code: number) => { resolve(code); });
       socket.on('error', () => undefined);
     });
@@ -140,25 +146,44 @@ describe('una partida de scrum poker por WebSocket', () => {
     db.close();
   });
 
-  const urlDe = (grant: SeatGrant): string =>
-    `${base}?sala=${grant.room.id}&pase=${encodeURIComponent(grant.seatToken)}`;
+  const urlDe = (grant: SeatGrant): string => `${base}?sala=${grant.room.id}`;
+
+  const conectar = (grant: SeatGrant): Promise<Cliente> =>
+    Cliente.conectar(urlDe(grant), grant.seatToken);
+
+  it('el pase no viaja en la URL, que es lo que acaba en los logs', () => {
+    expect(urlDe(anfitrion)).not.toContain(anfitrion.seatToken);
+  });
 
   it('sin pase válido no se entra en la sala', async () => {
-    const codigo = await Cliente.rechazo(`${base}?sala=${anfitrion.room.id}&pase=me-lo-invento`);
+    const codigo = await Cliente.rechazo(urlDe(anfitrion), {
+      tipo: 'hola',
+      pase: 'me-lo-invento',
+    });
 
     expect(codigo).toBe(4401);
   });
 
   it('el pase de una sala no vale para otra', async () => {
-    const codigo = await Cliente.rechazo(
-      `${base}?sala=otra-sala-cualquiera&pase=${encodeURIComponent(anfitrion.seatToken)}`,
-    );
+    const codigo = await Cliente.rechazo(`${base}?sala=otra-sala-cualquiera`, {
+      tipo: 'hola',
+      pase: anfitrion.seatToken,
+    });
 
     expect([4401, 4404]).toContain(codigo);
   });
 
+  it('quien juega sin haberse identificado se va a la calle', async () => {
+    const codigo = await Cliente.rechazo(urlDe(anfitrion), {
+      tipo: 'accion',
+      accion: { tipo: 'revelar' },
+    });
+
+    expect(codigo).toBe(4401);
+  });
+
   it('al conectar llega el estado inicial', async () => {
-    const cliente = await Cliente.conectar(urlDe(anfitrion));
+    const cliente = await conectar(anfitrion);
 
     const { vista } = await cliente.estado(0);
 
@@ -167,8 +192,8 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('el voto de otro NO sale del servidor mientras no se revele', async () => {
-    const oscar = await Cliente.conectar(urlDe(anfitrion));
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const oscar = await conectar(anfitrion);
+    const ana = await conectar(invitada);
 
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 13 } } });
     const { vista } = await oscar.estado(1);
@@ -182,7 +207,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('cada uno sí ve su propio voto', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
 
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 13 } } });
     const { vista } = await ana.estado(1);
@@ -192,8 +217,8 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('al revelar, todos ven todo y aparece el resumen', async () => {
-    const oscar = await Cliente.conectar(urlDe(anfitrion));
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const oscar = await conectar(anfitrion);
+    const ana = await conectar(invitada);
 
     oscar.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 5 } } });
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 13 } } });
@@ -211,7 +236,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('una jugada ilegal se rechaza y no cambia nada', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
 
     ana.enviar({ tipo: 'accion', accion: { tipo: 'revelar' } });
     const rechazo = await ana.esperarRechazo();
@@ -221,7 +246,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('un número cualquiera vale: aquí se vota sumando y a mano', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
 
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 36 } } });
     const { vista } = await ana.estado(1);
@@ -231,7 +256,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('pero un número absurdo se rechaza antes de llegar a las reglas', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
 
     ana.enviar({
       tipo: 'accion',
@@ -244,7 +269,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('un mensaje que no es del protocolo se rechaza sin tirar la conexión', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
 
     ana.enviar({ tipo: 'haz-lo-que-quieras' });
     await ana.esperarRechazo();
@@ -258,12 +283,12 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('la partida sobrevive a reconectarse', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 8 } } });
     await ana.estado(1);
     ana.cerrar();
 
-    const devuelta = await Cliente.conectar(urlDe(invitada));
+    const devuelta = await conectar(invitada);
     const { vista } = await devuelta.estado(1);
 
     expect(vista.votos).toEqual({ [invitada.seatId]: { tipo: 'numero', valor: 8 } });
@@ -271,7 +296,7 @@ describe('una partida de scrum poker por WebSocket', () => {
   });
 
   it('el log guarda cada jugada, que es lo que permite reconstruir', async () => {
-    const ana = await Cliente.conectar(urlDe(invitada));
+    const ana = await conectar(invitada);
     ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'cafe' } } });
     await ana.estado(1);
 
@@ -293,8 +318,8 @@ describe('una partida de scrum poker por WebSocket', () => {
 
   describe('hablar en la sala', () => {
     it('lo dicho llega a todos con el nombre que pone el servidor', async () => {
-      const oscar = await Cliente.conectar(urlDe(anfitrion));
-      const ana = await Cliente.conectar(urlDe(invitada));
+      const oscar = await conectar(anfitrion);
+      const ana = await conectar(invitada);
 
       ana.enviar({ tipo: 'chat', texto: 'yo lo veo un 13' });
       const entradas = await oscar.chat(1);
@@ -312,7 +337,7 @@ describe('una partida de scrum poker por WebSocket', () => {
     });
 
     it('firmar con el asiento de otra persona no cuela', async () => {
-      const ana = await Cliente.conectar(urlDe(invitada));
+      const ana = await conectar(invitada);
 
       ana.enviar({ tipo: 'chat', texto: 'lo dijo Óscar', comoAsiento: anfitrion.seatId });
       const rechazo = await ana.esperarRechazo();
@@ -322,7 +347,7 @@ describe('una partida de scrum poker por WebSocket', () => {
     });
 
     it('un jugador no publica avisos con la voz de la sala', async () => {
-      const ana = await Cliente.conectar(urlDe(invitada));
+      const ana = await conectar(invitada);
 
       ana.enviar({ tipo: 'chat', texto: 'La sala expulsa a Óscar', comoLaSala: true });
       const rechazo = await ana.esperarRechazo();
@@ -332,7 +357,7 @@ describe('una partida de scrum poker por WebSocket', () => {
     });
 
     it('el anfitrión sí, y el mensaje sale firmado por la sala', async () => {
-      const oscar = await Cliente.conectar(urlDe(anfitrion));
+      const oscar = await conectar(anfitrion);
 
       oscar.enviar({ tipo: 'chat', texto: '¡Que empiece!', comoLaSala: true });
       const entradas = await oscar.chat(1);
@@ -342,11 +367,11 @@ describe('una partida de scrum poker por WebSocket', () => {
     });
 
     it('quien llega tarde recibe lo que ya se había hablado', async () => {
-      const ana = await Cliente.conectar(urlDe(invitada));
+      const ana = await conectar(invitada);
       ana.enviar({ tipo: 'chat', texto: 'empezamos' });
       await ana.chat(1);
 
-      const oscar = await Cliente.conectar(urlDe(anfitrion));
+      const oscar = await conectar(anfitrion);
       const entradas = await oscar.chat(1);
 
       expect(entradas.map((entrada) => entrada.text)).toEqual(['empezamos']);
