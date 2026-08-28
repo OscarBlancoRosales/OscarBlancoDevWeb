@@ -95,6 +95,9 @@ export default tseslint.config(
   },
   {
     files: LEGACY_TS,
+    // La capa de API de la web es código nuevo, escrito ya bajo las reglas: no
+    // hereda la indulgencia del resto de apps/web.
+    ignores: ['apps/web/src/app/api/**/*.ts'],
     rules: { ...asWarnings(TS_STRICT), ...asWarnings([{ rules: TS_EXTRA }]) },
   },
   {

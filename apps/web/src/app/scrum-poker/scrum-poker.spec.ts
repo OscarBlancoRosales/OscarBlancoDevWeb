@@ -3,29 +3,26 @@ import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angul
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BehaviorSubject } from 'rxjs';
 import { ScrumPoker } from './scrum-poker';
-import { FirebaseRoomService } from '../services/firebase-room.service';
+import { ScrumRoomService } from '../api/scrum-room.service';
 
 /**
  * Una sala de mentira.
  *
- * Sin esto, `ngOnInit` llama a `joinRoom` y a `cleanOldRooms` del servicio de
- * verdad: los tests escribirían y borrarían en la base de datos real cada vez
- * que alguien lanza la suite. Aquí solo anotamos las llamadas.
+ * Sin esto, `ngOnInit` abriría un WebSocket contra el servidor de verdad cada
+ * vez que alguien lanza la suite. Aquí solo anotamos las llamadas.
  */
 function salaFalsa() {
   const datos = new BehaviorSubject<unknown>(null);
   return {
     roomData$: datos.asObservable(),
     emitir: (data: unknown) => datos.next(data),
-    joinRoom: vi.fn(() => 'jugador-1'),
-    listenToRoom: vi.fn(),
-    cleanOldRooms: vi.fn(),
-    disconnect: vi.fn(),
-    leaveRoom: vi.fn(),
-    updatePlayerVote: vi.fn(),
-    clearPlayerVote: vi.fn(),
-    revealVotes: vi.fn(),
-    resetRound: vi.fn(),
+    unirse: vi.fn(() => Promise.resolve({ seatId: 'asiento-1', seatToken: 'pase-nuevo' })),
+    reconectar: vi.fn(),
+    desconectar: vi.fn(),
+    votar: vi.fn(),
+    retirarVoto: vi.fn(),
+    revelar: vi.fn(),
+    nuevaRonda: vi.fn(),
   };
 }
 
@@ -39,7 +36,7 @@ async function montar(params: Record<string, string> = {}) {
     providers: [
       provideRouter([]),
       { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(params) } } },
-      { provide: FirebaseRoomService, useValue: sala },
+      { provide: ScrumRoomService, useValue: sala },
     ],
   }).compileComponents();
 
@@ -58,7 +55,8 @@ async function montar(params: Record<string, string> = {}) {
 function conSesionDeJugador(): void {
   localStorage.setItem('current_room_id', 'ROOM-ABC123');
   localStorage.setItem('player_name', 'Óscar');
-  localStorage.setItem('player_id', 'jugador-1');
+  localStorage.setItem('seat_id', 'asiento-1');
+  localStorage.setItem('seat_token', 'pase-secreto');
 }
 
 describe('ScrumPoker', () => {
@@ -93,28 +91,61 @@ describe('ScrumPoker', () => {
       conSesionDeJugador();
       await montar({ room: 'ROOM-INVITADO' });
       expect(localStorage.getItem('player_name')).toBeNull();
-      expect(localStorage.getItem('player_id')).toBeNull();
+      expect(localStorage.getItem('seat_id')).toBeNull();
       expect(localStorage.getItem('is_room_creator')).toBeNull();
       expect(localStorage.getItem('current_room_id')).toBe('ROOM-INVITADO');
     });
 
-    it('con nombre elegido se queda y escucha la sala', async () => {
+    it('con el pase guardado vuelve a su sitio, no pide asiento nuevo', async () => {
       conSesionDeJugador();
       ({ component, navigate, sala } = await montar());
+      await Promise.resolve();
+
       expect(navigate).not.toHaveBeenCalled();
       expect(component.roomId).toBe('ROOM-ABC123');
       expect(component.currentPlayerName).toBe('Óscar');
-      // Ya tenía identificador: escucha, no se vuelve a apuntar.
-      expect(sala.listenToRoom).toHaveBeenCalledWith('ROOM-ABC123');
-      expect(sala.joinRoom).not.toHaveBeenCalled();
+      // Recargar la página no debe costarte la silla.
+      expect(sala.reconectar).toHaveBeenCalledWith('ROOM-ABC123', 'asiento-1', 'pase-secreto');
+      expect(sala.unirse).not.toHaveBeenCalled();
     });
 
-    it('sin identificador de jugador se apunta a la sala', async () => {
+    it('sin pase pide asiento y lo guarda', async () => {
       localStorage.setItem('current_room_id', 'ROOM-ABC123');
       localStorage.setItem('player_name', 'Óscar');
       ({ sala } = await montar());
-      expect(sala.joinRoom).toHaveBeenCalledWith('ROOM-ABC123', 'Óscar');
-      expect(localStorage.getItem('player_id')).toBe('jugador-1');
+      await Promise.resolve();
+
+      expect(sala.unirse).toHaveBeenCalledWith('ROOM-ABC123', 'Óscar');
+      expect(localStorage.getItem('seat_id')).toBe('asiento-1');
+      // Sin guardar el pase, la siguiente recarga pediría otro asiento y la
+      // mesa se llenaría de fantasmas con el mismo nombre.
+      expect(localStorage.getItem('seat_token')).toBe('pase-nuevo');
+    });
+
+    it('si la sala ya no existe, lo dice en vez de quedarse en blanco', async () => {
+      localStorage.setItem('current_room_id', 'ROOM-BORRADA');
+      localStorage.setItem('player_name', 'Óscar');
+      const sala = salaFalsa();
+      sala.unirse = vi.fn(() => Promise.reject(new Error('no existe')));
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [ScrumPoker],
+        providers: [
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+          },
+          { provide: ScrumRoomService, useValue: sala },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ScrumPoker);
+      fixture.componentInstance.ngOnInit();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(fixture.componentInstance.errorDeSala).not.toBe('');
     });
   });
 

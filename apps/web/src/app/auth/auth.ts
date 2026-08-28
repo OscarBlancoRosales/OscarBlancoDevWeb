@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FirebaseAuthService } from '../firebase-auth.service';
+import { AuthApiService } from '../api/auth-api.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 /** A dónde se va tras iniciar sesión si nadie pide otra cosa. */
@@ -54,7 +54,7 @@ export class Auth implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private route: ActivatedRoute,
-    private firebaseAuth: FirebaseAuthService
+    private auth: AuthApiService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -92,28 +92,32 @@ export class Auth implements OnInit {
     const { email, password } = this.loginForm.value;
 
     try {
-      const result = await this.firebaseAuth.signIn(email, password);
-      
-      if (result.success) {
-        // Guardar token de autenticación
-        localStorage.setItem('auth_token', 'firebase_authenticated');
-        localStorage.setItem('user_name', email);
-        
-        // Volver a donde el usuario quería ir (por defecto, crear sala de
-        // Scrum Poker y poner nombre).
-        this.router.navigateByUrl(this.nextUrl);
-      } else {
-        this.errorMessage = result.error || 'Error al iniciar sesión';
-      }
-    } catch (error) {
-      this.errorMessage = 'Error al conectar con el servidor';
+      // El token de acceso NO se guarda aquí: vive en memoria dentro del
+      // cliente de la API. Lo que persiste es la cookie de refresco, que ningún
+      // script puede leer. Guardarlo en localStorage sería regalárselo a
+      // cualquier script inyectado en la página.
+      const usuario = await this.auth.entrar(String(email), String(password));
+      localStorage.setItem('user_name', usuario.displayName);
+
+      // Volver a donde el usuario quería ir (por defecto, crear sala de
+      // Scrum Poker y poner nombre).
+      await this.router.navigateByUrl(this.nextUrl);
+    } catch (fallo) {
+      this.errorMessage = AuthApiService.mensajeDe(fallo);
     } finally {
       this.isLoading = false;
     }
   }
 
+  /**
+   * Si hay sesión, según el cliente de la API.
+   *
+   * Antes se miraba una bandera en localStorage, que es exactamente lo que
+   * cualquiera puede escribir desde la consola del navegador. Ahora lo dice
+   * quien de verdad lo sabe, y de todos modos el servidor comprueba el token en
+   * cada petición: esto solo sirve para pintar la pantalla.
+   */
   isAuthenticated(): boolean {
-    const token = localStorage.getItem('auth_token');
-    return token !== null && token.length > 0;
+    return this.auth.usuario !== null;
   }
 }

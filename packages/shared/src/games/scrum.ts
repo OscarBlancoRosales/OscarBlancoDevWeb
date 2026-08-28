@@ -5,14 +5,22 @@ import type { GameModule, RuleError, Seat, SeatId } from './module';
 /**
  * Planning poker.
  *
- * La baraja son los números de Fibonacci más las dos cartas que todo el mundo
- * usa: el café ("necesito un descanso") y el porro ("esto es demasiado grande
- * para estimarlo hoy").
+ * El voto numérico es un número cualquiera, no una carta de una baraja fija: la
+ * mesa vota sumando valores y admite escribir uno a mano, así que restringirlo a
+ * Fibonacci rechazaría la forma en la que de verdad se vota aquí. Lo que sí se
+ * acota es el rango, porque una estimación de mil millones no es una estimación,
+ * es un accidente que reventaría la media.
+ *
+ * Y las dos cartas que no son números: el café ("necesito un descanso") y el
+ * porro ("esto es demasiado grande para estimarlo hoy").
  */
-export const CARTAS_NUMERICAS = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89] as const;
+export const VOTO_MAXIMO = 10_000;
 
 export const ScrumVote = Type.Union([
-  Type.Object({ tipo: Type.Literal('numero'), valor: Type.Integer() }, { additionalProperties: false }),
+  Type.Object(
+    { tipo: Type.Literal('numero'), valor: Type.Number({ minimum: 0, maximum: VOTO_MAXIMO }) },
+    { additionalProperties: false },
+  ),
   Type.Object({ tipo: Type.Literal('cafe') }, { additionalProperties: false }),
   Type.Object({ tipo: Type.Literal('porro') }, { additionalProperties: false }),
 ]);
@@ -67,11 +75,8 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
   validate(state, action, _by, seats) {
     switch (action.tipo) {
       case 'votar':
-        if (state.revelado) return NO_VOTA;
-        if (action.voto.tipo === 'numero' && !esCartaDeLaBaraja(action.voto.valor)) {
-          return { code: 'carta-inexistente', message: 'Esa carta no está en la baraja.' };
-        }
-        return null;
+        // El rango del número ya lo comprobó el esquema antes de llegar aquí.
+        return state.revelado ? NO_VOTA : null;
 
       case 'retirar-voto':
         return state.revelado ? NO_VOTA : null;
@@ -162,10 +167,6 @@ function sinVotoDe(
   seat: SeatId,
 ): Record<SeatId, ScrumVote> {
   return Object.fromEntries(Object.entries(votos).filter(([id]) => id !== seat));
-}
-
-function esCartaDeLaBaraja(valor: number): boolean {
-  return (CARTAS_NUMERICAS as readonly number[]).includes(valor);
 }
 
 function sinAsientosHumanos(seats: readonly Seat[]): RuleError | null {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resumir, scrumModule } from './scrum';
+import { Value } from '@sinclair/typebox/value';
+import { resumir, ScrumVote, scrumModule } from './scrum';
 import type { ScrumState, ScrumView } from './scrum';
 import type { Seat } from './module';
 
@@ -45,15 +46,23 @@ describe('el secreto del voto', () => {
 });
 
 describe('reglas', () => {
-  it('no se vota una carta que no está en la baraja', () => {
-    const error = scrumModule.validate(
-      conVotos({}),
-      { tipo: 'votar', voto: { tipo: 'numero', valor: 7 } },
-      'ana',
-      MESA,
-    );
+  it('acepta cualquier número, porque aquí se vota sumando y a mano', () => {
+    for (const valor of [0, 7, 36, 0.5]) {
+      const error = scrumModule.validate(
+        conVotos({}),
+        { tipo: 'votar', voto: { tipo: 'numero', valor } },
+        'ana',
+        MESA,
+      );
 
-    expect(error?.code).toBe('carta-inexistente');
+      expect(error).toBeNull();
+    }
+  });
+
+  it('el esquema acota el rango: una estimación de mil millones no es una estimación', () => {
+    expect(Value.Check(ScrumVote, { tipo: 'numero', valor: 1_000_000_000 })).toBe(false);
+    expect(Value.Check(ScrumVote, { tipo: 'numero', valor: -1 })).toBe(false);
+    expect(Value.Check(ScrumVote, { tipo: 'numero', valor: 36 })).toBe(true);
   });
 
   it('no se vota con la ronda revelada', () => {

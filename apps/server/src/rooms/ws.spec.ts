@@ -212,13 +212,26 @@ describe('una partida de scrum poker por WebSocket', () => {
     ana.cerrar();
   });
 
-  it('una carta que no está en la baraja se rechaza', async () => {
+  it('un número cualquiera vale: aquí se vota sumando y a mano', async () => {
     const ana = await Cliente.conectar(urlDe(invitada));
 
-    ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 7 } } });
+    ana.enviar({ tipo: 'accion', accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 36 } } });
+    const { vista } = await ana.estado(1);
+
+    expect(vista.votos).toEqual({ [invitada.seatId]: { tipo: 'numero', valor: 36 } });
+    ana.cerrar();
+  });
+
+  it('pero un número absurdo se rechaza antes de llegar a las reglas', async () => {
+    const ana = await Cliente.conectar(urlDe(invitada));
+
+    ana.enviar({
+      tipo: 'accion',
+      accion: { tipo: 'votar', voto: { tipo: 'numero', valor: 1_000_000_000 } },
+    });
     const rechazo = await ana.esperarRechazo();
 
-    expect(rechazo).toMatchObject({ code: 'carta-inexistente' });
+    expect(rechazo).toMatchObject({ code: 'accion-desconocida' });
     ana.cerrar();
   });
 

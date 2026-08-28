@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { FirebaseRoomService, Player, RoomData } from '../services/firebase-room.service';
+import { ScrumRoomService, Player, RoomData } from '../api/scrum-room.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 interface VoteSummary {
@@ -55,13 +55,16 @@ export class ScrumPoker implements OnInit, OnDestroy {
   clusters: { value: number; players: string[] }[] = [];
   consensusStatus: 'consensus' | 'light-dispersion' | 'disagreement' = 'consensus';
   
+  /** Lo que se le enseña a la persona si no se pudo entrar. */
+  errorDeSala = '';
+
   // Subscriptions
   private roomSubscription?: Subscription;
 
   constructor(
     private router: Router,
     private route: ActivatedRoute,
-    private firebaseService: FirebaseRoomService,
+    private rooms: ScrumRoomService,
     private ngZone: NgZone,
     private cdr: ChangeDetectorRef
   ) {}
@@ -72,7 +75,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
     if (roomIdParam) {
       // Limpiar datos de sesión anterior para evitar entrar con nombre de otro
       localStorage.removeItem('player_name');
-      localStorage.removeItem('player_id');
+      // También el pase del asiento: con uno viejo se intentaría volver a
+      // una silla de otra sala, y el servidor lo rechazaría sin decir por qué.
+      localStorage.removeItem('seat_id');
+      localStorage.removeItem('seat_token');
       localStorage.removeItem('is_room_creator');
       localStorage.setItem('current_room_id', roomIdParam);
       // Siempre redirigir a name-screen para que elija su nombre
@@ -80,20 +86,18 @@ export class ScrumPoker implements OnInit, OnDestroy {
       return;
     }
     
-    // Obtener datos de localStorage
     this.roomId = localStorage.getItem('current_room_id') || '';
-    this.playerId = localStorage.getItem('player_id') || '';
+    this.playerId = localStorage.getItem('seat_id') || '';
     this.currentPlayerName = localStorage.getItem('player_name') || '';
     this.isRoomCreator = localStorage.getItem('is_room_creator') === 'true';
-    
-    // Si no tiene nombre, necesita autenticarse primero
-    if (!this.currentPlayerName) {
+
+    // Sin nombre o sin sala no hay nada que pintar: a la pantalla de acceso.
+    if (!this.currentPlayerName || !this.roomId) {
       this.router.navigate(['/auth']);
       return;
     }
-    
-    // Suscribirse a cambios en la sala
-    this.roomSubscription = this.firebaseService.roomData$.subscribe(data => {
+
+    this.roomSubscription = this.rooms.roomData$.subscribe(data => {
       if (data) {
         this.ngZone.run(() => {
           this.handleRoomUpdate(data);
@@ -101,34 +105,55 @@ export class ScrumPoker implements OnInit, OnDestroy {
         });
       }
     });
-    
-    // Unirse a la sala UNA SOLA VEZ
-    if (!this.playerId) {
-      this.playerId = this.firebaseService.joinRoom(this.roomId, this.currentPlayerName);
-      localStorage.setItem('player_id', this.playerId);
-    } else {
-      this.firebaseService.listenToRoom(this.roomId);
-    }
-    
-    // Limpiar salas antiguas (más de 24 horas)
-    this.firebaseService.cleanOldRooms();
+
+    void this.entrarEnLaSala();
   }
 
+  /**
+   * Se sienta en la sala, o vuelve al sitio que ya tenía.
+   *
+   * El pase del asiento se guarda porque recargar la página no debe costarte la
+   * silla: sin él, cada F5 crearía un jugador nuevo y la mesa se llenaría de
+   * fantasmas con tu nombre.
+   */
+  private async entrarEnLaSala(): Promise<void> {
+    const pase = localStorage.getItem('seat_token');
+    try {
+      if (this.playerId && pase) {
+        this.rooms.reconectar(this.roomId, this.playerId, pase);
+        return;
+      }
+      const asiento = await this.rooms.unirse(this.roomId, this.currentPlayerName);
+      this.playerId = asiento.seatId;
+      localStorage.setItem('seat_id', asiento.seatId);
+      // El pase es lo que hace que recargar no te cueste la silla.
+      localStorage.setItem('seat_token', asiento.seatToken);
+    } catch {
+      this.ngZone.run(() => {
+        this.errorDeSala = 'No se ha podido entrar en la sala. Puede que ya no exista.';
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
+  /**
+   * Cerrar la pestaña ya no borra al jugador de la sala.
+   *
+   * Con Firebase había que limpiar a mano o quedaban fantasmas. Ahora el
+   * servidor ve caerse el WebSocket y marca el asiento como desconectado, pero
+   * la silla sigue siendo tuya: recargar es irse y volver en dos segundos, y
+   * perder el sitio por eso era el comportamiento equivocado.
+   */
   @HostListener('window:beforeunload')
   onBeforeUnload(): void {
-    if (this.roomId && this.playerId) {
-      this.firebaseService.leaveRoom(this.roomId, this.playerId);
-      localStorage.removeItem('current_room_id');
-      localStorage.removeItem('player_name');
-      localStorage.removeItem('player_id');
-    }
+    this.rooms.desconectar();
   }
 
   ngOnDestroy(): void {
     if (this.roomSubscription) {
       this.roomSubscription.unsubscribe();
     }
-    this.firebaseService.disconnect();
+    this.rooms.desconectar();
   }
 
   private handleRoomUpdate(data: RoomData): void {
@@ -143,7 +168,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
     
     this.showVotes = data.showVotes || false;
     
-    // Sincronizar estado del jugador actual desde Firebase
+    // Sincronizar el estado propio con lo que dice el servidor
     const currentPlayer = this.players.find(p => p.id === this.playerId);
     if (currentPlayer) {
       this.hasVoted = currentPlayer.hasVoted;
@@ -163,11 +188,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
     this.voteBreakdown.numbers += value;
     this.hasVoted = true;
 
-    this.firebaseService.updatePlayerVote(
-      this.roomId,
-      this.playerId,
+    this.rooms.votar(
       this.voteBreakdown.numbers,
-      this.voteBreakdown
+      this.voteBreakdown.coffee,
+      this.voteBreakdown.joint,
     );
   }
 
@@ -187,11 +211,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
     this.hasVoted = true;
 
-    this.firebaseService.updatePlayerVote(
-      this.roomId,
-      this.playerId,
+    this.rooms.votar(
       this.voteBreakdown.numbers,
-      this.voteBreakdown
+      this.voteBreakdown.coffee,
+      this.voteBreakdown.joint,
     );
   }
 
@@ -207,7 +230,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   clearMyVote(): void {
     this.hasVoted = false;
     this.voteBreakdown = { numbers: 0, coffee: 0, joint: 0 };
-    this.firebaseService.clearPlayerVote(this.roomId, this.playerId);
+    this.rooms.retirarVoto();
   }
 
   get allPlayersVoted(): boolean {
@@ -215,11 +238,11 @@ export class ScrumPoker implements OnInit, OnDestroy {
   }
 
   revealVotes(): void {
-    this.firebaseService.revealVotes(this.roomId);
+    this.rooms.revelar();
   }
 
   resetVotes(): void {
-    this.firebaseService.resetRound(this.roomId);
+    this.rooms.nuevaRonda();
     this.hasVoted = false;
     this.voteBreakdown = { numbers: 0, coffee: 0, joint: 0 };
     this.customVoteInput = '';
@@ -481,10 +504,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
   }
 
   leaveRoom(): void {
-    this.firebaseService.leaveRoom(this.roomId, this.playerId);
-    localStorage.removeItem('current_room_id');
-    localStorage.removeItem('player_name');
-    localStorage.removeItem('player_id');
+    this.rooms.desconectar();
+    for (const clave of ['current_room_id', 'player_name', 'seat_id', 'seat_token']) {
+      localStorage.removeItem(clave);
+    }
     this.router.navigate(['/']);
   }
 }

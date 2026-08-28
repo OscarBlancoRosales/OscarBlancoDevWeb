@@ -2,16 +2,20 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Auth, DEFAULT_AFTER_LOGIN, safeNext } from './auth';
-import { FirebaseAuthService } from '../firebase-auth.service';
+import { AuthApiService } from '../api/auth-api.service';
+import { ApiError } from '../api/api-client';
 
-async function montar(params: Record<string, string> = {}, signIn = async () => ({ success: true })) {
+const ENTRA_BIEN = (): Promise<{ id: string; displayName: string }> =>
+  Promise.resolve({ id: 'u1', displayName: 'Óscar' });
+
+async function montar(params: Record<string, string> = {}, entrar = ENTRA_BIEN) {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
     imports: [Auth],
     providers: [
       provideRouter([]),
       { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(params) } } },
-      { provide: FirebaseAuthService, useValue: { signIn } },
+      { provide: AuthApiService, useValue: { entrar } },
     ],
   }).compileComponents();
   const fixture: ComponentFixture<Auth> = TestBed.createComponent(Auth);
@@ -50,17 +54,18 @@ describe('Auth (iniciar sesión)', () => {
     });
 
     it('si el login falla no te mueve de sitio', async () => {
-      const { component } = await montar({ next: '/juegos/risk' }, async () => ({
-        success: false,
-        error: 'Contraseña incorrecta',
-      }));
+      // Falla como falla el servidor de verdad: con el error de la API y su
+      // mensaje, que es el que acaba viendo la persona.
+      const { component } = await montar({ next: '/juegos/risk' }, () =>
+        Promise.reject(new ApiError('credenciales-invalidas', 'Correo o contraseña incorrectos.', 401)),
+      );
       component.ngOnInit();
       const router = TestBed.inject(Router);
       const ir = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
       component.loginForm.setValue({ email: 'oscar@ejemplo.com', password: 'mala' });
       await component.login();
       expect(ir).not.toHaveBeenCalled();
-      expect(component.errorMessage).toContain('incorrecta');
+      expect(component.errorMessage).toBe('Correo o contraseña incorrectos.');
     });
   });
 

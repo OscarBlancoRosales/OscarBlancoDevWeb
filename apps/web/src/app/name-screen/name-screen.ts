@@ -3,7 +3,8 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { FirebaseAuthService } from '../firebase-auth.service';
+import { AuthApiService } from '../api/auth-api.service';
+import { ScrumRoomService } from '../api/scrum-room.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 @Component({
@@ -19,7 +20,7 @@ export class NameScreen implements OnInit, OnDestroy {
   roomId = '';
   inviteCode = '';
 
-  /** Cierto solo con sesión de Firebase confirmada. Quien crea sala es esta persona. */
+  /** Cierto solo con sesión confirmada. Quien crea sala es esta persona. */
   isAdmin = false;
 
   private sesion?: Subscription;
@@ -28,7 +29,8 @@ export class NameScreen implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private router: Router,
     private route: ActivatedRoute,
-    private auth: FirebaseAuthService,
+    private auth: AuthApiService,
+    private rooms: ScrumRoomService,
     private cdr: ChangeDetectorRef
   ) {
     this.nameForm = this.fb.group({
@@ -37,6 +39,9 @@ export class NameScreen implements OnInit, OnDestroy {
   }
 
   isInvited = false;
+
+  /** Lo que se le enseña a la persona si algo falla al crear o entrar. */
+  error = '';
 
   ngOnInit(): void {
     // Verificar si viene por invitación (tiene parámetro room en la URL)
@@ -52,8 +57,8 @@ export class NameScreen implements OnInit, OnDestroy {
     }
 
     // Esperamos a `settledUser$`, no a `user$`: este último vale null mientras
-    // Firebase restaura la sesión guardada, y actuar sobre ese null echaría a
-    // la calle a quien solo estaba recargando la página.
+    // se recupera la sesión guardada, y actuar sobre ese null echaría a la
+    // calle a quien solo estaba recargando la página.
     this.sesion = this.auth.settledUser$.subscribe((user) => {
       this.isAdmin = !!user;
       if (!user) {
@@ -73,33 +78,18 @@ export class NameScreen implements OnInit, OnDestroy {
     return this.nameForm.get('playerName');
   }
 
+  /**
+   * El enlace de invitación, si ya hay sala a la que invitar.
+   *
+   * Quien viene invitado trae la sala en la URL. Quien la crea no la tiene
+   * hasta que el servidor se la da, porque el identificador lo reparte él: antes
+   * se inventaba aquí un `ROOM-xxxx` y la sala nacía sola cuando alguien
+   * escribía, y de ahí salían las salas sin dueño que nadie podía borrar.
+   */
   private generateRoomInfo(): void {
-    // Si ya tenemos roomId (de la invitación o de una emisión anterior de la
-    // sesión), usarlo. Firebase reemite al refrescar el testigo, y sin esta
-    // salida la sala cambiaría de número bajo los pies del que ya la repartió.
-    if (this.roomId) {
-      this.inviteCode = this.generateInviteCode();
-      return;
-    }
-
-    // Admin siempre crea una nueva sala
-    if (this.isAdmin) {
-      this.roomId = this.generateRoomId();
-      localStorage.setItem('current_room_id', this.roomId);
-      // Marcar que este usuario es el creador de la sala
-      localStorage.setItem('is_room_creator', 'true');
-    }
-
-    // Generar código de invitación
-    this.inviteCode = this.generateInviteCode();
-  }
-
-  private generateRoomId(): string {
-    return 'ROOM-' + Math.random().toString(36).substr(2, 9).toUpperCase();
-  }
-
-  private generateInviteCode(): string {
-    return window.location.origin + '/scrum-poker?room=' + this.roomId;
+    this.inviteCode = this.roomId
+      ? `${window.location.origin}/scrum-poker?room=${this.roomId}`
+      : '';
   }
 
   private checkInvitation(): void {
@@ -109,34 +99,52 @@ export class NameScreen implements OnInit, OnDestroy {
       localStorage.setItem('current_room_id', roomId);
       // Limpiar datos de jugador anterior para evitar entrar con nombre de otro
       localStorage.removeItem('player_name');
-      localStorage.removeItem('player_id');
+      // También el pase del asiento: con uno viejo se intentaría volver a
+      // una silla de otra sala, y el servidor lo rechazaría sin decir por qué.
+      localStorage.removeItem('seat_id');
+      localStorage.removeItem('seat_token');
       // Los invitados NO son creadores de la sala
       localStorage.removeItem('is_room_creator');
     }
   }
 
-  joinRoom(): void {
-    if (this.nameForm.invalid) {
-      return;
-    }
+  async joinRoom(): Promise<void> {
+    if (this.nameForm.invalid || this.isLoading) return;
 
     this.isLoading = true;
-    const playerName = this.nameForm.get('playerName')?.value;
+    this.error = '';
+    const playerName = String(this.nameForm.get('playerName')?.value ?? '');
 
-    // Guardar nombre del jugador y roomId
-    localStorage.setItem('player_name', playerName);
-    localStorage.setItem('current_room_id', this.roomId);
-    // Limpiar playerId anterior para que se genere uno nuevo
-    localStorage.removeItem('player_id');
-    
-    this.showSuccess = true;
-    
-    // Redirigir a la sala Scrum Poker
-    setTimeout(() => {
-      this.router.navigate(['/scrum-poker']);
-    }, 1000);
-    
-    this.isLoading = false;
+    try {
+      if (!this.roomId) {
+        // Quien no viene invitado, crea. Y crear exige sesión, así que el
+        // asiento queda atado a su cuenta y la sala tiene dueño.
+        const sala = await this.rooms.crear(`Sala de ${playerName}`, playerName);
+        this.roomId = sala.roomId;
+        localStorage.setItem('seat_id', sala.seatId);
+        localStorage.setItem('seat_token', sala.seatToken);
+        localStorage.setItem('is_room_creator', 'true');
+        this.generateRoomInfo();
+      } else {
+        // Invitado: el asiento se pide al entrar en la sala, con este nombre.
+        localStorage.removeItem('seat_id');
+        localStorage.removeItem('seat_token');
+      }
+
+      localStorage.setItem('player_name', playerName);
+      localStorage.setItem('current_room_id', this.roomId);
+      this.showSuccess = true;
+      this.cdr.markForCheck();
+
+      setTimeout(() => {
+        void this.router.navigate(['/scrum-poker']);
+      }, 1000);
+    } catch (fallo) {
+      this.error = AuthApiService.mensajeDe(fallo);
+    } finally {
+      this.isLoading = false;
+      this.cdr.markForCheck();
+    }
   }
 
   copyInviteLink(): void {
