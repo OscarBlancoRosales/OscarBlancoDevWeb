@@ -25,6 +25,9 @@ export interface RoomActorOptions {
   readonly module: GameModule<unknown, unknown>;
   readonly repository: RoomRepository;
   readonly config: Readonly<Record<string, unknown>>;
+  readonly status?: RoomStatus;
+  /** Quién creó la sala. Su asiento es el único que puede hablar como la sala. */
+  readonly ownerId?: string | null;
   readonly now?: () => number;
 }
 
@@ -46,19 +49,23 @@ export class RoomActor {
   private readonly repository: RoomRepository;
   private readonly now: () => number;
   private readonly config: Readonly<Record<string, unknown>>;
+  private readonly ownerId: string | null;
   private readonly suscriptores = new Set<Suscriptor>();
+  private duenyos = new Set<SeatId>();
 
   private state: unknown;
   private seq: number;
   private seats: Seat[] = [];
-  private status: RoomStatus = 'lobby';
+  private status: RoomStatus;
 
   constructor(options: RoomActorOptions) {
     this.roomId = options.roomId;
     this.module = options.module;
     this.repository = options.repository;
     this.config = options.config;
+    this.ownerId = options.ownerId ?? null;
     this.now = options.now ?? Date.now;
+    this.status = options.status ?? 'lobby';
 
     const { state, seq } = this.rebuild();
     this.state = state;
@@ -85,6 +92,10 @@ export class RoomActor {
     const seats = this.seatsFromDb();
     const snapshot = this.repository.findSnapshot(this.roomId);
 
+    if (!snapshot && this.module.empiezaAlJugar && this.status === 'lobby') {
+      return { state: null, seq: 0 };
+    }
+
     let state = snapshot ? snapshot.state : this.module.createState(seats, this.config);
     let seq = snapshot?.upToSeq ?? 0;
 
@@ -97,7 +108,11 @@ export class RoomActor {
   }
 
   private seatsFromDb(): Seat[] {
-    return this.repository.listSeats(this.roomId).map((seat) => ({
+    const filas = this.repository.listSeats(this.roomId);
+    this.duenyos = new Set(
+      filas.filter((seat) => this.ownerId !== null && seat.userId === this.ownerId).map((seat) => seat.seatId),
+    );
+    return filas.map((seat) => ({
       id: seat.seatId,
       displayName: seat.displayName,
       isBot: seat.isBot,
@@ -123,23 +138,33 @@ export class RoomActor {
   /**
    * Añade algo al chat y lo reparte.
    *
-   * El nombre del autor lo pone el servidor a partir del asiento, no el
-   * cliente: si no, cualquiera podría hablar firmando con el nombre de otro.
+   * Ni el nombre ni el tipo los pone el cliente: los deduce el servidor del
+   * asiento. Si el nombre viniera de fuera, cualquiera podría firmar con el de
+   * otro; y si viniera el tipo, cualquiera podría publicar un aviso con la
+   * pinta de los que da la sala, que es la voz que la gente se cree.
+   *
+   * Hablar como la sala solo puede el asiento de quien la creó, que es quien
+   * mueve los bots y escribe la crónica.
    */
-  decir(seatId: SeatId, texto: string, kind: ChatKind, origin?: string): void {
+  decir(seatId: SeatId, texto: string, comoLaSala: boolean, origin?: string): RuleError | null {
     const asiento = this.seats.find((seat) => seat.id === seatId);
-    if (!asiento) return;
+    if (!asiento) return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
+    if (comoLaSala && !this.duenyos.has(seatId)) {
+      return { code: 'no-eres-la-sala', message: 'Solo el anfitrión habla en nombre de la sala.' };
+    }
 
+    const kind: ChatKind = comoLaSala ? 'system' : asiento.isBot ? 'bot' : 'player';
     this.repository.appendChat(this.roomId, {
       seq: this.repository.lastChatSeq(this.roomId) + 1,
-      authorId: seatId,
-      author: asiento.displayName,
+      authorId: comoLaSala ? 'system' : seatId,
+      author: comoLaSala ? 'Sala' : asiento.displayName,
       kind,
       text: texto,
       origin: origin ?? null,
       at: this.now(),
     });
     this.repartirChat();
+    return null;
   }
 
   repartirChat(): void {
@@ -152,9 +177,22 @@ export class RoomActor {
     this.seats = this.seatsFromDb().map((seat) => ({ ...seat, connected: conectados.has(seat.id) }));
   }
 
+  /**
+   * Cambia el estado de la sala y, si con eso empieza la partida, la reparte.
+   *
+   * El reparto se hace **aquí y una sola vez**, con los asientos que hay en ese
+   * momento: es la alineación congelada. Quien llegue después se sienta en una
+   * partida ya empezada, y quien se vaya deja sus ejércitos donde estaban.
+   */
   setStatus(status: RoomStatus): void {
     this.status = status;
     this.repository.updateRoomStatus(this.roomId, status, this.now());
+
+    if (this.state === null && status === 'playing') {
+      this.state = this.module.createState(this.seats, this.config);
+      this.repository.saveSnapshot(this.roomId, { upToSeq: 0, state: this.state }, this.now());
+    }
+
     this.broadcast();
   }
 
@@ -200,6 +238,9 @@ export class RoomActor {
     }
     if (!this.seats.some((seat) => seat.id === seatId)) {
       return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
+    }
+    if (this.state === null) {
+      return { code: 'sin-empezar', message: 'La partida todavía no ha empezado.' };
     }
 
     const rechazo = this.juzgar(accion, seatId);
@@ -251,7 +292,7 @@ export class RoomActor {
   /** Saca a alguien de la mesa y deja que el juego decida qué hacer con lo suyo. */
   removeSeat(seatId: SeatId): void {
     this.repository.deleteSeat(this.roomId, seatId);
-    if (this.module.onSeatLeave) {
+    if (this.state !== null && this.module.onSeatLeave) {
       this.state = this.module.onSeatLeave(this.state, seatId);
     }
     this.refreshSeats();
@@ -276,12 +317,13 @@ export class RoomActor {
       seq: this.seq,
       seats: this.seats.map(toSeatInfo),
       status: this.status,
-      vista: this.module.view(this.state, seatId, this.seats),
+      vista: this.state === null ? null : this.module.view(this.state, seatId, this.seats),
     };
   }
 
   /** Guarda la foto pendiente antes de descargar la sala de memoria. */
   flush(): void {
+    if (this.state === null) return;
     this.repository.saveSnapshot(
       this.roomId,
       { upToSeq: this.seq, state: this.state },

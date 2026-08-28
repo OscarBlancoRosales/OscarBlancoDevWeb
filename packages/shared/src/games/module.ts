@@ -38,6 +38,16 @@ export interface GameModule<TState, TAction> {
   readonly actionSchema: TSchema;
 
   /**
+   * Si la partida no empieza hasta que alguien lo dice.
+   *
+   * En el planning poker la sala ya es la partida: quien entra vota. En RISK
+   * no: la mesa se llena primero y el reparto de territorios se hace una vez,
+   * con los que hay en ese momento. Ese instante es el paso a `playing`, y de
+   * ahí en adelante quien entre mira una partida ya empezada.
+   */
+  readonly empiezaAlJugar?: boolean;
+
+  /**
    * El estado inicial. `config` es lo que se guardó al crear la sala: para
    * RISK, el mapa y la semilla; para el planning poker, nada.
    */

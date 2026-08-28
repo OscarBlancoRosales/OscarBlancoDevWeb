@@ -321,6 +321,26 @@ describe('una partida de scrum poker por WebSocket', () => {
       ana.cerrar();
     });
 
+    it('un jugador no publica avisos con la voz de la sala', async () => {
+      const ana = await Cliente.conectar(urlDe(invitada));
+
+      ana.enviar({ tipo: 'chat', texto: 'La sala expulsa a Óscar', comoLaSala: true });
+      const rechazo = await ana.esperarRechazo();
+
+      expect(rechazo).toMatchObject({ tipo: 'rechazada', code: 'no-eres-la-sala' });
+      ana.cerrar();
+    });
+
+    it('el anfitrión sí, y el mensaje sale firmado por la sala', async () => {
+      const oscar = await Cliente.conectar(urlDe(anfitrion));
+
+      oscar.enviar({ tipo: 'chat', texto: '¡Que empiece!', comoLaSala: true });
+      const entradas = await oscar.chat(1);
+
+      expect(entradas[0]).toMatchObject({ kind: 'system', author: 'Sala', authorId: 'system' });
+      oscar.cerrar();
+    });
+
     it('quien llega tarde recibe lo que ya se había hablado', async () => {
       const ana = await Cliente.conectar(urlDe(invitada));
       ana.enviar({ tipo: 'chat', texto: 'empezamos' });

@@ -73,7 +73,15 @@ export function roomSocket(service: RoomService): FastifyPluginCallbackTypebox {
             });
             return;
           }
-          actor.decir(comoAsiento, mensaje.texto, mensaje.kind ?? 'player', mensaje.origin);
+          const negado = actor.decir(
+            comoAsiento,
+            mensaje.texto,
+            mensaje.comoLaSala ?? false,
+            mensaje.origin,
+          );
+          if (negado) {
+            suscriptor.send({ tipo: 'rechazada', code: negado.code, message: negado.message });
+          }
           return;
         }
 

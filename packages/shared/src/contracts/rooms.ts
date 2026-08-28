@@ -121,9 +121,16 @@ export const ClientMessage = Type.Union([
     {
       tipo: Type.Literal('chat'),
       texto: Type.String({ minLength: 1, maxLength: 600 }),
-      kind: Type.Optional(ChatKind),
       /** Quién habla: un asiento de bot al que este cliente está moviendo. */
       comoAsiento: Type.Optional(Type.String({ maxLength: 64 })),
+      /**
+       * Hablar como la sala y no como un jugador. Solo el anfitrión.
+       *
+       * El tipo del mensaje no lo elige el cliente: si lo eligiera, cualquiera
+       * podría publicar avisos con la pinta de los que da la sala, que es
+       * precisamente la voz que la gente se cree.
+       */
+      comoLaSala: Type.Optional(Type.Boolean()),
       origin: Type.Optional(Type.String({ maxLength: 16 })),
     },
     SIN_EXTRAS,

@@ -5,6 +5,8 @@ import { openDatabase } from '../db/index';
 import type { FastifyInstance } from 'fastify';
 import type { RoomInfo, SeatGrant, SeatInfo } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
+import { createRoomRepository } from './repository';
+import { RoomService } from './service';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -187,6 +189,51 @@ describe('los asientos de una mesa', () => {
       });
 
       expect(response.statusCode).toBe(403);
+    });
+  });
+
+  describe('cuándo empieza la partida', () => {
+    let salas: RoomService | undefined;
+
+    const mesa = (): ReturnType<RoomService['actor']> => {
+      salas ??= new RoomService({ repository: createRoomRepository(db) });
+      return salas.actor(sala.room.id);
+    };
+
+    afterEach(() => {
+      salas?.cerrar();
+      salas = undefined;
+    });
+
+    it('en la sala de espera no hay partida todavía', () => {
+      const mensaje = mesa().messageFor(sala.seatId);
+
+      expect(mensaje).toMatchObject({ tipo: 'estado', status: 'lobby', vista: null });
+    });
+
+    it('y una jugada antes de empezar no cuela', () => {
+      const rechazo = mesa().submit(sala.seatId, {
+        type: 'end-phase',
+        playerId: sala.seatId,
+      });
+
+      expect(rechazo?.code).toBe('sin-empezar');
+    });
+
+    it('al pasar a jugando se reparte el mapa con quien esté sentado', async () => {
+      await app.inject({
+        method: 'POST',
+        url: `/salas/${sala.room.id}/unirse`,
+        payload: { displayName: 'Ana' },
+      });
+      const actor = mesa();
+      actor.refreshSeats();
+      actor.setStatus('playing');
+
+      const mensaje = actor.messageFor(sala.seatId);
+      const vista = (mensaje as { vista: { players: unknown[] } }).vista;
+
+      expect(vista.players).toHaveLength(2);
     });
   });
 

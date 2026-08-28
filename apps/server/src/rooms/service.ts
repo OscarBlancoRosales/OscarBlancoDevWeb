@@ -266,6 +266,8 @@ export class RoomService {
       module,
       repository: this.repository,
       config: room.config,
+      status: room.status,
+      ownerId: room.ownerId,
       now: this.now,
     });
     this.actores.set(roomId, actor);
