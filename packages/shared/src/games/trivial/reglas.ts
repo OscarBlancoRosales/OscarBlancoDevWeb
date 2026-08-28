@@ -28,13 +28,26 @@ export function puntosDe(
   respuestas: Readonly<Record<SeatId, Respuesta>>,
   seat: SeatId,
 ): number {
-  const suya = respuestas[seat];
+  const suya = respuestaDe(respuestas, seat);
   if (!suya) return 0;
 
   if (pregunta.tipo === 'estimacion') return puntosPorCercania(pregunta, suya.valor);
   if (!aciertaCon(pregunta, suya.valor)) return 0;
 
   return PUNTOS_ACIERTO + (BONUS_POR_ORDEN[aciertosAntesDe(pregunta, respuestas, suya)] ?? 0);
+}
+
+/**
+ * La respuesta de un asiento, si contestó.
+ *
+ * `Record<SeatId, Respuesta>` afirma que todo asiento contestó, y no es verdad.
+ * Aquí es donde se dice la verdad, y por eso el retorno lleva el `undefined`.
+ */
+export function respuestaDe(
+  respuestas: Readonly<Record<SeatId, Respuesta>>,
+  seat: SeatId,
+): Respuesta | undefined {
+  return respuestas[seat];
 }
 
 /** Lo que gana cada uno en la ronda, de una vez. */

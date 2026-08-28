@@ -100,7 +100,7 @@ describe('puntuar una estimacion', () => {
   });
 
   it('sin margen declarado se mide contra la propia respuesta', () => {
-    const sinMargen: Pregunta = { ...ESTIMACION, margen: undefined };
+    const { margen: _margen, ...sinMargen } = ESTIMACION;
     expect(puntosDe(sinMargen, respuestas({ ana: [4010, 0] }), 'ana')).toBe(0);
     expect(puntosDe(sinMargen, respuestas({ ana: [2006, 0] }), 'ana')).toBe(100);
   });
@@ -111,7 +111,8 @@ describe('puntuar una estimacion', () => {
   });
 
   it('con la respuesta correcta a cero no divide entre cero', () => {
-    const cero: Pregunta = { ...ESTIMACION, correcta: 0, margen: undefined };
+    const { margen: _margen, ...base } = ESTIMACION;
+    const cero: Pregunta = { ...base, correcta: 0 };
     expect(puntosDe(cero, respuestas({ ana: [0, 0] }), 'ana')).toBe(120);
     expect(puntosDe(cero, respuestas({ ana: [50, 0] }), 'ana')).toBe(0);
   });
