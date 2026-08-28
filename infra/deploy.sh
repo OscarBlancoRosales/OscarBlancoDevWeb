@@ -20,12 +20,22 @@ KEEP=5
 
 release="$APP_DIR/releases/$(date -u +%Y%m%dT%H%M%SZ)"
 install -d -o "$APP_USER" -g "$APP_USER" -m 750 "$release"
-tar -xzf "$TARBALL" -C "$release"
+
+# El contenido del paquete es lo único que controlaría quien se hiciera con la
+# clave de despliegue, así que se abre con los privilegios mínimos.
+#
+# `npm ci` ejecuta los scripts de instalación de las dependencias, que son código
+# arbitrario. Corriéndolos como root, poder desplegar sería poder hacer cualquier
+# cosa en la máquina: bastaría un paquete con un postinstall malicioso. Como
+# `devweb` lo peor que pueden tocar es lo que ya toca el servicio.
+install -m 640 -o "$APP_USER" -g "$APP_USER" "$TARBALL" "$release/entrega.tar.gz"
+runuser -u "$APP_USER" -- tar -xzf "$release/entrega.tar.gz" -C "$release"
+rm -f "$release/entrega.tar.gz"
 
 # Solo lo de producción: las dependencias de desarrollo no pintan nada en un
 # servidor y son superficie de ataque gratis.
-( cd "$release" && npm ci --omit=dev --ignore-scripts=false --no-audit --no-fund )
-chown -R "$APP_USER:$APP_USER" "$release"
+runuser -u "$APP_USER" -- env HOME="$APP_DIR" \
+  npm --prefix "$release" ci --omit=dev --no-audit --no-fund
 
 # `readlink` a secas, sin -f: devuelve el destino SOLO si `current` ya es un
 # enlace, y vacío si no existe. Con -f devolvía la ruta que tendría, así que en

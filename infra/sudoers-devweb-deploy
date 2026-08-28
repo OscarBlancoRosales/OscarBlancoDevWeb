@@ -1,9 +1,14 @@
 # El despliegue automático necesita ejecutar un comando como root sin poder
-# escribir una contraseña. Se le da exactamente ese comando y ninguno más.
+# escribir una contraseña. Se le da exactamente ese comando, con exactamente ese
+# argumento, y nada más.
 #
 # Dar NOPASSWD a `sudo` entero convertiría la clave de despliegue de GitHub en
-# acceso de root a la máquina: quien se hiciera con ella podría hacer cualquier
-# cosa. Así, lo peor que puede hacer es desplegar.
+# acceso de root a la máquina. Fijar también el argumento cierra la otra mitad:
+# sin ello se podría pasar cualquier ruta, y el paquete es justo lo que controla
+# quien se hiciera con la clave.
+#
+# El propio deploy.sh, además, desempaqueta e instala como `devweb`, nunca como
+# root: los scripts de instalación de npm son código arbitrario.
 #
 # Va en /etc/sudoers.d/devweb-deploy con permisos 440.
-ubuntu ALL=(root) NOPASSWD: /usr/local/bin/devweb-deploy
+ubuntu ALL=(root) NOPASSWD: /usr/local/bin/devweb-deploy /tmp/devweb-api.tar.gz

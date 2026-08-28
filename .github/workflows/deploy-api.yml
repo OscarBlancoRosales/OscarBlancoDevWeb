@@ -15,8 +15,15 @@ concurrency:
   group: deploy-api
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  # Este trabajo ejecuta código del repositorio: `npm ci` corre los scripts de
+  # instalación de cada dependencia, que son código arbitrario de terceros. Por
+  # eso NO tiene ningún secreto a mano: aunque una dependencia estuviera
+  # comprometida, aquí no hay nada que robar.
+  empaquetar:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -39,7 +46,7 @@ jobs:
       # La entrega lleva un manifiesto propio con solo las dependencias de
       # producción del servidor, y su lockfile generado aquí. Reutilizar el del
       # monorepo arrastraría a la VPS todo lo que necesita la web.
-      - name: Empaquetar la entrega
+      - name: Empaquetar
         run: |
           npm run build -w @devweb/server
           mkdir -p release
@@ -48,9 +55,24 @@ jobs:
           npm install --prefix release --package-lock-only --omit=dev --no-audit --no-fund
           tar -czf devweb-api.tar.gz -C release .
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entrega
+          path: devweb-api.tar.gz
+          retention-days: 1
+
+  # Y este tiene la clave, pero no ejecuta ni una línea del repositorio: solo
+  # descarga el paquete que produjo el anterior y lo manda por ssh.
+  desplegar:
+    needs: empaquetar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: entrega
+
       # `ssh` y `scp` vienen en el runner. Usar acciones de terceros aquí
-      # significaría darle a un repositorio ajeno la clave que abre el servidor,
-      # y confiar en que ninguna versión futura suya haga algo raro con ella.
+      # significaría darle a un repositorio ajeno la clave que abre el servidor.
       - name: Preparar el acceso
         env:
           SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
@@ -64,6 +86,8 @@ jobs:
           printf '%s\n' "$HOST_KEY" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      # La ruta del paquete es fija a propósito: es la única que autoriza la
+      # regla de sudo del servidor.
       - name: Subir y desplegar
         env:
           HOST: ${{ secrets.VPS_HOST }}
@@ -72,7 +96,7 @@ jobs:
           scp -i ~/.ssh/deploy -o IdentitiesOnly=yes \
               devweb-api.tar.gz "$USER@$HOST:/tmp/devweb-api.tar.gz"
           ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes "$USER@$HOST" \
-              'sudo /usr/local/bin/devweb-deploy /tmp/devweb-api.tar.gz && rm -f /tmp/devweb-api.tar.gz'
+              'sudo /usr/local/bin/devweb-deploy /tmp/devweb-api.tar.gz; salida=$?; rm -f /tmp/devweb-api.tar.gz; exit $salida'
 
       # El despliegue ya espera al health por dentro y vuelve atrás si falla.
       # Esto lo comprueba desde fuera, que es desde donde lo ven los usuarios.
