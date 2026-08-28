@@ -133,6 +133,7 @@ paso "Servicio"
 install -m 644 "$REPO_DIR/infra/systemd/devweb-api.service" /etc/systemd/system/devweb-api.service
 install -m 755 "$REPO_DIR/infra/backup.sh" /usr/local/bin/devweb-backup
 install -m 755 "$REPO_DIR/infra/deploy.sh" /usr/local/bin/devweb-deploy
+install -m 755 "$REPO_DIR/infra/probar-correo.mjs" /usr/local/bin/devweb-probar-correo
 
 # Permiso para desplegar sin contraseña, y solo para desplegar. `visudo -c`
 # antes de instalarlo: un fichero de sudoers con una errata puede dejar la
