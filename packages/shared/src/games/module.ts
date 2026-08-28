@@ -1,7 +1,7 @@
 import type { TSchema } from '@sinclair/typebox';
 
 export type SeatId = string;
-export type GameId = 'scrum' | 'risk' | 'flota';
+export type GameId = 'scrum' | 'risk' | 'flota' | 'trivial';
 
 export interface RuleError {
   readonly code: string;

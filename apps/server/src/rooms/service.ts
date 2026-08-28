@@ -1,7 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
+import { repartir } from '../games/trivial/banco';
 import { moduleFor } from './registry';
 import type {
   GameId,
@@ -75,7 +76,7 @@ export class RoomService {
       ownerId: input.ownerId,
       name: input.name.trim(),
       status: 'lobby',
-      config: input.config ?? {},
+      config: conLoQueElJuegoNecesite(input.game, input.config ?? {}),
       createdAt: at,
       updatedAt: at,
     };
@@ -394,4 +395,29 @@ export class RoomService {
       updatedAt: room.updatedAt,
     };
   }
+}
+
+/**
+ * Añade a la configuración lo que el juego necesita y el cliente no puede poner.
+ *
+ * Hoy son las preguntas del Trivial, y por eso este es el único sitio del
+ * servicio que sabe de un juego concreto. La alternativa —que el módulo se
+ * trajera el banco— metería las respuestas en el bundle de la web, que es
+ * exactamente lo que este juego no puede permitirse.
+ *
+ * Se sobreescriben **las preguntas y la semilla**, y lo segundo importa tanto
+ * como lo primero: si la semilla la eligiera quien crea la sala, el reparto
+ * sería reproducible a voluntad —una partida para apuntar las respuestas, otra
+ * con la misma semilla para ganarla— y esconder el banco no habría servido de
+ * nada. Por eso sale de `randomInt`, y no del reloj: dos salas creadas en el
+ * mismo milisegundo traerían la misma tanda.
+ */
+function conLoQueElJuegoNecesite(
+  game: GameId,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (game !== 'trivial') return config;
+
+  const semilla = randomInt(0, 2 ** 31);
+  return { ...config, semilla, preguntas: repartir(semilla) };
 }

@@ -147,5 +147,27 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['apps/web/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/apps/server/**',
+                '**/server/src/**',
+                '@devweb/server',
+                '@devweb/server/*',
+              ],
+              message:
+                'La web no importa nada del servidor. Ahí viven las respuestas del Trivial, y en el bundle dejarían de ser respuestas.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 );

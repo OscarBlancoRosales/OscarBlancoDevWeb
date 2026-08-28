@@ -1,9 +1,19 @@
-import type { PaseDeSala } from './flota-room.service';
+/**
+ * El pase de un asiento en una sala, sea del juego que sea.
+ *
+ * Vive aquí y no dentro de un juego porque no es de ninguno: es lo que el
+ * servidor devuelve al sentarte, y todas las salas lo guardan igual.
+ */
+export interface PaseDeSala {
+  readonly roomId: string;
+  readonly seatId: string;
+  readonly seatToken: string;
+}
 
-const CLAVE = 'flota:pase';
+const CLAVE = 'sala:pase';
 
 /**
- * El pase del asiento, guardado en el navegador.
+ * Guarda el pase en el navegador.
  *
  * Sin esto, recargar la página en mitad de una partida sería empezar de cero:
  * el pase es lo único que demuestra que ese asiento es tuyo, y el servidor no

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { FlotaBoard } from '../flota-board/flota-board';
 import { FlotaRoomService } from '../flota-room.service';
-import { paseDe } from '../pase-guardado';
+import { paseDe } from '../../pase-guardado';
 import {
   COLOCACION_VACIA,
   completa,
