@@ -1,41 +1,78 @@
-<app-terminal-layout title="QR Generator">
-  <div class="tool-content">
-    <div class="tool-card">
-      <h1 class="tool-title">{{ i18n.t('qr.title') }}</h1>
-      <p class="tool-subtitle">{{ i18n.t('qr.subtitle') }}</p>
+<app-terminal-layout title="qr">
+  <div class="tool">
+    <div class="tool-head">
+      <div class="tool-cmd">qr</div>
+      <div class="tool-sub">{{ i18n.t('qr.subtitle') }}</div>
+    </div>
 
-      <div class="input-group">
-        <label for="qrInput">{{ i18n.t('qr.placeholder') }}</label>
-        <textarea
-          id="qrInput"
-          [(ngModel)]="inputText"
-          [placeholder]="i18n.t('qr.placeholder')"
-          rows="3"
-          (keydown.enter)="generateQR(); $event.preventDefault()"></textarea>
+    <textarea
+      class="textarea qr-input"
+      [(ngModel)]="inputText"
+      (ngModelChange)="onTextChange()"
+      [placeholder]="i18n.t('qr.placeholder')"
+      rows="3"></textarea>
+
+    <div class="tool-flags qr-flags">
+      <div class="flag">
+        <span class="flag-label">{{ i18n.t('qr.presets') }}</span>
+        <div class="preset-row">
+          @for (p of presets; track p.id) {
+            <button class="btn btn--sm" (click)="usePreset(p.id)">{{ p.label }}</button>
+          }
+        </div>
       </div>
 
-      <div class="actions">
-        <button class="btn btn-primary" (click)="generateQR()" [disabled]="isGenerating || !inputText.trim()">
-          {{ isGenerating ? i18n.t('dni.generating') : i18n.t('qr.generate') }}
-        </button>
-        <button class="btn btn-secondary" (click)="clear()" *ngIf="qrDataUrl">{{ i18n.t('common.clear') }}</button>
+      <div class="flag">
+        <label class="flag-label" for="qr-size">{{ i18n.t('qr.size') }}</label>
+        <select id="qr-size" class="select" [(ngModel)]="size" (ngModelChange)="generateQR()">
+          @for (s of sizes; track s) {
+            <option [value]="s">{{ s }} px</option>
+          }
+        </select>
       </div>
 
-      <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      <div class="flag">
+        <label class="flag-label" for="qr-ec">{{ i18n.t('qr.correction') }}</label>
+        <select id="qr-ec" class="select" [(ngModel)]="correction" (ngModelChange)="generateQR()">
+          <option value="L">L · 7%</option>
+          <option value="M">M · 15%</option>
+          <option value="Q">Q · 25%</option>
+          <option value="H">H · 30%</option>
+        </select>
+      </div>
 
-      <div class="qr-result" *ngIf="qrDataUrl">
-        <div class="qr-image-wrapper">
-          <img [src]="qrDataUrl" alt="QR Code" class="qr-image">
-        </div>
-        <div class="result-actions">
-          <button class="btn btn-action" (click)="downloadQR()">
-            {{ i18n.t('qr.download') }}
-          </button>
-          <button class="btn btn-action" (click)="copyQR()">
-            {{ copied ? i18n.t('common.copied') : i18n.t('common.copy') }}
-          </button>
-        </div>
+      <div class="flag flag--row">
+        <label class="check">
+          <input type="checkbox" [(ngModel)]="transparent" (ngModelChange)="generateQR()" />
+          <span class="check-box"></span>
+          <span>{{ i18n.t('qr.transparent') }}</span>
+        </label>
       </div>
     </div>
+
+    @if (errorMessage) {
+      <p class="note note--error">{{ errorMessage }}</p>
+    }
+
+    @if (qrDataUrl) {
+      <div class="out">
+        <div class="out-head">
+          <span>{{ size }}×{{ size }} · {{ correction }} · {{ inputText.length }} {{ i18n.t('common.characters') }}</span>
+        </div>
+        <div class="qr-body">
+          <img [src]="qrDataUrl" alt="QR" class="qr-image" [class.checker]="transparent" />
+        </div>
+      </div>
+
+      <div class="tool-actions qr-actions">
+        <button class="btn btn--primary" (click)="downloadQR()">{{ i18n.t('qr.download') }}</button>
+        <button class="btn" (click)="copyQR()">
+          {{ copied ? i18n.t('common.copied') : i18n.t('qr.copyImage') }}
+        </button>
+        <button class="btn btn--danger" (click)="clear()">{{ i18n.t('common.clear') }}</button>
+      </div>
+    } @else {
+      <p class="note note--muted">{{ i18n.t('qr.empty') }}</p>
+    }
   </div>
 </app-terminal-layout>

@@ -53,9 +53,13 @@ Thumbs.db
 
 # Clave de IA de la casa: se despliega, pero NO se versiona.
 # Ver docs/risk.md, sección de la IA.
-public/ai-key.json
+**/public/ai-key.json
 release/
 tmp-prueba/
 
 # Paquete de entrega del servidor: se genera, no se versiona.
 *.tar.gz
+
+# Espacio de trabajo de los agentes y ficheros de usar y tirar
+.claude/
+tmp-*.txt

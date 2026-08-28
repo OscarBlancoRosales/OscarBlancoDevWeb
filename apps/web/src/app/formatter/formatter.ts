@@ -1,5 +1,4 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
@@ -8,7 +7,7 @@ type FormatMode = 'json' | 'xml' | 'css' | 'sql' | 'html';
 
 @Component({
   selector: 'app-formatter',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './formatter.html',
   styleUrl: './formatter.css'
 })
@@ -19,6 +18,11 @@ export class Formatter {
   copied = false;
   errorMessage = '';
   indentSize = 2;
+
+  /** La sangría de verdad: 0 es el tabulador, no «sin sangrar». */
+  private get indent(): string {
+    return this.indentSize === 0 ? '	' : ' '.repeat(this.indentSize);
+  }
 
   modes: { value: FormatMode; label: string }[] = [
     { value: 'json', label: 'JSON' },
@@ -105,11 +109,11 @@ export class Formatter {
 
   private formatJSON(text: string): string {
     const parsed = JSON.parse(text);
-    return JSON.stringify(parsed, null, this.indentSize);
+    return JSON.stringify(parsed, null, this.indent);
   }
 
   private formatXML(text: string): string {
-    const indent = ' '.repeat(this.indentSize);
+    const indent = this.indent;
     let formatted = '';
     let pad = 0;
     const lines = text.replace(/(>)(<)(\/*)/g, '$1\n$2$3').split('\n');
@@ -133,7 +137,7 @@ export class Formatter {
   }
 
   private formatCSS(text: string): string {
-    const indent = ' '.repeat(this.indentSize);
+    const indent = this.indent;
     return text
       .replace(/\s*{\s*/g, ' {\n' + indent)
       .replace(/\s*}\s*/g, '\n}\n\n')
@@ -193,6 +197,45 @@ export class Formatter {
     this.errorMessage = '';
     this.copied = false;
   }
+
+  setMode(mode: FormatMode): void {
+    this.mode = mode;
+    this.onModeChange();
+  }
+
+  /** Formatea mientras escribes, pero sin gritar mientras aún vas a medias. */
+  onInput(): void {
+    if (this.pendiente) clearTimeout(this.pendiente);
+    this.pendiente = setTimeout(() => {
+      this.format();
+      this.cdr.detectChanges();
+    }, 350);
+  }
+
+  /** Manda el resultado a la entrada, para encadenar formatear y minificar. */
+  swap(): void {
+    if (!this.outputText) return;
+    this.inputText = this.outputText;
+    this.format();
+  }
+
+  /**
+   * Lo que se ahorra al minificar. Sin el número, «minificar» es un botón que
+   * no se sabe si ha hecho algo.
+   */
+  get savings(): string {
+    const antes = this.inputText.length;
+    const despues = this.outputText.length;
+    if (!antes || !despues || despues >= antes) return '';
+    const porcentaje = Math.round((1 - despues / antes) * 100);
+    return this.i18n.t('formatter.savings', {
+      from: String(antes),
+      to: String(despues),
+      pct: String(porcentaje),
+    });
+  }
+
+  private pendiente?: ReturnType<typeof setTimeout>;
 
   onModeChange(): void {
     this.inputText = '';

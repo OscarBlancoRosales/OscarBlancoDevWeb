@@ -1,0 +1,59 @@
+.hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px;
+  background: linear-gradient(rgba(4, 10, 8, 0.92), rgba(4, 10, 8, 0));
+  font-size: 13px;
+}
+
+.hud.my-turn .hud-turn {
+  color: #00e676;
+  font-weight: 700;
+}
+
+.hud-leave,
+.hud-settings {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  /* 44px: lo mínimo para que un dedo acierte sin pelearse. */
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.hud-settings {
+  font-size: 16px;
+}
+
+.hud-thinking {
+  margin-left: auto;
+  opacity: 0.75;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.hud-thinking + .hud-turn {
+  margin-left: 0;
+}
+
+.hud-turn {
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 640px) {
+  /* En un móvil no caben las tres etiquetas: la fase ya la canta la barra de
+     abajo, que es donde está la acción. */
+  .hud-phase {
+    display: none;
+  }
+}

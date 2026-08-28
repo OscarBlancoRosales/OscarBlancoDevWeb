@@ -162,8 +162,8 @@ function headersFor(settings: AiSettings): Record<string, string> {
   if (settings.apiKey) headers['Authorization'] = `Bearer ${settings.apiKey}`;
   if (settings.provider === 'openrouter') {
     headers['HTTP-Referer'] =
-      currentOrigin('https://devweb.local');
-    headers['X-Title'] = 'DevWeb Risk';
+      currentOrigin('https://oscarblancorosales.com');
+    headers['X-Title'] = 'OBR Risk';
   }
   return headers;
 }

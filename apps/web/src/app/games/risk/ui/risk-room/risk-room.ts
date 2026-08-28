@@ -5,6 +5,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
 import { RiskBoard } from '../risk-board/risk-board';
+import { RiskHud } from '../risk-hud/risk-hud';
+import { RiskScoreboard, ScoreRow } from '../risk-scoreboard/risk-scoreboard';
+import { RiskPanel } from '../risk-panel/risk-panel';
+import { RiskActionBar, PanelId } from '../risk-action-bar/risk-action-bar';
 import {
   ChatEntry,
   RiskRoomService,
@@ -61,7 +65,16 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
  */
 @Component({
   selector: 'app-risk-room',
-  imports: [CommonModule, FormsModule, TerminalLayout, RiskBoard],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TerminalLayout,
+    RiskBoard,
+    RiskHud,
+    RiskScoreboard,
+    RiskPanel,
+    RiskActionBar,
+  ],
   templateUrl: './risk-room.html',
   styleUrl: './risk-room.css',
 })
@@ -197,6 +210,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
     for (const sub of this.subs) sub.unsubscribe();
     this.game.detach();
     this.rooms.disconnect();
@@ -295,6 +309,60 @@ export class RiskRoom implements OnInit, OnDestroy {
       .filter((entry) => !!entry.player);
   }
 
+  /** Filas del marcador compacto, en el orden de la clasificación. */
+  get scoreRows(): ScoreRow[] {
+    return this.scoreboard.map((entry) => ({
+      id: entry.player.id,
+      name: entry.player.name,
+      color: entry.player.color,
+      territories: entry.territories,
+      armies: entry.armies,
+      eliminated: entry.player.eliminated,
+    }));
+  }
+
+  /** Quién mueve ahora, para marcarlo en el marcador. */
+  get currentPlayerId(): string {
+    return this.active?.id ?? '';
+  }
+
+  /** Frase de turno para la barra de arriba. */
+  get turnLabel(): string {
+    if (!this.active) return '';
+    if (this.handedToAi && this.active.id === this.seatId) return 'La IA juega por ti';
+    return this.isMyTurn ? 'Es tu turno' : `Turno de ${this.active.name}`;
+  }
+
+  /**
+   * Mantener pulsado sólo coloca tropas en refuerzos y cuando te toca.
+   *
+   * Fuera de ahí, mantener el dedo sobre un territorio enseña su ficha en vez
+   * de colocar. El tablero no sabe de fases, así que se decide aquí.
+   */
+  get repeatOnHold(): boolean {
+    return this.isMyTurn && this.state?.phase === 'reinforce';
+  }
+
+  /** Panel abierto, si hay alguno. Sólo uno: dos taparían el mapa. */
+  openPanel: PanelId | null = null;
+
+  togglePanel(id: PanelId): void {
+    this.openPanel = this.openPanel === id ? null : id;
+  }
+
+  /**
+   * Al llegar tu turno se cierra el panel que estuviera abierto.
+   *
+   * Con el mapa tapado por el chat, el turno te llega y no te enteras.
+   */
+  private lastTurnWasMine = false;
+
+  private closePanelOnMyTurn(): void {
+    const mine = this.isMyTurn;
+    if (mine && !this.lastTurnWasMine) this.openPanel = null;
+    this.lastTurnWasMine = mine;
+  }
+
   territoryCount(playerId: string): number {
     return this.state ? territoriesOf(this.state, playerId).length : 0;
   }
@@ -311,6 +379,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   targetTerritories: TerritoryId[] = [];
 
   private recomputeSelection(): void {
+    this.closePanelOnMyTurn();
     this.selectableTerritories = this.computeSelectable();
     this.targetTerritories = this.computeTargets();
     // Tras cada ronda de combate el origen tiene menos ejércitos, así que el
@@ -378,6 +447,7 @@ export class RiskRoom implements OnInit, OnDestroy {
       if (!this.selectableTerritories.includes(id)) return;
       this.selectedFrom = id;
       this.deployAmount = Math.min(this.deployAmount, this.me?.reserve ?? 1) || 1;
+      this.queueDeploy(id);
       return;
     }
 
@@ -637,11 +707,78 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   async undoDeploy(all = false): Promise<void> {
+    await this.flushDeploy();
     if (this.placedCount === 0) return;
     await this.send({ type: 'undo-deploy', playerId: this.seatId, all });
   }
 
+  /**
+   * Cuánto se espera desde el último toque antes de mandar la colocación.
+   *
+   * Los toques se acumulan y salen en una sola acción. Uno por toque serían
+   * tantas escrituras en Firebase como toques, y otras tantas líneas de
+   * registro: online iría a trompicones y el historial quedaría ilegible.
+   */
+  readonly DEPLOY_FLUSH_MS = 350;
+
+  private pendingDeploy: { territoryId: TerritoryId; armies: number } | null = null;
+  private deployFlushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * Lo que queda por colocar CONTANDO lo que aún no ha salido.
+   *
+   * La pantalla tiene que responder al dedo aunque la escritura tarde, así que
+   * el contador baja en el toque y no cuando la acción llega a la sala.
+   */
+  get reserveLeft(): number {
+    return Math.max(0, (this.me?.reserve ?? 0) - (this.pendingDeploy?.armies ?? 0));
+  }
+
+  private queueDeploy(territoryId: TerritoryId): void {
+    if (this.reserveLeft <= 0) return;
+    // Cambiar de destino cierra lo anterior: una acción por territorio.
+    if (this.pendingDeploy && this.pendingDeploy.territoryId !== territoryId) {
+      void this.flushDeploy();
+    }
+    this.pendingDeploy = {
+      territoryId,
+      armies: (this.pendingDeploy?.armies ?? 0) + 1,
+    };
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
+    this.deployFlushTimer = setTimeout(() => void this.flushDeploy(), this.DEPLOY_FLUSH_MS);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Manda de golpe todo lo acumulado.
+   *
+   * Se llama sola al dejar de tocar, y a mano antes de cualquier cosa que
+   * dependa de la reserva: deshacer, terminar la fase o colocar con el
+   * deslizador.
+   */
+  async flushDeploy(): Promise<void> {
+    if (this.deployFlushTimer) clearTimeout(this.deployFlushTimer);
+    this.deployFlushTimer = null;
+    const pending = this.pendingDeploy;
+    if (!pending) return;
+    try {
+      await this.send({
+        type: 'deploy',
+        playerId: this.seatId,
+        territoryId: pending.territoryId,
+        armies: pending.armies,
+      });
+    } finally {
+      // Se suelta pase lo que pase: si la acción se rechaza, `send` ya deja el
+      // aviso en pantalla y el contador tiene que volver a la verdad.
+      this.pendingDeploy = null;
+      this.cdr.markForCheck();
+    }
+  }
+
   async deploy(all = false): Promise<void> {
+    // Lo tocado va primero, o se contaría dos veces la misma reserva.
+    await this.flushDeploy();
     if (!this.selectedFrom || !this.me) return;
     const armies = all ? this.me.reserve : Math.min(this.deployAmount, this.me.reserve);
     if (armies <= 0) return;
@@ -679,6 +816,7 @@ export class RiskRoom implements OnInit, OnDestroy {
   }
 
   async endPhase(): Promise<void> {
+    await this.flushDeploy();
     this.clearSelection();
     await this.send({ type: 'end-phase', playerId: this.seatId });
   }

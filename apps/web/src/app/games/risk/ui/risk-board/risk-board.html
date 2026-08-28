@@ -59,6 +59,8 @@
           class="territory"
           [ngClass]="classesFor(territory)"
           (click)="onTerritoryClick(territory.id, $event)"
+          (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
+          (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >
@@ -81,6 +83,8 @@
           [class.spotlight]="spotlight === territory.id"
           [attr.transform]="'translate(' + territory.label.x + ' ' + territory.label.y + ')'"
           (click)="onTerritoryClick(territory.id, $event)"
+          (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
+          (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >

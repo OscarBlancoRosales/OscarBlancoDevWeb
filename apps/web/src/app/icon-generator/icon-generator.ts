@@ -1,5 +1,4 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
@@ -17,7 +16,7 @@ interface IconSize {
 
 @Component({
   selector: 'app-icon-generator',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './icon-generator.html',
   styleUrl: './icon-generator.css'
 })
@@ -25,6 +24,11 @@ export class IconGenerator {
   imageLoaded = false;
   imageSrc = '';
   fileName = '';
+  /** Para marcar la zona de soltar mientras arrastras algo encima. */
+  dragging = false;
+  /** Las medidas de lo que has cargado, para poder avisar si se queda corto. */
+  imageSize = '';
+  tooSmall = false;
   generating = false;
   progress = 0;
   progressText = '';
@@ -110,6 +114,10 @@ export class IconGenerator {
         this.sourceImage = img;
         this.imageSrc = img.src;
         this.imageLoaded = true;
+        this.imageSize = `${img.naturalWidth}×${img.naturalHeight}`;
+        // El icono más grande que se genera es de 1024: por debajo de eso,
+        // el resultado sale borroso y más vale decirlo antes de generarlo.
+        this.tooSmall = Math.min(img.naturalWidth, img.naturalHeight) < 1024;
         this.cdr.detectChanges();
       };
       img.onerror = () => {
@@ -124,6 +132,7 @@ export class IconGenerator {
   onDrop(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    this.dragging = false;
     if (event.dataTransfer?.files?.length) {
       const fakeEvent = { target: { files: event.dataTransfer.files } } as unknown as Event;
       this.onFileSelected(fakeEvent);
@@ -133,6 +142,7 @@ export class IconGenerator {
   onDragOver(event: DragEvent): void {
     event.preventDefault();
     event.stopPropagation();
+    this.dragging = true;
   }
 
   private async resizeImage(width: number, height: number, round = false): Promise<Blob> {
@@ -452,6 +462,8 @@ export class IconGenerator {
     this.imageLoaded = false;
     this.imageSrc = '';
     this.fileName = '';
+    this.imageSize = '';
+    this.tooSmall = false;
     this.sourceImage = null;
     this.generating = false;
     this.progress = 0;

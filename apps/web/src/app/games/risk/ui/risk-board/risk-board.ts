@@ -1,9 +1,11 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
   Input,
+  OnDestroy,
   Output,
   ViewChild,
 } from '@angular/core';
@@ -48,7 +50,7 @@ export interface TerritoryTooltip {
   styleUrl: './risk-board.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RiskBoard {
+export class RiskBoard implements OnDestroy {
   @Input({ required: true }) set map(value: GameMap) {
     this._map = value;
     this.rendered = renderMap(value);
@@ -74,6 +76,15 @@ export class RiskBoard {
   /** Territorio resaltado por el chat o por la IA. */
   @Input() spotlight: TerritoryId | null = null;
   @Input() showNames = true;
+  /**
+   * Repetir mientras se mantiene pulsado.
+   *
+   * Lo enciende la sala sólo en la fase de refuerzos: es el gesto de los
+   * selectores de cantidad de toda la vida, y evita dar treinta toques para
+   * colocar treinta tropas. El tablero no sabe qué fase es; recibe el
+   * interruptor y ya está.
+   */
+  @Input() repeatOnHold = false;
   /** Modo avanzado: pinta la orografía y la explica en el cartel flotante. */
   @Input() set showTerrain(value: boolean) {
     this._showTerrain = value;
@@ -99,6 +110,12 @@ export class RiskBoard {
   readonly markedTerrains = TERRAINS.map((terrain) => TERRAIN_META[terrain]).filter(
     (meta) => meta.id !== 'llanura',
   );
+
+  /**
+   * En modo zoneless nada repinta solo al vencer un temporizador, y aquí todo
+   * lo que pasa mientras el dedo está quieto viene de un temporizador.
+   */
+  constructor(private cdr: ChangeDetectorRef) {}
 
   @Output() territoryClick = new EventEmitter<TerritoryId>();
   @Output() territoryHover = new EventEmitter<TerritoryId | null>();
@@ -323,8 +340,131 @@ export class RiskBoard {
 
   // ===== INTERACCIÓN =====
 
+  /**
+   * Cuánto puede moverse un dedo y seguir contando como toque, en píxeles.
+   *
+   * Sin este umbral, arrastrar el mapa en el móvil termina en un clic sobre el
+   * territorio donde levantas el dedo: mueves el mapa y colocas una tropa sin
+   * querer. Ocho píxeles es lo que tiembla una mano, no lo que se mueve un
+   * gesto.
+   */
+  readonly TAP_MAX_MOVE = 8;
+
+  /** Cuánto se espera antes de empezar a repetir. */
+  readonly HOLD_FIRST_MS = 400;
+  /** Lo más rápido que llega a repetir. */
+  readonly HOLD_MIN_MS = 60;
+  /** Cuánto se recorta el intervalo en cada vuelta. */
+  readonly HOLD_STEP_MS = 15;
+  /** Cuánto hay que mantener el dedo para que salga la ficha informativa. */
+  readonly HOLD_INFO_MS = 500;
+
+  /** Toque en curso: dónde empezó y si ya se ha ido de paseo. */
+  private pendingTap: { id: TerritoryId; x: number; y: number; moved: boolean } | null = null;
+  /**
+   * Qué hizo el último gesto de puntero: si emitió, o si fue un arrastre.
+   *
+   * Lo usa el respaldo del clic para no duplicar ni colar un arrastre.
+   */
+  private lastGesture: 'emitted' | 'dragged' | 'none' = 'none';
+  private repeatTimer: ReturnType<typeof setTimeout> | null = null;
+  private infoTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Coloca en cadena, cada vez más rápido, mientras no se suelte. */
+  private startRepeat(id: TerritoryId): void {
+    this.stopRepeat();
+    let delay = 150;
+    const tick = () => {
+      // Si el dedo se ha ido de paseo esto era un arrastre, no una cadena.
+      if (!this.pendingTap || this.pendingTap.moved) return this.stopRepeat();
+      this.territoryClick.emit(id);
+      this.cdr.markForCheck();
+      delay = Math.max(this.HOLD_MIN_MS, delay - this.HOLD_STEP_MS);
+      this.repeatTimer = setTimeout(tick, delay);
+    };
+    this.repeatTimer = setTimeout(tick, this.HOLD_FIRST_MS);
+  }
+
+  private stopRepeat(): void {
+    if (this.repeatTimer) clearTimeout(this.repeatTimer);
+    this.repeatTimer = null;
+  }
+
+  /**
+   * Ficha informativa al mantener pulsado, cuando no toca colocar.
+   *
+   * En el móvil no hay ratón, así que el cartel que sale al pasar por encima no
+   * aparece nunca. Ésta es su puerta de entrada con el dedo.
+   */
+  private startInfo(id: TerritoryId): void {
+    this.stopInfo();
+    this.infoTimer = setTimeout(() => {
+      if (!this.pendingTap || this.pendingTap.moved) return;
+      this.onTerritoryEnter(id);
+      this.cdr.markForCheck();
+    }, this.HOLD_INFO_MS);
+  }
+
+  private stopInfo(): void {
+    if (this.infoTimer) clearTimeout(this.infoTimer);
+    this.infoTimer = null;
+  }
+
+  ngOnDestroy(): void {
+    this.stopRepeat();
+    this.stopInfo();
+  }
+
+  onTerritoryPointerDown(id: TerritoryId, event: PointerEvent): void {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    this.pendingTap = { id, x: event.clientX, y: event.clientY, moved: false };
+    if (this.repeatOnHold) this.startRepeat(id);
+    else this.startInfo(id);
+  }
+
+  onTerritoryPointerUp(id: TerritoryId, event: PointerEvent): void {
+    this.stopRepeat();
+    this.stopInfo();
+    const tap = this.pendingTap;
+    this.pendingTap = null;
+    if (!tap || tap.id !== id || tap.moved) {
+      this.lastGesture = tap?.moved ? 'dragged' : 'none';
+      return;
+    }
+    this.lastGesture = 'emitted';
+    event.stopPropagation();
+    this.territoryClick.emit(id);
+  }
+
+  /** Marca el toque como arrastre en cuanto se aleja del punto de partida. */
+  private trackTapMovement(event: PointerEvent): void {
+    const tap = this.pendingTap;
+    if (!tap) return;
+    const dx = event.clientX - tap.x;
+    const dy = event.clientY - tap.y;
+    if (Math.hypot(dx, dy) > this.TAP_MAX_MOVE) {
+      tap.moved = true;
+      this.stopRepeat();
+      this.stopInfo();
+    }
+  }
+
+  /**
+   * El clic del navegador, como RESPALDO del gesto de puntero.
+   *
+   * Manda `onTerritoryPointerUp`, que es quien sabe distinguir un toque de un
+   * arrastre y quien permite colocar en cadena. Pero probando en el navegador
+   * de verdad hubo casos en que ese `pointerup` no llegaba al grupo del SVG y
+   * el mapa se quedaba mudo, así que el clic de toda la vida cierra el hueco.
+   *
+   * No puede duplicar: si el gesto ya emitió, éste calla. Y si el gesto fue un
+   * arrastre, calla también, que es justo lo que había que evitar en el móvil.
+   */
   onTerritoryClick(id: TerritoryId, event: Event): void {
     event.stopPropagation();
+    const gesture = this.lastGesture;
+    this.lastGesture = 'none';
+    if (gesture !== 'none') return;
     this.territoryClick.emit(id);
   }
 
@@ -376,13 +516,19 @@ export class RiskBoard {
   }
 
   onPointerMove(event: PointerEvent): void {
+    // Antes del `if`: el toque hay que seguirlo aunque no se esté arrastrando
+    // el mapa, porque el dedo se mueve igual.
+    this.trackTapMovement(event);
     if (!this.dragging) return;
     this.panX = this.panStartX + (event.clientX - this.dragStartX);
     this.panY = this.panStartY + (event.clientY - this.dragStartY);
   }
 
   onPointerUp(): void {
+    this.stopRepeat();
+    this.stopInfo();
     this.dragging = false;
+    this.pendingTap = null;
   }
 
   onTouchStart(event: TouchEvent): void {

@@ -1,0 +1,31 @@
+@if (open) {
+  <div class="palette-backdrop" (click)="close()">
+    <div
+      class="palette"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      [attr.aria-label]="i18n.t('console.paletteTitle')">
+      <input
+        #paletteInput
+        class="palette-input"
+        type="text"
+        [value]="query"
+        (input)="query = $any($event.target).value"
+        (keydown)="onKey($event)"
+        [placeholder]="i18n.t('console.palettePlaceholder')"
+        autocomplete="off"
+        spellcheck="false" />
+      <div class="palette-list">
+        @for (cmd of results; track cmd.id) {
+          <button class="palette-item" (click)="choose(cmd.id)">
+            <span class="palette-group palette-group--{{ cmd.group }}">{{ cmd.group }}</span>
+            <span class="palette-name">{{ cmd.id }}</span>
+            <span class="palette-desc">{{ describe(cmd) }}</span>
+          </button>
+        } @empty {
+          <div class="palette-empty">{{ i18n.t('console.paletteEmpty') }}</div>
+        }
+      </div>
+    </div>
+  </div>
+}

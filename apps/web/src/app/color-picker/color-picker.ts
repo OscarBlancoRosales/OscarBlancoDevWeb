@@ -1,12 +1,11 @@
 import { Component, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { I18nService } from '../services/i18n.service';
 
 @Component({
   selector: 'app-color-picker',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './color-picker.html',
   styleUrl: './color-picker.css'
 })
@@ -100,6 +99,55 @@ export class ColorPicker {
     this.r = Math.round(r * 255);
     this.g = Math.round(g * 255);
     this.b = Math.round(b * 255);
+  }
+
+  /**
+   * Blanco o negro encima, el que se lea. Es la pregunta que se hace siempre
+   * al elegir un color: «¿y el texto encima, de qué color va?».
+   */
+  get readableOn(): string {
+    return this.luminance() > 0.45 ? '#000000' : '#ffffff';
+  }
+
+  /**
+   * El contraste contra blanco y negro, en niveles de accesibilidad. AA pide
+   * 4.5 para texto normal; AAA pide 7.
+   */
+  get contrastLabel(): string {
+    const conNegro = this.contrastWith(0);
+    const conBlanco = this.contrastWith(1);
+    const mejor = Math.max(conNegro, conBlanco);
+    const nivel = mejor >= 7 ? 'AAA' : mejor >= 4.5 ? 'AA' : mejor >= 3 ? 'AA+' : '—';
+    return `${mejor.toFixed(1)}:1 · ${nivel}`;
+  }
+
+  /** Los colores que combinan: el de enfrente y los dos de al lado. */
+  get harmony(): { name: string; hex: string }[] {
+    const gira = (grados: number) => this.hslToHex((this.h + grados + 360) % 360, this.s, this.l);
+    return [
+      { name: this.i18n.t('color.base'), hex: this.hexInput },
+      { name: this.i18n.t('color.complement'), hex: gira(180) },
+      { name: 'A', hex: gira(120) },
+      { name: 'B', hex: gira(240) },
+      { name: '+30', hex: gira(30) },
+      { name: '-30', hex: gira(-30) },
+    ];
+  }
+
+  /** Luminancia relativa, la de la fórmula de accesibilidad. */
+  private luminance(): number {
+    const canal = (v: number) => {
+      const x = v / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * canal(this.r) + 0.7152 * canal(this.g) + 0.0722 * canal(this.b);
+  }
+
+  private contrastWith(otra: number): number {
+    const propia = this.luminance();
+    const claro = Math.max(propia, otra);
+    const oscuro = Math.min(propia, otra);
+    return (claro + 0.05) / (oscuro + 0.05);
   }
 
   generatePalette(): void {

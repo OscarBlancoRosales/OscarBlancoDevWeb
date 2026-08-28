@@ -1,0 +1,53 @@
+<div class="bar" [class.my-turn]="myTurn">
+  <ng-container *ngIf="myTurn">
+    <span class="bar-phase">{{ phaseLabel }}</span>
+
+    <ng-container *ngIf="phase === 'reinforce'">
+      <span class="bar-reserve" [class.spent]="reserveLeft === 0">Quedan {{ reserveLeft }}</span>
+      <span class="bar-hint" *ngIf="reserveLeft > 0">
+        Toca tus territorios · mantén pulsado para varias
+      </span>
+      <button class="bar-undo" type="button" *ngIf="placedCount > 0" (click)="undo.emit(false)">
+        ↶ Deshacer
+      </button>
+      <button class="bar-undo" type="button" *ngIf="placedCount > 0" (click)="undo.emit(true)">
+        ↺ Empezar de cero
+      </button>
+    </ng-container>
+
+    <button class="bar-end" type="button" [disabled]="!canEndPhase" (click)="endPhase.emit()">
+      Terminar →
+    </button>
+  </ng-container>
+
+  <!-- Mirar no es jugar: los paneles están siempre, toque o no toque. -->
+  <div class="bar-panels">
+    <button
+      class="bar-panel bar-panel-cartas"
+      type="button"
+      [class.active]="openPanel === 'cartas'"
+      (click)="togglePanel.emit('cartas')"
+      aria-label="Cartas"
+    >
+      🂠<span class="bar-badge" *ngIf="cardCount > 0">{{ cardCount }}</span>
+    </button>
+    <button
+      class="bar-panel bar-panel-chat"
+      type="button"
+      [class.active]="openPanel === 'chat'"
+      (click)="togglePanel.emit('chat')"
+      aria-label="Chat"
+    >
+      💬
+    </button>
+    <button
+      class="bar-panel bar-panel-historia"
+      type="button"
+      [class.active]="openPanel === 'historia'"
+      (click)="togglePanel.emit('historia')"
+      aria-label="Historia"
+    >
+      📜
+    </button>
+  </div>
+</div>

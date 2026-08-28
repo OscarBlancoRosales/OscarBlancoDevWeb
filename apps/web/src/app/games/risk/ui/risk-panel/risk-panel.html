@@ -1,0 +1,16 @@
+<ng-container *ngIf="open">
+  <!--
+    El fondo sólo estorba en móvil, donde el panel tapa el mapa. En ordenador el
+    CSS lo esconde, porque allí el panel flota al lado y el mapa se sigue viendo.
+  -->
+  <div class="panel-backdrop" (click)="close.emit()"></div>
+  <section class="panel-shell">
+    <header class="panel-head">
+      <span class="panel-title">{{ title }}</span>
+      <button class="panel-close" type="button" (click)="close.emit()" aria-label="Cerrar">✕</button>
+    </header>
+    <div class="panel-body">
+      <ng-content></ng-content>
+    </div>
+  </section>
+</ng-container>

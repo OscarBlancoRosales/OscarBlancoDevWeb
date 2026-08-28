@@ -480,6 +480,12 @@ describe('RiskRoom (la mesa)', () => {
           expect(entry.text.length).toBeGreaterThan(5);
           expect(entry.name.length).toBeGreaterThan(0);
         }
+        // Los objetivos viven ahora en el panel «Partida», que empieza cerrado:
+        // el mapa manda, y lo demás se abre cuando hace falta. Se abre pulsando
+        // el botón, no tocando el campo: en zoneless, cambiarlo a mano después
+        // del primer pintado da NG0100, y además nadie juega así.
+        mounted.fixture.nativeElement.querySelector('.bar-panel-historia').click();
+        mounted.fixture.detectChanges();
         const panel = mounted.fixture.nativeElement.querySelector('.missions-panel');
         expect(panel).not.toBeNull();
         expect(panel.querySelectorAll('.mission-row').length).toBe(4);
@@ -487,6 +493,88 @@ describe('RiskRoom (la mesa)', () => {
         expect(panel.querySelectorAll('.mission-row.me').length).toBe(1);
       } finally {
         mounted.fixture.destroy();
+      }
+    });
+  });
+
+  describe('pantalla nueva', () => {
+    beforeEach(async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      fixture.detectChanges();
+    });
+
+    it('el mapa está siempre, y las barras y el marcador encima', () => {
+      expect(fixture.nativeElement.querySelector('app-risk-board')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-hud')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-scoreboard')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-action-bar')).toBeTruthy();
+    });
+
+    it('ya no quedan columnas: el mapa no comparte sitio con nadie', () => {
+      expect(fixture.nativeElement.querySelector('.players-column')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.side-column')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.board-column')).toBeNull();
+    });
+
+    it('empieza sin ningún panel abierto: el mapa se ve entero', () => {
+      expect(component.openPanel).toBeNull();
+      expect(fixture.nativeElement.querySelector('.panel-shell')).toBeNull();
+    });
+
+    it('abre un panel y cierra el anterior', () => {
+      // Dos a la vez taparían el mapa, que es lo que se quería evitar.
+      fixture.nativeElement.querySelector('.bar-panel-chat').click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBe('chat');
+      fixture.nativeElement.querySelector('.bar-panel-cartas').click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBe('cartas');
+      expect(fixture.nativeElement.querySelectorAll('.panel-shell').length).toBe(1);
+    });
+
+    it('volver a pulsar el mismo lo cierra', () => {
+      const boton = fixture.nativeElement.querySelector('.bar-panel-chat');
+      boton.click();
+      fixture.detectChanges();
+      boton.click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBeNull();
+    });
+
+    it('el marcador lleva una fila por jugador', () => {
+      expect(component.scoreRows.length).toBe(component.state!.players.length);
+      const nombres = component.scoreRows.map((r) => r.name).sort();
+      const esperados = component.state!.players.map((p) => p.name).sort();
+      expect(nombres).toEqual(esperados);
+    });
+
+    it('la repetición al mantener pulsado sólo se ofrece en refuerzos y en tu turno', () => {
+      expect(component.repeatOnHold).toBe(
+        component.isMyTurn && component.state!.phase === 'reinforce',
+      );
+    });
+
+    it('el chat, las cartas, la partida y los ajustes tienen todos su sitio', () => {
+      // Al quitar la columna lateral, nada puede quedarse sin puerta. Se abren
+      // pulsando, no asignando el campo: en zoneless, cambiarlo a mano después
+      // del primer pintado da NG0100, y además nadie juega así.
+      const puertas: Array<[string, string]> = [
+        ['.bar-panel-chat', 'Chat'],
+        ['.bar-panel-cartas', 'Cartas'],
+        ['.bar-panel-historia', 'Partida'],
+        ['.hud-settings', 'Ajustes de IA'],
+      ];
+      for (const [selector, titulo] of puertas) {
+        fixture.nativeElement.querySelector(selector).click();
+        fixture.detectChanges();
+        const abierto = fixture.nativeElement.querySelector('.panel-shell');
+        expect(abierto, selector).toBeTruthy();
+        expect(abierto.querySelector('.panel-title').textContent.trim()).toBe(titulo);
+        // Cerrar antes de la siguiente, para probar una puerta cada vez.
+        fixture.nativeElement.querySelector('.panel-close').click();
+        fixture.detectChanges();
       }
     });
   });
@@ -531,6 +619,76 @@ describe('RiskRoom (la mesa)', () => {
       await wait(5);
       expect(component.me!.reserve).toBe(0);
       expect(component.state!.territories[target].armies).toBe(armies + reserve);
+    });
+
+    describe('colocar a toques', () => {
+      it('varios toques mandan UNA sola acción', async () => {
+        // Un toque por acción serían tantas escrituras en Firebase como toques,
+        // y otras tantas líneas de registro: online iría a trompicones y el
+        // historial quedaría ilegible.
+        const game = TestBed.inject(RiskGameService);
+        const enviadas: Array<Record<string, unknown>> = [];
+        const espia = vi
+          .spyOn(game, 'play')
+          .mockImplementation(async (a) => void enviadas.push(a as never));
+        try {
+          const target = component.selectableTerritories[0];
+          const toques = component.me!.reserve;
+          expect(toques, 'sin reserva no hay nada que probar').toBeGreaterThan(1);
+          for (let i = 0; i < toques; i++) component.onTerritoryClick(target);
+          expect(enviadas, 'ha mandado antes de agrupar').toEqual([]);
+          await component.flushDeploy();
+          expect(enviadas).toHaveLength(1);
+          expect(enviadas[0]).toMatchObject({
+            type: 'deploy',
+            territoryId: target,
+            armies: toques,
+          });
+        } finally {
+          espia.mockRestore();
+        }
+      });
+
+      it('el contador baja en el toque, no al mandar', () => {
+        // La pantalla tiene que responder al dedo aunque la escritura tarde.
+        const antes = component.reserveLeft;
+        component.onTerritoryClick(component.selectableTerritories[0]);
+        expect(component.reserveLeft).toBe(antes - 1);
+      });
+
+      it('no se coloca más de lo que queda en reserva', () => {
+        const target = component.selectableTerritories[0];
+        const reserva = component.reserveLeft;
+        for (let i = 0; i < reserva + 5; i++) component.onTerritoryClick(target);
+        expect(component.reserveLeft).toBe(0);
+      });
+
+      it('cambiar de territorio vuelca lo anterior', async () => {
+        const game = TestBed.inject(RiskGameService);
+        const enviadas: Array<Record<string, unknown>> = [];
+        const espia = vi
+          .spyOn(game, 'play')
+          .mockImplementation(async (a) => void enviadas.push(a as never));
+        try {
+          const [uno, dos] = component.selectableTerritories;
+          component.onTerritoryClick(uno);
+          component.onTerritoryClick(dos);
+          await wait();
+          expect(enviadas).toHaveLength(1);
+          expect(enviadas[0]).toMatchObject({ territoryId: uno, armies: 1 });
+        } finally {
+          espia.mockRestore();
+        }
+      });
+
+      it('el volcado sale solo al dejar de tocar', async () => {
+        const target = component.selectableTerritories[0];
+        const antes = component.state!.territories[target].armies;
+        component.onTerritoryClick(target);
+        component.onTerritoryClick(target);
+        await wait(component.DEPLOY_FLUSH_MS + 30);
+        expect(component.state!.territories[target].armies).toBe(antes + 2);
+      });
     });
 
     it('no puedo terminar la fase con reserva pendiente', () => {
