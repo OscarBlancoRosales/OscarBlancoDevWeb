@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { apiSocketUrl } from './api.config';
 import type { Observable } from 'rxjs';
@@ -12,12 +12,15 @@ const ESPERAS = [500, 1000, 2000, 5000, 10000, 15000] as const;
 /**
  * La conexión con una sala.
  *
+ * Una por sala: no es un servicio compartido. Dos juegos abiertos a la vez en
+ * la misma pestaña se pisarían el socket, y el segundo en conectar echaría al
+ * primero sin que se notase más que por dejar de llegar el estado.
+ *
  * Reconecta sola: un WebSocket se cae por cualquier cosa —el móvil cambia de
  * wifi a datos, el portátil se suspende, el proxy corta una conexión ociosa— y
  * ninguna de esas es motivo para echar a nadie de la partida. Al volver, el
  * servidor manda el estado completo, así que no hay nada que reconciliar a mano.
  */
-@Injectable({ providedIn: 'root' })
 export class RoomSocket {
   private socket: WebSocket | null = null;
   private reintento: ReturnType<typeof setTimeout> | null = null;
@@ -42,8 +45,23 @@ export class RoomSocket {
 
   /** Manda una jugada. Si no hay conexión, se pierde: el servidor es la verdad. */
   enviar(accion: unknown): void {
+    this.mandar({ tipo: 'accion', accion });
+  }
+
+  /**
+   * Dice algo en la sala.
+   *
+   * Ni el nombre ni el tipo del mensaje viajan: los pone el servidor a partir
+   * del asiento. `comoAsiento` sirve para los bots, que los mueve un cliente, y
+   * `comoLaSala` para los avisos del anfitrión.
+   */
+  decir(texto: string, opciones: { comoAsiento?: string; comoLaSala?: boolean; origin?: string } = {}): void {
+    this.mandar({ tipo: 'chat', texto, ...opciones });
+  }
+
+  private mandar(mensaje: unknown): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ tipo: 'accion', accion }));
+      this.socket.send(JSON.stringify(mensaje));
     }
   }
 

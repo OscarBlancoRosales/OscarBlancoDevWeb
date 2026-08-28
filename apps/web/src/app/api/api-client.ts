@@ -18,9 +18,17 @@ export class ApiError extends Error {
 }
 
 interface Peticion {
-  readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  readonly method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   readonly path: string;
   readonly body?: unknown;
+  /**
+   * El pase del asiento, para lo que se autoriza por asiento y no por cuenta.
+   *
+   * Va en una cabecera y no en una cookie porque una persona puede tener dos
+   * salas abiertas en dos pestañas con asientos distintos, y una cookie por
+   * dominio no sabe distinguirlas.
+   */
+  readonly seatToken?: string;
   /** Para las llamadas que no deben intentar renovar sesión: el propio refresco. */
   readonly sinRenovar?: boolean;
 }
@@ -99,6 +107,7 @@ export class ApiClient {
     const headers: Record<string, string> = {};
     if (peticion.body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
+    if (peticion.seatToken) headers['X-Seat-Token'] = peticion.seatToken;
 
     return fetch(`${this.base}${peticion.path}`, {
       method: peticion.method,

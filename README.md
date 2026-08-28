@@ -42,9 +42,10 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 - Documentacion completa en [docs/risk.md](docs/risk.md)
 
 #### Scrum Poker
-- Planning poker en tiempo real con Firebase Realtime Database
+- Planning poker en tiempo real contra el backend propio
 - Crea salas, invita jugadores por enlace, vota y revela resultados
-- Autenticacion Firebase para la creacion de salas
+- Los votos ajenos no salen del servidor hasta que se revela la ronda
+- Crear sala pide cuenta; entrar por invitacion, no
 
 #### Internacionalizacion (i18n)
 - Soporte completo en espanol e ingles en todas las paginas
@@ -55,8 +56,8 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 
 - **Framework:** Angular 21
 - **Estilos:** CSS personalizado con tema terminal/retro
-- **Backend:** Firebase (Realtime Database + Authentication)
-- **Despliegue:** GitHub Pages via GitHub Actions
+- **Backend:** propio — Fastify 5 + SQLite en un VPS ([infra/README.md](infra/README.md))
+- **Despliegue:** web en GitHub Pages, API en el VPS, ambos via GitHub Actions
 - **Librerias:** qrcode, jszip
 
 ### Inicio Rapido
@@ -123,9 +124,10 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 - Full write-up in [docs/risk.md](docs/risk.md)
 
 #### Scrum Poker
-- Real-time planning poker with Firebase Realtime Database
+- Real-time planning poker against our own backend
 - Create rooms, invite players via link, vote and reveal results
-- Firebase Authentication for room creation
+- Other people's votes never leave the server until the round is revealed
+- Creating a room needs an account; joining by invite does not
 
 #### Internationalization (i18n)
 - Full Spanish / English support across all pages
@@ -136,8 +138,8 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 
 - **Framework:** Angular 21
 - **Styling:** Custom CSS with terminal/retro theme
-- **Backend:** Firebase (Realtime Database + Authentication)
-- **Deployment:** GitHub Pages via GitHub Actions
+- **Backend:** our own — Fastify 5 + SQLite on a VPS ([infra/README.md](infra/README.md))
+- **Deployment:** web on GitHub Pages, API on the VPS, both via GitHub Actions
 - **Libraries:** qrcode, jszip
 
 ### Getting Started

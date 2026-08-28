@@ -24,7 +24,6 @@ export interface RoomActorOptions {
   readonly roomId: string;
   readonly module: GameModule<unknown, unknown>;
   readonly repository: RoomRepository;
-  readonly config: Readonly<Record<string, unknown>>;
   readonly status?: RoomStatus;
   /** Quién creó la sala. Su asiento es el único que puede hablar como la sala. */
   readonly ownerId?: string | null;
@@ -48,7 +47,6 @@ export class RoomActor {
   private readonly module: GameModule<unknown, unknown>;
   private readonly repository: RoomRepository;
   private readonly now: () => number;
-  private readonly config: Readonly<Record<string, unknown>>;
   private readonly ownerId: string | null;
   private readonly suscriptores = new Set<Suscriptor>();
   private duenyos = new Set<SeatId>();
@@ -62,7 +60,6 @@ export class RoomActor {
     this.roomId = options.roomId;
     this.module = options.module;
     this.repository = options.repository;
-    this.config = options.config;
     this.ownerId = options.ownerId ?? null;
     this.now = options.now ?? Date.now;
     this.status = options.status ?? 'lobby';
@@ -75,6 +72,17 @@ export class RoomActor {
 
   get ultimaSecuencia(): number {
     return this.seq;
+  }
+
+  /**
+   * Lo que se decidió al montar la sala. Se lee, no se guarda.
+   *
+   * Entre que la sala se abre y la partida empieza se puede cambiar el mapa o
+   * las reglas, y una copia hecha al arrancar el actor repartiría el tablero
+   * con lo que había antes.
+   */
+  private get config(): Readonly<Record<string, unknown>> {
+    return this.repository.findRoom(this.roomId)?.config ?? {};
   }
 
   get estado(): unknown {
@@ -189,6 +197,7 @@ export class RoomActor {
     this.repository.updateRoomStatus(this.roomId, status, this.now());
 
     if (this.state === null && status === 'playing') {
+      this.refreshSeats();
       this.state = this.module.createState(this.seats, this.config);
       this.repository.saveSnapshot(this.roomId, { upToSeq: 0, state: this.state }, this.now());
     }

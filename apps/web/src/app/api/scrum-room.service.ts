@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject } from 'rxjs';
 import { RoomSocket } from './room-socket';
 import { RoomsApiService } from './rooms-api.service';
@@ -48,10 +48,13 @@ export class ScrumRoomService {
   private seatId = '';
   private asientos: readonly SeatInfo[] = [];
 
+  private readonly socket: RoomSocket;
+
   constructor(
     private readonly rooms: RoomsApiService,
-    private readonly socket: RoomSocket,
+    zone: NgZone,
   ) {
+    this.socket = new RoomSocket(zone);
     this.socket.messages$.subscribe((mensaje) => {
       this.recibir(mensaje);
     });

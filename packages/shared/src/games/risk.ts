@@ -194,7 +194,7 @@ function leerConfig(config: Readonly<Record<string, unknown>>): RiskConfig {
   return {
     mapId,
     seed,
-    reglas: esObjeto(reglas) ? (reglas as Partial<GameConfig>) : undefined,
+    reglas: esObjeto(reglas) ? reglas : undefined,
   };
 }
 

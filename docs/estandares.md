@@ -82,9 +82,11 @@ Un único `AppError` con código de dominio, y un único `errorHandler` que lo
 traduce a HTTP en un solo sitio.
 
 Nada de `try/catch` que capturan para volver a lanzar, ni de mensajes de usuario
-construidos dentro de un servicio. El `switch` de mensajes que hay hoy en
-`firebase-auth.service.ts` es justo lo que no se hace: mezcla la regla, el
-transporte y el idioma en la misma función.
+construidos dentro de un servicio. El `switch` de mensajes que traducía los
+códigos de Firebase a castellano dentro del servicio de sesión era justo lo que
+no se hace: mezclaba la regla, el transporte y el idioma en la misma función.
+Hoy esa traducción vive en `AuthApiService.mensajeDe`, que es lo único que sabe
+de idioma.
 
 ---
 
@@ -93,7 +95,7 @@ transporte y el idioma en la misma función.
 El código se explica por sus nombres. Un comentario justifica **por qué**, nunca
 narra **qué**.
 
-El comentario de `settledUser$` en `firebase-auth.service.ts` es el ejemplo de
+El comentario de `settledUser$` en `auth-api.service.ts` es el ejemplo de
 comentario que sí merece existir: explica por qué hacen falta dos observables
 donde parecía bastar uno, y qué se rompe si usas el equivocado. Eso no lo puede
 contar el código.
@@ -121,8 +123,8 @@ un valor por defecto cómodo para producción y un punto de entrada para el test
 Cero tolerancia.
 
 **Avisos (no bloquean, pero no pueden crecer):** las mismas reglas sobre el código
-que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1264 al
-escribir esto, y `--max-warnings 1264` impide que suban.
+que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1198 al
+escribir esto, y `--max-warnings 1198` impide que suban.
 
 El motivo de no ponerlos como error es práctico: son más de mil, la mayoría
 aserciones `!` e interpolaciones sin tipo. Un repositorio en rojo permanente

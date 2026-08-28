@@ -265,7 +265,6 @@ export class RoomService {
       roomId,
       module,
       repository: this.repository,
-      config: room.config,
       status: room.status,
       ownerId: room.ownerId,
       now: this.now,
