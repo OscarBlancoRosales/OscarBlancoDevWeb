@@ -161,6 +161,35 @@ describe('salas', () => {
       expect(config.preguntas?.some((p) => p.id === 'mia')).toBe(false);
     });
 
+    it('la semilla del trivial no la elige quien crea la sala', async () => {
+      // Con la semilla en manos del cliente, las preguntas son reproducibles:
+      // se juega una partida, se apuntan las respuestas y se vuelve a crear la
+      // sala con la misma semilla. El banco escondido no serviría de nada.
+      const preguntasDe = async (semilla: number): Promise<string[]> => {
+        const grant = (
+          await app.inject({
+            method: 'POST',
+            url: '/salas',
+            headers: { authorization: `Bearer ${token}` },
+            payload: {
+              game: 'trivial',
+              name: 'Concurso',
+              displayName: 'Óscar',
+              config: { semilla },
+            },
+          })
+        ).json<SeatGrant>();
+
+        const fila = db
+          .prepare('SELECT config_json FROM rooms WHERE id = ?')
+          .get(grant.room.id) as { config_json: string };
+        const config = JSON.parse(fila.config_json) as { preguntas: { id: string }[] };
+        return config.preguntas.map((pregunta) => pregunta.id);
+      };
+
+      expect(await preguntasDe(1)).not.toEqual(await preguntasDe(1));
+    });
+
     it('el pase se guarda hasheado, nunca en claro', async () => {
       const grant = (await crearSala()).json<SeatGrant>();
 

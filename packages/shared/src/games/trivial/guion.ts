@@ -77,7 +77,7 @@ const FRASES: Readonly<Record<Momento, readonly string[]>> = {
 /** La frase de ese momento, elegida con el azar de la partida. */
 export function frasePara(momento: Momento, datos: DatosDeLaFrase, rng: Rng): string {
   const posibles = FRASES[momento];
-  const elegida = posibles[rng.int(0, posibles.length - 1)] ?? posibles[0] ?? '';
+  const elegida = posibles[rng.int(0, posibles.length - 1)] ?? '';
   return rellenar(elegida, datos);
 }
 
