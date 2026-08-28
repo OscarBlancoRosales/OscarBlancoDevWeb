@@ -90,9 +90,8 @@ describe('validarFlota', () => {
   });
 
   it('rechaza una flota con un barco de mas', () => {
-    expect(validarFlota([...FLOTA_VALIDA, FLOTA_VALIDA[4] as Barco])?.code).toBe(
-      'flota-incompleta',
-    );
+    const dobleLancha: Barco = { fila: 6, columna: 0, tamano: 2, orientacion: 'horizontal' };
+    expect(validarFlota([...FLOTA_VALIDA, dobleLancha])?.code).toBe('flota-incompleta');
   });
 
   it('rechaza una flota con tamanos que no son los de la flota', () => {

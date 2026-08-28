@@ -3,7 +3,11 @@ import type { Static } from '@sinclair/typebox';
 
 const SIN_EXTRAS = { additionalProperties: false } as const;
 
-export const GameId = Type.Union([Type.Literal('scrum'), Type.Literal('risk')]);
+export const GameId = Type.Union([
+  Type.Literal('scrum'),
+  Type.Literal('risk'),
+  Type.Literal('flota'),
+]);
 export const RoomStatus = Type.Union([
   Type.Literal('lobby'),
   Type.Literal('playing'),
