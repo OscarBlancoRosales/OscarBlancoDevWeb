@@ -1,4 +1,6 @@
 import { FlotaAction } from './tipos';
+import { flotaAleatoria, siguienteDisparo } from './bot';
+import { rngFor } from '../../engine/rng';
 import { disparar, flotaHundida, indice, punteria, tableroVacio, validarFlota } from './reglas';
 import type { Barco, Bando, FlotaState, FlotaView, Nivel } from './tipos';
 import type { GameModule, RuleError, SeatId } from '../module';
@@ -130,6 +132,31 @@ export const flotaModule: GameModule<FlotaState, FlotaAction> = {
       punteriaTuya: terminada && rival ? punteria(rival) : null,
       punteriaRival: terminada && tuyo ? punteria(tuyo) : null,
     } satisfies FlotaView;
+  },
+
+  /**
+   * Lo que haría un asiento sin nadie detrás.
+   *
+   * Coloca su flota en cuanto la sala arranca y dispara cuando le toca. Todo el
+   * azar sale de la semilla y del número de jugada, así que reaplicar el log
+   * reproduce la partida con los bots incluidos: es la condición para que la
+   * foto que guarda el actor siga valiendo.
+   */
+  botAction(state, seat) {
+    const rng = rngFor(state.semilla, state.jugadas, `flota:${seat}`);
+
+    if (state.fase === 'colocacion') {
+      if (seat in state.bandos || state.orden.length >= BANDOS) return null;
+      return { tipo: 'desplegar', barcos: flotaAleatoria(rng) };
+    }
+
+    if (state.fase !== 'combate' || state.turno !== seat) return null;
+
+    const rival = bandoRival(state, seat);
+    if (!rival) return null;
+
+    const { fila, columna } = siguienteDisparo(rival.recibidos, state.nivelBot, rng);
+    return { tipo: 'disparar', fila, columna };
   },
 
   /**

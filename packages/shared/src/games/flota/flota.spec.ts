@@ -232,3 +232,53 @@ describe('irse de la mesa', () => {
     expect(tras.bandos['ana']).toBeDefined();
   });
 });
+
+describe('lo que hace un asiento sin nadie detras', () => {
+  it('despliega una flota legal en cuanto empieza', () => {
+    const state = flotaModule.createState(SEATS, { semilla: 4 });
+    const jugada = flotaModule.botAction?.(state, 'bot', SEATS);
+    expect(jugada?.tipo).toBe('desplegar');
+    expect(jugada && flotaModule.validate(state, jugada, 'bot', SEATS)).toBeNull();
+  });
+
+  it('no despliega dos veces', () => {
+    const una = flotaModule.apply(
+      flotaModule.createState(SEATS, {}),
+      { tipo: 'desplegar', barcos: FLOTA_ANA },
+      'bot',
+      SEATS,
+    );
+    expect(flotaModule.botAction?.(una, 'bot', SEATS)).toBeNull();
+  });
+
+  it('no juega si no es su turno', () => {
+    expect(flotaModule.botAction?.(conLasDosFlotasPuestas(), 'bea', SEATS)).toBeNull();
+  });
+
+  it('dispara a una casilla legal cuando le toca', () => {
+    const state = conLasDosFlotasPuestas();
+    const jugada = flotaModule.botAction?.(state, 'ana', SEATS);
+    expect(jugada?.tipo).toBe('disparar');
+    expect(jugada && flotaModule.validate(state, jugada, 'ana', SEATS)).toBeNull();
+  });
+
+  it('dos bots terminan la partida solos, y siempre la misma', () => {
+    const partida = (): FlotaState => {
+      let state = flotaModule.createState(SEATS, { semilla: 11, nivelBot: 'almirante' });
+      // Doscientas casillas por bando dan de sobra para hundir dos flotas; si
+      // hicieran falta más, es que el bot está repitiendo disparos.
+      for (let jugada = 0; jugada < 400 && state.fase !== 'fin'; jugada++) {
+        for (const seat of ['ana', 'bea']) {
+          const accion = flotaModule.botAction?.(state, seat, SEATS);
+          if (accion) state = flotaModule.apply(state, accion, seat, SEATS);
+        }
+      }
+      return state;
+    };
+
+    const una = partida();
+    expect(una.fase).toBe('fin');
+    expect(una.ganador).not.toBeNull();
+    expect(JSON.stringify(partida())).toBe(JSON.stringify(una));
+  });
+});
