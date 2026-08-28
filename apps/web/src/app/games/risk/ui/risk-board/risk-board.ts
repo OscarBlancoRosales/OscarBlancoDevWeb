@@ -1,4 +1,5 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
@@ -50,7 +51,7 @@ export interface TerritoryTooltip {
   styleUrl: './risk-board.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RiskBoard implements OnDestroy {
+export class RiskBoard implements AfterViewInit, OnDestroy {
   @Input({ required: true }) set map(value: GameMap) {
     this._map = value;
     this.rendered = renderMap(value);
@@ -121,6 +122,63 @@ export class RiskBoard implements OnDestroy {
   @Output() territoryHover = new EventEmitter<TerritoryId | null>();
 
   @ViewChild('svg') svgRef?: ElementRef<SVGSVGElement>;
+  /** El grupo que se mueve. Se le escribe el `transform` a mano. */
+  @ViewChild('viewport') viewportRef?: ElementRef<SVGGElement>;
+
+  /**
+   * Los gestos del mapa se enganchan aquí, NO en la plantilla.
+   *
+   * Un `(pointermove)` en la plantilla ensucia la vista en cada píxel que se
+   * mueve el dedo, y eso repinta el mapa entero: con el mapa del mundo son
+   * cuarenta y dos territorios recalculando color, tropas, clases y terreno
+   * cientos de veces por gesto. Ése era el tirón.
+   *
+   * Enganchados a mano, Angular no se entera de que el mapa se mueve, que es lo
+   * correcto: desplazar la vista no cambia ningún dato del juego. El
+   * `transform` se escribe directamente sobre el SVG.
+   *
+   * Los toques sobre un territorio SÍ siguen en la plantilla: ésos cambian la
+   * partida y tienen que repintar.
+   */
+  ngAfterViewInit(): void {
+    const svg = this.svgRef?.nativeElement;
+    if (!svg) return;
+    svg.addEventListener('pointerdown', this.onPointerDown);
+    svg.addEventListener('pointermove', this.onPointerMove);
+    svg.addEventListener('pointerup', this.onPointerUp);
+    svg.addEventListener('pointerleave', this.onPointerLeave);
+    // `passive: false` porque estos tres llaman a `preventDefault()`.
+    svg.addEventListener('wheel', this.onWheel, { passive: false });
+    svg.addEventListener('touchstart', this.onTouchStart, { passive: false });
+    svg.addEventListener('touchmove', this.onTouchMove, { passive: false });
+    svg.addEventListener('touchend', this.onTouchEnd);
+    this.paintView();
+  }
+
+  private detachGestures(): void {
+    const svg = this.svgRef?.nativeElement;
+    if (!svg) return;
+    svg.removeEventListener('pointerdown', this.onPointerDown);
+    svg.removeEventListener('pointermove', this.onPointerMove);
+    svg.removeEventListener('pointerup', this.onPointerUp);
+    svg.removeEventListener('pointerleave', this.onPointerLeave);
+    svg.removeEventListener('wheel', this.onWheel);
+    svg.removeEventListener('touchstart', this.onTouchStart);
+    svg.removeEventListener('touchmove', this.onTouchMove);
+    svg.removeEventListener('touchend', this.onTouchEnd);
+  }
+
+  /**
+   * Lleva la vista al SVG sin pasar por Angular.
+   *
+   * Es una sola escritura de atributo, así que se hace en el momento: meterla
+   * en un `requestAnimationFrame` añadiría maquinaria para ahorrar algo que no
+   * cuesta nada, y el navegador ya entrega los `pointermove` a ritmo de
+   * fotograma.
+   */
+  private paintView(): void {
+    this.viewportRef?.nativeElement.setAttribute('transform', this.transform);
+  }
 
   private _map: GameMap | null = null;
   rendered: RenderedMap | null = null;
@@ -138,6 +196,9 @@ export class RiskBoard implements OnDestroy {
   zoom = 1;
   panX = 0;
   panY = 0;
+  /** Dedo abajo sobre el mapa; todavía no se sabe si es toque o arrastre. */
+  private panArmed = false;
+  /** Ya ha superado el margen: esto es un arrastre. */
   private dragging = false;
   private dragStartX = 0;
   private dragStartY = 0;
@@ -153,6 +214,7 @@ export class RiskBoard implements OnDestroy {
     this.zoom = 1;
     this.panX = 0;
     this.panY = 0;
+    this.paintView();
   }
 
   // ===== ESTADO DE CADA TERRITORIO =====
@@ -413,6 +475,7 @@ export class RiskBoard implements OnDestroy {
   ngOnDestroy(): void {
     this.stopRepeat();
     this.stopInfo();
+    this.detachGestures();
   }
 
   onTerritoryPointerDown(id: TerritoryId, event: PointerEvent): void {
@@ -425,6 +488,12 @@ export class RiskBoard implements OnDestroy {
   onTerritoryPointerUp(id: TerritoryId, event: PointerEvent): void {
     this.stopRepeat();
     this.stopInfo();
+    // El `stopPropagation()` de abajo impide que el mapa se entere de que se ha
+    // levantado el dedo, así que hay que desarmarlo aquí. Si no, el mapa cree
+    // que sigue habiendo un dedo apoyado y el siguiente movimiento del ratón lo
+    // arrastra sin que nadie haya pulsado.
+    this.panArmed = false;
+    this.dragging = false;
     const tap = this.pendingTap;
     this.pendingTap = null;
     if (!tap || tap.id !== id || tap.moved) {
@@ -482,11 +551,11 @@ export class RiskBoard implements OnDestroy {
     this.territoryHover.emit(null);
   }
 
-  onWheel(event: WheelEvent): void {
+  onWheel = (event: WheelEvent): void => {
     event.preventDefault();
     const factor = event.deltaY < 0 ? 1.12 : 1 / 1.12;
     this.applyZoom(factor, event.offsetX, event.offsetY);
-  }
+  };
 
   private applyZoom(factor: number, originX: number, originY: number): void {
     const next = Math.min(4, Math.max(0.6, this.zoom * factor));
@@ -494,6 +563,7 @@ export class RiskBoard implements OnDestroy {
     this.panX = originX - (originX - this.panX) * applied;
     this.panY = originY - (originY - this.panY) * applied;
     this.zoom = next;
+    this.paintView();
   }
 
   zoomIn(): void {
@@ -506,38 +576,65 @@ export class RiskBoard implements OnDestroy {
     this.applyZoom(1 / 1.2, (el?.clientWidth ?? 600) / 2, (el?.clientHeight ?? 400) / 2);
   }
 
-  onPointerDown(event: PointerEvent): void {
+  onPointerDown = (event: PointerEvent): void => {
     if (event.button !== 0 && event.pointerType === 'mouse') return;
-    this.dragging = true;
+    // Armado, todavía no arrastrando: hasta que el dedo no se aleja de verdad
+    // esto puede acabar siendo un toque.
+    this.panArmed = true;
+    this.dragging = false;
     this.dragStartX = event.clientX;
     this.dragStartY = event.clientY;
     this.panStartX = this.panX;
     this.panStartY = this.panY;
-  }
+  };
 
-  onPointerMove(event: PointerEvent): void {
+  onPointerMove = (event: PointerEvent): void => {
     // Antes del `if`: el toque hay que seguirlo aunque no se esté arrastrando
     // el mapa, porque el dedo se mueve igual.
     this.trackTapMovement(event);
-    if (!this.dragging) return;
-    this.panX = this.panStartX + (event.clientX - this.dragStartX);
-    this.panY = this.panStartY + (event.clientY - this.dragStartY);
-  }
+    if (!this.panArmed) return;
+    const dx = event.clientX - this.dragStartX;
+    const dy = event.clientY - this.dragStartY;
+    if (!this.dragging) {
+      // El mismo margen que el toque. Sin él, el mapa se movía bajo el dedo
+      // mientras intentabas pulsar un territorio: pulsar y desplazar eran el
+      // mismo gesto y ninguno de los dos salía bien.
+      if (Math.hypot(dx, dy) <= this.TAP_MAX_MOVE) return;
+      this.dragging = true;
+    }
+    this.panX = this.panStartX + dx;
+    this.panY = this.panStartY + dy;
+    this.paintView();
+  };
 
-  onPointerUp(): void {
+  onPointerUp = (): void => {
     this.stopRepeat();
     this.stopInfo();
+    this.panArmed = false;
     this.dragging = false;
     this.pendingTap = null;
-  }
+  };
 
-  onTouchStart(event: TouchEvent): void {
+  /**
+   * El dedo o el ratón se salen del mapa.
+   *
+   * Aquí sí hace falta avisar a Angular: apagar el cartel flotante es un cambio
+   * que se ve.
+   */
+  onPointerLeave = (): void => {
+    this.onPointerUp();
+    if (this.hovered === null) return;
+    this.onTerritoryLeave();
+    this.cdr.markForCheck();
+  };
+
+  onTouchStart = (event: TouchEvent): void => {
     if (event.touches.length === 2) {
       this.pinchDistance = touchDistance(event);
     }
-  }
+  };
 
-  onTouchMove(event: TouchEvent): void {
+  onTouchMove = (event: TouchEvent): void => {
     if (event.touches.length !== 2 || this.pinchDistance === 0) return;
     event.preventDefault();
     const distance = touchDistance(event);
@@ -547,11 +644,11 @@ export class RiskBoard implements OnDestroy {
     const centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2 - (rect?.left ?? 0);
     const centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2 - (rect?.top ?? 0);
     this.applyZoom(factor, centerX, centerY);
-  }
+  };
 
-  onTouchEnd(): void {
+  onTouchEnd = (): void => {
     this.pinchDistance = 0;
-  }
+  };
 
   trackTerritory = (_: number, territory: RenderedTerritory) => territory.id;
   trackRoute = (_: number, route: { from: string; to: string }) => `${route.from}|${route.to}`;

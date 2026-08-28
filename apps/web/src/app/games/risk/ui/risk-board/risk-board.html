@@ -5,14 +5,6 @@
     *ngIf="rendered"
     [attr.viewBox]="rendered.viewBox"
     preserveAspectRatio="xMidYMid meet"
-    (wheel)="onWheel($event)"
-    (pointerdown)="onPointerDown($event)"
-    (pointermove)="onPointerMove($event)"
-    (pointerup)="onPointerUp()"
-    (pointerleave)="onPointerUp(); onTerritoryLeave()"
-    (touchstart)="onTouchStart($event)"
-    (touchmove)="onTouchMove($event)"
-    (touchend)="onTouchEnd()"
   >
     <defs>
       <!-- Fondo: rejilla tenue tipo carta náutica -->
@@ -42,7 +34,12 @@
     <rect class="sea" x="-4000" y="-4000" width="8000" height="8000" />
     <rect class="sea-grid" x="-4000" y="-4000" width="8000" height="8000" fill="url(#grid)" />
 
-    <g [attr.transform]="transform">
+    <!--
+      Sin `[attr.transform]` a propósito: el desplazamiento y el zoom se
+      escriben aquí a mano desde el componente. Atado a Angular, cada píxel de
+      arrastre repintaba el mapa entero.
+    -->
+    <g #viewport>
       <!-- Rutas marítimas -->
       <g class="routes">
         <path
