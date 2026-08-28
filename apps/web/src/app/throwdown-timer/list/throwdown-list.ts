@@ -11,6 +11,8 @@ export class ThrowdownList {
   readonly configs = input.required<ThrowdownConfig[]>();
   readonly isLoading = input<boolean>(false);
   readonly loadError = input<boolean>(false);
+  /** Motivo por el que un borrado no se pudo hacer, si lo hay. */
+  readonly deleteError = input<string>('');
   readonly newConfig = output<void>();
   readonly editConfig = output<ThrowdownConfig>();
   readonly playConfig = output<ThrowdownConfig>();

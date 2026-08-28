@@ -83,7 +83,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   await app.register(authRoutes({ service, config }));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
-  await app.register(kvRoutes(db));
+  await app.register(kvRoutes(db, config.JWT_SECRET));
 
   return app;
 }

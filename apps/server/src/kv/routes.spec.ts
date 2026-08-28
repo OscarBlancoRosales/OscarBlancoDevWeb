@@ -105,7 +105,9 @@ describe('almacén de configuraciones', () => {
     expect(leida.json<{ value: { rondas: number } }>().value.rondas).toBe(8);
   });
 
-  it('cada uno lista solo lo suyo', async () => {
+  it('la lista es compartida: se ve lo de todos, marcado por dueño', async () => {
+    // Una tanda de temporizadores de un evento la mira todo el equipo. Partir
+    // la lista por dueños la convertiría en varias privadas que no se ven.
     await guardar(mio);
     await app.inject({
       method: 'PUT',
@@ -120,8 +122,18 @@ describe('almacén de configuraciones', () => {
       headers: { authorization: `Bearer ${mio}` },
     });
 
-    expect(response.json<{ entries: { key: string }[] }>().entries).toHaveLength(1);
-    expect(response.json<{ entries: { key: string }[] }>().entries[0]?.key).toBe('mi-tabata');
+    const entries = response.json<{ entries: { key: string; propia: boolean }[] }>().entries;
+    expect(entries).toHaveLength(2);
+    expect(entries.find((e) => e.key === 'mi-tabata')?.propia).toBe(true);
+    expect(entries.find((e) => e.key === 'otra-cosa')?.propia).toBe(false);
+  });
+
+  it('sin sesión no se lista nada', async () => {
+    await guardar(mio);
+
+    const response = await app.inject({ method: 'GET', url: '/kv/throwdown' });
+
+    expect(response.statusCode).toBe(401);
   });
 
   it('una clave que no existe es un 404, no un 200 con nada', async () => {
