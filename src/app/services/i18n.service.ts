@@ -321,6 +321,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'icon.dragHere': { es: 'Arrastra una imagen aquí o', en: 'Drag an image here or' },
   'icon.selectFile': { es: 'Seleccionar archivo', en: 'Select file' },
   'icon.hint': { es: 'PNG recomendado, mínimo 1024x1024', en: 'PNG recommended, minimum 1024x1024' },
+  'icon.tooSmall': { es: 'La imagen mide menos de 1024 px: los iconos grandes van a salir borrosos.', en: 'The image is under 1024 px: the large icons will come out blurry.' },
   'icon.changeImage': { es: 'Cambiar imagen', en: 'Change image' },
   'icon.generateAll': { es: 'Generar Todo (iOS + Android)', en: 'Generate All (iOS + Android)' },
   'icon.iosOnly': { es: 'Solo iOS', en: 'iOS Only' },
