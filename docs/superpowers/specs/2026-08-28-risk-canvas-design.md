@@ -190,6 +190,7 @@ desde su avatar.
 | 1 | Rendimiento del tablero y umbral de arrastre | El arrastre no provoca ciclos de detección de cambios y pulsar no mueve el mapa | Hecha |
 | 2 | Las cuatro esquinas y los controles contextuales | Desaparecen la barra de acción y los paneles con pestañas, y no se pierde ninguna función | Hecha |
 | 3 | Chat por avatar, canales y respuestas de los bots | Se puede hablar en general o con un bot concreto, y contesta | Hecha |
+| 4 | Pactos con tope por ronda | Pedirle a un bot que no ataque algo cambia lo que hace, una vez por ronda | Hecha |
 
 Lo medido en la entrega 1, con el mapa del mundo y revirtiendo el cambio para
 comprobar que los tests lo atrapan:
@@ -200,9 +201,44 @@ comprobar que los tests lo atrapan:
 | Repintados durante un arrastre de 200 movimientos | 200 | 0 |
 | Margen antes de que arrastrar mueva el mapa | 0 px | 8 px |
 
-## Lo que queda fuera
+### El móvil se mide, no se supone
 
-Los pactos con tope por ronda que se hablaron al principio no entran aquí: el
-chat privado con los bots es la conversación, pero un pacto que el motor
-respete es una regla del juego, y las reglas del juego no se tocan en un
-rediseño de pantalla.
+Los tests corren sin maquetación, así que a 390 px no comprueban nada. Se mide
+con un Chrome propio clavado a 390x844, jugando hasta el turno propio, y se
+exige: ninguna de las cinco piezas fijas solapando con otra, nada fuera de la
+pantalla, cero desbordamiento horizontal, ningún botón por debajo de 44 px y la
+conversación dentro de la pantalla.
+
+Esa medición destapó tres cosas que a 1395 px no existían: el bloque de fase y
+las fichas se pisaban 52 px, los botones de zoom eran de 30 px, y el abanico de
+cartas se colaba por encima de la conversación porque el `z-index` de la hoja
+quedaba encerrado en el contexto de apilado de las fichas.
+
+## 7. Pactos
+
+Hablar con un rival tiene que servir de algo, o el chat es decorado.
+
+Un pacto es que un bot acepte no atacar un territorio **durante una ronda**. No
+toca el motor: no es una regla, es una preferencia fuerte en la cabeza del bot.
+Ese ataque le sale caro —medio punto sobre una puntuación que rara vez pasa de
+uno— pero sigue siendo legal y sigue viéndolo. Si aun así es la mejor jugada
+con diferencia, rompe su palabra, que es lo que haría cualquiera.
+
+Quién acepta y quién no **lo decide la posición, no el modelo de lenguaje**, y
+eso importa: la mayoría de las partidas se juegan sin clave de IA, y un pacto
+que sólo funcionara con clave sería una promesa a medias. La regla es la de
+cualquier negociación: se acepta lo que cuesta poco. Si le pides justo su mejor
+jugada, no. Si el que lo pide va ganando, tampoco: nadie le regala una tregua
+al líder. Y un perfil agresivo acepta menos que uno cauto, porque para eso son
+perfiles distintos. El azar sale de la semilla y del número de acciones, así
+que la misma partida contesta siempre lo mismo.
+
+**Uno por bot y por ronda.** Sin tope, una conversación podría desactivar a un
+rival entero a base de mensajes, que es exactamente la partida que nadie quiere
+jugar.
+
+Los pactos viven en el anfitrión, no en el estado de la partida. El log de
+acciones es la verdad y tiene que poder reproducirse tal cual; un pacto no es
+una jugada, es lo que el anfitrión tiene en la cabeza al elegirla. Las jugadas
+que salen de él sí quedan en el log, así que la partida sigue siendo
+reproducible.

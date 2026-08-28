@@ -8,6 +8,9 @@
   position: absolute;
   top: 0;
   left: 0;
+  /* El relleno cuenta dentro del ancho: si no, el tope de la mitad de la
+     pantalla se pasa de largo y se pisa con las fichas. */
+  box-sizing: border-box;
   z-index: 21;
   display: flex;
   flex-direction: column;
@@ -125,15 +128,25 @@ button.hud-phase {
 }
 
 @media (max-width: 640px) {
-  /* En el móvil la ronda cabe en la misma línea que la fase y el resto sobra. */
+  /*
+    Medido a 390 px: sin este tope, el bloque de fase llegaba hasta la mitad de
+    la pantalla y se pisaba con las fichas de los jugadores. Cada uno se queda
+    en su mitad y el texto envuelve, que en un móvil es lo normal.
+  */
   .hud {
     font-size: 12px;
     padding-right: 10px;
+    max-width: 50vw;
+  }
+
+  .hud-line {
+    flex-wrap: wrap;
   }
 
   .hud-turn,
-  .hud-thinking {
-    max-width: 60vw;
+  .hud-thinking,
+  .hud-hint {
+    max-width: 46vw;
   }
 }
 

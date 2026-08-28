@@ -955,6 +955,46 @@ describe('RiskRoom (la mesa)', () => {
       expect(component.threadLines.map((l) => l.text)).not.toContain(suyos[0].text);
     });
 
+    /**
+     * Hablar con un rival tiene que servir de algo. El pacto no cambia las
+     * reglas —el motor ni se entera— sino lo que el bot prefiere hacer.
+     */
+    describe('pactos', () => {
+      async function enPartida() {
+        await component.fillWithBots();
+        await wait();
+        await component.startGame();
+        await wait(30);
+        return component.seats.find((seat) => seat.kind === 'bot')!;
+      }
+
+      it('pedirle que no ataque algo concreto tiene respuesta con nombre y apellidos', async () => {
+        const bot = await enPartida();
+        const suyos = territoriesOf(component.state!, bot.id);
+        const vecino = component.map!.territories.find((t) => !suyos.includes(t.id))!;
+
+        component.onThreadChange(bot.id);
+        await component.sendToThread(`no ataques ${vecino.name}`);
+        await wait(80);
+
+        const respuesta = component.chat.filter((e) => e.authorId === bot.id && e.to).at(-1);
+        expect(respuesta, 'el bot debería contestar al pacto').toBeDefined();
+        expect(respuesta!.text).toContain(vecino.name);
+      });
+
+      it('si no le pides nada concreto, no hay pacto que valorar', async () => {
+        const bot = await enPartida();
+        component.onThreadChange(bot.id);
+        await component.sendToThread('hola, ¿qué tal?');
+        await wait(80);
+
+        const respuesta = component.chat.filter((e) => e.authorId === bot.id && e.to).at(-1);
+        expect(respuesta).toBeDefined();
+        // Contesta, pero no promete nada.
+        expect(respuesta!.text).not.toContain('Trato hecho');
+      });
+    });
+
     it('no contesta dos veces al mismo mensaje', async () => {
       await component.fillWithBots();
       await wait();

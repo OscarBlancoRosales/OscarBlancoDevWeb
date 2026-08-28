@@ -365,3 +365,14 @@
 .anchor-slot > * {
   pointer-events: auto;
 }
+
+@media (pointer: coarse) {
+  /*
+    Con el dedo, 30 px no se aciertan. La misma regla de 44 px que rige en el
+    resto de la pantalla vale también para el mobiliario del mapa.
+  */
+  .board-controls button {
+    width: 44px;
+    height: 44px;
+  }
+}

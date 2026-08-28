@@ -292,7 +292,25 @@ export interface StrategyBias {
   defend?: readonly TerritoryId[];
   /** Ajuste del umbral de ataque: negativo = más agresivo. */
   thresholdShift?: number;
+  /**
+   * Territorios que el bot ha acordado no atacar.
+   *
+   * Es lo que hace que hablar con un rival sirva de algo. No se le quita el
+   * ataque de la lista: se le deja verlo y se le hace caro, para que un pacto
+   * ceda ante una oportunidad clamorosa igual que cedería con una persona. Un
+   * pacto es una intención, no una regla del juego.
+   */
+  avoid?: readonly TerritoryId[];
 }
+
+/**
+ * Cuánto se penaliza atacar algo que se ha pactado no atacar.
+ *
+ * Alto a propósito: con 0.5 sobre una puntuación que rara vez pasa de 1, un
+ * pacto sólo se rompe cuando el objetivo es muchísimo mejor que cualquier
+ * alternativa.
+ */
+const PENALIZACION_PACTO = 0.5;
 
 function biasBoost(bias: StrategyBias | undefined, list: 'targets' | 'defend', id: TerritoryId): number {
   const values = bias?.[list];
@@ -353,6 +371,13 @@ export function rankedAttacks(
           score += traits.continentGreed * continent.ratio;
           reasons.push(`avanza en ${continent.name}`);
         }
+      }
+
+      // Lo pactado pesa, pero no ata: si el objetivo sigue siendo el mejor con
+      // diferencia, el bot rompe su palabra, que es lo que haría cualquiera.
+      if (bias?.avoid?.includes(to)) {
+        score -= PENALIZACION_PACTO;
+        reasons.push('pero lo prometió');
       }
 
       if (target.armies === 1) {

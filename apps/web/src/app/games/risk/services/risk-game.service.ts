@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, Subscription, combineLatest } from 'rxjs';
-import { GameAction, GameMap, GameState } from '@devweb/shared/engine/types';
+import { GameAction, GameMap, GameState, TerritoryId } from '@devweb/shared/engine/types';
 import { currentPlayer, playerById } from '@devweb/shared/engine/engine';
 import { decideAction, StrategyBias } from '@devweb/shared/engine/ai/bot-brain';
 import {
@@ -9,6 +9,7 @@ import {
   requestReply,
   requestTurnPlan,
 } from '@devweb/shared/engine/ai/ai-orchestrator';
+import { considerPact, pactReply } from '@devweb/shared/engine/ai/pacts';
 import { chronicleFor, hasChronicle } from '@devweb/shared/engine/ai/chronicle';
 import { rngFor } from '@devweb/shared/engine/rng';
 import {
@@ -207,18 +208,58 @@ export class RiskGameService implements OnDestroy {
     }
   }
 
+  /**
+   * Pactos vivos: por bot, la ronda y lo que prometió no atacar.
+   *
+   * Vive aquí y no en el estado de la partida a propósito. El log de acciones
+   * es la verdad y tiene que poder reproducirse tal cual; un pacto no es una
+   * jugada, es lo que el anfitrión tiene en la cabeza al elegirla. Las jugadas
+   * que salen de él sí quedan en el log, así que la partida sigue siendo
+   * reproducible.
+   */
+  private pacts = new Map<string, { round: number; avoid: TerritoryId[] }>();
+
+  /** Lo que el modelo quiere, más lo que el bot haya prometido esta ronda. */
+  private biasWithPacts(botId: string, round: number): StrategyBias | undefined {
+    const pact = this.pacts.get(botId);
+    if (!pact || pact.round !== round || pact.avoid.length === 0) return this.currentBias;
+    return { ...(this.currentBias ?? {}), avoid: pact.avoid };
+  }
+
   private async replyAsBot(entry: ChatEntry, seat: RoomSeat): Promise<void> {
     const state = this.stateSubject.value;
     if (!state || !this.map) return;
+
+    // Se valora el pacto ANTES de pedir palabras al modelo: quién acepta y
+    // quién no lo decide la posición, no el texto. Así funciona igual sin
+    // clave de IA, que es como se juega la mayoría de las veces.
+    const pact = considerPact(state, this.map, seat.id, entry.authorId, entry.text);
+    const acordado = pact.accepted && this.registerPact(seat.id, state.round, pact.territories);
+
     const answer = await requestReply(state, this.map, seat.id, entry.text, this.aiSettings);
     await this.rooms.sendChat(this.roomId, {
       authorId: seat.id,
       author: seat.name,
       kind: 'bot',
-      text: answer.message,
-      origin: answer.source,
+      // Si hay pacto, manda la frase que lo dice: lo que se promete tiene que
+      // quedar escrito con las mismas palabras que lo que se cumple.
+      text: acordado || pact.territories.length > 0 ? pactReply(this.map, pact) : answer.message,
+      origin: acordado || pact.territories.length > 0 ? 'local' : answer.source,
       to: entry.authorId,
     });
+  }
+
+  /**
+   * Apunta un pacto si al bot le queda cupo esta ronda.
+   *
+   * Uno por ronda: sin tope, una conversación podría desactivar a un rival
+   * entero a base de mensajes, que es la partida que nadie quiere jugar.
+   */
+  private registerPact(botId: string, round: number, territories: TerritoryId[]): boolean {
+    const previo = this.pacts.get(botId);
+    if (previo && previo.round === round) return false;
+    this.pacts.set(botId, { round, avoid: [...territories] });
+    return true;
   }
 
   detach(): void {
@@ -237,6 +278,7 @@ export class RiskGameService implements OnDestroy {
     this.rejectedStreak = 0;
     this.rejectedKey = '';
     this.currentBias = undefined;
+    this.pacts.clear();
     this.stateSubject.next(null);
     this.derivedSubject.next(null);
     this.thinkingSubject.next(null);
@@ -375,7 +417,7 @@ export class RiskGameService implements OnDestroy {
       }
 
       const action =
-        decideAction(state, this.map, player.id, this.currentBias) ??
+        decideAction(state, this.map, player.id, this.biasWithPacts(player.id, state.round)) ??
         escapeAction(state, player.id);
       this.thinkingSubject.next(player.name);
       if (!action) {

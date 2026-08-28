@@ -3,6 +3,8 @@
   position: absolute;
   top: 0;
   right: 0;
+  /* El relleno cuenta dentro del ancho, como en el bloque de fase. */
+  box-sizing: border-box;
   z-index: 23;
   display: flex;
   flex-direction: column;
@@ -228,9 +230,20 @@ button.roster-row:hover,
 }
 
 @media (max-width: 640px) {
+  /*
+    46vw, medido a 390 px: con 62vw las fichas invadían la mitad del bloque de
+    fase. Cada uno en su mitad de la pantalla.
+  */
   .roster {
-    width: min(210px, 62vw);
+    width: 46vw;
     font-size: 11px;
+    /*
+      Por encima de las cartas y de los controles de la jugada.
+      La conversación es una hoja a lo ancho de la pantalla, y vive dentro de
+      este bloque: sin subir el bloque entero, el `z-index` de la hoja se queda
+      encerrado aquí dentro y el abanico de cartas se le cuela por encima.
+    */
+    z-index: 41;
   }
 
   /* En un móvil la conversación necesita el ancho de la pantalla, no el de la
