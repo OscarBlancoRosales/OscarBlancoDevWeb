@@ -36,9 +36,13 @@ export class RiskHud {
   /** En cuántos territorios has puesto algo esta fase. */
   @Input() placedCount = 0;
   @Input() canEndPhase = false;
+  /** Qué hacer ahora, en una línea. Vacío cuando no hace falta decir nada. */
+  @Input() hint = '';
 
   @Output() leave = new EventEmitter<void>();
   @Output() settings = new EventEmitter<void>();
   @Output() endPhase = new EventEmitter<void>();
   @Output() resetPlacements = new EventEmitter<void>();
+  @Output() undoOne = new EventEmitter<void>();
+  @Output() history = new EventEmitter<void>();
 }

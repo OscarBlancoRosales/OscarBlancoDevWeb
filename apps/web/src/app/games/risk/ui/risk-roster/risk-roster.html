@@ -1,0 +1,105 @@
+<div class="roster">
+  <!-- El canal de todos, arriba del todo: es una ficha más. -->
+  <button
+    class="roster-row general"
+    type="button"
+    [class.open]="openThread === CANAL_GENERAL"
+    (click)="toggleThread(CANAL_GENERAL)"
+  >
+    <span class="avatar general-avatar">🌐</span>
+    <span class="row-name">Todos</span>
+    <span class="unread" *ngIf="generalUnread > 0">{{ generalUnread }}</span>
+  </button>
+  <ng-container
+    *ngIf="openThread === CANAL_GENERAL"
+    [ngTemplateOutlet]="hilo"
+  ></ng-container>
+
+  <ng-container *ngFor="let row of rows; trackBy: trackRow">
+    <!--
+      Tu propia ficha no abre nada: con uno mismo no se chatea. Sigue estando,
+      porque saber cuánto tienes tú al lado de lo que tienen los demás es la
+      mitad de para qué sirve un marcador.
+    -->
+    <div
+      class="roster-row"
+      *ngIf="row.id === meId; else fichaAjena"
+      [class.current]="row.id === currentId"
+      [class.out]="row.eliminated"
+    >
+      <span class="avatar me" [style.border-color]="row.color">{{ row.avatar }}</span>
+      <span class="row-name">{{ row.name }}</span>
+      <span class="row-num">{{ row.territories }}</span>
+      <span class="row-num muted">{{ row.armies }}</span>
+      <span class="row-bar"><i [style.width.%]="row.strength * 100" [style.background]="row.color"></i></span>
+    </div>
+
+    <ng-template #fichaAjena>
+      <button
+        class="roster-row"
+        type="button"
+        [class.current]="row.id === currentId"
+        [class.out]="row.eliminated"
+        [class.open]="openThread === row.id"
+        (click)="toggleThread(row.id)"
+        [attr.aria-expanded]="openThread === row.id"
+        [attr.aria-label]="'Hablar con ' + row.name"
+      >
+        <span class="avatar" [style.border-color]="row.color">
+          {{ row.avatar }}
+          <span class="unread dot" *ngIf="row.unread > 0"></span>
+        </span>
+        <span class="row-name">{{ row.name }}</span>
+        <span class="row-num">{{ row.territories }}</span>
+        <span class="row-num muted">{{ row.armies }}</span>
+        <span class="row-bar"><i [style.width.%]="row.strength * 100" [style.background]="row.color"></i></span>
+      </button>
+      <ng-container *ngIf="openThread === row.id" [ngTemplateOutlet]="hilo"></ng-container>
+    </ng-template>
+  </ng-container>
+</div>
+
+<!--
+  El hilo, anclado justo debajo de la ficha de quien habla. Es el mismo trozo
+  para el canal general y para cada jugador: la conversación no cambia de forma
+  según con quién sea.
+-->
+<ng-template #hilo>
+  <div class="thread">
+    <div class="thread-lines">
+      <p class="thread-empty" *ngIf="lines.length === 0">
+        Nada todavía. Escribe y se enterará.
+      </p>
+      <div
+        class="line"
+        *ngFor="let line of lines; trackBy: trackLine"
+        [class.mine]="line.mine"
+      >
+        <span class="line-author" [style.color]="line.color" *ngIf="!line.mine">
+          {{ line.author }}
+          <span class="llm" *ngIf="line.fromLlm" title="Escrito por un modelo de lenguaje">LLM</span>
+        </span>
+        <span class="line-text">{{ line.text }}</span>
+      </div>
+      <p class="thread-waiting" *ngIf="waiting">escribiendo…</p>
+    </div>
+    <!--
+      Hay fichas que no conversan: responden a una petición. Enseñarles un
+      campo de texto prometería una conversación que no existe.
+    -->
+    <button class="thread-ask" type="button" *ngIf="askLabel as etiqueta" (click)="send.emit('')">
+      {{ etiqueta }}
+    </button>
+
+    <div class="thread-input" *ngIf="!askLabel">
+      <input
+        type="text"
+        [(ngModel)]="draft"
+        [attr.placeholder]="'Escribe a ' + talkingTo + '…'"
+        maxlength="400"
+        (keydown.enter)="submit()"
+      />
+      <button type="button" (click)="submit()" aria-label="Enviar">➤</button>
+    </div>
+  </div>
+</ng-template>

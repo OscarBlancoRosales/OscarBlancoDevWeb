@@ -104,9 +104,27 @@ describe('RiskHud', () => {
      * territorio. Aquí sólo está el «empezar de cero», que se usa una vez cada
      * muchas partidas y no merece más sitio que un icono.
      */
-    it('sin nada colocado no ofrece empezar de cero', () => {
+    it('sin nada colocado no ofrece ni deshacer ni empezar de cero', () => {
       fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.hud-undo')).toBeNull();
       expect(fixture.nativeElement.querySelector('.hud-reset')).toBeNull();
+    });
+
+    it('deshacer y empezar de cero son dos cosas distintas', () => {
+      fixture.componentRef.setInput('placedCount', 2);
+      fixture.detectChanges();
+      let deshecho = false;
+      fixture.componentInstance.undoOne.subscribe(() => (deshecho = true));
+      fixture.nativeElement.querySelector('.hud-undo').click();
+      expect(deshecho).toBe(true);
+    });
+
+    it('el historial de la partida tiene su puerta', () => {
+      fixture.detectChanges();
+      let pedido = false;
+      fixture.componentInstance.history.subscribe(() => (pedido = true));
+      fixture.nativeElement.querySelector('.hud-history').click();
+      expect(pedido).toBe(true);
     });
 
     it('con algo colocado sí, y avisa hacia fuera', () => {

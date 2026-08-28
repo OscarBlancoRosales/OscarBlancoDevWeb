@@ -337,3 +337,20 @@
   font-size: 0.7rem;
   color: #8b949e;
 }
+
+/*
+  Hueco anclado a un territorio.
+  `translate(-50%, ...)` lo centra sobre el país y lo sube por encima de la
+  ficha de ejércitos, para no taparle el número que hay que leer.
+*/
+.anchor-slot {
+  position: absolute;
+  z-index: 25;
+  transform: translate(-50%, calc(-100% - 26px));
+  /* El hueco no intercepta nada; lo que la sala meta dentro, sí. */
+  pointer-events: none;
+}
+
+.anchor-slot > * {
+  pointer-events: auto;
+}

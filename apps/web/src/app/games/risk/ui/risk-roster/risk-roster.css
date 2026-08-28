@@ -1,0 +1,259 @@
+/* Esquina de arriba a la derecha. Sin `left`: no cruza la pantalla. */
+.roster {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 23;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1px;
+  width: min(230px, 52vw);
+  padding: 6px 6px 14px;
+  background: radial-gradient(
+    ellipse at top right,
+    rgba(4, 10, 8, 0.92),
+    rgba(4, 10, 8, 0.6) 60%,
+    rgba(4, 10, 8, 0) 100%
+  );
+  font-size: 12px;
+}
+
+.roster-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 1fr auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  /* 44px: lo mínimo para que un dedo acierte sin pelearse. */
+  min-height: 44px;
+}
+
+button.roster-row {
+  cursor: pointer;
+}
+
+button.roster-row:hover,
+.roster-row.open {
+  border-color: rgba(0, 255, 140, 0.35);
+  background: rgba(0, 40, 25, 0.55);
+}
+
+/* De quién es el turno: se ve sin leer nada. */
+.roster-row.current {
+  background: rgba(0, 255, 140, 0.1);
+}
+
+.roster-row.current .row-name {
+  font-weight: 700;
+}
+
+.roster-row.out {
+  opacity: 0.4;
+}
+
+.roster-row.out .row-name {
+  text-decoration: line-through;
+}
+
+.avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid #444;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 15px;
+}
+
+.avatar.me {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+
+.general-avatar {
+  border-color: rgba(0, 255, 140, 0.45);
+}
+
+.row-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.row-num.muted {
+  opacity: 0.55;
+}
+
+/* Barra de fuerza: ocupa el hueco de debajo de la fila, sin robar altura. */
+.row-bar {
+  grid-column: 2 / -1;
+  height: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.row-bar i {
+  display: block;
+  height: 100%;
+}
+
+.unread {
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #00e676;
+  color: #04100a;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* Sobre la cara, que es donde se mira. */
+.unread.dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 9px;
+  height: 9px;
+  padding: 0;
+  border: 1px solid rgba(4, 10, 8, 0.9);
+}
+
+/* ===== LA CONVERSACIÓN ===== */
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 2px 0 8px;
+  padding: 8px;
+  border: 1px solid rgba(0, 255, 140, 0.28);
+  border-radius: 10px;
+  background: rgba(8, 18, 14, 0.96);
+}
+
+.thread-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: min(38vh, 260px);
+  overflow-y: auto;
+}
+
+.line {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.line.mine {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.line.mine .line-text {
+  background: rgba(0, 255, 140, 0.14);
+}
+
+.line-author {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.llm {
+  padding: 0 3px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: 8px;
+  opacity: 0.8;
+}
+
+.line-text {
+  padding: 4px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  word-break: break-word;
+}
+
+.thread-empty,
+.thread-waiting {
+  margin: 0;
+  opacity: 0.55;
+  font-size: 11px;
+}
+
+.thread-waiting {
+  font-style: italic;
+}
+
+.thread-input {
+  display: flex;
+  gap: 4px;
+}
+
+.thread-input input {
+  flex: 1;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid rgba(0, 255, 140, 0.25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  color: inherit;
+  font: inherit;
+  min-height: 36px;
+}
+
+.thread-input button {
+  border: 1px solid rgba(0, 255, 140, 0.4);
+  border-radius: 8px;
+  background: rgba(0, 255, 140, 0.12);
+  color: #00e676;
+  cursor: pointer;
+  min-width: 40px;
+  min-height: 36px;
+}
+
+@media (max-width: 640px) {
+  .roster {
+    width: min(210px, 62vw);
+    font-size: 11px;
+  }
+
+  /* En un móvil la conversación necesita el ancho de la pantalla, no el de la
+     columna: teclear en 210 px es imposible. */
+  .thread {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    z-index: 40;
+  }
+
+  .thread-lines {
+    max-height: 34vh;
+  }
+}
+
+.thread-ask {
+  border: 1px solid rgba(0, 255, 140, 0.4);
+  border-radius: 8px;
+  background: rgba(0, 255, 140, 0.12);
+  color: #00e676;
+  cursor: pointer;
+  font: inherit;
+  min-height: 40px;
+}

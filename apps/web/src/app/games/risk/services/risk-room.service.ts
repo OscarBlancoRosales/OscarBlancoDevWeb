@@ -117,6 +117,16 @@ export interface ChatEntry {
   ts: number;
   /** 'llm' cuando el texto lo ha escrito un modelo de lenguaje. */
   origin?: 'llm' | 'local';
+  /**
+   * A quién va dirigido. Ausente es el canal de todos.
+   *
+   * No es un secreto: el mensaje sigue viajando entero por la base de datos y
+   * cualquiera con la consola abierta puede leerlo. Es una conversación
+   * aparte, no un susurro cifrado, y así queda dicho para que nadie confíe en
+   * ello más de lo que aguanta. El servidor propio (fase 4) es quien podrá no
+   * enviárselo a los demás.
+   */
+  to?: string;
 }
 
 export interface RoomSnapshot {
@@ -496,7 +506,17 @@ export class RiskRoomService {
 
   async sendChat(
     roomId: string,
-    entry: { authorId: string; author: string; kind: ChatKind; text: string; origin?: 'llm' | 'local' },
+    entry: {
+      authorId: string;
+      author: string;
+      kind: ChatKind;
+      text: string;
+      origin?: 'llm' | 'local' | undefined;
+      // `| undefined` explícito: con `exactOptionalPropertyTypes`, «ausente» y
+      // «presente y undefined» no son lo mismo, y quien llama pasa `undefined`
+      // cuando el mensaje es para todos.
+      to?: string | undefined;
+    },
   ): Promise<void> {
     const text = entry.text.trim().slice(0, 600);
     if (!text) return;
@@ -506,6 +526,7 @@ export class RiskRoomService {
       kind: entry.kind,
       text,
       origin: entry.origin,
+      to: entry.to,
       ts: Date.now(),
     });
 
@@ -607,6 +628,7 @@ export function mapChat(snapshot: DataSnapshot | { val(): unknown }): ChatEntry[
       text: entry.text ?? '',
       ts: entry.ts ?? 0,
       origin: entry.origin,
+      to: entry.to,
     }));
 }
 

@@ -6,6 +6,7 @@ import { RiskRoomService } from '../../services/risk-room.service';
 import { RiskGameService } from '../../services/risk-game.service';
 import { DEFAULT_CONFIG, PLAYER_COLORS } from '@devweb/shared/engine/engine';
 import { territoriesOf } from '@devweb/shared/engine/rules';
+import { CANAL_GENERAL } from '../risk-roster/risk-roster';
 
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -484,7 +485,7 @@ describe('RiskRoom (la mesa)', () => {
         // el mapa manda, y lo demás se abre cuando hace falta. Se abre pulsando
         // el botón, no tocando el campo: en zoneless, cambiarlo a mano después
         // del primer pintado da NG0100, y además nadie juega así.
-        mounted.fixture.nativeElement.querySelector('.bar-panel-historia').click();
+        mounted.fixture.nativeElement.querySelector('.hud-history').click();
         mounted.fixture.detectChanges();
         const panel = mounted.fixture.nativeElement.querySelector('.missions-panel');
         expect(panel).not.toBeNull();
@@ -505,11 +506,22 @@ describe('RiskRoom (la mesa)', () => {
       fixture.detectChanges();
     });
 
-    it('el mapa está siempre, y las barras y el marcador encima', () => {
+    it('el mapa está siempre, y las esquinas encima', () => {
       expect(fixture.nativeElement.querySelector('app-risk-board')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('app-risk-hud')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-risk-scoreboard')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-risk-action-bar')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-roster')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-cards')).toBeTruthy();
+    });
+
+    /**
+     * La barra de abajo cruzaba la pantalla de lado a lado, así que le quitaba
+     * sitio al mapa siempre. Cada acción se ha ido a vivir pegada a lo que
+     * modifica, y por eso no hace falta ninguna barra.
+     */
+    it('no queda ninguna barra que cruce la pantalla', () => {
+      expect(fixture.nativeElement.querySelector('app-risk-action-bar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.action-bar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.bar')).toBeNull();
     });
 
     it('ya no quedan columnas: el mapa no comparte sitio con nadie', () => {
@@ -525,12 +537,12 @@ describe('RiskRoom (la mesa)', () => {
 
     it('abre un panel y cierra el anterior', () => {
       // Dos a la vez taparían el mapa, que es lo que se quería evitar.
-      fixture.nativeElement.querySelector('.bar-panel-chat').click();
-      fixture.detectChanges();
-      expect(component.openPanel).toBe('chat');
-      fixture.nativeElement.querySelector('.bar-panel-historia').click();
+      fixture.nativeElement.querySelector('.hud-history').click();
       fixture.detectChanges();
       expect(component.openPanel).toBe('historia');
+      fixture.nativeElement.querySelector('.hud-settings').click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBe('ia');
       expect(fixture.nativeElement.querySelectorAll('.panel-shell').length).toBe(1);
     });
 
@@ -540,7 +552,7 @@ describe('RiskRoom (la mesa)', () => {
      * que se quería evitar.
      */
     it('abrir las cartas cierra el panel que hubiera', () => {
-      fixture.nativeElement.querySelector('.bar-panel-chat').click();
+      fixture.nativeElement.querySelector('.hud-history').click();
       fixture.detectChanges();
       fixture.nativeElement.querySelector('.cards-fan').click();
       fixture.detectChanges();
@@ -550,7 +562,7 @@ describe('RiskRoom (la mesa)', () => {
     });
 
     it('volver a pulsar el mismo lo cierra', () => {
-      const boton = fixture.nativeElement.querySelector('.bar-panel-chat');
+      const boton = fixture.nativeElement.querySelector('.hud-history');
       boton.click();
       fixture.detectChanges();
       boton.click();
@@ -558,11 +570,13 @@ describe('RiskRoom (la mesa)', () => {
       expect(component.openPanel).toBeNull();
     });
 
-    it('el marcador lleva una fila por jugador', () => {
-      expect(component.scoreRows.length).toBe(component.state!.players.length);
-      const nombres = component.scoreRows.map((r) => r.name).sort();
+    it('las fichas llevan una por jugador, con su cara', () => {
+      const fichas = component.rosterRows.filter((row) => row.id !== 'advisor');
+      const nombres = fichas.map((r) => r.name).sort();
       const esperados = component.state!.players.map((p) => p.name).sort();
       expect(nombres).toEqual(esperados);
+      // Dos jugadores no pueden compartir cara en la misma mesa.
+      expect(new Set(fichas.map((r) => r.avatar)).size).toBe(fichas.length);
     });
 
     it('la repetición al mantener pulsado sólo se ofrece en refuerzos y en tu turno', () => {
@@ -583,13 +597,21 @@ describe('RiskRoom (la mesa)', () => {
       expect(fixture.nativeElement.querySelector('.cards-trade')).toBeTruthy();
     });
 
-    it('el chat, la partida y los ajustes tienen todos su sitio', () => {
+    /** El chat dejó de ser un panel: es la ficha de cada jugador. */
+    it('se habla desde la ficha de cada jugador, no desde ningún panel', () => {
+      const fichas = fixture.nativeElement.querySelectorAll('app-risk-roster button.roster-row');
+      expect(fichas.length).toBeGreaterThan(0);
+      fichas[0].click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-risk-roster .thread')).toBeTruthy();
+    });
+
+    it('la partida y los ajustes tienen todos su sitio', () => {
       // Al quitar la columna lateral, nada puede quedarse sin puerta. Se abren
       // pulsando, no asignando el campo: en zoneless, cambiarlo a mano después
       // del primer pintado da NG0100, y además nadie juega así.
       const puertas: Array<[string, string]> = [
-        ['.bar-panel-chat', 'Chat'],
-        ['.bar-panel-historia', 'Partida'],
+        ['.hud-history', 'Partida'],
         ['.hud-settings', 'Ajustes de IA'],
       ];
       for (const [selector, titulo] of puertas) {
@@ -824,16 +846,43 @@ describe('RiskRoom (la mesa)', () => {
       expect(spy).toHaveBeenCalledWith(['/juegos/risk']);
     });
 
-    it('envía mensajes al chat', async () => {
-      await component.sendChat();
+    it('envía mensajes al canal de todos', async () => {
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('   ');
       expect(component.chat.filter((entry) => entry.kind === 'player')).toHaveLength(0);
-      component.chatDraft = '  a por ellos  ';
-      await component.sendChat();
+
+      await component.sendToThread('  a por ellos  ');
       await wait();
       const mine = component.chat.filter((entry) => entry.kind === 'player');
       expect(mine).toHaveLength(1);
       expect(mine[0].text).toBe('a por ellos');
-      expect(component.chatDraft).toBe('');
+      // Sin destinatario: eso es lo que lo hace general.
+      expect(mine[0].to).toBeUndefined();
+    });
+
+    /**
+     * Un privado no es un susurro cifrado: el mensaje viaja entero por la base
+     * de datos. Lo que se comprueba aquí es que es una conversación aparte y
+     * que no se cuela en el canal de todos.
+     */
+    it('un privado va marcado y no aparece en el canal general', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const otro = component.state!.players.find((p) => p.id !== component.seatId)!;
+      component.onThreadChange(otro.id);
+      await component.sendToThread('pacto?');
+      await wait();
+
+      const mine = component.chat.filter((entry) => entry.kind === 'player');
+      expect(mine).toHaveLength(1);
+      expect(mine[0].to).toBe(otro.id);
+
+      expect(component.threadLines.map((l) => l.text)).toContain('pacto?');
+      component.onThreadChange(CANAL_GENERAL);
+      expect(component.threadLines.map((l) => l.text)).not.toContain('pacto?');
     });
 
     it('el consejero responde bajo demanda una vez empezada la partida', async () => {
@@ -845,12 +894,12 @@ describe('RiskRoom (la mesa)', () => {
       await wait();
       expect(component.advice.length).toBeGreaterThan(0);
       expect(component.advice.at(-1)!.author).toBe('Estratega IA');
-      expect(component.panel).toBe('chat');
+      expect(component.openThread).toBe('advisor');
     });
 
     it('mezcla chat y consejos ordenados por hora', async () => {
-      component.chatDraft = 'hola';
-      await component.sendChat();
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('hola');
       await component.askAdvisor();
       await wait();
       const feed = component.chatFeed;
@@ -932,7 +981,7 @@ describe('RiskRoom (la mesa)', () => {
 
       // Y la mesa lo anuncia en pantalla.
       mounted.fixture.detectChanges();
-      const victory = mounted.fixture.nativeElement.querySelector('.action-block.victory');
+      const victory = mounted.fixture.nativeElement.querySelector('.victory-overlay');
       expect(victory).toBeTruthy();
       expect(victory.textContent).toContain(winner.name);
       expect(victory.textContent).toContain('ha ganado la partida');

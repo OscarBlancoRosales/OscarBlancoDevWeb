@@ -76,8 +76,10 @@ button.hud-phase {
   color: #00e676;
 }
 
+.hud-undo,
 .hud-reset,
 .hud-leave,
+.hud-history,
 .hud-settings {
   background: none;
   border: 0;
@@ -87,7 +89,9 @@ button.hud-phase {
   min-height: 44px;
 }
 
+.hud-undo,
 .hud-reset,
+.hud-history,
 .hud-settings {
   font-size: 16px;
 }
@@ -131,4 +135,10 @@ button.hud-phase {
   .hud-thinking {
     max-width: 60vw;
   }
+}
+
+.hud-hint {
+  opacity: 0.65;
+  font-size: 12px;
+  max-width: 46vw;
 }

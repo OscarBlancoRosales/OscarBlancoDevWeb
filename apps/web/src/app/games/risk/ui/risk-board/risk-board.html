@@ -133,6 +133,15 @@
     <rect class="vignette" x="-4000" y="-4000" width="8000" height="8000" fill="url(#vignette)" />
   </svg>
 
+  <!--
+    Hueco pegado a un territorio. Lo coloca el componente en cada repintado del
+    mapa, para que siga a su país al arrastrar y al hacer zoom. La sala mete
+    aquí dentro los controles de la jugada que se está apuntando.
+  -->
+  <div class="anchor-slot" #anchorSlot>
+    <ng-content></ng-content>
+  </div>
+
   <!-- Controles de vista -->
   <div class="board-controls">
     <button type="button" (click)="zoomIn()" title="Acercar">+</button>

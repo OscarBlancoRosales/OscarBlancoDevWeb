@@ -6,10 +6,16 @@ import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
 import { RiskBoard } from '../risk-board/risk-board';
 import { RiskHud } from '../risk-hud/risk-hud';
-import { RiskScoreboard, ScoreRow } from '../risk-scoreboard/risk-scoreboard';
 import { RiskPanel } from '../risk-panel/risk-panel';
-import { RiskActionBar, PanelId } from '../risk-action-bar/risk-action-bar';
+import { PanelId } from '../panel-id';
 import { CardView, RiskCards } from '../risk-cards/risk-cards';
+import {
+  CANAL_GENERAL,
+  ChatLine,
+  RiskRoster,
+  RosterRow,
+} from '../risk-roster/risk-roster';
+
 import {
   ChatEntry,
   RiskRoomService,
@@ -60,6 +66,23 @@ import {
 
 type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
 
+/** El estratega no es un jugador, pero tiene ficha propia en la lista. */
+const HILO_ESTRATEGA = 'advisor';
+
+/**
+ * Caras para las fichas.
+ *
+ * Emoji y no imágenes: no hay que subir nada, no ocupa, se ve igual en
+ * cualquier navegador y viaja en el asiento cuando el backend propio tome el
+ * relevo. Se reparten por orden de clasificación, así que dos jugadores nunca
+ * comparten cara en la misma mesa.
+ */
+const AVATARES = ['🦁', '👑', '🐉', '🦅', '🐺', '🦊', '🐻', '🦈', '🐍', '🦂', '🐗', '🦉'];
+
+function avatarFor(index: number): string {
+  return AVATARES[index % AVATARES.length] ?? '🎖';
+}
+
 /**
  * La mesa: sala de espera y partida en el mismo sitio.
  * Aquí se junta todo: tablero, reglas, chat, IA y los controles del turno.
@@ -72,9 +95,8 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
     TerminalLayout,
     RiskBoard,
     RiskHud,
-    RiskScoreboard,
+    RiskRoster,
     RiskPanel,
-    RiskActionBar,
     RiskCards,
   ],
   templateUrl: './risk-room.html',
@@ -103,7 +125,6 @@ export class RiskRoom implements OnInit, OnDestroy {
   selectedCards: string[] = [];
 
   panel: Panel = 'chat';
-  chatDraft = '';
   copied = false;
   errorMessage = '';
   showNames = true;
@@ -310,17 +331,46 @@ export class RiskRoom implements OnInit, OnDestroy {
       }))
       .filter((entry) => !!entry.player);
   }
+  /**
+   * A qué territorio se pegan los controles de la jugada.
+   *
+   * Al destino si ya lo has elegido, y si no al origen: siempre al último sitio
+   * que has tocado, que es donde estás mirando.
+   */
+  get anchorTerritory(): TerritoryId | null {
+    if (!this.isMyTurn || !this.state) return null;
+    if (this.state.pendingOccupation) return this.state.pendingOccupation.to;
+    return this.selectedTo ?? this.selectedFrom;
+  }
 
-  /** Filas del marcador compacto, en el orden de la clasificación. */
-  get scoreRows(): ScoreRow[] {
-    return this.scoreboard.map((entry) => ({
-      id: entry.player.id,
-      name: entry.player.name,
-      color: entry.player.color,
-      territories: entry.territories,
-      armies: entry.armies,
-      eliminated: entry.player.eliminated,
-    }));
+  /**
+   * Qué hacer ahora, en una línea, dentro del bloque de fase.
+   *
+   * Sólo cuando hace falta: en cuanto has elegido un territorio, el control ya
+   * está pegado a él y esta frase sobra.
+   */
+  get phaseHint(): string {
+    if (!this.isMyTurn || !this.state) return '';
+    switch (this.state.phase) {
+      case 'setup-claim':
+        return 'Elige un territorio libre';
+      case 'setup-deploy':
+        return 'Refuerza un territorio tuyo';
+      case 'reinforce':
+        return this.reserveLeft > 0 ? 'Toca tus territorios · mantén pulsado para varias' : '';
+      case 'attack':
+        return this.selectedFrom ? '' : 'Elige desde dónde atacas (hacen falta 2 ejércitos)';
+      case 'fortify':
+        if (this.state.fortifiedThisTurn) return 'Ya has reagrupado este turno';
+        return this.selectedFrom ? '' : 'Elige desde dónde mueves ejércitos';
+      default:
+        return '';
+    }
+  }
+
+  /** Las últimas voces públicas, para el rastro de abajo a la izquierda. */
+  get trailLines(): ChatEntry[] {
+    return this.chatFeed.filter((entry) => !entry.to).slice(-3);
   }
 
   /** Quién mueve ahora, para marcarlo en el marcador. */
@@ -995,24 +1045,159 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   // ===== CHAT =====
 
+  private feedCache: ChatEntry[] = [];
+  private feedFromChat: ChatEntry[] | null = null;
+  private feedFromAdvice: ChatEntry[] | null = null;
+
+  /**
+   * Chat y consejos en una sola lista ordenada por hora.
+   *
+   * Memorizada contra la identidad de las dos listas de origen. Sin esto, cada
+   * consulta copia y ordena hasta ciento veinte mensajes, y las fichas la
+   * consultan una vez por jugador para contar los no leídos: seis ordenaciones
+   * por ciclo de detección de cambios. Se notaba de verdad —el test de bots
+   * jugando solos pasó de correr a atascarse.
+   */
   get chatFeed(): ChatEntry[] {
-    return [...this.chat, ...this.advice].sort((a, b) => a.ts - b.ts).slice(-120);
+    if (this.feedFromChat === this.chat && this.feedFromAdvice === this.advice) {
+      return this.feedCache;
+    }
+    this.feedFromChat = this.chat;
+    this.feedFromAdvice = this.advice;
+    this.feedCache = [...this.chat, ...this.advice].sort((a, b) => a.ts - b.ts).slice(-120);
+    return this.feedCache;
   }
 
-  async sendChat(): Promise<void> {
-    const text = this.chatDraft.trim();
-    if (!text) return;
-    this.chatDraft = '';
+  /**
+   * Hilo abierto en la lista de jugadores, o ninguno.
+   *
+   * `CANAL_GENERAL` es el de todos; si no, el id del jugador con quien hablas.
+   */
+  openThread: string | null = null;
+  /** Hasta cuándo se ha leído cada hilo, para el aviso de sin leer. */
+  private seenAt: Record<string, number> = {};
+
+  /**
+   * A qué conversación pertenece un mensaje.
+   *
+   * Un privado pertenece al hilo del OTRO, sea yo quien escribe o quien recibe:
+   * una conversación es una sola cosa vista desde los dos lados.
+   */
+  private threadOf(entry: ChatEntry): string {
+    if (entry.kind === 'advisor') return HILO_ESTRATEGA;
+    if (!entry.to) return CANAL_GENERAL;
+    return entry.authorId === this.seatId ? entry.to : entry.authorId;
+  }
+
+  /** Un privado sólo se enseña a sus dos extremos. */
+  private visibleToMe(entry: ChatEntry): boolean {
+    if (!entry.to) return true;
+    return entry.to === this.seatId || entry.authorId === this.seatId;
+  }
+
+  get threadLines(): ChatLine[] {
+    const thread = this.openThread;
+    if (!thread) return [];
+    return this.chatFeed
+      .filter((entry) => this.visibleToMe(entry) && this.threadOf(entry) === thread)
+      .slice(-80)
+      .map((entry) => ({
+        key: entry.key,
+        author: entry.author,
+        color: this.colorOf(entry.authorId),
+        text: entry.text,
+        mine: entry.authorId === this.seatId,
+        fromLlm: entry.origin === 'llm',
+      }));
+  }
+
+  /**
+   * Los no leídos de todos los hilos, en una sola pasada.
+   *
+   * Una pasada y no una por ficha: contar por separado obliga a recorrer la
+   * conversación entera tantas veces como jugadores haya.
+   */
+  private unreadByThread(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const entry of this.chatFeed) {
+      if (!this.visibleToMe(entry)) continue;
+      if (entry.authorId === this.seatId) continue;
+      const thread = this.threadOf(entry);
+      if (thread === this.openThread) continue;
+      if (entry.ts <= (this.seenAt[thread] ?? 0)) continue;
+      counts[thread] = (counts[thread] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  get generalUnread(): number {
+    return this.unreadByThread()[CANAL_GENERAL] ?? 0;
+  }
+
+  /**
+   * Las fichas: marcador y lista de conversaciones a la vez.
+   *
+   * El estratega va como una ficha más, con su botón en vez de campo de texto,
+   * porque analiza tu posición y no conversa. Antes vivía en un botón dentro
+   * del panel de chat; al desaparecer ese panel necesitaba puerta.
+   */
+  get rosterRows(): RosterRow[] {
+    const total = this.scoreboard.reduce((sum, entry) => sum + entry.armies, 0) || 1;
+    const unread = this.unreadByThread();
+    const rows: RosterRow[] = this.scoreboard.map((entry, index) => ({
+      id: entry.player.id,
+      name: entry.player.name,
+      color: entry.player.color,
+      avatar: avatarFor(index),
+      territories: entry.territories,
+      armies: entry.armies,
+      eliminated: entry.player.eliminated,
+      strength: entry.armies / total,
+      unread: unread[entry.player.id] ?? 0,
+    }));
+    if (this.canNarrate) {
+      rows.push({
+        id: HILO_ESTRATEGA,
+        name: 'Estratega',
+        color: '#8b9c93',
+        avatar: '🧠',
+        territories: 0,
+        armies: 0,
+        eliminated: false,
+        strength: 0,
+        unread: unread[HILO_ESTRATEGA] ?? 0,
+        askLabel: '🧠 Pedir consejo',
+      });
+    }
+    return rows;
+  }
+
+  onThreadChange(id: string | null): void {
+    const now = Date.now();
+    if (this.openThread) this.seenAt[this.openThread] = now;
+    this.openThread = id;
+    if (id) this.seenAt[id] = now;
+  }
+
+  async sendToThread(text: string): Promise<void> {
+    if (this.openThread === HILO_ESTRATEGA) {
+      await this.askAdvisor();
+      return;
+    }
+    const clean = text.trim();
+    if (!clean) return;
     await this.rooms.sendChat(this.roomId, {
       authorId: this.seatId,
       author: this.seats.find((seat) => seat.id === this.seatId)?.name ?? 'Jugador',
       kind: 'player',
-      text,
+      text: clean,
+      // El canal general va sin destinatario, que es lo que lo hace general.
+      to: this.openThread === CANAL_GENERAL ? undefined : (this.openThread ?? undefined),
     });
   }
 
   async askAdvisor(): Promise<void> {
-    this.panel = 'chat';
+    this.onThreadChange(HILO_ESTRATEGA);
     await this.game.askAdvisor();
   }
 

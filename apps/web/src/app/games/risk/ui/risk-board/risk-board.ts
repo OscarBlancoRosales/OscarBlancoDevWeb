@@ -161,6 +161,61 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
   @ViewChild('svg') svgRef?: ElementRef<SVGSVGElement>;
   /** El grupo que se mueve. Se le escribe el `transform` a mano. */
   @ViewChild('viewport') viewportRef?: ElementRef<SVGGElement>;
+  /** Hueco flotante donde la sala cuelga sus controles de contexto. */
+  @ViewChild('anchorSlot') anchorSlotRef?: ElementRef<HTMLElement>;
+
+  /**
+   * Territorio al que se pega lo que la sala proyecte dentro del tablero.
+   *
+   * Existe porque el control de un ataque tiene que estar donde está mirando el
+   * jugador, no en una barra al otro extremo de la pantalla. Y tiene que
+   * colocarlo el tablero, no la sala: el mapa se mueve sin pasar por la
+   * detección de cambios, así que sólo el tablero sabe cuándo hay que
+   * recolocarlo.
+   */
+  @Input() set anchorAt(value: TerritoryId | null) {
+    this._anchorAt = value;
+    this.positionAnchor();
+  }
+  get anchorAt(): TerritoryId | null {
+    return this._anchorAt;
+  }
+  private _anchorAt: TerritoryId | null = null;
+
+  /**
+   * Coloca el hueco flotante sobre su territorio.
+   *
+   * Usa `getScreenCTM()`, que da la transformación completa hasta la pantalla
+   * incluyendo `viewBox`, desplazamiento y zoom. Donde no hay maquetación —los
+   * tests— devuelve null y el hueco se queda escondido: mejor eso que
+   * inventarse una posición.
+   */
+  private positionAnchor(): void {
+    const slot = this.anchorSlotRef?.nativeElement;
+    if (!slot) return;
+    const point = this.screenPointOf(this._anchorAt);
+    if (!point) {
+      slot.style.display = 'none';
+      return;
+    }
+    slot.style.display = '';
+    slot.style.left = `${point.x}px`;
+    slot.style.top = `${point.y}px`;
+  }
+
+  private screenPointOf(id: TerritoryId | null): { x: number; y: number } | null {
+    if (!id) return null;
+    const territory = this.rendered?.byId[id];
+    const viewport = this.viewportRef?.nativeElement;
+    const svg = this.svgRef?.nativeElement;
+    if (!territory || !viewport || !svg) return null;
+    const ctm = viewport.getScreenCTM?.();
+    const box = svg.getBoundingClientRect?.();
+    if (!ctm || !box) return null;
+    const x = ctm.a * territory.label.x + ctm.c * territory.label.y + ctm.e;
+    const y = ctm.b * territory.label.x + ctm.d * territory.label.y + ctm.f;
+    return { x: x - box.left, y: y - box.top };
+  }
 
   /**
    * Los gestos del mapa se enganchan aquí, NO en la plantilla.
@@ -215,6 +270,9 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
    */
   private paintView(): void {
     this.viewportRef?.nativeElement.setAttribute('transform', this.transform);
+    // Lo que cuelga de un territorio se mueve con él. Si no, al arrastrar el
+    // mapa el control se quedaría flotando sobre otro país.
+    this.positionAnchor();
   }
 
   private _map: GameMap | null = null;
