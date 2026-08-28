@@ -1,0 +1,50 @@
+<div class="cards-corner" [class.open]="open">
+  <!--
+    Plegado: el abanico ES el botón. No hay nada más que tocar y no hay ninguna
+    barra que lo aloje.
+  -->
+  <button
+    class="cards-fan"
+    type="button"
+    [class.must-trade]="mustTrade"
+    (click)="toggle.emit()"
+    [attr.aria-label]="cards.length + ' cartas'"
+    [attr.aria-expanded]="open"
+  >
+    <span class="fan-card" *ngFor="let card of fan; let i = index" [style.--i]="i">
+      {{ card.icon }}
+    </span>
+    <span class="fan-card empty" *ngIf="cards.length === 0">🂠</span>
+    <span class="fan-count" *ngIf="cards.length > 0">{{ cards.length }}</span>
+  </button>
+
+  <div class="cards-sheet" *ngIf="open">
+    <p class="cards-hint urgent" *ngIf="mustTrade">
+      Tienes {{ cards.length }} cartas: hay que canjear un trío antes de seguir.
+    </p>
+    <p class="cards-hint" *ngIf="!mustTrade && cards.length < 3">
+      Conquista al menos un territorio en tu turno para robar carta.
+    </p>
+
+    <div class="cards-grid">
+      <button
+        class="card"
+        type="button"
+        *ngFor="let card of cards; trackBy: trackCard"
+        [class.picked]="isPicked(card.id)"
+        (click)="pick.emit(card.id)"
+      >
+        <span class="card-icon">{{ card.icon }}</span>
+        <span class="card-kind">{{ card.label }}</span>
+        <span class="card-territory">{{ card.territory || '—' }}</span>
+      </button>
+    </div>
+
+    <button class="cards-trade" type="button" [disabled]="!canTrade" (click)="trade.emit()">
+      Canjear trío
+    </button>
+    <p class="cards-rule">
+      Tres símbolos iguales o los tres distintos. Los comodines valen por cualquiera.
+    </p>
+  </div>
+</div>

@@ -1,36 +1,20 @@
 <div class="bar" [class.my-turn]="myTurn">
-  <ng-container *ngIf="myTurn">
-    <span class="bar-phase">{{ phaseLabel }}</span>
-
-    <ng-container *ngIf="phase === 'reinforce'">
-      <span class="bar-reserve" [class.spent]="reserveLeft === 0">Quedan {{ reserveLeft }}</span>
-      <span class="bar-hint" *ngIf="reserveLeft > 0">
-        Toca tus territorios · mantén pulsado para varias
-      </span>
-      <button class="bar-undo" type="button" *ngIf="placedCount > 0" (click)="undo.emit(false)">
-        ↶ Deshacer
-      </button>
-      <button class="bar-undo" type="button" *ngIf="placedCount > 0" (click)="undo.emit(true)">
-        ↺ Empezar de cero
-      </button>
-    </ng-container>
-
-    <button class="bar-end" type="button" [disabled]="!canEndPhase" (click)="endPhase.emit()">
-      Terminar →
-    </button>
-  </ng-container>
+  <!--
+    La cuenta de la reserva y el «terminar» viven en el bloque de fase, arriba a
+    la izquierda: la fase es el control que la cierra. Aquí ya sólo queda lo que
+    todavía no tiene su sitio definitivo.
+  -->
+  <button
+    class="bar-undo"
+    type="button"
+    *ngIf="myTurn && phase === 'reinforce' && placedCount > 0"
+    (click)="undo.emit()"
+  >
+    ↶ Deshacer
+  </button>
 
   <!-- Mirar no es jugar: los paneles están siempre, toque o no toque. -->
   <div class="bar-panels">
-    <button
-      class="bar-panel bar-panel-cartas"
-      type="button"
-      [class.active]="openPanel === 'cartas'"
-      (click)="togglePanel.emit('cartas')"
-      aria-label="Cartas"
-    >
-      🂠<span class="bar-badge" *ngIf="cardCount > 0">{{ cardCount }}</span>
-    </button>
     <button
       class="bar-panel bar-panel-chat"
       type="button"

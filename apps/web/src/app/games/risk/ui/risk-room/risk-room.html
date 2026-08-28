@@ -193,8 +193,13 @@
         [turnLabel]="turnLabel"
         [myTurn]="isMyTurn"
         [thinking]="thinking || ''"
+        [reserveLeft]="reserveLeft"
+        [placedCount]="placedCount"
+        [canEndPhase]="canEndPhase()"
         (leave)="leave()"
         (settings)="togglePanel('ia')"
+        (endPhase)="endPhase()"
+        (resetPlacements)="undoDeploy(true)"
       ></app-risk-hud>
 
       <app-risk-scoreboard [rows]="scoreRows" [currentId]="currentPlayerId"></app-risk-scoreboard>
@@ -416,40 +421,6 @@
       </div>
       </app-risk-panel>
 
-      <app-risk-panel title="Cartas" [open]="openPanel === 'cartas'" (close)="openPanel = null">
-      <div class="panel tab-body" *ngIf="panel === 'cartas'">
-        <p class="hint" *ngIf="mustTradeNow">
-          Tienes {{ myCards.length }} cartas: estás obligado a canjear un trío antes de seguir.
-        </p>
-        <p class="hint" *ngIf="!mustTradeNow && myCards.length < 3">
-          Conquista al menos un territorio en tu turno para robar carta.
-        </p>
-        <div class="card-grid">
-          <button
-            type="button"
-            class="risk-card"
-            *ngFor="let card of myCards"
-            [class.selected]="selectedCards.includes(card.id)"
-            (click)="toggleCard(card)"
-          >
-            <span class="card-symbol">{{ cardIcon[card.symbol] }}</span>
-            <span class="card-kind">{{ cardLabel[card.symbol] }}</span>
-            <span class="card-territory">{{ territoryName(card.territoryId) || '—' }}</span>
-          </button>
-        </div>
-        <button
-          class="btn go wide"
-          type="button"
-          (click)="tradeCards()"
-          [disabled]="!selectedCardsAreValid || state.phase !== 'reinforce' || !isMyTurn"
-        >
-          Canjear trío
-        </button>
-        <p class="muted small">
-          Valen tres símbolos iguales o los tres distintos. Los comodines valen por cualquiera.
-        </p>
-      </div>
-      </app-risk-panel>
 
       <app-risk-panel title="Partida" [open]="openPanel === 'historia'" (close)="openPanel = null">
   <!--
@@ -577,18 +548,28 @@
       </div>
       </app-risk-panel>
 
+      <!--
+        Las cartas viven en su esquina y se abren tocándolas. No hay ningún
+        botón en ninguna barra que las invoque.
+      -->
+      <app-risk-cards
+        [cards]="cardViews"
+        [selected]="selectedCards"
+        [open]="openPanel === 'cartas'"
+        [mustTrade]="mustTradeNow"
+        [canTrade]="canTradeNow"
+        (toggle)="togglePanel('cartas')"
+        (pick)="pickCard($event)"
+        (trade)="tradeCards()"
+      ></app-risk-cards>
+
       <app-risk-action-bar
         [phase]="state.phase"
-        [phaseLabel]="phaseLabel"
         [myTurn]="isMyTurn"
-        [reserveLeft]="reserveLeft"
         [placedCount]="placedCount"
-        [canEndPhase]="canEndPhase()"
         [openPanel]="openPanel"
-        [cardCount]="myCards.length"
         (togglePanel)="togglePanel($event)"
-        (undo)="undoDeploy($event)"
-        (endPhase)="endPhase()"
+        (undo)="undoDeploy(false)"
       ></app-risk-action-bar>
 
       <p class="error floating" *ngIf="errorMessage">{{ errorMessage }}</p>

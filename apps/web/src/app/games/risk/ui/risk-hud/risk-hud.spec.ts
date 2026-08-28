@@ -53,6 +53,72 @@ describe('RiskHud', () => {
     expect(salido).toBe(true);
   });
 
+  /**
+   * La fase es también el control que la termina.
+   *
+   * No hay ningún botón «Terminar» viviendo en una esquina propia: lo que te
+   * dice en qué fase estás es lo que la cierra. Así no hace falta una barra
+   * abajo para alojar la acción más frecuente del turno.
+   */
+  describe('terminar la fase', () => {
+    it('mientras no se puede, la fase es sólo texto', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('button.hud-phase')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.hud-phase').textContent).toContain('Refuerzos');
+    });
+
+    it('cuando se puede, la propia fase se vuelve pulsable', () => {
+      fixture.componentRef.setInput('canEndPhase', true);
+      fixture.detectChanges();
+      const boton = fixture.nativeElement.querySelector('button.hud-phase');
+      expect(boton.textContent).toContain('Refuerzos');
+      expect(boton.textContent).toContain('Terminar');
+      let terminado = false;
+      fixture.componentInstance.endPhase.subscribe(() => (terminado = true));
+      boton.click();
+      expect(terminado).toBe(true);
+    });
+
+    it('no ofrece terminar cuando no es tu turno', () => {
+      fixture.componentRef.setInput('canEndPhase', true);
+      fixture.componentRef.setInput('myTurn', false);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('button.hud-phase')).toBeNull();
+    });
+  });
+
+  describe('la reserva y el volver a empezar', () => {
+    it('canta cuántas tropas quedan', () => {
+      fixture.componentRef.setInput('reserveLeft', 3);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.hud-reserve').textContent).toContain('3');
+    });
+
+    it('y calla cuando no queda ninguna', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.hud-reserve')).toBeNull();
+    });
+
+    /**
+     * Deshacer una tropa suelta NO vive aquí: es el `−` que sale junto al
+     * territorio. Aquí sólo está el «empezar de cero», que se usa una vez cada
+     * muchas partidas y no merece más sitio que un icono.
+     */
+    it('sin nada colocado no ofrece empezar de cero', () => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.hud-reset')).toBeNull();
+    });
+
+    it('con algo colocado sí, y avisa hacia fuera', () => {
+      fixture.componentRef.setInput('placedCount', 2);
+      fixture.detectChanges();
+      let pedido = false;
+      fixture.componentInstance.resetPlacements.subscribe(() => (pedido = true));
+      fixture.nativeElement.querySelector('.hud-reset').click();
+      expect(pedido).toBe(true);
+    });
+  });
+
   it('el engranaje abre los ajustes', () => {
     // Los ajustes de IA eran una pestaña del panel lateral; al quitar la
     // columna necesitan puerta propia.

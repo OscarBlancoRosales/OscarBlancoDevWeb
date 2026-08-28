@@ -9,6 +9,7 @@ import { RiskHud } from '../risk-hud/risk-hud';
 import { RiskScoreboard, ScoreRow } from '../risk-scoreboard/risk-scoreboard';
 import { RiskPanel } from '../risk-panel/risk-panel';
 import { RiskActionBar, PanelId } from '../risk-action-bar/risk-action-bar';
+import { CardView, RiskCards } from '../risk-cards/risk-cards';
 import {
   ChatEntry,
   RiskRoomService,
@@ -74,6 +75,7 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
     RiskScoreboard,
     RiskPanel,
     RiskActionBar,
+    RiskCards,
   ],
   templateUrl: './risk-room.html',
   styleUrl: './risk-room.css',
@@ -835,6 +837,39 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   get myCards(): Card[] {
     return this.me?.cards ?? [];
+  }
+
+  private cardViewsCache: CardView[] = [];
+  private cardViewsFrom: readonly Card[] | null = null;
+
+  /**
+   * La mano ya en palabras, para que la esquina de cartas no sepa reglas.
+   *
+   * Memorizada contra la identidad de la mano: un getter que devolviera un
+   * array nuevo en cada ciclo de detección de cambios obligaría a `*ngFor` a
+   * rehacer las cartas constantemente.
+   */
+  get cardViews(): CardView[] {
+    const cards = this.myCards;
+    if (this.cardViewsFrom === cards) return this.cardViewsCache;
+    this.cardViewsFrom = cards;
+    this.cardViewsCache = cards.map((card) => ({
+      id: card.id,
+      icon: this.cardIcon[card.symbol],
+      label: this.cardLabel[card.symbol],
+      territory: this.territoryName(card.territoryId),
+    }));
+    return this.cardViewsCache;
+  }
+
+  /** Se puede canjear ahora mismo, no sólo «el trío es válido». */
+  get canTradeNow(): boolean {
+    return this.selectedCardsAreValid && this.state?.phase === 'reinforce' && this.isMyTurn;
+  }
+
+  pickCard(id: string): void {
+    const card = this.myCards.find((c) => c.id === id);
+    if (card) this.toggleCard(card);
   }
 
   toggleCard(card: Card): void {

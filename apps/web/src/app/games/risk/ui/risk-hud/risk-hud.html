@@ -1,8 +1,51 @@
 <header class="hud" [class.my-turn]="myTurn">
-  <button class="hud-leave" type="button" (click)="leave.emit()">◀ Salir</button>
-  <span class="hud-round">{{ roundLabel }}</span>
-  <span class="hud-phase">{{ phaseLabel }}</span>
-  <span class="hud-thinking" *ngIf="thinking">{{ thinking }} pensando…</span>
-  <span class="hud-turn">{{ turnLabel }}</span>
-  <button class="hud-settings" type="button" (click)="settings.emit()" aria-label="Ajustes">⚙</button>
+  <div class="hud-line">
+    <span class="hud-round">{{ roundLabel }}</span>
+
+    <!--
+      La fase es el botón que la termina. Mientras no se pueda cerrar es texto
+      plano, así que no hay ningún control muerto ocupando sitio.
+    -->
+    <button
+      class="hud-phase"
+      type="button"
+      *ngIf="myTurn && canEndPhase; else fasePlana"
+      (click)="endPhase.emit()"
+    >
+      {{ phaseLabel }}<span class="hud-go">✓ Terminar →</span>
+    </button>
+    <ng-template #fasePlana>
+      <span class="hud-phase">{{ phaseLabel }}</span>
+    </ng-template>
+
+    <span class="hud-reserve" *ngIf="reserveLeft > 0">quedan {{ reserveLeft }}</span>
+
+    <!--
+      Deshacer una tropa suelta no está aquí: es el `−` que sale junto al
+      territorio, donde está el dedo. Esto es el «empezar de cero», que se usa
+      una vez cada muchas partidas.
+    -->
+    <button
+      class="hud-reset"
+      type="button"
+      *ngIf="placedCount > 0"
+      (click)="resetPlacements.emit()"
+      title="Empezar de cero"
+      aria-label="Empezar de cero"
+    >
+      ↺
+    </button>
+  </div>
+
+  <div class="hud-line secondary">
+    <span class="hud-turn">{{ turnLabel }}</span>
+    <span class="hud-thinking" *ngIf="thinking">{{ thinking }} pensando…</span>
+  </div>
+
+  <div class="hud-line tools">
+    <button class="hud-leave" type="button" (click)="leave.emit()">◀ Salir</button>
+    <button class="hud-settings" type="button" (click)="settings.emit()" aria-label="Ajustes">
+      ⚙
+    </button>
+  </div>
 </header>

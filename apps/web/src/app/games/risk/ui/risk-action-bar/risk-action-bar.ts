@@ -9,8 +9,12 @@ export type PanelId = 'chat' | 'cartas' | 'historia' | 'ia';
  * De presentación pura: no sabe reglas ni habla con la sala. Recibe lo que hay
  * que enseñar y avisa de lo que ha pulsado el jugador.
  *
- * Sólo ofrece tres paneles. Los ajustes de IA se abren desde el engranaje de la
- * barra de arriba, porque se tocan una vez y no cada turno.
+ * Sólo ofrece tres paneles. Los ajustes de IA se abren desde el engranaje del
+ * bloque de fase, porque se tocan una vez y no cada turno.
+ *
+ * Pieza en retirada: la reserva y el «terminar fase» ya viven en el bloque de
+ * fase. Lo que queda desaparecerá cuando el deshacer pase al paso que sale
+ * junto al territorio y las cartas y el chat tengan su esquina.
  */
 @Component({
   selector: 'app-risk-action-bar',
@@ -21,15 +25,10 @@ export type PanelId = 'chat' | 'cartas' | 'historia' | 'ia';
 })
 export class RiskActionBar {
   @Input() phase = '';
-  @Input() phaseLabel = '';
   @Input() myTurn = false;
-  @Input() reserveLeft = 0;
   @Input() placedCount = 0;
-  @Input() canEndPhase = false;
   @Input() openPanel: PanelId | null = null;
-  @Input() cardCount = 0;
 
   @Output() togglePanel = new EventEmitter<PanelId>();
-  @Output() undo = new EventEmitter<boolean>();
-  @Output() endPhase = new EventEmitter<void>();
+  @Output() undo = new EventEmitter<void>();
 }

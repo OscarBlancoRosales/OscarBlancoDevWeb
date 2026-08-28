@@ -528,10 +528,25 @@ describe('RiskRoom (la mesa)', () => {
       fixture.nativeElement.querySelector('.bar-panel-chat').click();
       fixture.detectChanges();
       expect(component.openPanel).toBe('chat');
-      fixture.nativeElement.querySelector('.bar-panel-cartas').click();
+      fixture.nativeElement.querySelector('.bar-panel-historia').click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBe('historia');
+      expect(fixture.nativeElement.querySelectorAll('.panel-shell').length).toBe(1);
+    });
+
+    /**
+     * Las cartas comparten el mismo hueco que los paneles aunque vivan en su
+     * esquina: dos cosas abiertas a la vez taparían el mapa, que es justo lo
+     * que se quería evitar.
+     */
+    it('abrir las cartas cierra el panel que hubiera', () => {
+      fixture.nativeElement.querySelector('.bar-panel-chat').click();
+      fixture.detectChanges();
+      fixture.nativeElement.querySelector('.cards-fan').click();
       fixture.detectChanges();
       expect(component.openPanel).toBe('cartas');
-      expect(fixture.nativeElement.querySelectorAll('.panel-shell').length).toBe(1);
+      expect(fixture.nativeElement.querySelector('.panel-shell')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.cards-sheet')).toBeTruthy();
     });
 
     it('volver a pulsar el mismo lo cierra', () => {
@@ -556,13 +571,24 @@ describe('RiskRoom (la mesa)', () => {
       );
     });
 
-    it('el chat, las cartas, la partida y los ajustes tienen todos su sitio', () => {
+    /**
+     * Las cartas ya no son un panel: son su esquina, y se abren tocándolas.
+     * Sigue habiendo que comprobar que la puerta existe, porque quedarse sin
+     * poder canjear un trío bloquea la partida entera.
+     */
+    it('las cartas se abren tocando las cartas', () => {
+      fixture.nativeElement.querySelector('.cards-fan').click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.cards-sheet')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.cards-trade')).toBeTruthy();
+    });
+
+    it('el chat, la partida y los ajustes tienen todos su sitio', () => {
       // Al quitar la columna lateral, nada puede quedarse sin puerta. Se abren
       // pulsando, no asignando el campo: en zoneless, cambiarlo a mano después
       // del primer pintado da NG0100, y además nadie juega así.
       const puertas: Array<[string, string]> = [
         ['.bar-panel-chat', 'Chat'],
-        ['.bar-panel-cartas', 'Cartas'],
         ['.bar-panel-historia', 'Partida'],
         ['.hud-settings', 'Ajustes de IA'],
       ];
