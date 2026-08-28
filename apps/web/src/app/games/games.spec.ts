@@ -32,6 +32,17 @@ describe('Games (portada de juegos)', () => {
     expect(risk.route).toBe('/juegos/risk');
   });
 
+  it('la flota aparece como jugable y apunta a su lobby', () => {
+    const flota = component.games.find((game) => game.id === 'hundir-la-flota');
+    expect(flota?.status).toBe('listo');
+    expect(flota?.route).toBe('/juegos/flota');
+  });
+
+  it('la flota anuncia el rival contra el que se juega', () => {
+    const flota = component.games.find((game) => game.id === 'hundir-la-flota');
+    expect(flota?.highlights.some((item) => item.toLowerCase().includes('bot'))).toBe(true);
+  });
+
   it('anuncia los mapas disponibles de verdad', () => {
     const risk = component.games.find((game) => game.id === 'risk')!;
     expect(risk.highlights.some((item) => item.includes(String(RISK_MAPS.length)))).toBe(true);

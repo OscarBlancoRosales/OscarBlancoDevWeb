@@ -79,6 +79,47 @@ describe('salas', () => {
       expect(response.statusCode).toBe(400);
     });
 
+    it('sienta a los bots pedidos, y solo esos', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'flota',
+          name: 'Contra la maquina',
+          displayName: 'Óscar',
+          bots: ['Almirante'],
+          config: { nivelBot: 'almirante' },
+        },
+      });
+      const grant = response.json<SeatGrant>();
+
+      expect(response.statusCode).toBe(201);
+      expect(grant.room.seats).toHaveLength(2);
+      expect(grant.room.seats.filter((seat) => seat.isBot)).toMatchObject([
+        { displayName: 'Almirante', isBot: true },
+      ]);
+      // El pase que se devuelve es el de la persona, no el del bot.
+      expect(grant.seatId).toBe(grant.room.seats.find((seat) => !seat.isBot)?.id);
+    });
+
+    it('no sienta mas bots de los que caben en la sala', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'flota',
+          name: 'Multitud',
+          displayName: 'Óscar',
+          bots: Array.from({ length: 20 }, (_, i) => `Bot ${i}`),
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(db.prepare('SELECT COUNT(*) AS total FROM rooms').get()).toMatchObject({ total: 0 });
+    });
+
     it('el pase se guarda hasheado, nunca en claro', async () => {
       const grant = (await crearSala()).json<SeatGrant>();
 

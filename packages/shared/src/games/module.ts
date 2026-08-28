@@ -1,7 +1,7 @@
 import type { TSchema } from '@sinclair/typebox';
 
 export type SeatId = string;
-export type GameId = 'scrum' | 'risk';
+export type GameId = 'scrum' | 'risk' | 'flota';
 
 export interface RuleError {
   readonly code: string;
@@ -69,4 +69,14 @@ export interface GameModule<TState, TAction> {
 
   /** Qué pasa con el estado cuando alguien deja la sala. Por defecto, nada. */
   onSeatLeave?(state: TState, seat: SeatId): TState;
+
+  /**
+   * Qué haría ahora mismo un asiento que no tiene a nadie detrás, o `null` si
+   * no le toca hacer nada.
+   *
+   * Es puro como los otros tres, y por el mismo motivo: un bot se prueba sin
+   * servidor y sin red, y una partida con bots se reconstruye desde su log
+   * igual que cualquier otra. El azar sale del estado, nunca de `Math.random`.
+   */
+  botAction?(state: TState, seat: SeatId, seats: readonly Seat[]): TAction | null;
 }

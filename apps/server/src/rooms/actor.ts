@@ -1,4 +1,5 @@
 import { Value } from '@sinclair/typebox/value';
+import { moverBots } from './bots';
 import type { GameModule, RuleError, Seat, SeatId } from '@devweb/shared/games/module';
 import type {
   ChatEntry,
@@ -56,6 +57,15 @@ export class RoomActor {
   private seats: Seat[] = [];
   private status: RoomStatus;
 
+  /**
+   * Si ahora mismo se están moviendo los bots.
+   *
+   * El conductor juega llamando a `submit`, y `submit` llama al conductor: sin
+   * esta bandera, el primer disparo de un bot abriría una ronda de bots dentro
+   * de otra hasta reventar la pila.
+   */
+  private moviendoBots = false;
+
   constructor(options: RoomActorOptions) {
     this.roomId = options.roomId;
     this.module = options.module;
@@ -87,6 +97,10 @@ export class RoomActor {
 
   get estado(): unknown {
     return this.state;
+  }
+
+  get asientos(): readonly Seat[] {
+    return this.seats;
   }
 
   /**
@@ -195,14 +209,19 @@ export class RoomActor {
    * pintarlo, así que cualquiera con la consola abierta lo leía.
    */
   repartirChat(): void {
-    const todas = this.chat();
     for (const suscriptor of this.suscriptores) {
-      const entradas = todas.filter(
-        (entrada) =>
-          !entrada.to || entrada.to === suscriptor.seatId || entrada.authorId === suscriptor.seatId,
-      );
-      suscriptor.send({ tipo: 'chat', entradas } satisfies ServerMessage);
+      suscriptor.send({
+        tipo: 'chat',
+        entradas: this.chatPara(suscriptor.seatId),
+      } satisfies ServerMessage);
     }
+  }
+
+  /** Lo que ese asiento tiene derecho a leer: lo público y lo suyo. */
+  private chatPara(seatId: SeatId): ChatEntry[] {
+    return this.chat().filter(
+      (entrada) => !entrada.to || entrada.to === seatId || entrada.authorId === seatId,
+    );
   }
 
   refreshSeats(): void {
@@ -230,13 +249,24 @@ export class RoomActor {
     this.broadcast();
   }
 
+  /**
+   * Alguien entra en la sala.
+   *
+   * Al entrar también se deja jugar a los bots, y no es un detalle: si el
+   * proceso se reinicia con el turno en un bot, nadie volvería a moverlo —la
+   * persona no puede jugar porque no es su turno— y la partida se quedaría
+   * congelada esperando a quien no tiene a nadie detrás.
+   */
   subscribe(suscriptor: Suscriptor): void {
     this.suscriptores.add(suscriptor);
     this.refreshSeats();
     this.broadcast();
     // Quien llega a mitad de partida necesita lo que ya se ha hablado, o el
-    // chat aparece vacío como si nadie hubiera dicho nada.
-    suscriptor.send({ tipo: 'chat', entradas: this.chat() });
+    // chat aparece vacío como si nadie hubiera dicho nada. Filtrado, como el
+    // reparto: si aquí se mandara entero, bastaría con entrar tarde a una sala
+    // para leerse los privados de los demás.
+    suscriptor.send({ tipo: 'chat', entradas: this.chatPara(suscriptor.seatId) });
+    this.dejarJugarALosBots();
   }
 
   unsubscribe(suscriptor: Suscriptor): void {
@@ -302,7 +332,25 @@ export class RoomActor {
     }
 
     this.broadcast();
+    this.dejarJugarALosBots();
     return null;
+  }
+
+  /**
+   * Deja que jueguen los asientos que no tienen a nadie detrás.
+   *
+   * Va después de difundir el estado a propósito: quien está mirando ve primero
+   * su propia jugada y luego la respuesta, en vez de las dos de golpe cuando el
+   * bot termina su racha.
+   */
+  private dejarJugarALosBots(): void {
+    if (this.moviendoBots) return;
+    this.moviendoBots = true;
+    try {
+      moverBots(this, this.module);
+    } finally {
+      this.moviendoBots = false;
+    }
   }
 
   /**

@@ -1,0 +1,160 @@
+<app-terminal-layout title="Hundir la flota">
+  <div class="mesa">
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    @if (vista(); as v) {
+      @switch (v.fase) {
+        <!-- ===== Colocación ===== -->
+        @case ('colocacion') {
+          <section class="fase">
+            <header class="titular">
+              <h1><span class="prompt">&gt;</span> Coloca tu flota</h1>
+              @if (esperandoAlRival) {
+                <p class="pie">Esperando a que el rival coloque la suya…</p>
+              } @else if (flotaCompleta) {
+                <p class="pie">Flota completa. Cuando quieras, al agua.</p>
+              } @else {
+                <p class="pie">
+                  Te toca el barco de <strong>{{ tamanoPendiente }}</strong> casillas, en
+                  {{ orientacion }}. Pulsa donde va la proa.
+                </p>
+              }
+            </header>
+
+            <app-flota-board
+              titulo="Tu tablero"
+              [casillas]="tableroVacio"
+              [barcos]="colocacion().puestos"
+              [activo]="!flotaCompleta"
+              (disparo)="colocarEn($event)"
+            ></app-flota-board>
+
+            <div class="botones">
+              <button type="button" (click)="girarBarco()" [disabled]="flotaCompleta">Girar</button>
+              <button type="button" (click)="alAzar()">Al azar</button>
+              <button
+                type="button"
+                (click)="deshacer()"
+                [disabled]="colocacion().puestos.length === 0"
+              >
+                Deshacer
+              </button>
+              <button
+                type="button"
+                (click)="vaciarFlota()"
+                [disabled]="colocacion().puestos.length === 0"
+              >
+                Vaciar
+              </button>
+              <button
+                type="button"
+                class="principal"
+                (click)="desplegar()"
+                [disabled]="!flotaCompleta || esperandoAlRival"
+              >
+                Al agua
+              </button>
+            </div>
+
+            @if (v.desplegados.length < 2) {
+              <div class="invitacion">
+                <button type="button" class="enlace" (click)="copiarEnlace()">
+                  {{ enlaceCopiado() ? 'Enlace copiado' : 'Copiar enlace de invitación' }}
+                </button>
+              </div>
+            }
+          </section>
+        }
+
+        <!-- ===== Combate ===== -->
+        @case ('combate') {
+          <section class="fase">
+            <header class="titular">
+              <h1>
+                <span class="prompt">&gt;</span> {{ esMiTurno ? 'Tu turno' : 'Turno del rival' }}
+              </h1>
+              <p class="pie">
+                {{
+                  esMiTurno
+                    ? 'Elige una casilla del tablero de ' + nombreDelRival + '.'
+                    : 'Aguanta.'
+                }}
+              </p>
+            </header>
+
+            <div class="tableros">
+              <app-flota-board
+                [titulo]="nombreDelRival"
+                [casillas]="tableroRival"
+                [activo]="esMiTurno"
+                (disparo)="disparar($event)"
+              ></app-flota-board>
+
+              <app-flota-board
+                titulo="Tu tablero"
+                [casillas]="miTablero"
+                [barcos]="v.tuyo?.barcos ?? []"
+              ></app-flota-board>
+            </div>
+
+            <div class="botones">
+              <button type="button" (click)="rendirse()">Rendirse</button>
+            </div>
+          </section>
+        }
+
+        <!-- ===== Final ===== -->
+        @case ('fin') {
+          <section class="fase">
+            <header class="titular">
+              <h1>
+                <span class="prompt">&gt;</span>
+                {{ heGanado ? 'Flota hundida' : 'Te han hundido' }}
+              </h1>
+              <p class="pie">
+                {{ heGanado ? 'La mesa es tuya.' : nombreDelRival + ' se lleva la partida.' }}
+              </p>
+            </header>
+
+            <div class="tableros">
+              <app-flota-board
+                [titulo]="nombreDelRival"
+                [casillas]="tableroRival"
+                [barcos]="v.flotaRival ?? []"
+              ></app-flota-board>
+
+              <app-flota-board
+                titulo="Tu tablero"
+                [casillas]="miTablero"
+                [barcos]="v.tuyo?.barcos ?? []"
+              ></app-flota-board>
+            </div>
+
+            <dl class="punteria">
+              @if (v.punteriaTuya; as tuya) {
+                <div>
+                  <dt>Tu puntería</dt>
+                  <dd>{{ tuya.aciertos }} de {{ tuya.disparos }} ({{ tuya.porcentaje }} %)</dd>
+                </div>
+              }
+              @if (v.punteriaRival; as suya) {
+                <div>
+                  <dt>La suya</dt>
+                  <dd>{{ suya.aciertos }} de {{ suya.disparos }} ({{ suya.porcentaje }} %)</dd>
+                </div>
+              }
+            </dl>
+
+            <div class="botones">
+              <button type="button" class="principal" (click)="volver()">Otra partida</button>
+            </div>
+          </section>
+        }
+      }
+    } @else {
+      <p class="pie">Entrando en la mesa…</p>
+    }
+  </div>
+</app-terminal-layout>

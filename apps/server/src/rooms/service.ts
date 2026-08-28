@@ -55,9 +55,17 @@ export class RoomService {
     displayName: string;
     ownerId: string;
     config?: Record<string, unknown>;
+    bots?: readonly string[];
   }): SeatGrant {
     if (!moduleFor(input.game)) {
       throw new AppError('no-encontrado', 'Ese juego no existe.');
+    }
+
+    const bots = input.bots ?? [];
+    // Se comprueba antes de insertar nada: una sala a medio sentar sería una
+    // sala que hay que limpiar a mano.
+    if (bots.length + 1 > this.maxSeats) {
+      throw new AppError('sala-llena', 'No caben tantos jugadores en una sala.');
     }
 
     const at = this.now();
@@ -73,7 +81,13 @@ export class RoomService {
     };
     this.repository.insertRoom(room);
 
-    return this.sentar(room, input.displayName, input.ownerId);
+    const grant = this.sentar(room, input.displayName, input.ownerId);
+    for (const nombre of bots) this.sentar(room, nombre, null, { isBot: true });
+
+    // El pase que sale de aquí es el de la persona: los asientos de los bots se
+    // devuelven en la sala, pero su pase no sale del proceso porque nadie se va
+    // a conectar con él.
+    return { ...grant, room: this.toInfo(this.buscar(room.id)) };
   }
 
   /**

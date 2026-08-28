@@ -1,0 +1,36 @@
+<div class="tablero">
+  @if (titulo) {
+    <h3 class="titulo">{{ titulo }}</h3>
+  }
+
+  <div class="rejilla">
+    <span class="hueco"></span>
+    @for (letra of letras; track letra) {
+      <span class="cabecera">{{ letra }}</span>
+    }
+
+    @for (fila of filas; track $index) {
+      <span class="cabecera">{{ numeros[$index] }}</span>
+      @for (celda of fila; track celda.pos) {
+        <button
+          type="button"
+          class="celda"
+          [class.agua]="celda.estado === 'agua'"
+          [class.tocado]="celda.estado === 'tocado'"
+          [class.hundido]="celda.estado === 'hundido'"
+          [class.barco]="celda.conBarco"
+          [class.pulsable]="celda.pulsable"
+          [disabled]="!celda.pulsable"
+          [attr.aria-label]="letras[celda.columna] + numeros[celda.fila]"
+          (click)="pulsar(celda)"
+        >
+          @if (celda.estado === 'agua') {
+            <span class="marca">·</span>
+          } @else if (celda.estado !== null) {
+            <span class="marca">✕</span>
+          }
+        </button>
+      }
+    }
+  </div>
+</div>

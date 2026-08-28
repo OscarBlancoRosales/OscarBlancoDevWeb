@@ -42,6 +42,15 @@ export const routes: Routes = [
     loadComponent: () => import('./games/risk/ui/risk-lobby/risk-lobby').then((m) => m.RiskLobby),
   },
   {
+    path: 'juegos/flota',
+    loadComponent: () =>
+      import('./games/flota/flota-lobby/flota-lobby').then((m) => m.FlotaLobby),
+  },
+  {
+    path: 'juegos/flota/mesa',
+    loadComponent: () => import('./games/flota/flota-room/flota-room').then((m) => m.FlotaRoom),
+  },
+  {
     path: 'juegos/risk/mesa',
     loadComponent: () => import('./games/risk/ui/risk-room/risk-room').then((m) => m.RiskRoom),
   },

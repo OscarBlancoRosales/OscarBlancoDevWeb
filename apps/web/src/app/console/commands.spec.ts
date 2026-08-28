@@ -27,6 +27,8 @@ describe('registro de comandos', () => {
     'scrum-poker', // se entra por /auth, que sí tiene comando
     'juegos/risk', // el lobby se abre desde /juegos
     'juegos/risk/mesa', // necesita una sala ya creada
+    'juegos/flota', // el lobby se abre desde /juegos
+    'juegos/flota/mesa', // necesita una sala ya creada
   ]);
 
   it('toda ruta navegable tiene un comando que lleva a ella', () => {
