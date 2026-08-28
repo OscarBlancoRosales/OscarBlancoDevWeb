@@ -13,6 +13,10 @@ export interface Seat {
   readonly displayName: string;
   readonly isBot: boolean;
   readonly connected: boolean;
+  /** Posición en la mesa. Fija el orden de turno donde el juego lo use. */
+  readonly order: number;
+  /** Lo que el juego necesita del asiento y las salas no interpretan. */
+  readonly meta?: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -32,6 +36,16 @@ export interface GameModule<TState, TAction> {
 
   /** El esquema de sus acciones. Lo que no encaje aquí no llega a `validate`. */
   readonly actionSchema: TSchema;
+
+  /**
+   * Si la partida no empieza hasta que alguien lo dice.
+   *
+   * En el planning poker la sala ya es la partida: quien entra vota. En RISK
+   * no: la mesa se llena primero y el reparto de territorios se hace una vez,
+   * con los que hay en ese momento. Ese instante es el paso a `playing`, y de
+   * ahí en adelante quien entre mira una partida ya empezada.
+   */
+  readonly empiezaAlJugar?: boolean;
 
   /**
    * El estado inicial. `config` es lo que se guardó al crear la sala: para

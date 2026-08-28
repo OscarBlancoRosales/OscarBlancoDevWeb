@@ -8,7 +8,7 @@
 
 .games-container {
   padding: 20px 22px 32px;
-  color: #ccc;
+  color: var(--text);
   max-width: 1180px;
   margin: 0 auto;
 }
@@ -23,24 +23,24 @@
   flex-wrap: wrap;
   padding-bottom: 16px;
   margin-bottom: 22px;
-  border-bottom: 1px solid #232323;
+  border-bottom: 1px solid var(--bg-soft);
 }
 
 .games-header h1 {
-  color: #0f0;
+  color: var(--accent);
   font-size: 24px;
   margin: 0;
   letter-spacing: 0.5px;
-  text-shadow: 0 0 22px rgba(0, 255, 0, 0.3);
+  text-shadow: 0 0 22px rgba(var(--accent-rgb), 0.3);
 }
 
 .prompt {
-  color: #0a0;
+  color: var(--ok);
   margin-right: 6px;
 }
 
 .subtitle {
-  color: #7c8b83;
+  color: var(--muted);
   font-size: 13px;
   margin: 6px 0 0;
 }
@@ -51,9 +51,9 @@
   gap: 8px;
   padding: 6px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 255, 0, 0.28);
-  background: rgba(0, 255, 0, 0.06);
-  color: #0f0;
+  border: 1px solid rgba(var(--accent-rgb), 0.28);
+  background: rgba(var(--accent-rgb), 0.06);
+  color: var(--accent);
   font-size: 11px;
   letter-spacing: 0.4px;
 }
@@ -62,8 +62,8 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #0f0;
-  box-shadow: 0 0 8px #0f0;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
   animation: pulse-dot 1.8s ease-in-out infinite;
 }
 
@@ -94,8 +94,8 @@
   gap: 10px;
   padding: 18px;
   border-radius: 12px;
-  border: 1px solid #2a2a2a;
-  background: linear-gradient(160deg, #161a17 0%, #0d0f0e 100%);
+  border: 1px solid var(--border);
+  background: linear-gradient(160deg, var(--bg-soft) 0%, var(--bg) 100%);
   overflow: hidden;
   transition:
     transform 0.25s ease,
@@ -109,8 +109,8 @@
 
 .game-card.ready:hover {
   transform: translateY(-4px);
-  border-color: rgba(0, 255, 0, 0.5);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 255, 0, 0.12);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(var(--accent-rgb), 0.12);
 }
 
 .game-card.wip {
@@ -121,7 +121,7 @@
   position: absolute;
   inset: -40% -20% auto -20%;
   height: 140px;
-  background: radial-gradient(ellipse at top, rgba(0, 255, 0, 0.18), transparent 70%);
+  background: radial-gradient(ellipse at top, rgba(var(--accent-rgb), 0.18), transparent 70%);
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -148,32 +148,32 @@
   letter-spacing: 1px;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid #3a3a3a;
-  color: #8a8a8a;
+  border: 1px solid var(--border);
+  color: var(--muted);
 }
 
 .game-status.on {
-  border-color: rgba(0, 255, 0, 0.4);
-  background: rgba(0, 255, 0, 0.08);
-  color: #0f0;
+  border-color: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--accent);
 }
 
 .game-name {
   margin: 0;
   font-size: 19px;
-  color: #e8f5ee;
+  color: var(--bright);
   letter-spacing: 1.5px;
 }
 
 .game-tagline {
   margin: 0;
-  color: #0f0;
+  color: var(--accent);
   font-size: 12px;
 }
 
 .game-description {
   margin: 0;
-  color: #8b9c93;
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -189,11 +189,11 @@
 
 .game-highlights li {
   font-size: 11.5px;
-  color: #a9bdb2;
+  color: var(--text);
 }
 
 .bullet {
-  color: #0f0;
+  color: var(--accent);
   margin-right: 6px;
 }
 
@@ -201,19 +201,19 @@
   display: flex;
   gap: 14px;
   font-size: 11px;
-  color: #6f7d75;
+  color: var(--muted);
   padding-top: 8px;
   margin-top: auto;
-  border-top: 1px solid #232323;
+  border-top: 1px solid var(--bg-soft);
 }
 
 .card-action {
   margin-top: 10px;
   padding: 9px 14px;
   border-radius: 8px;
-  border: 1px solid rgba(0, 255, 0, 0.35);
-  background: rgba(0, 255, 0, 0.07);
-  color: #0f0;
+  border: 1px solid rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.07);
+  color: var(--accent);
   font-family: inherit;
   font-size: 12px;
   letter-spacing: 0.6px;
@@ -222,15 +222,15 @@
 }
 
 .card-action:hover:not(:disabled) {
-  background: #0f0;
-  color: #041006;
-  box-shadow: 0 0 18px rgba(0, 255, 0, 0.3);
+  background: var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 18px rgba(var(--accent-rgb), 0.3);
 }
 
 .card-action:disabled {
-  border-color: #333;
-  background: #151515;
-  color: #666;
+  border-color: var(--border);
+  background: var(--bg-soft);
+  color: var(--muted);
   cursor: not-allowed;
 }
 

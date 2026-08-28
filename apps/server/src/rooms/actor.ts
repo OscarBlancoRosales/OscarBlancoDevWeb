@@ -1,10 +1,19 @@
 import { Value } from '@sinclair/typebox/value';
 import type { GameModule, RuleError, Seat, SeatId } from '@devweb/shared/games/module';
-import type { RoomStatus, SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
+import type {
+  ChatEntry,
+  ChatKind,
+  RoomStatus,
+  SeatInfo,
+  ServerMessage,
+} from '@devweb/shared/contracts/rooms';
 import type { RoomRepository } from './repository';
 
 /** Cada cuántas acciones se guarda una foto del estado. */
 export const SNAPSHOT_CADA = 40;
+
+/** Cuántos mensajes de chat se mandan al entrar. Los viejos quedan en la base. */
+export const CHAT_MAXIMO = 200;
 
 export interface Suscriptor {
   readonly seatId: SeatId;
@@ -15,7 +24,9 @@ export interface RoomActorOptions {
   readonly roomId: string;
   readonly module: GameModule<unknown, unknown>;
   readonly repository: RoomRepository;
-  readonly config: Readonly<Record<string, unknown>>;
+  readonly status?: RoomStatus;
+  /** Quién creó la sala. Su asiento es el único que puede hablar como la sala. */
+  readonly ownerId?: string | null;
   readonly now?: () => number;
 }
 
@@ -36,20 +47,22 @@ export class RoomActor {
   private readonly module: GameModule<unknown, unknown>;
   private readonly repository: RoomRepository;
   private readonly now: () => number;
-  private readonly config: Readonly<Record<string, unknown>>;
+  private readonly ownerId: string | null;
   private readonly suscriptores = new Set<Suscriptor>();
+  private duenyos = new Set<SeatId>();
 
   private state: unknown;
   private seq: number;
   private seats: Seat[] = [];
-  private status: RoomStatus = 'lobby';
+  private status: RoomStatus;
 
   constructor(options: RoomActorOptions) {
     this.roomId = options.roomId;
     this.module = options.module;
     this.repository = options.repository;
-    this.config = options.config;
+    this.ownerId = options.ownerId ?? null;
     this.now = options.now ?? Date.now;
+    this.status = options.status ?? 'lobby';
 
     const { state, seq } = this.rebuild();
     this.state = state;
@@ -59,6 +72,17 @@ export class RoomActor {
 
   get ultimaSecuencia(): number {
     return this.seq;
+  }
+
+  /**
+   * Lo que se decidió al montar la sala. Se lee, no se guarda.
+   *
+   * Entre que la sala se abre y la partida empieza se puede cambiar el mapa o
+   * las reglas, y una copia hecha al arrancar el actor repartiría el tablero
+   * con lo que había antes.
+   */
+  private get config(): Readonly<Record<string, unknown>> {
+    return this.repository.findRoom(this.roomId)?.config ?? {};
   }
 
   get estado(): unknown {
@@ -76,6 +100,10 @@ export class RoomActor {
     const seats = this.seatsFromDb();
     const snapshot = this.repository.findSnapshot(this.roomId);
 
+    if (!snapshot && this.module.empiezaAlJugar && this.status === 'lobby') {
+      return { state: null, seq: 0 };
+    }
+
     let state = snapshot ? snapshot.state : this.module.createState(seats, this.config);
     let seq = snapshot?.upToSeq ?? 0;
 
@@ -88,12 +116,93 @@ export class RoomActor {
   }
 
   private seatsFromDb(): Seat[] {
-    return this.repository.listSeats(this.roomId).map((seat) => ({
+    const filas = this.repository.listSeats(this.roomId);
+    this.duenyos = new Set(
+      filas.filter((seat) => this.ownerId !== null && seat.userId === this.ownerId).map((seat) => seat.seatId),
+    );
+    return filas.map((seat) => ({
       id: seat.seatId,
       displayName: seat.displayName,
       isBot: seat.isBot,
       connected: false,
+      order: seat.order,
+      meta: seat.meta,
     }));
+  }
+
+  /** Lo dicho en la sala, para mandarlo entero al que llega. */
+  private chat(): ChatEntry[] {
+    return this.repository.listChat(this.roomId, CHAT_MAXIMO).map((fila) => ({
+      seq: fila.seq,
+      authorId: fila.authorId,
+      author: fila.author,
+      kind: fila.kind,
+      text: fila.text,
+      at: fila.at,
+      ...(fila.origin !== null && { origin: fila.origin }),
+      ...(fila.dirigidoA !== null && { to: fila.dirigidoA }),
+    }));
+  }
+
+  /**
+   * Añade algo al chat y lo reparte.
+   *
+   * Ni el nombre ni el tipo los pone el cliente: los deduce el servidor del
+   * asiento. Si el nombre viniera de fuera, cualquiera podría firmar con el de
+   * otro; y si viniera el tipo, cualquiera podría publicar un aviso con la
+   * pinta de los que da la sala, que es la voz que la gente se cree.
+   *
+   * Hablar como la sala solo puede el asiento de quien la creó, que es quien
+   * mueve los bots y escribe la crónica.
+   */
+  decir(
+    seatId: SeatId,
+    texto: string,
+    comoLaSala: boolean,
+    origin?: string,
+    para?: SeatId,
+  ): RuleError | null {
+    const asiento = this.seats.find((seat) => seat.id === seatId);
+    if (!asiento) return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
+    if (comoLaSala && !this.duenyos.has(seatId)) {
+      return { code: 'no-eres-la-sala', message: 'Solo el anfitrión habla en nombre de la sala.' };
+    }
+    if (para !== undefined && !this.seats.some((seat) => seat.id === para)) {
+      return { code: 'sin-destinatario', message: 'Ese asiento no está en la sala.' };
+    }
+
+    const kind: ChatKind = comoLaSala ? 'system' : asiento.isBot ? 'bot' : 'player';
+    this.repository.appendChat(this.roomId, {
+      seq: this.repository.lastChatSeq(this.roomId) + 1,
+      authorId: comoLaSala ? 'system' : seatId,
+      author: comoLaSala ? 'Sala' : asiento.displayName,
+      kind,
+      text: texto,
+      origin: origin ?? null,
+      at: this.now(),
+      dirigidoA: para ?? null,
+    });
+    this.repartirChat();
+    return null;
+  }
+
+  /**
+   * Reparte el chat, y a cada uno sólo lo suyo.
+   *
+   * Un privado se le manda a sus dos extremos y a nadie más. Es la diferencia
+   * entre un secreto y un disimulo: mientras esto vivía en la base de datos del
+   * navegador, el mensaje viajaba entero a todo el mundo y sólo se escondía al
+   * pintarlo, así que cualquiera con la consola abierta lo leía.
+   */
+  repartirChat(): void {
+    const todas = this.chat();
+    for (const suscriptor of this.suscriptores) {
+      const entradas = todas.filter(
+        (entrada) =>
+          !entrada.to || entrada.to === suscriptor.seatId || entrada.authorId === suscriptor.seatId,
+      );
+      suscriptor.send({ tipo: 'chat', entradas } satisfies ServerMessage);
+    }
   }
 
   refreshSeats(): void {
@@ -101,9 +210,23 @@ export class RoomActor {
     this.seats = this.seatsFromDb().map((seat) => ({ ...seat, connected: conectados.has(seat.id) }));
   }
 
+  /**
+   * Cambia el estado de la sala y, si con eso empieza la partida, la reparte.
+   *
+   * El reparto se hace **aquí y una sola vez**, con los asientos que hay en ese
+   * momento: es la alineación congelada. Quien llegue después se sienta en una
+   * partida ya empezada, y quien se vaya deja sus ejércitos donde estaban.
+   */
   setStatus(status: RoomStatus): void {
     this.status = status;
     this.repository.updateRoomStatus(this.roomId, status, this.now());
+
+    if (this.state === null && status === 'playing') {
+      this.refreshSeats();
+      this.state = this.module.createState(this.seats, this.config);
+      this.repository.saveSnapshot(this.roomId, { upToSeq: 0, state: this.state }, this.now());
+    }
+
     this.broadcast();
   }
 
@@ -111,12 +234,20 @@ export class RoomActor {
     this.suscriptores.add(suscriptor);
     this.refreshSeats();
     this.broadcast();
+    // Quien llega a mitad de partida necesita lo que ya se ha hablado, o el
+    // chat aparece vacío como si nadie hubiera dicho nada.
+    suscriptor.send({ tipo: 'chat', entradas: this.chat() });
   }
 
   unsubscribe(suscriptor: Suscriptor): void {
     this.suscriptores.delete(suscriptor);
     this.refreshSeats();
     this.broadcast();
+  }
+
+  /** Si ese asiento lo mueve un programa y no una persona. */
+  esBot(seatId: SeatId): boolean {
+    return this.seats.some((seat) => seat.id === seatId && seat.isBot);
   }
 
   /** Si ese asiento tiene ahora mismo alguien al otro lado. */
@@ -141,6 +272,9 @@ export class RoomActor {
     }
     if (!this.seats.some((seat) => seat.id === seatId)) {
       return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
+    }
+    if (this.state === null) {
+      return { code: 'sin-empezar', message: 'La partida todavía no ha empezado.' };
     }
 
     const rechazo = this.juzgar(accion, seatId);
@@ -192,7 +326,7 @@ export class RoomActor {
   /** Saca a alguien de la mesa y deja que el juego decida qué hacer con lo suyo. */
   removeSeat(seatId: SeatId): void {
     this.repository.deleteSeat(this.roomId, seatId);
-    if (this.module.onSeatLeave) {
+    if (this.state !== null && this.module.onSeatLeave) {
       this.state = this.module.onSeatLeave(this.state, seatId);
     }
     this.refreshSeats();
@@ -211,31 +345,35 @@ export class RoomActor {
     }
   }
 
+  private toSeatInfo(seat: Seat): SeatInfo {
+    return {
+      id: seat.id,
+      displayName: seat.displayName,
+      isBot: seat.isBot,
+      connected: seat.connected,
+      isOwner: this.duenyos.has(seat.id),
+      order: seat.order,
+      ...(seat.meta !== undefined && { meta: seat.meta }),
+    };
+  }
+
   messageFor(seatId: SeatId): ServerMessage {
     return {
       tipo: 'estado',
       seq: this.seq,
-      seats: this.seats.map(toSeatInfo),
+      seats: this.seats.map((seat) => this.toSeatInfo(seat)),
       status: this.status,
-      vista: this.module.view(this.state, seatId, this.seats),
+      vista: this.state === null ? null : this.module.view(this.state, seatId, this.seats),
     };
   }
 
   /** Guarda la foto pendiente antes de descargar la sala de memoria. */
   flush(): void {
+    if (this.state === null) return;
     this.repository.saveSnapshot(
       this.roomId,
       { upToSeq: this.seq, state: this.state },
       this.now(),
     );
   }
-}
-
-function toSeatInfo(seat: Seat): SeatInfo {
-  return {
-    id: seat.id,
-    displayName: seat.displayName,
-    isBot: seat.isBot,
-    connected: seat.connected,
-  };
 }

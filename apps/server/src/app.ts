@@ -83,7 +83,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   await app.register(authRoutes({ service, config }));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
-  await app.register(kvRoutes(db));
+  await app.register(kvRoutes(db, config.JWT_SECRET));
 
   return app;
 }
@@ -92,11 +92,20 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
  * Sin relay configurado, el correo va al log.
  *
  * En desarrollo eso permite copiar el enlace de verificación del terminal sin
- * montar nada; en producción, `provision.sh` deja SMTP_URL puesto y este camino
- * no se toma.
+ * montar nada. En producción es una trampa silenciosa: el registro contesta que
+ * todo ha ido bien, el enlace acaba en el journal y quien se acaba de dar de
+ * alta se queda esperando un correo que nunca llega. Por eso se avisa fuerte al
+ * arrancar, en vez de dejar que se descubra semanas después.
  */
 function mailerFor(config: Config, log: (message: string) => void): Mailer {
-  return config.SMTP_URL === ''
-    ? createConsoleMailer(log)
-    : createSmtpMailer(config.SMTP_URL, config.MAIL_FROM);
+  if (config.SMTP_URL !== '') {
+    return createSmtpMailer(config.SMTP_URL, config.MAIL_FROM);
+  }
+  if (config.NODE_ENV === 'production') {
+    log(
+      'AVISO: SMTP_URL está vacío. Los enlaces de verificación se escriben en ' +
+        'este log y NADIE recibirá el correo. Nadie podrá activar su cuenta.',
+    );
+  }
+  return createConsoleMailer(log);
 }

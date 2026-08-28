@@ -17,24 +17,21 @@
 
     <div class="tool-actions">
       <button class="btn" (click)="randomColor()">{{ i18n.t('color.random') }}</button>
-      <button class="btn" (click)="copyValue(hexInput)">
-        {{ copied ? i18n.t('common.copied') : '⧉ HEX' }}
-      </button>
     </div>
 
     <div class="formats">
       <div class="fmt">
         <span class="fmt-name">HEX</span>
-        <input class="input fmt-input" type="text" [(ngModel)]="hexInput" (ngModelChange)="onHexChange()" maxlength="7" spellcheck="false" />
+        <input class="input" type="text" [(ngModel)]="hexInput" (ngModelChange)="onHexChange()" maxlength="7" spellcheck="false" />
         <button class="fmt-copy" (click)="copyValue(hexInput)">⧉</button>
       </div>
 
       <div class="fmt">
         <span class="fmt-name">RGB</span>
         <div class="triple">
-          <label class="tri"><span>R</span><input class="input" type="number" min="0" max="255" [(ngModel)]="r" (ngModelChange)="onRgbChange()" /></label>
-          <label class="tri"><span>G</span><input class="input" type="number" min="0" max="255" [(ngModel)]="g" (ngModelChange)="onRgbChange()" /></label>
-          <label class="tri"><span>B</span><input class="input" type="number" min="0" max="255" [(ngModel)]="b" (ngModelChange)="onRgbChange()" /></label>
+          <label class="tri"><span>R</span><input class="input input--xs" type="number" min="0" max="255" [(ngModel)]="r" (ngModelChange)="onRgbChange()" /></label>
+          <label class="tri"><span>G</span><input class="input input--xs" type="number" min="0" max="255" [(ngModel)]="g" (ngModelChange)="onRgbChange()" /></label>
+          <label class="tri"><span>B</span><input class="input input--xs" type="number" min="0" max="255" [(ngModel)]="b" (ngModelChange)="onRgbChange()" /></label>
         </div>
         <button class="fmt-copy" (click)="copyValue(rgbString)">⧉</button>
       </div>
@@ -42,9 +39,9 @@
       <div class="fmt">
         <span class="fmt-name">HSL</span>
         <div class="triple">
-          <label class="tri"><span>H</span><input class="input" type="number" min="0" max="360" [(ngModel)]="h" (ngModelChange)="onHslChange()" /></label>
-          <label class="tri"><span>S</span><input class="input" type="number" min="0" max="100" [(ngModel)]="s" (ngModelChange)="onHslChange()" /></label>
-          <label class="tri"><span>L</span><input class="input" type="number" min="0" max="100" [(ngModel)]="l" (ngModelChange)="onHslChange()" /></label>
+          <label class="tri"><span>H</span><input class="input input--xs" type="number" min="0" max="360" [(ngModel)]="h" (ngModelChange)="onHslChange()" /></label>
+          <label class="tri"><span>S</span><input class="input input--xs" type="number" min="0" max="100" [(ngModel)]="s" (ngModelChange)="onHslChange()" /></label>
+          <label class="tri"><span>L</span><input class="input input--xs" type="number" min="0" max="100" [(ngModel)]="l" (ngModelChange)="onHslChange()" /></label>
         </div>
         <button class="fmt-copy" (click)="copyValue(hslString)">⧉</button>
       </div>

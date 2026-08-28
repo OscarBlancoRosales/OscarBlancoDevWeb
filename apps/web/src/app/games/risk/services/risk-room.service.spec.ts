@@ -1,94 +1,218 @@
-import { describe, expect, it } from 'vitest';
-import { stripUndefined } from './risk-room.service';
-import { seatsToRoster } from './risk-sync';
+import { describe, expect, it, vi } from 'vitest';
+import { RiskRoomService, aChat, aMeta, aSeat } from './risk-room.service';
+import type { NgZone } from '@angular/core';
+import type { RoomsApiService } from '../../../api/rooms-api.service';
+import type { RoomInfo, SeatInfo } from '@devweb/shared/contracts/rooms';
 
-/**
- * Firebase LANZA si le mandas un `undefined` en cualquier profundidad, y este
- * juego está lleno de campos opcionales. En local no se notaba porque
- * `JSON.stringify` los descarta callando, así que el modo local iba y el online
- * reventaba al empezar la partida.
- */
-describe('saneado antes de mandar a Firebase', () => {
-  it('quita los undefined del primer nivel', () => {
-    expect(stripUndefined({ a: 1, b: undefined })).toEqual({ a: 1 });
-  });
+const SALA: RoomInfo = {
+  id: 'sala-1',
+  game: 'risk',
+  name: 'Partida del jueves',
+  status: 'lobby',
+  config: {
+    mapId: 'spain-regions',
+    seed: 7,
+    maxPlayers: 4,
+    ownerName: 'Óscar',
+    reglas: { autoClaim: true, victory: 'conquest' },
+  },
+  seats: [],
+  createdAt: 10,
+  updatedAt: 20,
+};
 
-  it('y también los de dentro, que es lo que fallaba', () => {
-    const limpio = stripUndefined({ meta: { name: 'x', bot: undefined } });
-    expect(limpio).toEqual({ meta: { name: 'x' } });
-    expect('bot' in (limpio.meta as object)).toBe(false);
-  });
+const ASIENTO: SeatInfo = {
+  id: 'seat-1',
+  displayName: 'Ana',
+  isBot: false,
+  connected: true,
+  isOwner: false,
+  order: 2,
+};
 
-  it('entra en los arrays', () => {
-    const limpio = stripUndefined({ roster: [{ id: 'a', bot: undefined }, { id: 'b', bot: 'cauto' }] });
-    expect(limpio).toEqual({ roster: [{ id: 'a' }, { id: 'b', bot: 'cauto' }] });
-  });
+describe('la sala del servidor con la forma que espera la pantalla', () => {
+  it('saca el mapa, la semilla y las reglas de la caja que el servidor no abre', () => {
+    const meta = aMeta(SALA, 'uid-1');
 
-  it('los arrays siguen siendo arrays', () => {
-    const limpio = stripUndefined({ lista: [1, 2, 3] });
-    expect(Array.isArray(limpio.lista)).toBe(true);
-    expect(limpio.lista).toHaveLength(3);
-  });
-
-  it('un hueco en un array se vuelve null y no descoloca el orden', () => {
-    const limpio = stripUndefined({ lista: ['a', undefined, 'c'] });
-    expect(limpio.lista).toEqual(['a', null, 'c']);
-  });
-
-  it('respeta null, cero y cadena vacía', () => {
-    expect(stripUndefined({ a: null, b: 0, c: '', d: false })).toEqual({
-      a: null,
-      b: 0,
-      c: '',
-      d: false,
+    expect(meta).toMatchObject({
+      id: 'sala-1',
+      name: 'Partida del jueves',
+      status: 'lobby',
+      mapId: 'spain-regions',
+      seed: 7,
+      maxPlayers: 4,
+      ownerName: 'Óscar',
+      ownerUid: 'uid-1',
+      config: { autoClaim: true, victory: 'conquest' },
     });
   });
 
-  it('no toca lo que no son objetos', () => {
-    expect(stripUndefined(5)).toBe(5);
-    expect(stripUndefined('hola')).toBe('hola');
-    expect(stripUndefined(null)).toBe(null);
+  it('una sala sin configuración no rompe: se juega el mapa de siempre', () => {
+    const meta = aMeta({ ...SALA, config: {} }, '');
+
+    expect(meta).toMatchObject({ mapId: 'world', seed: 1, maxPlayers: 6, ownerName: '' });
   });
 
-  it('LA ALINEACIÓN de una mesa con humanos queda limpia', () => {
-    // El caso real: un asiento humano no tiene `botProfile`, y ese undefined
-    // dentro del roster hacía que "Empezar la partida" reventara online.
-    const roster = seatsToRoster([
-      {
-        id: 's1',
-        name: 'Oscar',
-        kind: 'human',
-        color: '#fff',
-        order: 0,
-        seatToken: 'tok',
-        connected: true,
-        isOwner: true,
-      },
-      {
-        id: 's2',
-        name: 'Bot',
-        kind: 'bot',
-        botProfile: 'cauto',
-        color: '#000',
-        order: 1,
-        seatToken: 'tok2',
-        connected: true,
-        isOwner: false,
-      },
-    ] as never);
-
-    expect(roster[0].botProfile).toBeUndefined();
-    const limpio = stripUndefined({ roster });
-    expect(JSON.stringify(limpio)).not.toContain('undefined');
-    expect('botProfile' in (limpio.roster[0] as object)).toBe(false);
-    expect(limpio.roster[1].botProfile).toBe('cauto');
+  it('el dueño no viaja en la sala: lo pone quien pregunta, y solo por sus salas', () => {
+    expect(aMeta(SALA, '').ownerUid).toBe('');
   });
 
-  it('ningún undefined sobrevive, mires donde mires', () => {
-    const hondo = stripUndefined({
-      a: { b: { c: { d: undefined, e: [{ f: undefined, g: 1 }] } } },
+  it('la alineación congelada se conserva si la hay', () => {
+    const roster = [{ id: 'a', name: 'Ana', kind: 'human', color: 'rojo', seatToken: 'a' }];
+    const meta = aMeta({ ...SALA, config: { ...SALA.config, roster } }, '');
+
+    expect(meta.roster).toEqual(roster);
+  });
+});
+
+describe('los asientos', () => {
+  it('traen el color y el carácter del bot de sus metadatos', () => {
+    const seat = aSeat({ ...ASIENTO, isBot: true, meta: { color: 'azul', botProfile: 'cauto' } });
+
+    expect(seat).toMatchObject({ kind: 'bot', color: 'azul', botProfile: 'cauto', order: 2 });
+  });
+
+  it('el pase no viaja: la identidad dentro del cliente es el propio asiento', () => {
+    const seat = aSeat({ ...ASIENTO, meta: { color: 'rojo', seatToken: 'secreto' } });
+
+    expect(seat.seatToken).toBe('seat-1');
+    expect(JSON.stringify(seat)).not.toContain('secreto');
+  });
+
+  it('un asiento sin metadatos sigue siendo un asiento', () => {
+    expect(aSeat(ASIENTO)).toMatchObject({
+      id: 'seat-1',
+      name: 'Ana',
+      kind: 'human',
+      connected: true,
+      color: '',
+      isOwner: false,
     });
-    expect(JSON.stringify(hondo)).not.toContain('undefined');
-    expect(hondo).toEqual({ a: { b: { c: { e: [{ g: 1 }] } } } });
+  });
+
+  it('quién es el anfitrión lo dice el servidor, no los metadatos', () => {
+    const seat = aSeat({ ...ASIENTO, isOwner: true, meta: { isOwner: false } });
+
+    expect(seat.isOwner).toBe(true);
+  });
+});
+
+describe('el chat', () => {
+  const ENTRADA = {
+    seq: 3,
+    authorId: 'seat-1',
+    author: 'Ana',
+    kind: 'player' as const,
+    text: 'voy a por Aragón',
+    at: 1234,
+  };
+
+  it('la clave ordena alfabéticamente igual que numéricamente', () => {
+    const claves = [1, 2, 10, 40].map((seq) => aChat({ ...ENTRADA, seq }).key);
+
+    expect([...claves].sort()).toEqual(claves);
+  });
+
+  it('el origen solo se conserva si es uno de los conocidos', () => {
+    expect(aChat({ ...ENTRADA, origin: 'llm' }).origin).toBe('llm');
+    expect(aChat({ ...ENTRADA, origin: 'inventado' }).origin).toBeUndefined();
+  });
+});
+
+describe('crear una sala y sentarse en ella', () => {
+  class ApiDeMentira {
+    unidas = 0;
+    sala: RoomInfo = { ...SALA, seats: [] };
+
+    crear(): Promise<{ room: RoomInfo; seatId: string; seatToken: string }> {
+      const asiento: SeatInfo = { ...ASIENTO, id: 'seat-duenyo', displayName: 'Óscar', order: 0 };
+      this.sala = { ...this.sala, seats: [asiento] };
+      return Promise.resolve({ room: this.sala, seatId: asiento.id, seatToken: 'pase-duenyo' });
+    }
+
+    unirse(): Promise<{ room: RoomInfo; seatId: string; seatToken: string }> {
+      this.unidas += 1;
+      const asiento: SeatInfo = { ...ASIENTO, id: 'seat-nuevo', order: this.sala.seats.length };
+      this.sala = { ...this.sala, seats: [...this.sala.seats, asiento] };
+      return Promise.resolve({ room: this.sala, seatId: asiento.id, seatToken: 'pase-nuevo' });
+    }
+
+    info(): Promise<RoomInfo> {
+      return Promise.resolve(this.sala);
+    }
+
+    cambiarAsiento(): Promise<RoomInfo> {
+      return Promise.resolve(this.sala);
+    }
+  }
+
+  /** Una zona que no agrupa nada: aquí no se pinta, solo se llama. */
+  const zonaQuieta = {
+    runOutsideAngular: (fn: () => unknown) => fn(),
+    run: (fn: () => unknown) => fn(),
+  } as NgZone;
+
+  function servicio(api: ApiDeMentira): RiskRoomService {
+    localStorage.clear();
+    return new RiskRoomService(api as unknown as RoomsApiService, zonaQuieta);
+  }
+
+  it('quien crea la sala ya está sentado: no se sienta dos veces', async () => {
+    const api = new ApiDeMentira();
+    const rooms = servicio(api);
+
+    const meta = await rooms.createRoom({
+      name: 'Partida',
+      mapId: 'spain-regions',
+      maxPlayers: 4,
+      ownerUid: 'uid-1',
+      ownerName: 'Óscar',
+      config: {} as never,
+    });
+    const seatId = await rooms.claimSeat(meta.id, {
+      name: 'Óscar',
+      seatToken: 'uid-1',
+      color: 'rojo',
+      isOwner: true,
+    });
+
+    expect(seatId).toBe('seat-duenyo');
+    expect(api.unidas).toBe(0);
+  });
+
+  it('mandar una jugada no vuelve hasta que el servidor contesta', async () => {
+    vi.useFakeTimers();
+    const rooms = servicio(new ApiDeMentira());
+    let contestado = false;
+
+    void rooms
+      .pushAction('sala-1', { type: 'end-phase', playerId: 'seat-1' }, 'seat-1')
+      .then(() => {
+        contestado = true;
+      });
+    await Promise.resolve();
+
+    // Si volviera de inmediato, quien mueve los bots vería el estado sin
+    // cambiar y daría por rechazada una jugada que iba camino del servidor.
+    expect(contestado).toBe(false);
+
+    // Y si el servidor no contesta nunca, tampoco se queda ahí colgado.
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(contestado).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  it('quien llega por invitación se sienta una vez, y al volver recupera su silla', async () => {
+    const api = new ApiDeMentira();
+    const rooms = servicio(api);
+    await api.crear();
+
+    const primera = await rooms.claimSeat(SALA.id, { name: 'Ana', seatToken: 'x', color: 'azul' });
+    const segunda = await rooms.claimSeat(SALA.id, { name: 'Ana', seatToken: 'x', color: 'azul' });
+
+    expect(primera).toBe('seat-nuevo');
+    expect(segunda).toBe('seat-nuevo');
+    expect(api.unidas).toBe(1);
   });
 });

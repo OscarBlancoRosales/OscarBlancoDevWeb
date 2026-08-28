@@ -1,6 +1,7 @@
 import { Type } from '@sinclair/typebox';
 import { OkResponse } from '@devweb/shared/contracts/auth';
 import { AppError } from '../errors';
+import { userIdFrom } from '../auth/guard';
 import type { FastifyPluginCallbackTypebox } from '@fastify/type-provider-typebox';
 import type { Db } from '../db/index';
 
@@ -12,6 +13,8 @@ const Entrada = Type.Object({
   key: Type.String(),
   value: Type.Unknown(),
   updatedAt: Type.Integer(),
+  /** Si quien pregunta puede reescribirla o borrarla. */
+  propia: Type.Boolean(),
 });
 
 const Guardar = Type.Object({ value: Type.Unknown() }, { additionalProperties: false });
@@ -34,11 +37,11 @@ interface Fila {
  * sobrescribir lo suyo; leer sigue siendo público, porque las configuraciones se
  * comparten por enlace.
  */
-export function kvRoutes(db: Db): FastifyPluginCallbackTypebox {
+export function kvRoutes(db: Db, jwtSecret: string): FastifyPluginCallbackTypebox {
   const consultas = {
     leer: db.prepare('SELECT key, value_json, updated_at, owner_id FROM kv WHERE namespace = ? AND key = ?'),
-    listarDe: db.prepare(
-      'SELECT key, value_json, updated_at, owner_id FROM kv WHERE namespace = ? AND owner_id = ? ORDER BY updated_at DESC',
+    listar: db.prepare(
+      'SELECT key, value_json, updated_at, owner_id FROM kv WHERE namespace = ? ORDER BY updated_at DESC',
     ),
     guardar: db.prepare(
       'INSERT INTO kv (namespace, key, owner_id, value_json, updated_at) VALUES (?, ?, ?, ?, ?)' +
@@ -63,10 +66,20 @@ export function kvRoutes(db: Db): FastifyPluginCallbackTypebox {
           key: fila.key,
           value: JSON.parse(fila.value_json) as unknown,
           updatedAt: fila.updated_at,
+          propia: fila.owner_id !== null && fila.owner_id === userIdFrom(request, jwtSecret),
         });
       },
     );
 
+    /**
+     * Todo lo guardado en un espacio de nombres, para quien tenga sesión.
+     *
+     * Devuelve lo de todos, no solo lo propio: estas listas son compartidas por
+     * definición —una tanda de temporizadores de un evento la mira todo el
+     * equipo—, y partirla por dueños convertiría una lista común en varias
+     * privadas que no se ven entre sí. Escribir y borrar siguen siendo del
+     * dueño, y por eso cada entrada dice si quien pregunta puede tocarla.
+     */
     app.get(
       '/kv/:namespace',
       {
@@ -74,12 +87,13 @@ export function kvRoutes(db: Db): FastifyPluginCallbackTypebox {
         schema: { params: Type.Object({ namespace: Nombre }), response: { 200: Listado } },
       },
       async (request, reply) => {
-        const filas = consultas.listarDe.all(request.params.namespace, request.userId) as Fila[];
+        const filas = consultas.listar.all(request.params.namespace) as Fila[];
         await reply.send({
           entries: filas.map((fila) => ({
             key: fila.key,
             value: JSON.parse(fila.value_json) as unknown,
             updatedAt: fila.updated_at,
+            propia: fila.owner_id === request.userId,
           })),
         });
       },

@@ -76,16 +76,68 @@ cuando es la única forma de saber que las copias valen para algo.
 
 ## El correo
 
-`SMTP_URL` apunta a un relay externo (Resend, Brevo, Mailgun; los tres tienen
-plan gratuito suficiente para verificar cuentas). Formato:
-
-```
-SMTP_URL=smtps://usuario:contraseña@smtp.proveedor.com:465
-```
+Sin esto **nadie puede activar su cuenta**: el registro contesta que todo ha ido
+bien y el enlace de verificación acaba en el log del servidor. El servidor avisa
+al arrancar en producción si `SMTP_URL` está vacío, precisamente porque es un
+fallo que de otro modo se descubre semanas después y por la peor vía.
 
 No se monta un Postfix propio a propósito: una IP de VPS recién creada no tiene
-reputación, y el correo de verificación acabaría en spam justo cuando alguien
-intenta darse de alta. Además sería un servicio más que parchear.
+reputación, y el correo acabaría en spam justo cuando alguien intenta darse de
+alta. Además sería un servicio más que parchear.
+
+### Paso a paso, con Resend
+
+Sirve igual Brevo o Mailgun; los tres tienen plan gratuito de sobra para esto.
+
+1. Crea la cuenta en **resend.com** y verifica tu correo.
+2. **Domains → Add Domain** → `oscarblancorosales.com`.
+3. Te dará unos registros DNS (SPF, DKIM y DMARC). Añádelos donde gestionas el
+   DNS, que es el mismo sitio donde creaste el registro `api`. **Este paso es el
+   que decide si tus correos llegan a la bandeja o al spam**: sin SPF y DKIM,
+   Gmail y Outlook desconfían de cualquiera.
+4. Espera a que Resend marque el dominio como verificado (suele ser minutos).
+5. **API Keys → Create API Key**, con permiso de envío.
+6. En la VPS, edita la configuración:
+
+```bash
+sudo nano /etc/devweb/api.env
+```
+
+Pon estas dos líneas (la contraseña es la API key entera):
+
+```
+SMTP_URL=smtps://resend:re_TU_API_KEY@smtp.resend.com:465
+MAIL_FROM=DevWeb <no-reply@oscarblancorosales.com>
+```
+
+7. **Pruébalo antes de fiarte**, que para eso está:
+
+```bash
+sudo -u devweb devweb-probar-correo tu@correo.com
+```
+
+Primero comprueba conexión y credenciales sin enviar nada; si eso pasa, manda un
+correo de prueba. Mira también la carpeta de spam: si cae ahí, falta algún
+registro DNS del paso 3.
+
+8. Cuando llegue, reinicia el servicio:
+
+```bash
+sudo systemctl restart devweb-api
+```
+
+### Comprobación de extremo a extremo
+
+Regístrate de verdad con un correo tuyo y mira que llega el enlace:
+
+```bash
+curl -s -X POST https://api.oscarblancorosales.com/auth/registro \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"tu@correo.com","password":"una-contrasena-larga","displayName":"Óscar"}'
+```
+
+Debe contestar `{"ok":true}` **y** llegarte el correo. Si contesta bien pero no
+llega nada, el problema está en el relay, no en el servidor: vuelve al paso 7.
 
 ## Diagnóstico
 

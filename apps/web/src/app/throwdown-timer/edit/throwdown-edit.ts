@@ -1,8 +1,7 @@
 import { Component, input, output, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { database } from '../../firebase.config';
-import { ref, set } from 'firebase/database';
+import { KvApiService } from '../../api/kv-api.service';
 import { ThrowdownConfig, ThrowdownStep } from '../throwdown-timer';
 
 const QUICK_PRESETS = [10, 20, 30, 60, 120, 300];
@@ -31,7 +30,10 @@ export class ThrowdownEdit implements OnInit {
   dragOverIndex: number | null = null;
   private touchDragActive = false;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private kv: KvApiService,
+  ) {}
 
   ngOnInit(): void {
     this.editConfig = JSON.parse(JSON.stringify(this.initialConfig())) as ThrowdownConfig;
@@ -170,7 +172,7 @@ export class ThrowdownEdit implements OnInit {
     this.cdr.detectChanges();
     try {
       const toSave: ThrowdownConfig = { ...this.editConfig, name };
-      await set(ref(database, `throwdown-timer/configs/${toSave.id}`), toSave);
+      await this.kv.guardar('throwdown', toSave.id, toSave);
       this.editConfig = toSave;
       this.isSaving = false;
       this.saveSuccess = true;

@@ -1,20 +1,9 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import {
-  DataSnapshot,
-  equalTo,
-  onDisconnect,
-  onValue,
-  orderByChild,
-  push,
-  query,
-  ref,
-  remove,
-  serverTimestamp,
-  set,
-  update,
-} from 'firebase/database';
-import { database } from '../../../firebase.config';
+import { RoomSocket } from '../../../api/room-socket';
+import { RoomsApiService } from '../../../api/rooms-api.service';
+import { browserStorage } from '@devweb/shared/platform';
+import type { KeyValueStorage } from '@devweb/shared/platform';
 import { GameAction, GameConfig, GameState, PlayerKind, BotProfile } from '@devweb/shared/engine/types';
 import {
   LOCAL_PREFIX,
@@ -24,25 +13,24 @@ import {
   toLogList,
   toSeatList,
 } from './local-room-store';
+import type { RoomInfo, SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 
 /**
- * Sala de RISK sobre Firebase Realtime Database.
+ * Sala de RISK contra el backend propio.
  *
- * No hay servidor de juego: el modelo es *lockstep determinista*. Cada cliente
- * escribe sus acciones en un log ordenado y todos reproducen el mismo log con el
- * mismo motor, así que todos llegan al mismo estado sin que nadie mande.
+ * El servidor es el árbitro: recibe las jugadas, las juzga con el mismo motor
+ * que el navegador y devuelve el estado ya calculado. El cliente no reproduce
+ * nada, solo pinta lo que le llega. De ahí que el log salga siempre vacío y el
+ * estado venga entero en `snapshot$`: no hay nada que reconstruir.
  *
- * Eso trae tres regalos:
- *  - Multijugador real en GitHub Pages, sin backend.
- *  - La partida queda grabada: el log ES la grabación, y se puede revivir entera.
- *  - Reanudar es trivial: se vuelve a reproducir el log (o el último snapshot).
+ * Lo que se gana respecto a Firebase, además de no depender de nadie:
+ *  - las cartas de los rivales no salen del servidor;
+ *  - una jugada firmada con el nombre de otro se rechaza en el servidor, no en
+ *    la buena voluntad del cliente.
  *
- * Coste: cada acción son unos pocos bytes, así que una partida completa cabe de
- * sobra en la capa gratuita.
- *
- * Las salas cuyo identificador empieza por LOCAL- viven en el propio navegador
- * (ver `local-room-store.ts`). Mismo formato de datos, cero red: sirven para
- * jugar contra los bots sin cuenta y sin depender de que Firebase esté abierto.
+ * Las salas cuyo identificador empieza por LOCAL- siguen viviendo en el propio
+ * navegador (ver `local-room-store.ts`): mismo formato de datos, cero red, y
+ * ahí sí se reproduce el log en local porque no hay servidor que arbitre.
  */
 
 export type RoomStatus = 'lobby' | 'playing' | 'paused' | 'finished';
@@ -66,10 +54,10 @@ export interface RoomMeta {
   /**
    * Alineación congelada en el momento de empezar.
    *
-   * Es lo que garantiza que la partida sea reproducible: el estado inicial se
-   * calcula a partir de esta lista, no de los asientos actuales. Así, aunque
-   * después alguien se renombre, se desconecte o se le cambie el color, todos
-   * los clientes siguen reconstruyendo exactamente el mismo tablero.
+   * En las salas locales es lo que garantiza que la partida sea reproducible.
+   * En las de servidor la alineación de verdad la congela el servidor al pasar
+   * a `playing`; esta copia solo sirve para la vista previa de la sala de
+   * espera, antes de que exista partida.
    */
   roster?: RosterEntry[];
 }
@@ -89,7 +77,7 @@ export interface RoomSeat {
   name: string;
   kind: PlayerKind;
   botProfile?: BotProfile;
-  /** Identidad persistente del ocupante: uid de Firebase o token local. */
+  /** Identidad del ocupante dentro del cliente. Nunca el pase del asiento. */
   seatToken: string;
   color: string;
   order: number;
@@ -97,7 +85,7 @@ export interface RoomSeat {
   lastSeen: number;
   connected: boolean;
   isOwner: boolean;
-  /** Cara elegida en la sala de espera. Emoji; los bots traen la suya. */
+  /** Cara elegida en la sala de espera. Viaja en la metainformación del asiento. */
   avatar?: string;
 }
 
@@ -122,11 +110,9 @@ export interface ChatEntry {
   /**
    * A quién va dirigido. Ausente es el canal de todos.
    *
-   * No es un secreto: el mensaje sigue viajando entero por la base de datos y
-   * cualquiera con la consola abierta puede leerlo. Es una conversación
-   * aparte, no un susurro cifrado, y así queda dicho para que nadie confíe en
-   * ello más de lo que aguanta. El servidor propio (fase 4) es quien podrá no
-   * enviárselo a los demás.
+   * Ahora sí es un secreto de verdad: el servidor no le manda un privado a
+   * quien no es ninguno de los dos extremos. Cuando esto vivía en Firebase el
+   * mensaje viajaba entero a todo el mundo y sólo se escondía al pintarlo.
    */
   to?: string;
 }
@@ -144,18 +130,21 @@ export interface RoomSummary {
   humanCount: number;
 }
 
-const ROOMS_PATH = 'riskRooms';
 /** Cada cuántas acciones conviene guardar un snapshot. */
 export const SNAPSHOT_EVERY = 40;
-/** Las salas se limpian pasado un mes sin tocarlas. */
-export const ROOM_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** Dónde se guarda el pase de cada sala. Uno por sala, no uno por navegador. */
+const PASES_KEY = 'risk_seat_passes';
+
+/** Cuánto se espera a que el servidor conteste una jugada. */
+const ESPERA_MAXIMA_MS = 5000;
 
 @Injectable({ providedIn: 'root' })
 export class RiskRoomService {
-  private listeners: Array<() => void> = [];
   private currentRoomId = '';
   private store: LocalRoomStore | null = null;
   private storageHandler: ((event: StorageEvent) => void) | null = null;
+  private readonly socket: RoomSocket;
 
   private metaSubject = new BehaviorSubject<RoomMeta | null>(null);
   private seatsSubject = new BehaviorSubject<RoomSeat[]>([]);
@@ -169,13 +158,23 @@ export class RiskRoomService {
   readonly chat$: Observable<ChatEntry[]> = this.chatSubject.asObservable();
   readonly snapshot$: Observable<RoomSnapshot | null> = this.snapshotSubject.asObservable();
 
+  constructor(
+    private readonly rooms: RoomsApiService,
+    zone: NgZone,
+  ) {
+    this.socket = new RoomSocket(zone);
+    this.socket.messages$.subscribe((mensaje) => {
+      this.recibir(mensaje);
+    });
+  }
+
   get roomId(): string {
     return this.currentRoomId;
   }
 
   private get localStore(): LocalRoomStore | null {
     if (this.store) return this.store;
-    const storage = safeStorage();
+    const storage = browserStorage();
     if (!storage) return null;
     this.store = new LocalRoomStore(storage);
     return this.store;
@@ -194,67 +193,74 @@ export class RiskRoomService {
     seed?: number;
     local?: boolean;
   }): Promise<RoomMeta> {
-    const local = options.local ?? false;
-    const id = generateRoomId(local);
-    const now = Date.now();
-    const meta: RoomMeta = {
-      id,
-      name: options.name.trim() || 'Sala sin nombre',
-      mapId: options.mapId,
-      maxPlayers: options.maxPlayers,
-      seed: options.seed ?? Math.floor(Math.random() * 0xffffffff),
-      status: 'lobby',
-      createdAt: now,
-      updatedAt: now,
-      ownerUid: options.ownerUid,
-      ownerName: options.ownerName,
-      config: options.config,
-      inviteCode: generateInviteCode(),
-      local,
-    };
+    const seed = options.seed ?? Math.floor(Math.random() * 0xffffffff);
+    const nombre = options.name.trim() || 'Sala sin nombre';
 
-    if (local) {
+    if (options.local ?? false) {
+      const meta: RoomMeta = {
+        id: `${LOCAL_PREFIX}${randomChunk(4)}-${randomChunk(4)}`,
+        name: nombre,
+        mapId: options.mapId,
+        maxPlayers: options.maxPlayers,
+        seed,
+        status: 'lobby',
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        ownerUid: options.ownerUid,
+        ownerName: options.ownerName,
+        config: options.config,
+        inviteCode: randomChunk(6),
+        local: true,
+      };
       this.localStore?.create(meta);
       return meta;
     }
-    await set(ref(database, `${ROOMS_PATH}/${id}/meta`), meta);
-    return meta;
+
+    const grant = await this.rooms.crear({
+      game: 'risk',
+      name: nombre,
+      displayName: options.ownerName,
+      config: {
+        mapId: options.mapId,
+        seed,
+        maxPlayers: options.maxPlayers,
+        ownerName: options.ownerName,
+        reglas: options.config,
+      },
+    });
+    // Con el asiento, no solo con el pase: crear la sala ya te sienta en ella,
+    // y sin recordar cuál es tu silla el siguiente `claimSeat` te sentaría otra vez.
+    this.guardarPase(grant.room.id, grant.seatToken, grant.seatId);
+    return aMeta(grant.room, options.ownerUid);
   }
 
-  /** Se suscribe a todos los nodos de una sala. */
+  /**
+   * Se pone a seguir una sala.
+   *
+   * En las locales se lee del navegador y se escucha a las otras pestañas. En
+   * las de servidor se pide el estado una vez por HTTP —para poder enseñar la
+   * sala de espera aunque todavía no tengas asiento— y se abre el WebSocket en
+   * cuanto hay pase.
+   */
   listenToRoom(roomId: string): void {
-    if (this.currentRoomId === roomId && (this.listeners.length > 0 || this.storageHandler)) return;
+    if (this.currentRoomId === roomId) return;
     this.disconnect();
     this.currentRoomId = roomId;
 
     if (isLocalRoomId(roomId)) {
       this.emitLocal(roomId);
       // Otra pestaña puede estar jugando la misma sala local.
-      this.storageHandler = () => {
+      this.storageHandler = (): void => {
         this.localStore?.invalidate(roomId);
         this.emitLocal(roomId);
       };
-      window.addEventListener('storage', this.storageHandler);
+      globalThis.addEventListener('storage', this.storageHandler);
       return;
     }
 
-    this.listeners.push(
-      onValue(ref(database, `${ROOMS_PATH}/${roomId}/meta`), (snapshot) => {
-        this.metaSubject.next((snapshot.val() as RoomMeta | null) ?? null);
-      }),
-      onValue(ref(database, `${ROOMS_PATH}/${roomId}/seats`), (snapshot) => {
-        this.seatsSubject.next(mapSeats(snapshot));
-      }),
-      onValue(ref(database, `${ROOMS_PATH}/${roomId}/log`), (snapshot) => {
-        this.logSubject.next(mapLog(snapshot));
-      }),
-      onValue(ref(database, `${ROOMS_PATH}/${roomId}/chat`), (snapshot) => {
-        this.chatSubject.next(mapChat(snapshot));
-      }),
-      onValue(ref(database, `${ROOMS_PATH}/${roomId}/snapshot`), (snapshot) => {
-        this.snapshotSubject.next((snapshot.val() as RoomSnapshot | null) ?? null);
-      }),
-    );
+    void this.refrescar(roomId);
+    const pase = this.paseDe(roomId);
+    if (pase) this.socket.conectar(roomId, pase);
   }
 
   /** Vuelca a los observables el contenido actual de una sala local. */
@@ -270,75 +276,57 @@ export class RiskRoomService {
   /** Lee una sala una sola vez (para comprobar invitaciones). */
   async fetchMeta(roomId: string): Promise<RoomMeta | null> {
     if (isLocalRoomId(roomId)) return this.localStore?.read(roomId)?.meta ?? null;
-    return new Promise((resolve) => {
-      onValue(
-        ref(database, `${ROOMS_PATH}/${roomId}/meta`),
-        (snapshot) => resolve((snapshot.val() as RoomMeta | null) ?? null),
-        { onlyOnce: true },
-      );
-    });
+    try {
+      return aMeta(await this.rooms.info(roomId), '');
+    } catch {
+      return null;
+    }
   }
 
-  /** Salas guardadas en este navegador. */
   listLocalRooms(): RoomSummary[] {
-    return (this.localStore?.list() ?? []).map((room) => {
-      const seats = Object.values(room.seats);
+    const salas = this.localStore?.list() ?? [];
+    return salas.map((data) => {
+      const seats = toSeatList(data);
       return {
-        meta: room.meta,
+        meta: data.meta,
         seatCount: seats.length,
         humanCount: seats.filter((seat) => seat.kind === 'human').length,
       };
     });
   }
 
-  /** Salas creadas por un administrador, para poder retomarlas. */
+  /**
+   * Tus salas guardadas.
+   *
+   * El servidor solo devuelve las tuyas, así que no hace falta filtrar por
+   * dueño ni fiarse de un campo que viaja: si están en la lista, son tuyas.
+   */
   async listRoomsForOwner(ownerUid: string): Promise<RoomSummary[]> {
-    return new Promise((resolve) => {
-      let settled = false;
-      const finish = (rooms: RoomSummary[]) => {
-        if (settled) return;
-        settled = true;
-        resolve(rooms);
-      };
-      // Si Firebase no responde (reglas cerradas, sin red...) no dejamos la
-      // pantalla colgada: devolvemos lo que haya.
-      const timer = setTimeout(() => finish([]), 6000);
-
-      // Se pregunta SOLO por las salas propias, no se descarga la base entera y
-      // se filtra aquí: las reglas de seguridad únicamente aceptan esta consulta
-      // exacta, y además así no se bajan los logs de partidas ajenas.
-      onValue(
-        query(ref(database, ROOMS_PATH), orderByChild('meta/ownerUid'), equalTo(ownerUid)),
-        (snapshot) => {
-          clearTimeout(timer);
-          const rooms = (snapshot.val() as Record<string, any> | null) ?? {};
-          const summaries: RoomSummary[] = Object.values(rooms)
-            .filter((room) => room?.meta?.ownerUid === ownerUid)
-            .map((room) => {
-              const seats = Object.values((room.seats ?? {}) as Record<string, RoomSeat>);
-              return {
-                meta: room.meta as RoomMeta,
-                seatCount: seats.length,
-                humanCount: seats.filter((seat) => seat.kind === 'human').length,
-              };
-            })
-            .sort((a, b) => b.meta.updatedAt - a.meta.updatedAt);
-          finish(summaries);
-        },
-        () => {
-          clearTimeout(timer);
-          finish([]);
-        },
-        { onlyOnce: true },
-      );
-    });
+    try {
+      const { rooms } = await this.rooms.mias();
+      return rooms
+        .filter((room) => room.game === 'risk')
+        .map((room) => {
+          const seats = room.seats;
+          return {
+            meta: aMeta(room, ownerUid),
+            seatCount: seats.length,
+            humanCount: seats.filter((seat) => !seat.isBot).length,
+          };
+        });
+    } catch {
+      return [];
+    }
   }
 
   // ===== ASIENTOS =====
 
   /**
-   * Ocupa un asiento. Si el token ya tenía uno reservado, lo recupera: así, al
-   * volver a una partida guardada, cada persona vuelve a sus ejércitos.
+   * Ocupa un asiento, o recupera el que ya tenías.
+   *
+   * El pase guardado es lo que permite volver: al recargar la página o al
+   * abrir de nuevo una partida guardada, se vuelve al mismo asiento con los
+   * mismos ejércitos en vez de aparecer como alguien nuevo.
    */
   async claimSeat(
     roomId: string,
@@ -351,79 +339,71 @@ export class RiskRoomService {
       isOwner?: boolean;
     },
   ): Promise<string> {
-    const known = isLocalRoomId(roomId)
-      ? toSeatList(this.localStore?.read(roomId) ?? null)
-      : this.seatsSubject.value;
-    const existing = known.find((s) => s.seatToken === seat.seatToken);
-    const seatId = existing?.id ?? generateSeatId();
-    const order = existing?.order ?? known.length;
-    const now = Date.now();
+    const nombre = seat.name.trim().slice(0, 24) || 'Jugador';
 
-    const payload: RoomSeat = {
-      id: seatId,
-      name: seat.name.trim().slice(0, 24) || 'Jugador',
-      kind: seat.kind ?? 'human',
-      ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
-      seatToken: seat.seatToken,
-      color: seat.color,
-      order,
-      joinedAt: existing?.joinedAt ?? now,
-      lastSeen: now,
-      connected: true,
-      isOwner: seat.isOwner ?? existing?.isOwner ?? false,
-    };
+    if (isLocalRoomId(roomId)) return this.sentarEnLocal(roomId, nombre, seat);
 
-    if (isLocalRoomId(roomId)) {
-      this.localStore?.update(roomId, (data) => {
-        data.seats[seatId] = stripUndefined(payload);
-      });
-      this.emitLocal(roomId);
-      return seatId;
+    const pase = this.paseDe(roomId);
+    if (pase) {
+      const sala = await this.rooms.info(roomId);
+      const mio = sala.seats.find((asiento) => asiento.id === this.asientoDe(roomId));
+      if (mio) {
+        await this.rooms.cambiarAsiento(
+          roomId,
+          mio.id,
+          { displayName: nombre, meta: { ...mio.meta, color: seat.color } },
+          pase,
+        );
+        this.conectar(roomId, pase);
+        return mio.id;
+      }
     }
 
-    const seatRef = ref(database, `${ROOMS_PATH}/${roomId}/seats/${seatId}`);
-    await set(seatRef, stripUndefined(payload));
-    // Al cerrar la pestaña el asiento se marca desconectado, pero no se borra:
-    // la partida guardada debe respetar a quien la estaba jugando.
-    onDisconnect(ref(database, `${ROOMS_PATH}/${roomId}/seats/${seatId}/connected`)).set(false);
-    await this.touch(roomId);
-    return seatId;
+    const grant = await this.rooms.unirse(roomId, nombre);
+    this.guardarPase(roomId, grant.seatToken, grant.seatId);
+    await this.rooms.cambiarAsiento(
+      roomId,
+      grant.seatId,
+      { meta: { color: seat.color, joinedAt: Date.now() } },
+      grant.seatToken,
+    );
+    this.conectar(roomId, grant.seatToken);
+    return grant.seatId;
   }
 
   async addBotSeat(
     roomId: string,
     bot: { name: string; botProfile: BotProfile; color: string },
   ): Promise<string> {
-    const known = isLocalRoomId(roomId)
-      ? toSeatList(this.localStore?.read(roomId) ?? null)
-      : this.seatsSubject.value;
-    const seatId = generateSeatId();
-    const now = Date.now();
-    const payload: RoomSeat = {
-      id: seatId,
-      name: bot.name,
-      kind: 'bot',
-      botProfile: bot.botProfile,
-      seatToken: `bot:${seatId}`,
-      color: bot.color,
-      order: known.length,
-      joinedAt: now,
-      lastSeen: now,
-      connected: true,
-      isOwner: false,
-    };
-
     if (isLocalRoomId(roomId)) {
+      const conocidos = toSeatList(this.localStore?.read(roomId) ?? null);
+      const seatId = generateSeatId();
+      const ahora = Date.now();
       this.localStore?.update(roomId, (data) => {
-        data.seats[seatId] = stripUndefined(payload);
+        data.seats[seatId] = {
+          id: seatId,
+          name: bot.name,
+          kind: 'bot',
+          botProfile: bot.botProfile,
+          seatToken: `bot:${seatId}`,
+          color: bot.color,
+          order: conocidos.length,
+          joinedAt: ahora,
+          lastSeen: ahora,
+          connected: true,
+          isOwner: false,
+        };
       });
       this.emitLocal(roomId);
       return seatId;
     }
 
-    await set(ref(database, `${ROOMS_PATH}/${roomId}/seats/${seatId}`), stripUndefined(payload));
-    await this.touch(roomId);
-    return seatId;
+    const grant = await this.rooms.anadirAsiento(roomId, {
+      displayName: bot.name,
+      isBot: true,
+      meta: { botProfile: bot.botProfile, color: bot.color, joinedAt: Date.now() },
+    });
+    return grant.seatId;
   }
 
   async removeSeat(roomId: string, seatId: string): Promise<void> {
@@ -434,25 +414,45 @@ export class RiskRoomService {
       this.emitLocal(roomId);
       return;
     }
-    await remove(ref(database, `${ROOMS_PATH}/${roomId}/seats/${seatId}`));
-    await this.touch(roomId);
+    await this.rooms.quitarAsiento(roomId, seatId, this.paseDe(roomId) ?? undefined);
   }
 
+  /**
+   * Cambia lo que se puede cambiar de un asiento.
+   *
+   * `connected` y `lastSeen` no viajan: en el servidor la presencia es tener el
+   * WebSocket abierto, y eso no se puede declarar, solo demostrar.
+   */
   async updateSeat(roomId: string, seatId: string, changes: Partial<RoomSeat>): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.update(roomId, (data) => {
-        if (data.seats[seatId]) {
-          data.seats[seatId] = { ...data.seats[seatId], ...stripUndefined(changes) };
-        }
+        const asiento = data.seats[seatId];
+        if (asiento) data.seats[seatId] = { ...asiento, ...changes };
       });
       this.emitLocal(roomId);
       return;
     }
-    await update(ref(database, `${ROOMS_PATH}/${roomId}/seats/${seatId}`), stripUndefined(changes));
-    await this.touch(roomId);
+
+    const meta: Record<string, unknown> = {};
+    if (changes.color !== undefined) meta['color'] = changes.color;
+    if (changes.botProfile !== undefined) meta['botProfile'] = changes.botProfile;
+    if (changes.name === undefined && Object.keys(meta).length === 0) return;
+
+    const actual = this.seatsSubject.value.find((asiento) => asiento.id === seatId);
+    await this.rooms.cambiarAsiento(
+      roomId,
+      seatId,
+      {
+        ...(changes.name !== undefined && { displayName: changes.name }),
+        ...(Object.keys(meta).length > 0 && { meta: { ...metaDe(actual), ...meta } }),
+      },
+      this.paseDe(roomId) ?? undefined,
+    );
   }
 
+  /** En las salas de servidor la presencia es la conexión: no hay nada que marcar. */
   async markPresence(roomId: string, seatId: string): Promise<void> {
+    if (!isLocalRoomId(roomId)) return;
     await this.updateSeat(roomId, seatId, { lastSeen: Date.now(), connected: true });
   }
 
@@ -465,47 +465,77 @@ export class RiskRoomService {
   async updateMeta(roomId: string, changes: Partial<RoomMeta>): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.update(roomId, (data) => {
-        data.meta = { ...data.meta, ...stripUndefined(changes) };
+        data.meta = { ...data.meta, ...changes };
       });
       this.emitLocal(roomId);
       return;
     }
-    await update(ref(database, `${ROOMS_PATH}/${roomId}/meta`), {
-      ...stripUndefined(changes),
-      updatedAt: Date.now(),
+
+    const { status, name, ...resto } = changes;
+    const config = configDe(this.metaSubject.value, resto);
+    await this.rooms.cambiarSala(roomId, {
+      ...(name !== undefined && { name }),
+      ...(status !== undefined && { status }),
+      ...(config !== null && { config }),
     });
+    await this.refrescar(roomId);
   }
 
-  /** Añade una acción al log. El orden lo fija la clave que genera Firebase. */
+  /**
+   * Manda una jugada y espera a que el servidor conteste.
+   *
+   * Esperar no es cortesía: quien mueve los bots comprueba si el estado ha
+   * avanzado para saber si la jugada entró, y si esto volviera nada más
+   * enviarla, siempre parecería rechazada. Da igual si contesta con el estado
+   * nuevo o con un rechazo; lo que hace falta es que haya contestado.
+   */
   async pushAction(roomId: string, action: GameAction, by: string): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.appendAction(roomId, action, by);
       this.emitLocal(roomId);
       return;
     }
-    await push(
-      ref(database, `${ROOMS_PATH}/${roomId}/log`),
-      // `ts` se deja fuera del saneado: es un marcador del servidor, no un dato.
-      { ...stripUndefined({ action, by }), ts: serverTimestamp() },
-    );
-    await this.touch(roomId);
+    const antes = this.snapshotSubject.value?.upTo ?? 0;
+    this.socket.enviar(action);
+    await this.respuestaDelServidor(antes);
   }
 
-  /** Guarda un punto de control para no tener que reproducir el log entero. */
+  /**
+   * Se resuelve cuando el servidor dice algo sobre la jugada, o cuando se
+   * acaba la paciencia: si la conexión se ha caído, quien esperaba tiene que
+   * poder seguir y volver a intentarlo.
+   */
+  private respuestaDelServidor(desdeSeq: number): Promise<void> {
+    return new Promise((resolve) => {
+      const terminar = (): void => {
+        clearTimeout(reloj);
+        suscripcion.unsubscribe();
+        resolve();
+      };
+      const reloj = setTimeout(terminar, ESPERA_MAXIMA_MS);
+      const suscripcion = this.socket.messages$.subscribe((mensaje) => {
+        const contesta =
+          mensaje.tipo === 'rechazada' || (mensaje.tipo === 'estado' && mensaje.seq > desdeSeq);
+        if (contesta) terminar();
+      });
+    });
+  }
+
+  /** Guarda un punto de control. En red lo lleva el servidor, que es quien aplica. */
   async writeSnapshot(roomId: string, upTo: number, state: GameState): Promise<void> {
-    if (isLocalRoomId(roomId)) {
-      this.localStore?.setSnapshot(roomId, upTo, state);
-      return;
-    }
-    await set(
-      ref(database, `${ROOMS_PATH}/${roomId}/snapshot`),
-      // El estado va lleno de campos opcionales; sin limpiar, el SDK lanza.
-      stripUndefined({ upTo, state, ts: Date.now() }),
-    );
+    if (isLocalRoomId(roomId)) this.localStore?.setSnapshot(roomId, upTo, state);
   }
 
   // ===== CHAT =====
 
+  /**
+   * Dice algo en la sala.
+   *
+   * Del `entry` que llega solo viaja el texto y de parte de quién: el nombre y
+   * el tipo los pone el servidor a partir del asiento, porque si los pusiera el
+   * cliente cualquiera podría firmar con el nombre de otro o publicar avisos
+   * con la voz de la sala.
+   */
   async sendChat(
     roomId: string,
     entry: {
@@ -514,30 +544,33 @@ export class RiskRoomService {
       kind: ChatKind;
       text: string;
       origin?: 'llm' | 'local' | undefined;
-      // `| undefined` explícito: con `exactOptionalPropertyTypes`, «ausente» y
-      // «presente y undefined» no son lo mismo, y quien llama pasa `undefined`
-      // cuando el mensaje es para todos.
+      /** Asiento al que va dirigido. Sin esto, es para todos. */
       to?: string | undefined;
     },
   ): Promise<void> {
     const text = entry.text.trim().slice(0, 600);
     if (!text) return;
-    const payload = stripUndefined({
-      authorId: entry.authorId,
-      author: entry.author,
-      kind: entry.kind,
-      text,
-      origin: entry.origin,
-      to: entry.to,
-      ts: Date.now(),
-    });
 
     if (isLocalRoomId(roomId)) {
-      this.localStore?.appendChat(roomId, payload as Omit<ChatEntry, 'key'>);
+      this.localStore?.appendChat(roomId, {
+        authorId: entry.authorId,
+        author: entry.author,
+        kind: entry.kind,
+        text,
+        ts: Date.now(),
+        ...(entry.origin !== undefined && { origin: entry.origin }),
+        ...(entry.to !== undefined && { to: entry.to }),
+      });
       this.emitLocal(roomId);
       return;
     }
-    await push(ref(database, `${ROOMS_PATH}/${roomId}/chat`), payload);
+
+    this.socket.decir(text, {
+      ...(entry.kind === 'bot' && { comoAsiento: entry.authorId }),
+      ...(entry.kind === 'system' && { comoLaSala: true }),
+      ...(entry.origin !== undefined && { origin: entry.origin }),
+      ...(entry.to !== undefined && { para: entry.to }),
+    });
   }
 
   // ===== MANTENIMIENTO =====
@@ -548,46 +581,14 @@ export class RiskRoomService {
       if (this.currentRoomId === roomId) this.emitLocal(roomId);
       return;
     }
-    await remove(ref(database, `${ROOMS_PATH}/${roomId}`));
-  }
-
-  /**
-   * Borra tus salas abandonadas para no engordar la base gratuita.
-   *
-   * Solo las tuyas: la base ya no deja listar las de nadie más, y borrar la
-   * partida de otro tampoco sería asunto tuyo.
-   */
-  async cleanOldRooms(ownerUid: string, now = Date.now()): Promise<number> {
-    return new Promise((resolve) => {
-      onValue(
-        query(ref(database, ROOMS_PATH), orderByChild('meta/ownerUid'), equalTo(ownerUid)),
-        async (snapshot) => {
-          const rooms = (snapshot.val() as Record<string, any> | null) ?? {};
-          let removed = 0;
-          for (const [roomId, room] of Object.entries(rooms)) {
-            const updatedAt = room?.meta?.updatedAt ?? room?.meta?.createdAt ?? 0;
-            if (updatedAt && now - updatedAt > ROOM_TTL_MS) {
-              await remove(ref(database, `${ROOMS_PATH}/${roomId}`));
-              removed++;
-            }
-          }
-          resolve(removed);
-        },
-        () => resolve(0),
-        { onlyOnce: true },
-      );
-    });
-  }
-
-  private async touch(roomId: string): Promise<void> {
-    await update(ref(database, `${ROOMS_PATH}/${roomId}/meta`), { updatedAt: Date.now() });
+    await this.rooms.borrar(roomId);
+    this.olvidarPase(roomId);
   }
 
   disconnect(): void {
-    for (const off of this.listeners) off();
-    this.listeners = [];
+    this.socket.cerrar();
     if (this.storageHandler) {
-      window.removeEventListener('storage', this.storageHandler);
+      globalThis.removeEventListener('storage', this.storageHandler);
       this.storageHandler = null;
     }
     this.currentRoomId = '';
@@ -597,87 +598,225 @@ export class RiskRoomService {
     this.chatSubject.next([]);
     this.snapshotSubject.next(null);
   }
+
+  private conectar(roomId: string, pase: string): void {
+    this.currentRoomId = roomId;
+    this.socket.conectar(roomId, pase);
+  }
+
+  private async refrescar(roomId: string): Promise<void> {
+    try {
+      const sala = await this.rooms.info(roomId);
+      if (this.currentRoomId !== roomId) return;
+      this.metaSubject.next(aMeta(sala, this.metaSubject.value?.ownerUid ?? ''));
+      this.seatsSubject.next(sala.seats.map(aSeat));
+    } catch {
+      // La sala puede no existir todavía o haber caducado el enlace: quien
+      // llamó ya trata el meta nulo, y romper aquí dejaría la pantalla en
+      // blanco sin decir por qué.
+    }
+  }
+
+  /**
+   * Lo que llega por el socket.
+   *
+   * El estado viene entero y ya aplicado, así que se entrega como punto de
+   * control con el log vacío: no hay nada que reproducir encima.
+   */
+  private recibir(mensaje: ServerMessage): void {
+    if (mensaje.tipo === 'chat') {
+      this.chatSubject.next(mensaje.entradas.map(aChat));
+      return;
+    }
+    if (mensaje.tipo !== 'estado') return;
+
+    this.seatsSubject.next(mensaje.seats.map(aSeat));
+    const meta = this.metaSubject.value;
+    if (meta && meta.status !== mensaje.status) {
+      this.metaSubject.next({ ...meta, status: mensaje.status });
+    }
+    this.snapshotSubject.next(
+      mensaje.vista === null
+        ? null
+        : { upTo: mensaje.seq, state: mensaje.vista as GameState, ts: Date.now() },
+    );
+  }
+
+  private sentarEnLocal(
+    roomId: string,
+    nombre: string,
+    seat: { seatToken: string; kind?: PlayerKind; botProfile?: BotProfile; color: string; isOwner?: boolean },
+  ): string {
+    const conocidos = toSeatList(this.localStore?.read(roomId) ?? null);
+    const previo = conocidos.find((asiento) => asiento.seatToken === seat.seatToken);
+    const seatId = previo?.id ?? generateSeatId();
+    const ahora = Date.now();
+
+    this.localStore?.update(roomId, (data) => {
+      data.seats[seatId] = {
+        id: seatId,
+        name: nombre,
+        kind: seat.kind ?? 'human',
+        ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
+        seatToken: seat.seatToken,
+        color: seat.color,
+        order: previo?.order ?? conocidos.length,
+        joinedAt: previo?.joinedAt ?? ahora,
+        lastSeen: ahora,
+        connected: true,
+        isOwner: seat.isOwner ?? previo?.isOwner ?? false,
+      };
+    });
+    this.emitLocal(roomId);
+    return seatId;
+  }
+
+  // ===== PASES =====
+
+  private pases(): Record<string, { seatId: string; seatToken: string }> {
+    try {
+      const crudo = browserStorage()?.getItem(PASES_KEY);
+      return crudo ? (JSON.parse(crudo) as Record<string, { seatId: string; seatToken: string }>) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private guardarPase(roomId: string, seatToken: string, seatId = ''): void {
+    const pases = this.pases();
+    pases[roomId] = { seatId: seatId || (pases[roomId]?.seatId ?? ''), seatToken };
+    browserStorage()?.setItem(PASES_KEY, JSON.stringify(pases));
+  }
+
+  private olvidarPase(roomId: string): void {
+    const pases = this.pases();
+    delete pases[roomId];
+    browserStorage()?.setItem(PASES_KEY, JSON.stringify(pases));
+  }
+
+  private paseDe(roomId: string): string | null {
+    return this.pases()[roomId]?.seatToken ?? null;
+  }
+
+  private asientoDe(roomId: string): string {
+    return this.pases()[roomId]?.seatId ?? '';
+  }
 }
 
-// ===== AYUDAS PURAS (testeables sin Firebase) =====
+// ===== TRADUCCIÓN (pura, testeable sin red) =====
 
-export function mapSeats(snapshot: DataSnapshot | { val(): unknown }): RoomSeat[] {
-  const value = (snapshot.val() as Record<string, RoomSeat> | null) ?? {};
-  return Object.values(value).sort((a, b) => a.order - b.order || a.joinedAt - b.joinedAt);
-}
-
-export function mapLog(snapshot: DataSnapshot | { val(): unknown }): LoggedActionEntry[] {
-  const value = (snapshot.val() as Record<string, any> | null) ?? {};
-  return Object.entries(value)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([key, entry]) => ({
-      key,
-      action: entry.action as GameAction,
-      ts: typeof entry.ts === 'number' ? entry.ts : 0,
-      by: entry.by ?? '',
-    }));
-}
-
-export function mapChat(snapshot: DataSnapshot | { val(): unknown }): ChatEntry[] {
-  const value = (snapshot.val() as Record<string, any> | null) ?? {};
-  return Object.entries(value)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([key, entry]) => ({
-      key,
-      authorId: entry.authorId ?? '',
-      author: entry.author ?? '',
-      kind: (entry.kind as ChatKind) ?? 'system',
-      text: entry.text ?? '',
-      ts: entry.ts ?? 0,
-      origin: entry.origin,
-      to: entry.to,
-    }));
-}
-
-/** Firebase rechaza `undefined`: hay que limpiarlo antes de escribir. */
 /**
- * Quita los `undefined` a cualquier profundidad, antes de mandar nada a Firebase.
+ * La sala del servidor con la forma que espera la pantalla.
  *
- * El SDK LANZA EXCEPCIÓN si el valor contiene un `undefined` en cualquier sitio,
- * y esto es un juego lleno de campos opcionales: `botProfile` no existe en un
- * jugador humano, `units` solo aparece en modo avanzado, `missions` solo con
- * objetivos... La versión anterior solo miraba el primer nivel, así que empezar
- * una partida online reventaba al mandar la alineación, porque cada humano
- * llevaba dentro un `botProfile: undefined`.
- *
- * Y no se veía en local: allí se guarda con `JSON.stringify`, que descarta los
- * `undefined` sin decir nada. Por eso el modo local iba y el online no.
- *
- * Los arrays se conservan como arrays; un elemento `undefined` pasa a `null`
- * para no descolocar los índices, de los que depende el orden de la mesa.
+ * Todo lo que el servidor no interpreta —mapa, semilla, reglas de la casa,
+ * invitación— viaja dentro de `config`, que para él es una caja cerrada.
  */
-export function stripUndefined<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map((item) => (item === undefined ? null : stripUndefined(item))) as unknown as T;
-  }
-  if (value === null || typeof value !== 'object') return value;
-  const out: Record<string, unknown> = {};
-  for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-    if (item !== undefined) out[key] = stripUndefined(item);
-  }
-  return out as T;
+export function aMeta(room: RoomInfo, ownerUid: string): RoomMeta {
+  const config = room.config;
+  return {
+    id: room.id,
+    name: room.name,
+    status: room.status,
+    createdAt: room.createdAt,
+    updatedAt: room.updatedAt,
+    mapId: texto(config['mapId']) || 'world',
+    maxPlayers: numero(config['maxPlayers']) ?? 6,
+    seed: numero(config['seed']) ?? 1,
+    ownerUid,
+    ownerName: texto(config['ownerName']),
+    config: (config['reglas'] ?? {}) as GameConfig,
+    inviteCode: room.id,
+    ...(Array.isArray(config['roster']) && { roster: config['roster'] as RosterEntry[] }),
+  };
 }
 
-export function generateRoomId(local = false): string {
-  const body = `${randomChunk(4)}-${randomChunk(4)}`;
-  return local ? `${LOCAL_PREFIX}${body}` : `RISK-${body}`;
+export function aSeat(seat: SeatInfo): RoomSeat {
+  const meta = seat.meta ?? {};
+  return {
+    id: seat.id,
+    name: seat.displayName,
+    kind: seat.isBot ? 'bot' : 'human',
+    ...(typeof meta['botProfile'] === 'string' && { botProfile: meta['botProfile'] as BotProfile }),
+    ...(typeof meta['avatar'] === 'string' && { avatar: meta['avatar'] }),
+    // La identidad del ocupante dentro del cliente es el propio asiento: el
+    // pase no viaja a los demás, que es justo lo que antes sí pasaba.
+    seatToken: seat.id,
+    color: texto(meta['color']),
+    order: seat.order,
+    joinedAt: numero(meta['joinedAt']) ?? 0,
+    lastSeen: 0,
+    connected: seat.connected,
+    isOwner: seat.isOwner,
+  };
+}
+
+export function aChat(entrada: {
+  seq: number;
+  authorId: string;
+  author: string;
+  kind: ChatKind;
+  text: string;
+  at: number;
+  origin?: string;
+  to?: string | null;
+}): ChatEntry {
+  return {
+    key: entrada.seq.toString(36).padStart(10, '0'),
+    authorId: entrada.authorId,
+    author: entrada.author,
+    kind: entrada.kind,
+    text: entrada.text,
+    ts: entrada.at,
+    ...(entrada.origin === 'llm' || entrada.origin === 'local' ? { origin: entrada.origin } : {}),
+    ...(typeof entrada.to === 'string' && entrada.to ? { to: entrada.to } : {}),
+  };
+}
+
+/**
+ * La configuración que hay que reescribir entera al cambiar algo.
+ *
+ * El servidor guarda `config` como un todo, así que un cambio parcial obliga a
+ * mandar lo que ya había. Devuelve `null` cuando no hay nada que tocar.
+ */
+function configDe(
+  meta: RoomMeta | null,
+  cambios: Partial<RoomMeta>,
+): Record<string, unknown> | null {
+  if (!meta || Object.keys(cambios).length === 0) return null;
+  const fusionado = { ...meta, ...cambios };
+  return {
+    mapId: fusionado.mapId,
+    seed: fusionado.seed,
+    maxPlayers: fusionado.maxPlayers,
+    ownerName: fusionado.ownerName,
+    reglas: fusionado.config,
+    ...(fusionado.roster !== undefined && { roster: fusionado.roster }),
+  };
+}
+
+function metaDe(seat: RoomSeat | undefined): Record<string, unknown> {
+  if (!seat) return {};
+  return {
+    color: seat.color,
+    joinedAt: seat.joinedAt,
+    ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
+  };
+}
+
+function texto(valor: unknown): string {
+  return typeof valor === 'string' ? valor : '';
+}
+
+function numero(valor: unknown): number | null {
+  return typeof valor === 'number' ? valor : null;
 }
 
 export function generateSeatId(): string {
   return `seat-${randomChunk(6).toLowerCase()}`;
 }
 
-export function generateInviteCode(): string {
-  return randomChunk(6);
-}
-
 /** Token estable por navegador: permite volver a tu asiento sin cuenta. */
-export function localSeatToken(storage: Storage | undefined = safeStorage()): string {
+export function localSeatToken(storage: KeyValueStorage | undefined = browserStorage()): string {
   const key = 'risk_seat_token';
   if (!storage) return `anon-${randomChunk(8).toLowerCase()}`;
   const existing = storage.getItem(key);
@@ -698,12 +837,4 @@ function randomChunk(length: number): string {
   let out = '';
   for (let i = 0; i < length; i++) out += alphabet[values[i] % alphabet.length];
   return out;
-}
-
-function safeStorage(): Storage | undefined {
-  try {
-    return typeof localStorage !== 'undefined' ? localStorage : undefined;
-  } catch {
-    return undefined;
-  }
 }

@@ -3,7 +3,13 @@ import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { moduleFor } from './registry';
-import type { RoomInfo, SeatGrant, GameId } from '@devweb/shared/contracts/rooms';
+import type {
+  GameId,
+  RoomInfo,
+  RoomStatus,
+  SeatGrant,
+  SeatInfo,
+} from '@devweb/shared/contracts/rooms';
 import type { RoomRepository, RoomRow } from './repository';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -114,6 +120,127 @@ export class RoomService {
   }
 
   /**
+   * Añade un asiento de bot. Solo quien creó la sala.
+   *
+   * Devuelve el pase igual que un asiento humano, aunque nadie lo vaya a usar
+   * para conectarse: es lo que permite que la sala trate a todos los asientos
+   * de la misma forma.
+   */
+  anadirAsiento(
+    roomId: string,
+    userId: string,
+    input: { displayName: string; isBot: boolean; meta?: Readonly<Record<string, unknown>> },
+  ): SeatGrant {
+    const room = this.exigirDuenyo(roomId, userId);
+    if (this.repository.listSeats(roomId).length >= this.maxSeats) {
+      throw new AppError('sala-llena', 'La sala está completa.');
+    }
+    return this.sentar(room, input.displayName, null, {
+      isBot: input.isBot,
+      ...(input.meta !== undefined && { meta: input.meta }),
+    });
+  }
+
+  /**
+   * Cambia el nombre o los datos de juego de un asiento.
+   *
+   * Puede hacerlo quien ocupa ese asiento —para renombrarse o cambiar de
+   * color— y quien creó la sala, que es quien coloca a los bots.
+   */
+  cambiarAsiento(
+    roomId: string,
+    seatId: string,
+    quien: { userId: string | null; seatToken: string | null },
+    cambios: { displayName?: string; meta?: Readonly<Record<string, unknown>> },
+  ): RoomInfo {
+    const room = this.buscar(roomId);
+    if (!this.repository.findSeat(roomId, seatId)) {
+      throw new AppError('no-encontrado', 'Ese asiento no existe.');
+    }
+    if (!this.puedeTocarElAsiento(room, seatId, quien)) {
+      throw new AppError('sin-permiso', 'Ese asiento no es tuyo.');
+    }
+
+    this.repository.updateSeat(roomId, seatId, cambios);
+    this.repository.touchRoom(roomId, this.now());
+    this.refrescar(roomId);
+    return this.info(roomId);
+  }
+
+  quitarAsiento(
+    roomId: string,
+    seatId: string,
+    quien: { userId: string | null; seatToken: string | null },
+  ): RoomInfo {
+    const room = this.buscar(roomId);
+    if (!this.puedeTocarElAsiento(room, seatId, quien)) {
+      throw new AppError('sin-permiso', 'Ese asiento no es tuyo.');
+    }
+
+    const actor = this.actores.get(roomId);
+    if (actor) {
+      actor.removeSeat(seatId);
+    } else {
+      this.repository.deleteSeat(roomId, seatId);
+    }
+    this.repository.touchRoom(roomId, this.now());
+    return this.info(roomId);
+  }
+
+  /** Cambia lo que se puede cambiar de una sala. Solo quien la creó. */
+  cambiarSala(
+    roomId: string,
+    userId: string,
+    cambios: { name?: string; status?: RoomStatus; config?: Readonly<Record<string, unknown>> },
+  ): RoomInfo {
+    this.exigirDuenyo(roomId, userId);
+    const at = this.now();
+
+    const { status, ...resto } = cambios;
+    if (Object.keys(resto).length > 0) this.repository.updateRoom(roomId, resto, at);
+    if (status !== undefined) {
+      const actor = this.actores.get(roomId);
+      if (actor) actor.setStatus(status);
+      else this.repository.updateRoomStatus(roomId, status, at);
+    }
+
+    this.refrescar(roomId);
+    return this.info(roomId);
+  }
+
+  /** Que la sala viva, si la hay en memoria, se entere de que cambiaron los asientos. */
+  private refrescar(roomId: string): void {
+    const actor = this.actores.get(roomId);
+    if (!actor) return;
+    actor.refreshSeats();
+    actor.broadcast();
+  }
+
+  private exigirDuenyo(roomId: string, userId: string): RoomRow {
+    const room = this.buscar(roomId);
+    if (room.ownerId !== userId) {
+      throw new AppError('sin-permiso', 'Solo quien creó la sala puede hacer eso.');
+    }
+    return room;
+  }
+
+  /**
+   * Quién puede tocar un asiento: su ocupante o quien creó la sala.
+   *
+   * El pase se comprueba contra el asiento concreto, no contra la sala: tener
+   * un asiento no da derecho sobre los demás.
+   */
+  private puedeTocarElAsiento(
+    room: RoomRow,
+    seatId: string,
+    quien: { userId: string | null; seatToken: string | null },
+  ): boolean {
+    if (quien.userId !== null && room.ownerId === quien.userId) return true;
+    if (quien.seatToken === null) return false;
+    return this.repository.findSeatByToken(room.id, hashToken(quien.seatToken))?.seatId === seatId;
+  }
+
+  /**
    * El actor de una sala, creándolo si hacía falta.
    *
    * Reconstruir una sala cuesta lo que cuesta reaplicar su log desde la última
@@ -138,7 +265,8 @@ export class RoomService {
       roomId,
       module,
       repository: this.repository,
-      config: room.config,
+      status: room.status,
+      ownerId: room.ownerId,
       now: this.now,
     });
     this.actores.set(roomId, actor);
@@ -197,7 +325,12 @@ export class RoomService {
     this.actores.delete(roomId);
   }
 
-  private sentar(room: RoomRow, displayName: string, userId: string | null): SeatGrant {
+  private sentar(
+    room: RoomRow,
+    displayName: string,
+    userId: string | null,
+    extra: { isBot?: boolean; meta?: Readonly<Record<string, unknown>> } = {},
+  ): SeatGrant {
     const seatId = randomUUID();
     const seatToken = generateToken();
 
@@ -206,9 +339,10 @@ export class RoomService {
       seatId,
       userId,
       displayName: displayName.trim(),
-      isBot: false,
+      isBot: extra.isBot ?? false,
       tokenHash: hashToken(seatToken),
       order: this.repository.listSeats(room.id).length,
+      meta: extra.meta ?? {},
     });
 
     this.actores.get(room.id)?.refreshSeats();
@@ -230,12 +364,18 @@ export class RoomService {
       game: room.game,
       name: room.name,
       status: room.status,
-      seats: this.repository.listSeats(room.id).map((seat) => ({
-        id: seat.seatId,
-        displayName: seat.displayName,
-        isBot: seat.isBot,
-        connected: conectados?.conectado(seat.seatId) ?? false,
-      })),
+      config: room.config,
+      seats: this.repository.listSeats(room.id).map(
+        (seat): SeatInfo => ({
+          id: seat.seatId,
+          displayName: seat.displayName,
+          isBot: seat.isBot,
+          connected: conectados?.conectado(seat.seatId) ?? false,
+          isOwner: room.ownerId !== null && seat.userId === room.ownerId,
+          order: seat.order,
+          meta: seat.meta,
+        }),
+      ),
       createdAt: room.createdAt,
       updatedAt: room.updatedAt,
     };

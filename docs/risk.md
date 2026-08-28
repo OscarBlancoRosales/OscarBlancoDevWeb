@@ -1,8 +1,8 @@
 # RISK — cómo está hecho y cómo se pone en marcha
 
 La sección **Juegos** (`/juegos`) arranca con un RISK completo: reglas clásicas, tres mapas,
-bots con IA que hablan por el chat, partidas grabadas y reanudables, y todo funcionando en
-GitHub Pages, sin servidor propio.
+bots con IA que hablan por el chat, partidas grabadas y reanudables. La web se sirve desde
+GitHub Pages y el árbitro es el backend propio (`apps/server`).
 
 ---
 
@@ -10,285 +10,112 @@ GitHub Pages, sin servidor propio.
 
 ```bash
 npm install
-ng serve            # http://localhost:4200/juegos
-npm test            # 600+ tests
+npm run dev -w @devweb/server   # la API en http://localhost:3000
+ng serve                        # http://localhost:4200/juegos
+npm test                        # 1.400+ tests
 ```
 
-Para jugar **no hace falta configurar nada**: en `/juegos/risk` hay un botón
-**«🤖 Jugar aquí contra la IA»** que crea una partida local (se guarda en el navegador,
-no usa red). Sirve para probar mapas, jugar contra los bots y demostrar el producto
-aunque Firebase no esté abierto.
+Para jugar **no hace falta ni la API**: en `/juegos/risk` hay un botón
+**«🤖 Jugar aquí contra la IA»** que crea una partida local, guardada en el navegador y sin
+red. Sirve para probar mapas, jugar contra los bots y enseñar el producto aunque el
+servidor esté caído.
 
-Para jugar **con otras personas** hacen falta dos cosas: iniciar sesión (igual que en el
-Scrum Poker) y que la base de datos permita escribir en `riskRooms` (ver punto 3).
+Para jugar **con otras personas** hace falta iniciar sesión —igual que en el Scrum Poker—
+y que la API esté en pie. Quien llega por un enlace de invitación no necesita cuenta.
 
 ---
 
-## 2. Arquitectura: multijugador sin backend
-
-No hay servidor de juego. El modelo es **lockstep determinista**:
+## 2. Arquitectura: el servidor es el árbitro
 
 ```
-        ┌──────────────┐        escribe acción        ┌──────────────────────┐
-        │  Cliente A   │ ───────────────────────────► │  Firebase RTDB       │
-        └──────┬───────┘                              │  riskRooms/{sala}    │
-               │  lee el log completo                 │    meta   (reglas)   │
-               ▼                                      │    seats  (asientos) │
-   motor puro: (estado, acción) → estado              │    log    (acciones) │
-               ▲                                      │    chat              │
-        ┌──────┴───────┐                              │    snapshot          │
-        │  Cliente B   │ ◄─────────────────────────── └──────────────────────┘
-        └──────────────┘        mismo log
+        ┌──────────────┐         jugada          ┌───────────────────────────┐
+        │  Cliente A   │ ──────────────────────► │  apps/server              │
+        └──────┬───────┘                         │    motor puro (el mismo)  │
+               │      vista propia               │    log de acciones        │
+               ▼◄─────────────────────────────── │    foto cada 40 jugadas   │
+   pinta lo que le mandan                        │    SQLite                 │
+        ┌──────────────┐         jugada          └───────────────────────────┘
+        │  Cliente B   │ ──────────────────────►
+        └──────────────┘      otra vista propia
 ```
 
-- El motor (`engine/engine.ts`) es una función pura: mismo estado + misma acción → mismo
-  resultado. Los dados salen de un RNG sembrado con `(semilla de partida, nº de acción)`,
-  así que **todos los clientes sacan exactamente los mismos dados** sin hablar entre ellos.
-- Cada cliente escribe sus acciones en `log`. Todos leen el log entero y lo reproducen.
-- Las acciones ilegales (una jugada repetida, alguien que llega tarde) se descartan con el
-  mismo criterio en todos los clientes, así que nadie se descuadra.
-- Cada 40 acciones el anfitrión guarda un `snapshot` para no tener que reproducirlo todo.
+- El motor (`packages/shared/src/engine/engine.ts`) es una función pura: mismo estado +
+  misma acción → mismo resultado. Lo comparten el navegador y el servidor, así que las
+  reglas están escritas una sola vez.
+- El cliente **no aplica** las jugadas de la partida en red: las manda, el servidor las
+  juzga con ese motor y devuelve el estado ya calculado. Por eso el log del cliente va
+  vacío y el estado llega entero en cada mensaje: no hay nada que reconstruir.
+- El servidor guarda **la jugada, no el estado**: un log de solo-añadir y una foto cada
+  cuarenta acciones. El log **es** la grabación de la partida, y por eso una sala se puede
+  tirar de memoria cuando nadie la usa y recuperarla intacta cuando alguien vuelve.
+- **A cada asiento se le manda solo lo suyo.** `view()` quita del estado las cartas de los
+  rivales y el mazo antes de enviarlo. No es que el cliente las oculte: es que no viajan.
+  Con las reglas en Firebase estaban a la vista de cualquiera que abriese la consola.
 
-**Consecuencias que salen gratis:**
+Las salas cuyo identificador empieza por `LOCAL-` siguen viviendo enteras en el navegador
+(`local-room-store.ts`), y ahí sí se reproduce el log en el cliente, porque no hay
+servidor que arbitre. Mismo formato de datos, cero red.
 
-| Requisito | Cómo se cumple |
+### Qué impide el servidor que antes no impedía nadie
+
+| Antes (Firebase) | Ahora |
 |---|---|
-| Partidas grabables | El log **es** la grabación, jugada a jugada |
-| Reanudar más tarde | Se vuelve a reproducir el log (o el último snapshot) |
-| Respetar a cada jugador | Cada asiento guarda un `seatToken` (uid o token del navegador) y se recupera al volver |
-| Coste | Una acción son unos bytes; una partida completa cabe de sobra en la capa gratuita |
+| Cualquiera con el enlace veía las cartas de todos | Las cartas ajenas no salen del servidor |
+| Una jugada firmada con el nombre de otro se aplicaba | Se rechaza: el remite lo pone la conexión, no el mensaje |
+| Un mensaje podía firmarse con el nombre y el papel que quisieras | El nombre y el tipo los pone el servidor a partir del asiento |
+| Quien conociera el identificador podía escribir en la sala | Hace falta el pase del asiento, que solo se entrega al sentarse |
 
 ### El anfitrión
 
-Un cliente hace de **anfitrión**: mueve los bots y guarda los puntos de control. Se elige
-de forma determinista (el propietario si está conectado; si no, el humano conectado más
-antiguo), así que nunca hay dos clientes moviendo el mismo bot. Si el anfitrión se va, otro
-toma el relevo automáticamente.
+Un cliente hace de **anfitrión**: mueve los bots. Se elige de forma determinista —el
+propietario si está conectado; si no, el humano conectado más antiguo—, así que nunca hay
+dos clientes moviendo el mismo bot, y si el anfitrión se va otro toma el relevo. Si no
+queda nadie, los bots se paran: la partida espera.
+
+Que los bots los mueva un cliente y no el servidor es la única pieza que se ha dejado como
+estaba. Tiene consecuencias visibles y conviene decirlas:
+
+- El servidor acepta una jugada firmada con el `playerId` de **un bot de la sala** venga
+  del asiento que venga. Con el de otra persona, nunca.
+- La mano de un bot va **a la vista** en la vista de todos, porque alguien tiene que
+  jugarla. Sigue siendo menos de lo que se veía antes, que era todo.
+
+Moverlos en el servidor sería mejor —y quitaría las dos excepciones—, pero es trabajo
+nuevo, no una migración: el cerebro de los bots habla con el modelo de lenguaje desde el
+navegador, con la clave del usuario.
 
 ### La alineación se congela al empezar
 
-Al pulsar «Empezar la partida» se guarda en `meta.roster` la lista de jugadores tal cual
-está en ese momento. A partir de ahí el estado inicial ya no depende de los asientos: se
-puede renombrar gente, cambiar colores o desconectarse sin que el tablero cambie.
+Al pulsar «Empezar la partida» la sala pasa a `playing`, y **ese es el momento en que el
+servidor reparte el mapa**, con los asientos que haya sentados entonces. Antes de eso no
+hay partida: la sala de espera enseña una vista previa que calcula el propio navegador.
+Después, renombrarse, cambiar de color o desconectarse no toca el tablero.
 
 ---
 
-## 3. Reglas de seguridad de Firebase
+## 3. Quién puede hacer qué
 
-El juego escribe en el nodo `riskRooms`, y hasta que ese nodo no esté abierto la base
-rechaza todo (comprobado: 401 en `riskRooms`, en `rooms` y en la raíz). Las reglas están
-en **`database.rules.json`**, en la raíz del repositorio, listas para subir:
+No hay reglas de base de datos que mantener: las decisiones están en el servidor, en
+`apps/server/src/rooms/`, y cada una tiene su test.
 
-```bash
-npm install -g firebase-tools   # una vez
-firebase login                  # una vez: abre el navegador
-npm run check:rules             # comprueba los invariantes antes de subir nada
-npm run deploy:rules            # sube database.rules.json al proyecto
-```
+- **Crear una sala exige sesión.** Sin dueño no hay quien la borre ni quien reparta los
+  asientos.
+- **Sentarse no exige cuenta.** Quien llega por el enlace de invitación se sienta como
+  invitado; es toda la gracia del enlace.
+- **El pase del asiento es la credencial.** Se entrega una vez, al sentarse, y viaja en la
+  cabecera `X-Seat-Token` o en la URL del WebSocket. Nunca se le manda a los demás: los
+  asientos que ve el resto llevan el identificador, no el pase.
+- **Solo quien creó la sala** reparte bots, cambia el mapa o las reglas, y pasa la partida
+  a jugando. Y solo él habla con la voz de la sala en el chat.
+- **Cada cual toca su asiento.** Renombrarse y cambiar de color, sí; levantar a otro de su
+  silla, no.
+- **El log es de solo-añadir.** Una jugada apuntada no se reescribe: el log es la partida.
+- **Las salas caducan.** El servidor borra las que llevan más de un mes sin tocarse, con
+  su propia fecha y sin depender de que nadie abra el navegador.
 
-El proyecto de destino está fijado en `.firebaserc` (`oscarblanco-scrum-poker`).
-
-**Por qué la instalación es explícita y no `npx --yes firebase-tools`.** Se probó
-lo segundo, por ahorrar un comando, y se descartó: `npx --yes` se salta la
-confirmación y **descarga y ejecuta la última versión que haya en el registro en
-ese momento**, sin fijar versión y sin comprobación de integridad, justo en el
-comando con el que entregas tus credenciales de Google y despliegas en tu
-proyecto. Instalarla a mano es un comando más, se hace una vez, y actualizas
-cuando tú decides.
-
-Para comprobar que ha surtido efecto, sin abrir la consola:
-
-```bash
-curl "https://oscarblanco-scrum-poker-default-rtdb.europe-west1.firebasedatabase.app/riskRooms.json?shallow=true"
-```
-
-Antes de subirlas devuelve `Permission denied`; después, `null` (o la lista de
-salas). Ese `null` es la señal de que el juego online ya funciona.
-
-Es lo único que queda por hacer para que el juego online funcione, y solo lo puede hacer
-quien tenga acceso al proyecto de Firebase. Si prefieres pegarlas a mano, están también en
-la consola (*Realtime Database → Reglas*); es exactamente este JSON:
-
-```json
-{
-  "rules": {
-    "rooms": {
-      "$roomId": {
-        ".read": true,
-        ".write": true
-      }
-    },
-    "throwdown-timer": {
-      "configs": {
-        ".read": true,
-        ".write": true
-      }
-    },
-    "riskRooms": {
-      ".read": "auth != null && query.orderByChild === 'meta/ownerUid' && query.equalTo === auth.uid",
-      ".indexOn": [
-        "meta/ownerUid"
-      ],
-      "$roomId": {
-        ".read": true,
-        ".write": "auth != null || (data.child('meta/updatedAt').isNumber() && data.child('meta/updatedAt').val() < (now - 2592000000))",
-        ".validate": "!newData.exists() || newData.hasChildren(['meta'])",
-        "meta": {
-          ".write": "!data.exists() && auth != null",
-          ".validate": "newData.hasChildren(['id', 'mapId', 'seed'])",
-          "seed": {
-            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
-          },
-          "mapId": {
-            ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
-          },
-          "createdAt": {
-            ".validate": "newData.isNumber() && (!data.exists() || data.val() === newData.val())"
-          },
-          "ownerUid": {
-            ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
-          },
-          "roster": {
-            ".write": "!data.exists()"
-          },
-          "status": {
-            ".write": true,
-            ".validate": "newData.isString() && (newData.val() === 'lobby' || newData.val() === 'playing' || newData.val() === 'paused' || newData.val() === 'finished')"
-          },
-          "updatedAt": {
-            ".write": true,
-            ".validate": "newData.isNumber() && (!data.exists() || newData.val() >= data.val()) && newData.val() <= (now + 300000)"
-          },
-          "maxPlayers": {
-            ".validate": "newData.isNumber() && newData.val() >= 2 && newData.val() <= 8"
-          },
-          "name": {
-            ".validate": "newData.isString() && newData.val().length <= 80"
-          },
-          "ownerName": {
-            ".validate": "newData.isString() && newData.val().length <= 40"
-          },
-          "$other": {
-            ".validate": true
-          }
-        },
-        "seats": {
-          "$seatId": {
-            ".write": "root.child('riskRooms').child($roomId).child('meta').exists()",
-            "seatToken": {
-              ".validate": "newData.isString() && (!data.exists() || data.val() === newData.val())"
-            },
-            "name": {
-              ".validate": "newData.isString() && newData.val().length <= 40"
-            },
-            "$other": {
-              ".validate": true
-            }
-          }
-        },
-        "log": {
-          "$entry": {
-            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
-            ".validate": "newData.hasChildren(['action'])"
-          }
-        },
-        "snapshot": {
-          ".write": "root.child('riskRooms').child($roomId).child('meta').exists() && (!data.exists() || (newData.child('upTo').isNumber() && data.child('upTo').isNumber() && newData.child('upTo').val() >= data.child('upTo').val()))",
-          ".validate": "newData.hasChildren(['upTo', 'state'])"
-        },
-        "chat": {
-          "$message": {
-            ".write": "!data.exists() && newData.exists() && root.child('riskRooms').child($roomId).child('meta').exists()",
-            ".validate": "newData.child('text').isString() && newData.child('text').val().length <= 600 && newData.child('author').isString() && newData.child('author').val().length <= 40"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Qué protegen, y qué no
-
-Las reglas tienen que dejar entrar a invitados **sin cuenta** (esa es toda la gracia del
-enlace de invitación), así que no pueden apoyarse en la autenticación para lo normal. Lo
-que sí hacen es cerrar lo que de verdad rompe una partida:
-
-- **No se pueden listar las salas.** Es el arreglo de fondo: mientras la lectura estuvo
-  abierta en el nodo padre, decir que "el identificador aleatorio protege la sala" era
-  mentira, porque bastaba con descargarlas todas de una vez. Ahora solo se puede leer una
-  sala **nombrándola** (que es lo que hace el enlace de invitación) o preguntar por *las
-  tuyas* con una consulta concreta: `orderByChild('meta/ownerUid').equalTo(auth.uid)`, y
-  las reglas no aceptan ninguna otra. De paso, listar tus salas ya no se baja los logs de
-  las partidas ajenas, que en la capa gratuita se nota.
-- **La alineación se congela.** `meta` completa solo se puede escribir al crear la sala, y
-  `roster` una única vez: es el dato del que cuelga el estado inicial, así que reescribirlo
-  invalidaría el log entero. Después solo quedan abiertos `status` y `updatedAt`.
-- **El testigo de un asiento es inmutable.** Una vez ocupado, no se le puede cambiar el
-  `seatToken` para suplantar a quien lo tiene.
-
-- **El log es de solo-añadir.** `!data.exists()` en cada entrada: se puede apuntar una
-  jugada nueva, pero nadie puede reescribir ni borrar una ya hecha. Es la regla más
-  importante de todas, porque el log **es** la partida: quien pudiera editarlo podría
-  reescribir el pasado de una mesa en curso. El chat va igual.
-- **La identidad de la sala es inmutable.** `seed`, `mapId` y `createdAt` no se pueden
-  cambiar una vez creada. Cambiar la semilla a mitad de partida desincronizaría a todos
-  los clientes de golpe, que es la forma más barata de reventar un lockstep.
-- **Borrar una sala ya no está al alcance de cualquiera.** Antes `.write: true` permitía
-  a quien fuera vaciar cualquier partida en curso. Ahora hace falta sesión iniciada (el
-  dueño) o que la sala lleve más de 30 días parada, que es lo que necesita la limpieza
-  automática.
-- **El punto de control no puede retroceder.** Solo se acepta un `snapshot` con un `upTo`
-  igual o mayor, para que nadie devuelva la partida a un estado anterior.
-- **Topes de tamaño** en los nombres y en el texto del chat, para que un bucle no llene la
-  base gratuita.
-
-- **Crear una sala exige sesión iniciada**, y dentro de una sala que no existe no se puede
-  escribir nada. Son las dos cosas que impiden que cualquiera llene la base gratuita: sin
-  la primera se crean salas a mansalva; sin la segunda se fabrican salas fantasma metiendo
-  asientos o jugadas en un identificador inventado, porque la validación del nodo padre
-  **no** se evalúa al escribir en un hijo. Jugar no exige cuenta: los invitados entran por
-  el enlace y escriben en una sala que ya existe.
-
-Y lo que **no** hacen, dicho claramente: quien conozca el identificador de una sala puede
-leerla, añadirle jugadas y mensajes, y liberar asientos. Sin backend no hay forma de
-evitarlo — el motor vive en el cliente y los invitados no tienen cuenta con la que
-distinguirlos. El modelo de seguridad es el de un enlace secreto de Google Docs: **el
-identificador es la credencial**, y ahora sí lo es de verdad, porque ya no se puede
-enumerar.
-
-Si algún día hace falta más, el camino está claro y no pasa por retocar estas reglas:
-activar **autenticación anónima** en Firebase (da un `uid` estable a cada navegador sin
-pedirle nada a nadie), guardar ese `uid` en cada asiento y exigir `auth.uid` para tocarlo.
-Eso convertiría el asiento en propiedad de quien lo ocupa. Se ha dejado fuera de esta
-tanda porque obliga a activar un proveedor en la consola y a que la aplicación degrade con
-elegancia si no está activo.
-
-> **Ojo al desplegar:** `database.rules.json` es el conjunto **completo** de reglas de la
-> base, no solo las del RISK. Subirlo **sustituye todo lo que haya ahora**, incluidas las
-> de `rooms`, que es el nodo del Scrum Poker.
->
-> El fichero ya incluye las reglas de las otras secciones (`rooms` del Scrum Poker y
-> `throwdown-timer`), fundidas con las del RISK. La primera versión solo miraba al RISK y
-> se habría llevado por delante `throwdown-timer`; `npm run check:rules` ahora falla si
-> falta alguno de esos nodos, justamente para que no se repita.
->
-> Si añades otra sección que use la base, acuérdate de meterla aquí **y** en esa
-> comprobación.
-
-`npm run check:rules` comprueba que el JSON de aquí arriba y el del fichero no se separen,
-que sigan en pie los invariantes de la lista, y que no falte ninguna sección.
-
-**Y se comprueba a sí mismo antes de nada.** Un guardián que no puede fallar no guarda
-nada: una errata en la ruta de una propiedad convierte una comprobación en un `undefined`
-que pasa de largo, y desde fuera se ve igual que "todo en orden". Así que primero estropea
-a propósito una copia de cada cosa que vigila y exige que salte la alarma. La primera vez
-que se ejecutó encontró un fallo suyo: con una regla booleana en vez de una cadena,
-reventaba en lugar de avisar.
-
-> Mientras las reglas no estén subidas, la sección sigue funcionando en **modo local**
-> (partidas contra la IA guardadas en el navegador). El lobby lo indica y no se queda
-> colgado esperando a la base de datos.
+El modelo de acceso a una sala sigue siendo el de un enlace secreto: **el identificador es
+la invitación**. La diferencia es que ahora el identificador solo sirve para *pedir* un
+asiento, y lo que autoriza a jugar es el pase que se entrega al sentarse.
 
 ---
 
@@ -325,8 +152,8 @@ En la pestaña **IA** de la mesa se puede conectar un modelo con capa gratuita:
 | Google AI Studio | https://aistudio.google.com/app/apikey | Gemini 2.0 Flash |
 | Compatible OpenAI | — | Ollama o LM Studio en local (`http://localhost:11434/v1`) |
 
-**La clave se guarda solo en el `localStorage` de ese navegador.** No viaja a Firebase ni
-se comparte con el resto de la sala.
+**La clave se guarda solo en el `localStorage` de ese navegador.** No viaja al servidor
+ni se comparte con el resto de la sala.
 
 Qué hace el modelo y qué no:
 
@@ -424,8 +251,8 @@ que ya terminó.
 
 Además de los bots, hay un consejero para el jugador humano: en cada fase de tu turno te
 deja un mensaje en el chat con qué harías tú («yo pondría el grueso en Afganistán: frontera
-amenazada y está solo»). También se puede pedir a mano. Sus consejos son **privados**: no se
-escriben en Firebase ni los ve el resto de la mesa.
+amenazada y está solo»). También se puede pedir a mano. Sus consejos son **privados**: no
+salen del navegador ni los ve el resto de la mesa.
 
 ---
 

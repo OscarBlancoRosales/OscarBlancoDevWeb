@@ -15,7 +15,7 @@
   border-radius: 10px;
   background:
     radial-gradient(1200px 700px at 30% -10%, rgba(0, 255, 140, 0.07), transparent 60%),
-    linear-gradient(180deg, #070b0a 0%, #05070a 100%);
+    linear-gradient(180deg, #070b0a 0%, var(--bg) 100%);
   border: 1px solid #23302b;
 }
 
@@ -171,7 +171,7 @@
 }
 
 .badge-text {
-  fill: #05070a;
+  fill: var(--bg);
   font-family: 'Cascadia Code', 'Consolas', monospace;
   font-size: 12px;
   font-weight: 700;
@@ -252,7 +252,7 @@
   pointer-events: none;
   font-family: 'Cascadia Code', 'Consolas', monospace;
   font-size: 11px;
-  color: #cfe8dc;
+  color: var(--text);
   max-width: 220px;
   animation: tip-in 0.12s ease-out;
 }
@@ -269,7 +269,7 @@
 }
 
 .tip-name {
-  color: #eaf7f0;
+  color: var(--bright);
   font-size: 13px;
   font-weight: 600;
 }
@@ -317,7 +317,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   font-size: 0.72rem;
   line-height: 1.35;
-  color: #b9c4cc;
+  color: var(--text);
 }
 
 .tip-glyph {
@@ -347,7 +347,7 @@
 .tip-matchup {
   display: block;
   font-size: 0.7rem;
-  color: #8b949e;
+  color: var(--muted);
 }
 
 /*

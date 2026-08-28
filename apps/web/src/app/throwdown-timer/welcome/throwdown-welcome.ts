@@ -1,7 +1,7 @@
 import { Component, output, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
-import { FirebaseAuthService } from '../../firebase-auth.service';
+import { AuthApiService } from '../../api/auth-api.service';
 
 @Component({
   selector: 'app-throwdown-welcome',
@@ -21,7 +21,7 @@ export class ThrowdownWelcome implements OnInit, OnDestroy {
   private authSub: Subscription | null = null;
 
   constructor(
-    private authService: FirebaseAuthService,
+    private authService: AuthApiService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -41,11 +41,12 @@ export class ThrowdownWelcome implements OnInit, OnDestroy {
     this.isLoading = true;
     this.errorMsg  = '';
     this.cdr.detectChanges();
-    const result = await this.authService.signIn(this.email, this.password);
-    this.isLoading = false;
-    if (!result.success) {
-      this.errorMsg = result.error ?? 'Error al iniciar sesión';
+    try {
+      await this.authService.entrar(this.email, this.password);
+    } catch (fallo) {
+      this.errorMsg = AuthApiService.mensajeDe(fallo);
     }
+    this.isLoading = false;
     this.cdr.detectChanges();
   }
 

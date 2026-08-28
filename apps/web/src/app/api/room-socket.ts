@@ -1,4 +1,4 @@
-import { Injectable, NgZone } from '@angular/core';
+import { NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { apiSocketUrl } from './api.config';
 import type { Observable } from 'rxjs';
@@ -12,12 +12,15 @@ const ESPERAS = [500, 1000, 2000, 5000, 10000, 15000] as const;
 /**
  * La conexión con una sala.
  *
+ * Una por sala: no es un servicio compartido. Dos juegos abiertos a la vez en
+ * la misma pestaña se pisarían el socket, y el segundo en conectar echaría al
+ * primero sin que se notase más que por dejar de llegar el estado.
+ *
  * Reconecta sola: un WebSocket se cae por cualquier cosa —el móvil cambia de
  * wifi a datos, el portátil se suspende, el proxy corta una conexión ociosa— y
  * ninguna de esas es motivo para echar a nadie de la partida. Al volver, el
  * servidor manda el estado completo, así que no hay nada que reconciliar a mano.
  */
-@Injectable({ providedIn: 'root' })
 export class RoomSocket {
   private socket: WebSocket | null = null;
   private reintento: ReturnType<typeof setTimeout> | null = null;
@@ -34,6 +37,11 @@ export class RoomSocket {
   constructor(private readonly zone: NgZone) {}
 
   conectar(roomId: string, seatToken: string): void {
+    // Volver a conectar donde ya estamos cortaría la conexión buena para abrir
+    // otra igual, y entre una y otra la sala se queda muda.
+    const mismoSitio = this.destino?.roomId === roomId && this.destino.seatToken === seatToken;
+    if (mismoSitio && this.socket?.readyState === WebSocket.OPEN) return;
+
     this.cerrar();
     this.cerradoAProposito = false;
     this.destino = { roomId, seatToken };
@@ -42,8 +50,32 @@ export class RoomSocket {
 
   /** Manda una jugada. Si no hay conexión, se pierde: el servidor es la verdad. */
   enviar(accion: unknown): void {
+    this.mandar({ tipo: 'accion', accion });
+  }
+
+  /**
+   * Dice algo en la sala.
+   *
+   * Ni el nombre ni el tipo del mensaje viajan: los pone el servidor a partir
+   * del asiento. `comoAsiento` sirve para los bots, que los mueve un cliente, y
+   * `comoLaSala` para los avisos del anfitrión.
+   */
+  decir(
+    texto: string,
+    opciones: {
+      comoAsiento?: string;
+      comoLaSala?: boolean;
+      origin?: string;
+      /** Asiento al que va dirigido. Sin esto, es para todos. */
+      para?: string;
+    } = {},
+  ): void {
+    this.mandar({ tipo: 'chat', texto, ...opciones });
+  }
+
+  private mandar(mensaje: unknown): void {
     if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({ tipo: 'accion', accion }));
+      this.socket.send(JSON.stringify(mensaje));
     }
   }
 
@@ -63,17 +95,30 @@ export class RoomSocket {
     if (!this.destino) return;
     const { roomId, seatToken } = this.destino;
 
-    const url = `${apiSocketUrl()}/ws?sala=${encodeURIComponent(roomId)}&pase=${encodeURIComponent(seatToken)}`;
+    // En la URL solo la sala. El pase va en el primer mensaje: una URL acaba
+    // escrita en el log del proxy y en el de la aplicación, y ahí no puede
+    // haber credenciales.
+    const url = `${apiSocketUrl()}/ws?sala=${encodeURIComponent(roomId)}`;
     this.estado.next('conectando');
 
-    // Fuera de la zona de Angular: un WebSocket activo dispararía detección de
-    // cambios en cada mensaje, y en una partida eso es constante. Lo que hace
-    // falta repintar se vuelve a meter en la zona al recibirlo.
-    const socket = this.zone.runOutsideAngular(() => new WebSocket(url));
+    // Fuera de la zona de Angular, y no solo la construcción: zone.js decide
+    // dónde corre cada manejador según dónde se registra. Registrarlos dentro
+    // haría que cada mensaje disparase detección de cambios, y en una partida
+    // eso es constante. Lo que hay que repintar vuelve a la zona al recibirlo.
+    this.zone.runOutsideAngular(() => {
+      this.montar(url, seatToken);
+    });
+  }
+
+  private montar(url: string, seatToken: string): void {
+    const socket = new WebSocket(url);
     this.socket = socket;
 
     socket.onopen = (): void => {
       this.intentos = 0;
+      // Lo primero, decir quién eres. Va aquí y no en la reconexión de más
+      // arriba porque hay que decirlo también al volver de una caída.
+      socket.send(JSON.stringify({ tipo: 'hola', pase: seatToken }));
       this.zone.run(() => {
         this.estado.next('abierta');
       });

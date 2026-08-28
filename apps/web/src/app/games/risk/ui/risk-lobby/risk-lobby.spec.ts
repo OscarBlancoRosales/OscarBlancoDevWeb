@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RiskLobby } from './risk-lobby';
 import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
 import { RiskRoomService } from '../../services/risk-room.service';
-import { FirebaseAuthService } from '../../../../firebase-auth.service';
+import { AuthApiService } from '../../../../api/auth-api.service';
 import { of } from 'rxjs';
 
 function routeWith(params: Record<string, string> = {}) {
@@ -14,16 +14,16 @@ function routeWith(params: Record<string, string> = {}) {
   };
 }
 
-/** Monta el lobby con una sesión de Firebase de mentira pero con la forma real. */
-async function createLobbyWithUser(user: { uid: string; email: string } | null) {
+/** Monta el lobby con una sesión de mentira pero con la forma real. */
+async function createLobbyWithUser(user: { id: string; email: string; displayName: string } | null) {
   await TestBed.configureTestingModule({
     imports: [RiskLobby],
     providers: [
       provideRouter([]),
       { provide: ActivatedRoute, useValue: routeWith({}) },
       {
-        provide: FirebaseAuthService,
-        useValue: { user$: of(user), currentUser: user },
+        provide: AuthApiService,
+        useValue: { user$: of(user), usuario: user },
       },
     ],
   }).compileComponents();
@@ -106,19 +106,23 @@ describe('RiskLobby', () => {
     expect(created.component.isAdmin).toBe(false);
   });
 
-  it('con sesión de Firebase de verdad, sí', async () => {
+  it('con sesión de verdad, sí', async () => {
     TestBed.resetTestingModule();
-    const created = await createLobbyWithUser({ uid: 'uid-real', email: 'oscar@ejemplo.com' });
+    const created = await createLobbyWithUser({
+      id: 'uid-real',
+      email: 'oscar@ejemplo.com',
+      displayName: 'Óscar',
+    });
     await created.component.ngOnInit();
     expect(created.component.isAdmin).toBe(true);
     expect(created.component.ownerUid()).toBe('uid-real');
-    expect(created.component.ownerName()).toBe('oscar');
+    expect(created.component.ownerName()).toBe('Óscar');
   });
 
   it('sin sesión, el dueño va vacío y no se inventa un identificador', async () => {
-    // Un `ownerUid` inventado quedaría escrito en `meta`, que es inmutable, y
-    // como las reglas solo dejan listar tus salas comparando con `auth.uid`, la
-    // sala quedaría creada pero invisible para siempre.
+    // El dueño de una sala es quien la creó, y eso lo decide el servidor a
+    // partir de la sesión. Inventarse aquí un identificador solo serviría para
+    // enseñar botones que van a acabar en un 403.
     expect(component.ownerUid()).toBe('');
   });
 

@@ -4,7 +4,7 @@ import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
-import { FirebaseAuthService } from '../../../../firebase-auth.service';
+import { AuthApiService } from '../../../../api/auth-api.service';
 import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
 import { DEFAULT_CONFIG, PLAYER_COLORS, createGame } from '@devweb/shared/engine/engine';
 import { GameMap, GameState } from '@devweb/shared/engine/types';
@@ -70,7 +70,7 @@ export class RiskLobby implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private rooms: RiskRoomService,
-    private auth: FirebaseAuthService,
+    private auth: AuthApiService,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -99,7 +99,7 @@ export class RiskLobby implements OnInit, OnDestroy {
       if (!this.roomName && user) this.roomName = `Partida de ${this.ownerName()}`;
       this.refreshView();
     });
-    this.isAdmin = !!this.auth.currentUser;
+    this.isAdmin = !!this.auth.usuario;
     this.playerName = localStorage.getItem('risk_player_name') ?? '';
     this.roomName = this.isAdmin ? `Partida de ${this.ownerName()}` : '';
 
@@ -162,21 +162,14 @@ export class RiskLobby implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Identificador del dueño de la sala. Vacío si no hay sesión.
-   *
-   * Nada de inventarse un `'admin'` de reserva: ese identificador acabaría
-   * escrito en `meta/ownerUid`, que es inmutable, y como las reglas solo dejan
-   * listar tus salas comparando con `auth.uid`, la sala quedaría creada pero
-   * invisible para siempre.
-   */
+  /** Identificador de quien tiene la sesión abierta. Vacío si no hay ninguna. */
   ownerUid(): string {
-    return this.auth.currentUser?.uid ?? '';
+    return this.auth.usuario?.id ?? '';
   }
 
   ownerName(): string {
-    const email = this.auth.currentUser?.email ?? 'Anfitrión';
-    return email.split('@')[0];
+    const usuario = this.auth.usuario;
+    return usuario?.displayName ?? usuario?.email.split('@')[0] ?? 'Anfitrión';
   }
 
   /** Lleva a iniciar sesión y vuelve aquí después. */
@@ -273,9 +266,6 @@ export class RiskLobby implements OnInit, OnDestroy {
     try {
       const roomId = this.invitedRoom.id;
       this.rooms.listenToRoom(roomId);
-      // Damos un instante a que lleguen los asientos: así, si ya teníamos uno,
-      // lo recuperamos en vez de crear otro.
-      await new Promise((resolve) => setTimeout(resolve, 350));
       const seatId = await this.rooms.claimSeat(roomId, {
         name,
         seatToken: this.seatToken(),
@@ -307,7 +297,6 @@ export class RiskLobby implements OnInit, OnDestroy {
       return;
     }
     this.rooms.listenToRoom(summary.meta.id);
-    await new Promise((resolve) => setTimeout(resolve, 350));
     const seatId = await this.rooms.claimSeat(summary.meta.id, {
       name,
       seatToken: this.ownerUid(),

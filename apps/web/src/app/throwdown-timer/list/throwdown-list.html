@@ -12,6 +12,9 @@
   <div class="list-content">
     <h1 class="page-title">Mis Timers</h1>
 
+    @if (deleteError()) {
+      <div class="delete-error">{{ deleteError() }}</div>
+    }
     @if (isLoading()) {
       <div class="loading-state">
         <div class="spinner"></div>

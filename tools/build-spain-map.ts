@@ -86,7 +86,7 @@ const PROVINCE_IDS: Record<string, string> = {
  * pero están a 380 km la una de la otra, y un territorio tiene que ser una
  * pieza continua.
  */
-const REGIONS: Array<{ id: string; provinces: string[] }> = [
+const REGIONS: { id: string; provinces: string[] }[] = [
   { id: 'galicia', provinces: ['AC', 'LU', 'OU', 'PO'] },
   { id: 'asturias', provinces: ['AS'] },
   { id: 'cantabria', provinces: ['CB'] },

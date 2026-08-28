@@ -1,4 +1,5 @@
 import { GameAction, GameState } from '@devweb/shared/engine/types';
+import type { KeyValueStorage } from '@devweb/shared/platform';
 import { ChatEntry, LoggedActionEntry, RoomMeta, RoomSeat, RoomSnapshot } from './risk-room.service';
 
 /**
@@ -46,7 +47,7 @@ export class LocalRoomStore {
    */
   private cache = new Map<string, LocalRoomData>();
 
-  constructor(private storage: Storage) {}
+  constructor(private storage: KeyValueStorage) {}
 
   private keyFor(roomId: string): string {
     return `${STORAGE_PREFIX}${roomId}`;

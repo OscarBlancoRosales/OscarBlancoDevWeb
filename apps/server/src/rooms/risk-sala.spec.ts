@@ -61,6 +61,9 @@ describe('una sala de RISK', () => {
 
     // El actor se crea con los dos asientos ya sentados, como al abrir el WebSocket.
     rooms = new RoomService({ repository: createRoomRepository(db) });
+    // Y la partida se reparte al empezar, no al crear la sala: esa es la
+    // alineación congelada, con los que estén sentados en ese momento.
+    rooms.actor(anfitrion.room.id).setStatus('playing');
   });
 
   afterEach(async () => {

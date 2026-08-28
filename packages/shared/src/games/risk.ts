@@ -2,9 +2,9 @@ import { Type } from '@sinclair/typebox';
 import { applyAction, createGame } from '../engine/engine';
 import { RISK_MAPS } from '../engine/maps/map-registry';
 import { RuleError as EngineRuleError } from '../engine/types';
-import type { GameAction, GameMap, GameState, PlayerState } from '../engine/types';
+import type { BotProfile, GameAction, GameConfig, GameMap, GameState, PlayerState } from '../engine/types';
 import type { PlayerSeed } from '../engine/engine';
-import type { GameModule, RuleError, SeatId } from './module';
+import type { GameModule, RuleError, Seat, SeatId } from './module';
 
 /**
  * Los tipos de acción que el motor entiende.
@@ -40,6 +40,8 @@ export const RiskAction = Type.Object(
 export interface RiskConfig {
   readonly mapId: string;
   readonly seed: number;
+  /** Las reglas de la casa: canjes, terreno avanzado, condición de victoria. */
+  readonly reglas: Partial<GameConfig> | undefined;
 }
 
 /**
@@ -62,19 +64,26 @@ export type RiskPlayerView = Omit<PlayerState, 'cards' | 'seatToken'> & {
 export const riskModule: GameModule<GameState, GameAction> = {
   id: 'risk',
   actionSchema: RiskAction,
+  empiezaAlJugar: true,
 
   createState(seats, config) {
-    const { mapId, seed } = leerConfig(config);
+    const { mapId, seed, reglas } = leerConfig(config);
     const map = mapaPorId(mapId);
     if (!map) throw new Error(`No existe el mapa ${mapId}`);
 
-    const players: PlayerSeed[] = seats.map((seat) => ({
-      id: seat.id,
-      name: seat.displayName,
-      kind: seat.isBot ? 'bot' : 'human',
-    }));
+    // El orden del asiento fija el orden de turno, y tiene que ser el mismo en
+    // todas partes: si aquí llegaran desordenados, cada reconstrucción de la
+    // partida repartiría el mapa de otra manera.
+    const players: PlayerSeed[] = [...seats]
+      .sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1))
+      .map((seat) => ({
+        id: seat.id,
+        name: seat.displayName,
+        kind: seat.isBot ? 'bot' : 'human',
+        ...perfilDe(seat),
+      }));
 
-    return createGame({ map, players, seed });
+    return createGame({ map, players, seed, ...(reglas !== undefined && { config: reglas }) });
   },
 
   /**
@@ -85,8 +94,8 @@ export const riskModule: GameModule<GameState, GameAction> = {
    * y volver a aplicarlo en `apply` da exactamente el mismo resultado. Cuesta
    * una pasada de más y ahorra tener las reglas escritas dos veces.
    */
-  validate(state, action, by) {
-    const suplantacion = suplantando(action, by);
+  validate(state, action, by, seats) {
+    const suplantacion = suplantando(action, by, seats);
     if (suplantacion) return suplantacion;
 
     const map = mapaPorId(state.mapId);
@@ -110,18 +119,23 @@ export const riskModule: GameModule<GameState, GameAction> = {
   },
 
   /**
-   * Las cartas de los demás no salen del servidor.
+   * Las cartas de los demás no salen del servidor. Las de los bots sí.
    *
    * En RISK saber la mano ajena es saber cuándo va a canjear y con cuántos
    * refuerzos aparece: es exactamente la información que hace que merezca la
    * pena mirar. Con las reglas en Firebase estaban a la vista de cualquiera.
+   *
+   * Un bot es la excepción porque alguien tiene que pensar por él, y ese
+   * alguien es un cliente. Ocultarle su propia mano sería dejarlo sin jugar.
+   * Sigue siendo menos de lo que se veía antes, que era todo.
    */
-  view(state, forSeat) {
+  view(state, forSeat, seats) {
     const { deck: _deck, players, ...resto } = state;
+    const bots = new Set(seats.filter((seat) => seat.isBot).map((seat) => seat.id));
     return {
       ...resto,
       deckSize: state.deck.length,
-      players: players.map((player) => verJugador(player, forSeat)),
+      players: players.map((player) => verJugador(player, player.id === forSeat || bots.has(player.id))),
     } satisfies RiskView;
   },
 
@@ -137,32 +151,36 @@ export const riskModule: GameModule<GameState, GameAction> = {
   },
 };
 
-function verJugador(player: PlayerState, forSeat: SeatId): RiskPlayerView {
+function verJugador(player: PlayerState, aLaVista: boolean): RiskPlayerView {
   const { cards, seatToken: _token, ...resto } = player;
-  const propio = player.id === forSeat;
   return {
     ...resto,
-    cards: propio ? cards : null,
+    cards: aLaVista ? cards : null,
     cardCount: cards.length,
   };
 }
 
 /**
- * Nadie juega en nombre de otro.
+ * Nadie juega en nombre de otra persona. Los bots son otra cosa.
  *
  * Cada acción del motor lleva dentro un `playerId`, y ese campo lo escribe el
  * cliente. El motor comprueba que a ese jugador le toque, pero no puede
  * comprobar quién ha mandado el mensaje: para él, la acción llega sin remite.
+ * Sin esta comprobación bastaría con mandar la jugada del rival cuando le toca
+ * a él para jugarle el turno entero.
  *
- * Sin esta línea, bastaría con mandar la jugada del rival cuando le toca a él
- * para jugarle el turno entero. Es exactamente el agujero que un servidor
- * autoritativo existe para tapar, y el único que el motor compartido no puede
- * tapar solo.
+ * Los asientos de bot sí se pueden mover desde otro asiento, porque es
+ * exactamente como funciona el juego: uno de los clientes conectados hace de
+ * anfitrión y calcula sus jugadas. Que el servidor los moviera solo sería otra
+ * cosa —mejor, pero otra—, y hoy los bots ya se paran si no queda nadie.
  */
-function suplantando(action: GameAction, by: SeatId): RuleError | null {
-  return action.playerId === by
-    ? null
-    : { code: 'no-eres-tu', message: 'No puedes jugar en nombre de otro.' };
+function suplantando(action: GameAction, by: SeatId, seats: readonly Seat[]): RuleError | null {
+  if (action.playerId === by) return null;
+
+  const objetivo = seats.find((seat) => seat.id === action.playerId);
+  if (objetivo?.isBot) return null;
+
+  return { code: 'no-eres-tu', message: 'No puedes jugar en nombre de otro.' };
 }
 
 function mapaPorId(mapId: string): GameMap | undefined {
@@ -172,7 +190,27 @@ function mapaPorId(mapId: string): GameMap | undefined {
 function leerConfig(config: Readonly<Record<string, unknown>>): RiskConfig {
   const mapId = typeof config['mapId'] === 'string' ? config['mapId'] : 'world';
   const seed = typeof config['seed'] === 'number' ? config['seed'] : 1;
-  return { mapId, seed };
+  const reglas = config['reglas'];
+  return {
+    mapId,
+    seed,
+    reglas: esObjeto(reglas) ? reglas : undefined,
+  };
+}
+
+/** El color y el carácter del bot los guarda la sala; el motor los necesita. */
+function perfilDe(seat: Seat): Pick<PlayerSeed, 'color' | 'botProfile'> {
+  const meta = seat.meta ?? {};
+  const color = meta['color'];
+  const botProfile = meta['botProfile'];
+  return {
+    ...(typeof color === 'string' && { color }),
+    ...(typeof botProfile === 'string' && { botProfile: botProfile as BotProfile }),
+  };
+}
+
+function esObjeto(valor: unknown): valor is Record<string, unknown> {
+  return typeof valor === 'object' && valor !== null && !Array.isArray(valor);
 }
 
 /** Los mapas que se pueden elegir al crear una sala. */

@@ -1,6 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { database } from '../firebase.config';
-import { ref, get, onValue, remove, Unsubscribe } from 'firebase/database';
+import { KvApiService } from '../api/kv-api.service';
 import { ThrowdownWelcome } from './welcome/throwdown-welcome';
 import { ThrowdownList } from './list/throwdown-list';
 import { ThrowdownEdit } from './edit/throwdown-edit';
@@ -21,6 +20,9 @@ export interface ThrowdownConfig {
 }
 
 type Screen = 'welcome' | 'list' | 'edit' | 'timer';
+
+/** Espacio de nombres de estas configuraciones en el almacén. */
+const ESPACIO = 'throwdown';
 
 function generateId(): string {
   return `tt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -44,6 +46,9 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
   isLoadingConfigs = true;
   loadError = false;
 
+  /** Lo que se le enseña a la persona si un borrado no se puede hacer. */
+  deleteError = '';
+
   private readonly popstateHandler = (event: PopStateEvent) => {
     const state = event.state as { throwdownScreen?: string } | null;
     const scr = state?.throwdownScreen as Screen | undefined;
@@ -53,9 +58,11 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
     }
   };
 
-  private configsUnsubscribe: Unsubscribe | null = null;
 
-  constructor(private cdr: ChangeDetectorRef) {}
+  constructor(
+    private cdr: ChangeDetectorRef,
+    private kv: KvApiService,
+  ) {}
 
   ngOnInit(): void {
     window.addEventListener('popstate', this.popstateHandler);
@@ -65,47 +72,39 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     window.removeEventListener('popstate', this.popstateHandler);
-    if (this.configsUnsubscribe) {
-      this.configsUnsubscribe();
-      this.configsUnsubscribe = null;
-    }
     if (window.location.pathname.startsWith('/tomelloso-throwdown-timer')) {
       history.replaceState(null, '', '/tomelloso-throwdown-timer');
     }
   }
 
+  /**
+   * Carga la lista de configuraciones.
+   *
+   * Ya no hay escucha en tiempo real. Con Firebase la lista se actualizaba sola
+   * si otra persona guardaba algo; aquí se recarga al entrar y después de cada
+   * cambio propio. Para una lista de temporizadores que se toca de higos a
+   * brevas, mantener un canal abierto todo el rato no compensa.
+   */
   private subscribeConfigs(): void {
     this.isLoadingConfigs = true;
     this.loadError = false;
+    void this.recargarConfigs();
+  }
 
-    void get(ref(database, 'throwdown-timer/configs')).then((snapshot) => {
-      const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
-      this.configs = raw
-        ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
-        : [];
-      this.isLoadingConfigs = false;
-      this.cdr.detectChanges();
-    }).catch(() => {
+  private async recargarConfigs(): Promise<void> {
+    try {
+      const { entries } = await this.kv.listar<ThrowdownConfig>(ESPACIO);
+      this.configs = entries
+        .map((entrada) => entrada.value)
+        .sort((a, b) => b.createdAt - a.createdAt);
+      this.loadError = false;
+    } catch {
       this.loadError = true;
       this.configs = [];
+    } finally {
       this.isLoadingConfigs = false;
       this.cdr.detectChanges();
-    });
-
-    // onValue() only updates configs AFTER get() has finished (isLoadingConfigs === false)
-    // This prevents the real-time listener from flashing empty state before get() resolves
-    this.configsUnsubscribe = onValue(
-      ref(database, 'throwdown-timer/configs'),
-      (snapshot) => {
-        if (this.isLoadingConfigs) { return; }
-        const raw = snapshot.val() as Record<string, ThrowdownConfig> | null;
-        this.configs = raw
-          ? Object.values(raw).sort((a, b) => b.createdAt - a.createdAt)
-          : [];
-        this.cdr.detectChanges();
-      },
-      () => { /* ignore real-time errors, get() already handled initial error */ }
-    );
+    }
   }
 
   onEnter(): void {
@@ -141,15 +140,25 @@ export class ThrowdownTimer implements OnInit, OnDestroy {
       this.configs = [cfg, ...this.configs];
     }
     this.cdr.detectChanges();
+    // Y se pide de nuevo al servidor, que es quien sabe qué hay de verdad.
+    void this.recargarConfigs();
   }
 
+  /**
+   * Borra una configuración.
+   *
+   * Si el servidor dice que no —porque la guardó otra persona— se cuenta, en vez
+   * de quitarla de la lista y que reaparezca a la siguiente recarga como si el
+   * borrado no se hubiera enterado.
+   */
   async onDeleteConfig(cfg: ThrowdownConfig): Promise<void> {
+    this.deleteError = '';
     try {
-      await remove(ref(database, `throwdown-timer/configs/${cfg.id}`));
+      await this.kv.borrar(ESPACIO, cfg.id);
+      this.configs = this.configs.filter(c => c.id !== cfg.id);
     } catch {
-      // silent
+      this.deleteError = `No se ha podido borrar "${cfg.name}". Solo puede borrarla quien la guardó.`;
     }
-    this.configs = this.configs.filter(c => c.id !== cfg.id);
     this.cdr.detectChanges();
   }
 

@@ -4,8 +4,8 @@ import type { RiskView } from './risk';
 import type { GameAction, GameState } from '../engine/types';
 import type { Seat } from './module';
 
-const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true };
-const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true };
+const ANA: Seat = { id: 'ana', displayName: 'Ana', isBot: false, connected: true, order: 0 };
+const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: true, order: 1 };
 const MESA = [ANA, LUIS];
 const CONFIG = { mapId: 'spain-regions', seed: 7 };
 
@@ -64,6 +64,16 @@ describe('nadie juega en nombre de otro', () => {
       enTurno,
       MESA,
     );
+
+    expect(error?.code).not.toBe('no-eres-tu');
+  });
+
+  it('a un bot sí se le mueve desde otro asiento: alguien tiene que pensarlo', () => {
+    const BOT: Seat = { id: 'bot', displayName: 'Bot', isBot: true, connected: false, order: 2 };
+    const mesa = [ANA, LUIS, BOT];
+    const state = riskModule.createState(mesa, CONFIG);
+
+    const error = riskModule.validate(state, { type: 'end-phase', playerId: 'bot' }, 'ana', mesa);
 
     expect(error?.code).not.toBe('no-eres-tu');
   });
@@ -144,6 +154,22 @@ describe('la mano ajena no sale del servidor', () => {
     expect(luis?.cards).toBeNull();
     expect(luis?.cardCount).toBe(1);
     expect(ana?.cards).toEqual([]);
+  });
+
+  it('la mano de un bot sí se ve: alguien tiene que jugarla', () => {
+    const BOT: Seat = { id: 'bot', displayName: 'Bot', isBot: true, connected: false, order: 2 };
+    const mesa = [ANA, BOT];
+    const state = riskModule.createState(mesa, CONFIG);
+    const conCartas: GameState = {
+      ...state,
+      players: state.players.map((player) =>
+        player.id === 'bot' ? { ...player, cards: [{ id: 'c1', territoryId: 't', symbol: 'infantry' as const }] } : player,
+      ),
+    };
+
+    const view = riskModule.view(conCartas, 'ana', mesa) as RiskView;
+
+    expect(view.players.find((player) => player.id === 'bot')?.cards).toHaveLength(1);
   });
 
   it('el mazo se cuenta, no se enseña', () => {
