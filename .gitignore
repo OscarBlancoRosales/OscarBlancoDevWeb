@@ -56,3 +56,6 @@ Thumbs.db
 public/ai-key.json
 release/
 tmp-prueba/
+
+# Paquete de entrega del servidor: se genera, no se versiona.
+*.tar.gz
