@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
+import { PREGUNTAS_POR_PARTIDA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
 import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
@@ -118,6 +119,46 @@ describe('salas', () => {
 
       expect(response.statusCode).toBe(400);
       expect(db.prepare('SELECT COUNT(*) AS total FROM rooms').get()).toMatchObject({ total: 0 });
+    });
+
+    it('una sala de trivial nace con sus preguntas repartidas', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { game: 'trivial', name: 'Concurso', displayName: 'Óscar' },
+      });
+      const grant = response.json<SeatGrant>();
+
+      expect(response.statusCode).toBe(201);
+      const fila = db
+        .prepare('SELECT config_json FROM rooms WHERE id = ?')
+        .get(grant.room.id) as { config_json: string };
+      const config = JSON.parse(fila.config_json) as { preguntas?: unknown[] };
+      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+    });
+
+    it('las preguntas del trivial no las elige quien crea la sala', async () => {
+      // Mandar las tuyas sería elegir las respuestas que ya te sabes.
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'trivial',
+          name: 'Con trampa',
+          displayName: 'Óscar',
+          config: { preguntas: [{ id: 'mia', tipo: 'test', correcta: 0 }] },
+        },
+      });
+      const grant = response.json<SeatGrant>();
+
+      const fila = db
+        .prepare('SELECT config_json FROM rooms WHERE id = ?')
+        .get(grant.room.id) as { config_json: string };
+      const config = JSON.parse(fila.config_json) as { preguntas?: { id: string }[] };
+      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+      expect(config.preguntas?.some((p) => p.id === 'mia')).toBe(false);
     });
 
     it('el pase se guarda hasheado, nunca en claro', async () => {

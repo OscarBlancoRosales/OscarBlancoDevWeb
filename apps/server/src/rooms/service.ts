@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
+import { repartir } from '../games/trivial/banco';
 import { moduleFor } from './registry';
 import type { RoomInfo, SeatGrant, GameId } from '@devweb/shared/contracts/rooms';
 import type { RoomRepository, RoomRow } from './repository';
@@ -69,7 +70,7 @@ export class RoomService {
       ownerId: input.ownerId,
       name: input.name.trim(),
       status: 'lobby',
-      config: input.config ?? {},
+      config: conLoQueElJuegoNecesite(input.game, input.config ?? {}),
       createdAt: at,
       updatedAt: at,
     };
@@ -259,4 +260,23 @@ export class RoomService {
       updatedAt: room.updatedAt,
     };
   }
+}
+
+/**
+ * Añade a la configuración lo que el juego necesita y el cliente no puede poner.
+ *
+ * Hoy son las preguntas del Trivial, y por eso este es el único sitio del
+ * servicio que sabe de un juego concreto. La alternativa —que el módulo se
+ * trajera el banco— metería las respuestas en el bundle de la web, que es
+ * exactamente lo que este juego no puede permitirse. Y se sobreescribe lo que
+ * venga del cliente: elegir tus propias preguntas es elegir tus aciertos.
+ */
+function conLoQueElJuegoNecesite(
+  game: GameId,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (game !== 'trivial') return config;
+
+  const semilla = typeof config['semilla'] === 'number' ? config['semilla'] : Date.now();
+  return { ...config, semilla, preguntas: repartir(semilla) };
 }
