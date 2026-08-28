@@ -53,3 +53,18 @@
 .qr-actions {
   margin-top: 16px;
 }
+
+@media (max-width: 768px) {
+  /* La imagen mas el relleno se pasaban del ancho de la pantalla */
+  .qr-body {
+    padding: 12px;
+  }
+
+  .qr-image {
+    max-width: 100%;
+  }
+
+  .select {
+    max-width: 100%;
+  }
+}

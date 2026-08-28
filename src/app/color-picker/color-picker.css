@@ -179,3 +179,31 @@
     width: 64px;
   }
 }
+
+@media (max-width: 768px) {
+  /* Tres campos en fila no caben: que se repartan el ancho disponible */
+  .triple {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tri {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .tri .input {
+    width: 100%;
+    min-width: 0;
+    padding: 8px 6px;
+    text-align: center;
+  }
+
+  .fmt-name {
+    width: 100%;
+  }
+
+  .fmt-input {
+    max-width: none;
+  }
+}
