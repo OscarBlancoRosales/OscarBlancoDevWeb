@@ -314,14 +314,45 @@ estructurados en JSON por el logger que Fastify ya trae.
 Cada fase deja el proyecto entero funcionando y desplegable. Ninguna deja el
 sitio a medias entre dos backends.
 
-| # | Qué | Terminada cuando |
-|---|-----|------------------|
-| 0 | Reglas, monorepo y extracción de `shared` | Los 1089 tests de los 36 ficheros pasan, la web se despliega igual, cero cambios de comportamiento |
-| 1 | VPS, nginx, TLS, systemd, `/health` | `https://api.oscarblancorosales.com/health` responde y el despliegue automático funciona |
-| 2 | Autenticación completa | Registro, verificación, login, refresh con rotación, logout y reset, con tests |
-| 3 | Núcleo de salas, WebSocket y Scrum Poker | Se juega una partida entera contra el backend propio, y los votos ocultos no salen del servidor |
-| 4 | RISK con servidor autoritativo | Se juega una partida entera, el servidor rechaza jugadas ilegales y `database.rules.json` desaparece |
-| 5 | Throwdown y apagado de Firebase | `firebase` fuera de `package.json` y credenciales revocadas |
+| # | Qué | Estado |
+|---|-----|--------|
+| 0 | Reglas, monorepo y extracción de `shared` | **Hecha.** |
+| 1 | VPS, nginx, TLS, systemd, `/health` | **Hecha y en producción.** |
+| 2 | Autenticación completa | **Hecha**, servidor y web. |
+| 3 | Núcleo de salas, WebSocket y Scrum Poker | **Hecha**, probada en navegador. |
+| 4 | RISK con servidor autoritativo | **A medias**: el servidor arbitra; la web sigue en Firebase. |
+| 5 | Throwdown y apagado de Firebase | Throwdown **hecho**; Firebase sigue vivo por RISK. |
+
+### Lo que falta de la fase 4, y la decisión que lo bloquea
+
+El servidor ya arbitra RISK: el motor entra como `GameModule`, valida cada
+jugada y no deja que nadie mueva las fichas de otro. Lo que sigue hablando con
+Firebase es la web: 4.017 líneas entre `risk-room.service`, `risk-sync`,
+`risk-game.service` y las dos pantallas.
+
+Y no es solo volumen. Hoy RISK funciona en **lockstep entre iguales**: cada
+cliente aplica el log por su cuenta y Firebase solo reparte mensajes. Con el
+servidor de árbitro eso se simplifica —el cliente recibe el estado ya calculado—
+pero aparece una pregunta que el código no puede contestar solo:
+
+**¿Quién mueve los bots?**
+
+- **Los sigue moviendo un cliente.** El que hace de anfitrión calcula la jugada
+  del bot y la manda como suya. Es el cambio más pequeño: el servidor solo tiene
+  que aceptar que un asiento juegue por un bot, y el cerebro de los bots se
+  queda donde está. A cambio, si ese cliente cierra la pestaña, los bots se
+  paran hasta que alguien vuelva.
+- **Los mueve el servidor.** El motor y el cerebro ya están en `shared`, así que
+  puede hacerlo. Las partidas siguen solas aunque no haya nadie mirando, que es
+  lo que se espera de un juego por turnos. A cambio hay que meter en el servidor
+  temporizadores, el cliente de IA y su gestión de claves.
+
+La segunda es mejor producto; la primera se hace en un día. No se elige desde
+aquí.
+
+Además, el servidor necesitaría tres cosas que hoy no tiene y que RISK sí usa:
+chat de sala, asientos de bot y gestión de asientos. Escribirlas antes de elegir
+sería trabajo especulativo: la respuesta cambia lo que hay que escribir.
 
 El orden no es negociable en un punto: la fase 0 va primera porque mover el
 motor con los tests verdes es barato ahora y caro cuando haya un servidor
