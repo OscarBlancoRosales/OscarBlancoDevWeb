@@ -37,6 +37,11 @@ export class RoomSocket {
   constructor(private readonly zone: NgZone) {}
 
   conectar(roomId: string, seatToken: string): void {
+    // Volver a conectar donde ya estamos cortaría la conexión buena para abrir
+    // otra igual, y entre una y otra la sala se queda muda.
+    const mismoSitio = this.destino?.roomId === roomId && this.destino.seatToken === seatToken;
+    if (mismoSitio && this.socket?.readyState === WebSocket.OPEN) return;
+
     this.cerrar();
     this.cerradoAProposito = false;
     this.destino = { roomId, seatToken };

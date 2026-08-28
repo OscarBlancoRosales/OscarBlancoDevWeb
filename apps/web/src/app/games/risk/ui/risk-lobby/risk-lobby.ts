@@ -266,9 +266,6 @@ export class RiskLobby implements OnInit, OnDestroy {
     try {
       const roomId = this.invitedRoom.id;
       this.rooms.listenToRoom(roomId);
-      // Damos un instante a que lleguen los asientos: así, si ya teníamos uno,
-      // lo recuperamos en vez de crear otro.
-      await new Promise((resolve) => setTimeout(resolve, 350));
       const seatId = await this.rooms.claimSeat(roomId, {
         name,
         seatToken: this.seatToken(),
@@ -300,7 +297,6 @@ export class RiskLobby implements OnInit, OnDestroy {
       return;
     }
     this.rooms.listenToRoom(summary.meta.id);
-    await new Promise((resolve) => setTimeout(resolve, 350));
     const seatId = await this.rooms.claimSeat(summary.meta.id, {
       name,
       seatToken: this.ownerUid(),
