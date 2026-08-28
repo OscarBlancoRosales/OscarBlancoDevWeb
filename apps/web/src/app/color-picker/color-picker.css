@@ -1,5 +1,3 @@
-/* Lo propio del selector de color; el resto sale de las piezas compartidas. */
-
 /* El color a pantalla ancha: tocarlo abre el selector del sistema */
 .hero {
   position: relative;
@@ -48,41 +46,38 @@
 .formats {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 24px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
 }
 
+/* Rejilla de tres columnas: etiqueta, campos y copiar. Las tres filas usan
+   las mismas, así que el botón de copiar cae siempre a la misma altura y a
+   la misma distancia, en vez de irse al final de la línea. */
 .fmt {
-  display: flex;
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-3);
+  max-width: 460px;
 }
 
 .fmt-name {
-  flex-shrink: 0;
-  width: 42px;
   font-size: 11px;
   letter-spacing: 1px;
   color: var(--muted);
 }
 
-.fmt-input {
-  flex: 1;
-  min-width: 0;
-  max-width: 220px;
-}
-
 .triple {
-  display: flex;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
 }
 
 .tri {
-  display: flex;
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -92,15 +87,18 @@
 }
 
 .tri .input {
-  width: 74px;
+  width: 100%;
 }
 
 .fmt-copy {
-  flex-shrink: 0;
-  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: var(--radius);
   color: var(--muted);
   font: inherit;
   cursor: pointer;
@@ -175,10 +173,7 @@
     flex-wrap: wrap;
   }
 
-  .tri .input {
-    width: 64px;
   }
-}
 
 @media (max-width: 768px) {
   /* Tres campos en fila no caben: que se repartan el ancho disponible */
@@ -192,18 +187,8 @@
     min-width: 0;
   }
 
-  .tri .input {
-    width: 100%;
-    min-width: 0;
-    padding: 8px 6px;
-    text-align: center;
-  }
-
-  .fmt-name {
+    .fmt-name {
     width: 100%;
   }
 
-  .fmt-input {
-    max-width: none;
   }
-}

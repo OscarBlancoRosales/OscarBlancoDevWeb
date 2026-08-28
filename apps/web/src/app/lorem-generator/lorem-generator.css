@@ -1,40 +1,5 @@
 /* Lo propio del lorem; el resto sale de las piezas compartidas. */
 
-.seg {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.seg-btn {
-  padding: 8px 14px;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.seg-btn:hover {
-  color: var(--accent);
-}
-
-.seg-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.flag--checks {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-}
-
 /* Texto largo: se lee mejor con la línea algo más suelta */
 .lorem-body {
   max-height: 46vh;

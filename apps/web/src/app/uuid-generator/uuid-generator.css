@@ -1,41 +1,6 @@
 /* Lo propio de esta herramienta. Lo demás sale de las piezas compartidas. */
 
-.flag--checks {
-  flex-direction: row;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-}
-
 /* Selector de versión: dos pestañas pegadas, como un interruptor */
-.seg {
-  display: inline-flex;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.seg-btn {
-  padding: 8px 16px;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.seg-btn:hover {
-  color: var(--accent);
-}
-
-.seg-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .version-note {
   margin-bottom: 16px;
 }

@@ -1,131 +1,14 @@
 /* Lo propio del codificador; el resto sale de las piezas compartidas. */
 
-.seg {
-  display: inline-flex;
-  flex-wrap: wrap;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.seg-btn {
-  padding: 8px 13px;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  transition: color 0.15s, background 0.15s;
-}
-
-.seg-btn:hover {
-  color: var(--accent);
-}
-
-.seg-btn.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-}
-
 .flag--row {
   flex-direction: row;
   align-items: center;
   padding-bottom: 2px;
 }
 
-.btn--sm {
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
-/* Entrada y salida una al lado de la otra: se ve la ida y la vuelta a la vez */
-.panes {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-
-.pane {
-  display: flex;
-  flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--bg-soft);
-  overflow: hidden;
-}
-
-.pane-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 10px;
-  border-bottom: 1px solid var(--border);
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-
-.pane-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-.pane-btn:hover:not(:disabled) {
-  color: var(--accent);
-}
-
-.pane-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.pane .textarea,
-.pane-body {
-  flex: 1;
-  min-height: 210px;
-  margin: 0;
-  padding: 11px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  font-family: inherit;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--bright);
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow: auto;
-}
-
-.pane .textarea:focus {
-  box-shadow: none;
-}
-
-.pane-body--error {
-  color: var(--error);
-}
-
 /* En móvil no caben dos columnas: una encima de otra */
 @media (max-width: 768px) {
-  .panes {
-    grid-template-columns: 1fr;
-  }
-
-  .pane .textarea,
-  .pane-body {
-    min-height: 130px;
-  }
-}
-
-/* ===== Lo propio del probador de expresiones ===== */
+    }
 
 /* La expresión se escribe entre barras, como en cualquier editor */
 .regex-line {
