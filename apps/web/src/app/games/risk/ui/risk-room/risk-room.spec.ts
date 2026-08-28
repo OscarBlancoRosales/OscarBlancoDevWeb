@@ -885,6 +885,86 @@ describe('RiskRoom (la mesa)', () => {
       expect(component.threadLines.map((l) => l.text)).not.toContain('pacto?');
     });
 
+    /**
+     * Un rival que no contesta cuando le hablas está roto. Aquí no hay clave de
+     * IA, así que contesta el cerebro local: eso es exactamente lo que hay que
+     * comprobar, porque es el caso de la mayoría de las partidas.
+     */
+    it('el bot al que escribes contesta, y sólo a ti', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+
+      const suyos = component.chat.filter((entry) => entry.authorId === bot.id && entry.to);
+      expect(suyos, 'el bot debería haber contestado').toHaveLength(1);
+      expect(suyos[0].to).toBe(component.seatId);
+      expect(suyos[0].text.length).toBeGreaterThan(0);
+
+      // Y su respuesta está en su hilo, no en el de todos.
+      expect(component.threadLines.map((l) => l.text)).toContain(suyos[0].text);
+      component.onThreadChange(CANAL_GENERAL);
+      expect(component.threadLines.map((l) => l.text)).not.toContain(suyos[0].text);
+    });
+
+    it('no contesta dos veces al mismo mensaje', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+      await component.sendToThread('¿entonces?');
+      await wait(60);
+
+      const suyos = component.chat.filter((entry) => entry.authorId === bot.id && entry.to);
+      expect(suyos).toHaveLength(2);
+    });
+
+    /**
+     * El aviso de «escribiendo…» existe para el hueco entre tu mensaje y la
+     * respuesta, que sólo se nota cuando contesta un modelo de lenguaje por la
+     * red: el cerebro local contesta en el mismo suspiro.
+     *
+     * Así que se prueba la regla, no la carrera: se suelta el servicio para
+     * que nadie conteste y se comprueba que el aviso aparece y desaparece.
+     */
+    it('mientras no ha contestado, la ficha avisa de que está escribiendo', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      expect(component.threadWaiting).toBe(false);
+
+      TestBed.inject(RiskGameService).detach();
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+      expect(component.threadWaiting, 'nadie ha contestado todavía').toBe(true);
+    });
+
+    it('y en el canal de todos no se espera a nadie', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('hola a todos');
+      await wait(60);
+      expect(component.threadWaiting).toBe(false);
+    });
+
     it('el consejero responde bajo demanda una vez empezada la partida', async () => {
       await component.fillWithBots();
       await wait();

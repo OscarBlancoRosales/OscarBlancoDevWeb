@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BehaviorSubject } from 'rxjs';
 import { GameConfig, GameState } from '@devweb/shared/engine/types';
 import { RiskGameService } from './risk-game.service';
-import { RiskRoomService, RoomMeta, RoomSeat, LoggedActionEntry } from './risk-room.service';
+import {
+  ChatEntry,
+  RiskRoomService,
+  RoomMeta,
+  RoomSeat,
+  LoggedActionEntry,
+} from './risk-room.service';
 import { DEFAULT_CONFIG } from '@devweb/shared/engine/engine';
 import { decideAction } from '@devweb/shared/engine/ai/bot-brain';
 import { getMap } from '@devweb/shared/engine/maps/map-registry';
@@ -50,6 +56,8 @@ class SalaFalsa {
   seats$ = new BehaviorSubject<RoomSeat[]>([]);
   snapshot$ = new BehaviorSubject<unknown>(null);
   log$ = new BehaviorSubject<LoggedActionEntry[]>([]);
+  /** El chat: por aquí llegan los privados a los que el bot contesta. */
+  chat$ = new BehaviorSubject<ChatEntry[]>([]);
   chats: Array<{ kind: string; text: string }> = [];
   listenToRoom = vi.fn();
 

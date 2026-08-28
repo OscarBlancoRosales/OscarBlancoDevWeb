@@ -3,7 +3,12 @@ import { BehaviorSubject, Observable, Subscription, combineLatest } from 'rxjs';
 import { GameAction, GameMap, GameState } from '@devweb/shared/engine/types';
 import { currentPlayer, playerById } from '@devweb/shared/engine/engine';
 import { decideAction, StrategyBias } from '@devweb/shared/engine/ai/bot-brain';
-import { requestAdvice, requestChronicle, requestTurnPlan } from '@devweb/shared/engine/ai/ai-orchestrator';
+import {
+  requestAdvice,
+  requestChronicle,
+  requestReply,
+  requestTurnPlan,
+} from '@devweb/shared/engine/ai/ai-orchestrator';
 import { chronicleFor, hasChronicle } from '@devweb/shared/engine/ai/chronicle';
 import { rngFor } from '@devweb/shared/engine/rng';
 import {
@@ -122,6 +127,11 @@ export class RiskGameService implements OnDestroy {
    * no había forma de continuar.
    */
   private skippedPhases = new Set<string>();
+  /** Privados a bots que ya se han contestado, para no contestar dos veces. */
+  private answered = new Set<string>();
+  /** La primera emisión del chat es historia, no mensajes nuevos. */
+  private chatIsHistory = true;
+  private chatSubscription: Subscription | undefined;
   private currentBias: StrategyBias | undefined;
 
   constructor(private rooms: RiskRoomService) {}
@@ -161,10 +171,62 @@ export class RiskGameService implements OnDestroy {
 
       if (derived.state) this.afterStateUpdate(derived, snapshot?.upTo ?? 0);
     });
+
+    this.chatSubscription = this.rooms.chat$.subscribe((chat) => {
+      this.answerDirectMessages(chat);
+    });
+  }
+
+  /**
+   * Contesta a los privados dirigidos a un bot.
+   *
+   * Sólo lo hace el anfitrión, por la misma razón por la que sólo él mueve a
+   * los bots: si contestara cada navegador, un mensaje tendría tantas
+   * respuestas como gente hubiera mirando la partida.
+   */
+  private answerDirectMessages(chat: ChatEntry[]): void {
+    // Lo que ya estaba escrito al entrar no se contesta: si no, abrir una sala
+    // vieja dispararía una ráfaga de respuestas a conversaciones de ayer.
+    if (this.chatIsHistory) {
+      this.chatIsHistory = false;
+      for (const entry of chat) this.answered.add(entry.key);
+      return;
+    }
+
+    if (!this.isHost || !this.map) return;
+    const state = this.stateSubject.value;
+    if (!state || state.phase === 'game-over') return;
+
+    for (const entry of chat.slice(-10)) {
+      if (entry.kind !== 'player' || !entry.to) continue;
+      if (this.answered.has(entry.key)) continue;
+      const seat = this.seats.find((candidate) => candidate.id === entry.to);
+      if (!seat || seat.kind !== 'bot') continue;
+      this.answered.add(entry.key);
+      void this.replyAsBot(entry, seat);
+    }
+  }
+
+  private async replyAsBot(entry: ChatEntry, seat: RoomSeat): Promise<void> {
+    const state = this.stateSubject.value;
+    if (!state || !this.map) return;
+    const answer = await requestReply(state, this.map, seat.id, entry.text, this.aiSettings);
+    await this.rooms.sendChat(this.roomId, {
+      authorId: seat.id,
+      author: seat.name,
+      kind: 'bot',
+      text: answer.message,
+      origin: answer.source,
+      to: entry.authorId,
+    });
   }
 
   detach(): void {
     this.subscription?.unsubscribe();
+    this.chatSubscription?.unsubscribe();
+    this.chatSubscription = undefined;
+    this.answered.clear();
+    this.chatIsHistory = true;
     this.subscription = undefined;
     if (this.pendingTimer) clearTimeout(this.pendingTimer);
     this.pendingTimer = null;

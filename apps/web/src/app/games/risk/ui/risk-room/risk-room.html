@@ -330,11 +330,12 @@
         [openThread]="openThread"
         [lines]="threadLines"
         [generalUnread]="generalUnread"
+        [waiting]="threadWaiting"
         (openThreadChange)="onThreadChange($event)"
         (send)="sendToThread($event)"
       ></app-risk-roster>
 
-      <!-- Hojas de la fase: sólo lo que no cabe en la barra de abajo. -->
+
       <!--
         Fin de partida: esto sí es un cartel en medio de la pantalla, porque
         detrás ya no queda nada que hacer.

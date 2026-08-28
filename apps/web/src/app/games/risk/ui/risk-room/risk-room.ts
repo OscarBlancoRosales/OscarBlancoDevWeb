@@ -1172,6 +1172,21 @@ export class RiskRoom implements OnInit, OnDestroy {
     return rows;
   }
 
+  /**
+   * Si estamos esperando a que el bot conteste.
+   *
+   * Se deduce de la conversación: el último que ha hablado soy yo y enfrente
+   * hay una máquina. Sin este aviso, el hueco entre tu mensaje y su respuesta
+   * parece que se ha perdido el mensaje.
+   */
+  get threadWaiting(): boolean {
+    const thread = this.openThread;
+    if (!thread || thread === CANAL_GENERAL || thread === HILO_ESTRATEGA) return false;
+    if (this.seats.find((seat) => seat.id === thread)?.kind !== 'bot') return false;
+    const lines = this.threadLines;
+    return lines.length > 0 && !!lines[lines.length - 1]?.mine;
+  }
+
   onThreadChange(id: string | null): void {
     const now = Date.now();
     if (this.openThread) this.seenAt[this.openThread] = now;
