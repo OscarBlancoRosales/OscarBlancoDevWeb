@@ -371,6 +371,7 @@ export class RoomService {
           displayName: seat.displayName,
           isBot: seat.isBot,
           connected: conectados?.conectado(seat.seatId) ?? false,
+          isOwner: room.ownerId !== null && seat.userId === room.ownerId,
           order: seat.order,
           meta: seat.meta,
         }),

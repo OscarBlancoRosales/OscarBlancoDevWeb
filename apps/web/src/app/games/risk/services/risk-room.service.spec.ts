@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { RiskRoomService, aChat, aMeta, aSeat } from './risk-room.service';
 import type { NgZone } from '@angular/core';
 import type { RoomsApiService } from '../../../api/rooms-api.service';
@@ -26,6 +26,7 @@ const ASIENTO: SeatInfo = {
   displayName: 'Ana',
   isBot: false,
   connected: true,
+  isOwner: false,
   order: 2,
 };
 
@@ -87,6 +88,12 @@ describe('los asientos', () => {
       color: '',
       isOwner: false,
     });
+  });
+
+  it('quién es el anfitrión lo dice el servidor, no los metadatos', () => {
+    const seat = aSeat({ ...ASIENTO, isOwner: true, meta: { isOwner: false } });
+
+    expect(seat.isOwner).toBe(true);
   });
 });
 
@@ -171,6 +178,29 @@ describe('crear una sala y sentarse en ella', () => {
 
     expect(seatId).toBe('seat-duenyo');
     expect(api.unidas).toBe(0);
+  });
+
+  it('mandar una jugada no vuelve hasta que el servidor contesta', async () => {
+    vi.useFakeTimers();
+    const rooms = servicio(new ApiDeMentira());
+    let contestado = false;
+
+    void rooms
+      .pushAction('sala-1', { type: 'end-phase', playerId: 'seat-1' }, 'seat-1')
+      .then(() => {
+        contestado = true;
+      });
+    await Promise.resolve();
+
+    // Si volviera de inmediato, quien mueve los bots vería el estado sin
+    // cambiar y daría por rechazada una jugada que iba camino del servidor.
+    expect(contestado).toBe(false);
+
+    // Y si el servidor no contesta nunca, tampoco se queda ahí colgado.
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(contestado).toBe(true);
+
+    vi.useRealTimers();
   });
 
   it('quien llega por invitación se sienta una vez, y al volver recupera su silla', async () => {

@@ -126,6 +126,9 @@ export const SNAPSHOT_EVERY = 40;
 /** Dónde se guarda el pase de cada sala. Uno por sala, no uno por navegador. */
 const PASES_KEY = 'risk_seat_passes';
 
+/** Cuánto se espera a que el servidor conteste una jugada. */
+const ESPERA_MAXIMA_MS = 5000;
+
 @Injectable({ providedIn: 'root' })
 export class RiskRoomService {
   private currentRoomId = '';
@@ -351,7 +354,7 @@ export class RiskRoomService {
     await this.rooms.cambiarAsiento(
       roomId,
       grant.seatId,
-      { meta: { color: seat.color, joinedAt: Date.now(), isOwner: seat.isOwner ?? false } },
+      { meta: { color: seat.color, joinedAt: Date.now() } },
       grant.seatToken,
     );
     this.conectar(roomId, grant.seatToken);
@@ -468,14 +471,44 @@ export class RiskRoomService {
     await this.refrescar(roomId);
   }
 
-  /** Manda una jugada. En local se apunta en el log; en red la juzga el servidor. */
+  /**
+   * Manda una jugada y espera a que el servidor conteste.
+   *
+   * Esperar no es cortesía: quien mueve los bots comprueba si el estado ha
+   * avanzado para saber si la jugada entró, y si esto volviera nada más
+   * enviarla, siempre parecería rechazada. Da igual si contesta con el estado
+   * nuevo o con un rechazo; lo que hace falta es que haya contestado.
+   */
   async pushAction(roomId: string, action: GameAction, by: string): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.appendAction(roomId, action, by);
       this.emitLocal(roomId);
       return;
     }
+    const antes = this.snapshotSubject.value?.upTo ?? 0;
     this.socket.enviar(action);
+    await this.respuestaDelServidor(antes);
+  }
+
+  /**
+   * Se resuelve cuando el servidor dice algo sobre la jugada, o cuando se
+   * acaba la paciencia: si la conexión se ha caído, quien esperaba tiene que
+   * poder seguir y volver a intentarlo.
+   */
+  private respuestaDelServidor(desdeSeq: number): Promise<void> {
+    return new Promise((resolve) => {
+      const terminar = (): void => {
+        clearTimeout(reloj);
+        suscripcion.unsubscribe();
+        resolve();
+      };
+      const reloj = setTimeout(terminar, ESPERA_MAXIMA_MS);
+      const suscripcion = this.socket.messages$.subscribe((mensaje) => {
+        const contesta =
+          mensaje.tipo === 'rechazada' || (mensaje.tipo === 'estado' && mensaje.seq > desdeSeq);
+        if (contesta) terminar();
+      });
+    });
   }
 
   /** Guarda un punto de control. En red lo lleva el servidor, que es quien aplica. */
@@ -692,7 +725,7 @@ export function aSeat(seat: SeatInfo): RoomSeat {
     joinedAt: numero(meta['joinedAt']) ?? 0,
     lastSeen: 0,
     connected: seat.connected,
-    isOwner: meta['isOwner'] === true,
+    isOwner: seat.isOwner,
   };
 }
 
@@ -743,7 +776,6 @@ function metaDe(seat: RoomSeat | undefined): Record<string, unknown> {
   return {
     color: seat.color,
     joinedAt: seat.joinedAt,
-    isOwner: seat.isOwner,
     ...(seat.botProfile !== undefined && { botProfile: seat.botProfile }),
   };
 }

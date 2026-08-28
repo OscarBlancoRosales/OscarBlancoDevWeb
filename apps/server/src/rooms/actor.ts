@@ -320,11 +320,23 @@ export class RoomActor {
     }
   }
 
+  private toSeatInfo(seat: Seat): SeatInfo {
+    return {
+      id: seat.id,
+      displayName: seat.displayName,
+      isBot: seat.isBot,
+      connected: seat.connected,
+      isOwner: this.duenyos.has(seat.id),
+      order: seat.order,
+      ...(seat.meta !== undefined && { meta: seat.meta }),
+    };
+  }
+
   messageFor(seatId: SeatId): ServerMessage {
     return {
       tipo: 'estado',
       seq: this.seq,
-      seats: this.seats.map(toSeatInfo),
+      seats: this.seats.map((seat) => this.toSeatInfo(seat)),
       status: this.status,
       vista: this.state === null ? null : this.module.view(this.state, seatId, this.seats),
     };
@@ -339,15 +351,4 @@ export class RoomActor {
       this.now(),
     );
   }
-}
-
-function toSeatInfo(seat: Seat): SeatInfo {
-  return {
-    id: seat.id,
-    displayName: seat.displayName,
-    isBot: seat.isBot,
-    connected: seat.connected,
-    order: seat.order,
-    ...(seat.meta !== undefined && { meta: seat.meta }),
-  };
 }

@@ -30,6 +30,14 @@ export const SeatInfo = Type.Object({
   displayName: DisplayName,
   isBot: Type.Boolean(),
   connected: Type.Boolean(),
+  /**
+   * Si este asiento es el de quien creó la sala.
+   *
+   * Lo dice el servidor, no el cliente. Es lo que decide qué botones se pintan,
+   * y tiene que salir del mismo sitio del que salen los permisos: si no, la
+   * pantalla acaba ofreciendo cosas que la API va a rechazar.
+   */
+  isOwner: Type.Boolean(),
   order: Type.Integer(),
   /**
    * Lo que el juego necesita del asiento y las salas no saben interpretar.
