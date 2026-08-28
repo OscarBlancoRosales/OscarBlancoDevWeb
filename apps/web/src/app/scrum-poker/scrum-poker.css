@@ -932,3 +932,14 @@
     font-size: 11px;
   }
 }
+/* Cuando no se pudo entrar en la sala. Se ve, o no sirve de nada. */
+.sala-error {
+  margin: 1rem 0;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid #a33;
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: rgba(170, 51, 51, 0.12);
+  color: #ffb3b3;
+  font-family: inherit;
+}

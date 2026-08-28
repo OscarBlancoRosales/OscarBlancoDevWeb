@@ -99,9 +99,12 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
     this.roomSubscription = this.rooms.roomData$.subscribe(data => {
       if (data) {
+        // `detectChanges()` aquí forzaba una detección DENTRO del ciclo en
+        // curso y Angular abortaba el pintado con NG0100, dejando la pantalla
+        // con el estado viejo. Volver a la zona ya programa el repintado.
         this.ngZone.run(() => {
           this.handleRoomUpdate(data);
-          this.cdr.detectChanges();
+          this.cdr.markForCheck();
         });
       }
     });
@@ -500,7 +503,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   copyRoomLink(): void {
     const inviteLink = `${window.location.origin}/scrum-poker?room=${this.roomId}`;
-    navigator.clipboard.writeText(inviteLink);
+    void navigator.clipboard.writeText(inviteLink);
   }
 
   leaveRoom(): void {
@@ -508,6 +511,6 @@ export class ScrumPoker implements OnInit, OnDestroy {
     for (const clave of ['current_room_id', 'player_name', 'seat_id', 'seat_token']) {
       localStorage.removeItem(clave);
     }
-    this.router.navigate(['/']);
+    void this.router.navigate(['/']);
   }
 }

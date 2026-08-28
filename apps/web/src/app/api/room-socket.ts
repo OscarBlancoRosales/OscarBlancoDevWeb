@@ -66,10 +66,17 @@ export class RoomSocket {
     const url = `${apiSocketUrl()}/ws?sala=${encodeURIComponent(roomId)}&pase=${encodeURIComponent(seatToken)}`;
     this.estado.next('conectando');
 
-    // Fuera de la zona de Angular: un WebSocket activo dispararía detección de
-    // cambios en cada mensaje, y en una partida eso es constante. Lo que hace
-    // falta repintar se vuelve a meter en la zona al recibirlo.
-    const socket = this.zone.runOutsideAngular(() => new WebSocket(url));
+    // Fuera de la zona de Angular, y no solo la construcción: zone.js decide
+    // dónde corre cada manejador según dónde se registra. Registrarlos dentro
+    // haría que cada mensaje disparase detección de cambios, y en una partida
+    // eso es constante. Lo que hay que repintar vuelve a la zona al recibirlo.
+    this.zone.runOutsideAngular(() => {
+      this.montar(url);
+    });
+  }
+
+  private montar(url: string): void {
+    const socket = new WebSocket(url);
     this.socket = socket;
 
     socket.onopen = (): void => {

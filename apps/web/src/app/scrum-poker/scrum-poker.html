@@ -1,5 +1,8 @@
 <app-terminal-layout title="Scrum Poker">
 <div class="scrum-poker-container">
+  <!-- Si no se pudo entrar, hay que decirlo: una sala vacía y muda es
+       indistinguible de una sala que todavía está cargando. -->
+  <div class="sala-error" *ngIf="errorDeSala">{{ errorDeSala }}</div>
   <!-- Header -->
   <header class="poker-header">
     <div class="header-left">
