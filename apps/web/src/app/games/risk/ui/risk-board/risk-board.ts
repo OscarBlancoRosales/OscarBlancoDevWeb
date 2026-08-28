@@ -1,5 +1,5 @@
 import {
-  AfterViewInit,
+  AfterViewChecked,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
@@ -88,7 +88,18 @@ interface ViewInputs {
   styleUrl: './risk-board.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RiskBoard implements AfterViewInit, OnDestroy {
+export class RiskBoard implements AfterViewChecked, OnDestroy {
+  /**
+   * El cartel del ratón se coloca después de pintarlo.
+   *
+   * Hasta que Angular no lo ha dibujado no se puede medir, y sin medirlo no se
+   * sabe si cabe encima del país o hay que ponerlo debajo. Al arrastrar el mapa
+   * lo recoloca `paintView`, que es quien sabe que la vista se ha movido.
+   */
+  ngAfterViewChecked(): void {
+    this.placeOverTerritory(this.tooltipRef?.nativeElement, this.hovered);
+  }
+
   @Input({ required: true }) set map(value: GameMap) {
     this._map = value;
     this.rendered = renderMap(value);
@@ -158,9 +169,32 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
   @Output() territoryClick = new EventEmitter<TerritoryId>();
   @Output() territoryHover = new EventEmitter<TerritoryId | null>();
 
-  @ViewChild('svg') svgRef?: ElementRef<SVGSVGElement>;
+  /**
+   * El SVG, y con él los gestos.
+   *
+   * Se engancha desde el propio `@ViewChild` y no desde `ngAfterViewInit`,
+   * porque el mapa vive dentro de un `*ngIf` y puede aparecer más tarde. Con el
+   * enganche en un momento fijo, si el SVG no estaba dibujado todavía los
+   * oyentes no se ponían NUNCA, y el síntoma era desconcertante: el botón de
+   * acercar funcionaba —pasa por Angular— pero la rueda no, y arrastrar sobre
+   * un territorio colocaba tropas en cadena en vez de mover el mapa.
+   */
+  @ViewChild('svg') set svgElement(ref: ElementRef<SVGSVGElement> | undefined) {
+    if (this.svgRef?.nativeElement === ref?.nativeElement) return;
+    this.detachGestures();
+    this.svgRef = ref;
+    this.attachGestures();
+  }
+  svgRef: ElementRef<SVGSVGElement> | undefined;
+
   /** El grupo que se mueve. Se le escribe el `transform` a mano. */
-  @ViewChild('viewport') viewportRef?: ElementRef<SVGGElement>;
+  @ViewChild('viewport') set viewportElement(ref: ElementRef<SVGGElement> | undefined) {
+    this.viewportRef = ref;
+    this.paintView();
+  }
+  viewportRef: ElementRef<SVGGElement> | undefined;
+  /** Cartel del territorio bajo el ratón. Se cuelga de su país, no de una esquina. */
+  @ViewChild('tooltipCard') tooltipRef: ElementRef<HTMLElement> | undefined;
   /** Hueco flotante donde la sala cuelga sus controles de contexto. */
   @ViewChild('anchorSlot') anchorSlotRef?: ElementRef<HTMLElement>;
 
@@ -190,17 +224,49 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
    * tests— devuelve null y el hueco se queda escondido: mejor eso que
    * inventarse una posición.
    */
+  /** Cuánto se separa de la ficha de ejércitos, para no taparle el número. */
+  private readonly ANCHOR_GAP = 26;
+  /** Margen mínimo con el borde de la pantalla. */
+  private readonly ANCHOR_MARGIN = 8;
+
   private positionAnchor(): void {
-    const slot = this.anchorSlotRef?.nativeElement;
-    if (!slot) return;
-    const point = this.screenPointOf(this._anchorAt);
+    this.placeOverTerritory(this.anchorSlotRef?.nativeElement, this._anchorAt);
+    // El cartel del ratón también se pega a su país: vivía en la esquina de
+    // arriba a la izquierda, que ahora es del bloque de fase, y se solapaban.
+    this.placeOverTerritory(this.tooltipRef?.nativeElement, this.hovered);
+  }
+
+  /**
+   * Cuelga un elemento del territorio que le toque.
+   *
+   * Encima si cabe y debajo si no, y siempre dentro de la pantalla. Sin lo
+   * primero, apuntar a un país de la fila de arriba manda la tarjeta fuera de
+   * la vista; sin lo segundo, un país del borde la saca por el lado.
+   */
+  private placeOverTerritory(el: HTMLElement | undefined, id: TerritoryId | null): void {
+    if (!el) return;
+    const point = this.screenPointOf(id);
     if (!point) {
-      slot.style.display = 'none';
+      el.style.display = 'none';
       return;
     }
-    slot.style.display = '';
-    slot.style.left = `${point.x}px`;
-    slot.style.top = `${point.y}px`;
+    el.style.display = '';
+
+    const box = this.svgRef?.nativeElement.getBoundingClientRect();
+    const card = el.getBoundingClientRect();
+    const margin = this.ANCHOR_MARGIN;
+
+    let top = point.y - card.height - this.ANCHOR_GAP;
+    if (top < margin) top = point.y + this.ANCHOR_GAP;
+
+    let left = point.x - card.width / 2;
+    if (box) {
+      left = Math.min(Math.max(margin, left), Math.max(margin, box.width - card.width - margin));
+      top = Math.min(top, Math.max(margin, box.height - card.height - margin));
+    }
+
+    el.style.left = `${left}px`;
+    el.style.top = `${top}px`;
   }
 
   private screenPointOf(id: TerritoryId | null): { x: number; y: number } | null {
@@ -218,7 +284,7 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
   }
 
   /**
-   * Los gestos del mapa se enganchan aquí, NO en la plantilla.
+   * Los gestos del mapa se enganchan a mano, NO en la plantilla.
    *
    * Un `(pointermove)` en la plantilla ensucia la vista en cada píxel que se
    * mueve el dedo, y eso repinta el mapa entero: con el mapa del mundo son
@@ -232,7 +298,7 @@ export class RiskBoard implements AfterViewInit, OnDestroy {
    * Los toques sobre un territorio SÍ siguen en la plantilla: ésos cambian la
    * partida y tienen que repintar.
    */
-  ngAfterViewInit(): void {
+  private attachGestures(): void {
     const svg = this.svgRef?.nativeElement;
     if (!svg) return;
     svg.addEventListener('pointerdown', this.onPointerDown);

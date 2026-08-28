@@ -105,6 +105,42 @@ describe('RiskBoard: coste de arrastrar el mapa', () => {
     expect(transformActual()).toBe(antes);
   });
 
+  /**
+   * Los gestos tienen que engancharse aparezca el SVG cuando aparezca.
+   *
+   * Encontrado en el navegador: si el mapa todavía no está dibujado cuando
+   * corre `ngAfterViewInit`, los oyentes no se enganchaban NUNCA. El resultado
+   * era muy raro de leer: el botón de acercar funcionaba —pasa por Angular—
+   * pero la rueda no hacía nada, y arrastrar sobre un territorio no movía el
+   * mapa sino que colocaba tropas en cadena, porque el seguimiento del dedo
+   * también vive en esos oyentes.
+   */
+  it('los gestos se enganchan aunque el mapa se dibuje más tarde', async () => {
+    const tardio = TestBed.createComponent(RiskBoard);
+    // Primer pintado SIN mapa: el SVG no existe todavía.
+    tardio.detectChanges();
+    expect(tardio.nativeElement.querySelector('svg.board')).toBeNull();
+
+    tardio.componentRef.setInput('map', WORLD_MAP);
+    tardio.detectChanges();
+    await tardio.whenStable();
+
+    const svgTardio = tardio.nativeElement.querySelector('svg.board') as SVGSVGElement;
+    svgTardio.dispatchEvent(
+      new PointerEvent('pointerdown', { clientX: 400, clientY: 300, bubbles: true }),
+    );
+    for (let i = 1; i <= 60; i++) {
+      svgTardio.dispatchEvent(
+        new PointerEvent('pointermove', { clientX: 400 + i, clientY: 300, bubbles: true }),
+      );
+    }
+    svgTardio.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+
+    const grupo = tardio.nativeElement.querySelector('svg.board > g') as SVGGElement;
+    expect(grupo.getAttribute('transform')).toContain('translate(60 0)');
+    tardio.destroy();
+  });
+
   it('pulsar sin apenas moverse no mueve el mapa', async () => {
     const antes = transformActual();
     // Cuatro píxeles: lo que tiembla una mano, no un gesto de arrastre.

@@ -150,7 +150,7 @@
   </div>
 
   <!-- Cartel flotante del territorio bajo el cursor -->
-  <div class="board-tooltip" *ngIf="tooltip as info">
+  <div class="board-tooltip" #tooltipCard *ngIf="tooltip as info">
     <span class="tip-name">{{ info.name }}</span>
     <span class="tip-owner" [style.color]="info.color">{{ info.owner }}</span>
     <span class="tip-armies">{{ info.armies }} ejércitos</span>
