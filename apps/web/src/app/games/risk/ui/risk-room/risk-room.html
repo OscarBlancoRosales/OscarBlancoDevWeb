@@ -59,6 +59,7 @@
           <ul class="seat-list">
             <li class="seat" *ngFor="let seat of seats; trackBy: trackSeat" [class.me]="seat.id === seatId">
               <span class="seat-color" [style.background]="seat.color"></span>
+              <span class="seat-avatar" *ngIf="seat.avatar">{{ seat.avatar }}</span>
               <div class="seat-info">
                 <span class="seat-name">
                   {{ seat.name }}
@@ -85,6 +86,27 @@
               </button>
             </li>
           </ul>
+
+          <!--
+            Tu cara. Durante la partida es tu ficha y la puerta de tu chat, así
+            que se elige antes de empezar y no en mitad de un turno. Las que ya
+            lleva otro no se pueden coger: dos caras iguales rompen justo lo
+            que la cara resuelve.
+          -->
+          <div class="avatar-picker">
+            <span class="avatar-picker-label">Tu cara</span>
+            <button
+              class="avatar-choice"
+              type="button"
+              *ngFor="let emoji of avatarChoices"
+              [class.mine]="myAvatar === emoji"
+              [disabled]="avatarTaken(emoji)"
+              [title]="avatarTaken(emoji) ? 'Ya la lleva otro' : 'Elegir esta cara'"
+              (click)="chooseAvatar(emoji)"
+            >
+              {{ emoji }}
+            </button>
+          </div>
 
           <div class="empty-seats" *ngIf="freeSeats > 0">
             <span>{{ freeSeats }} {{ freeSeats === 1 ? 'hueco libre' : 'huecos libres' }}</span>

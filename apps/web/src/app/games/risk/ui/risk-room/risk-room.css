@@ -1324,3 +1324,44 @@
     bottom: 62px;
   }
 }
+
+/* ===================== ELEGIR CARA ===================== */
+
+.avatar-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.avatar-picker-label {
+  margin-right: 4px;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.avatar-choice {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.avatar-choice.mine {
+  border-color: #00e676;
+}
+
+.avatar-choice:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.seat-avatar {
+  font-size: 17px;
+}

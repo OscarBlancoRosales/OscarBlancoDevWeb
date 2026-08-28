@@ -97,6 +97,8 @@ export interface RoomSeat {
   lastSeen: number;
   connected: boolean;
   isOwner: boolean;
+  /** Cara elegida en la sala de espera. Emoji; los bots traen la suya. */
+  avatar?: string;
 }
 
 export interface LoggedActionEntry {

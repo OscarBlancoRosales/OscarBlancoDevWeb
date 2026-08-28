@@ -79,6 +79,7 @@ const HILO_ESTRATEGA = 'advisor';
  */
 const AVATARES = ['🦁', '👑', '🐉', '🦅', '🐺', '🦊', '🐻', '🦈', '🐍', '🦂', '🐗', '🦉'];
 
+/** Cara de reserva para quien no ha elegido: por orden, para no repetir. */
 function avatarFor(index: number): string {
   return AVATARES[index % AVATARES.length] ?? '🎖';
 }
@@ -1144,11 +1145,12 @@ export class RiskRoom implements OnInit, OnDestroy {
   get rosterRows(): RosterRow[] {
     const total = this.scoreboard.reduce((sum, entry) => sum + entry.armies, 0) || 1;
     const unread = this.unreadByThread();
+    const caras = this.avatarAssignment();
     const rows: RosterRow[] = this.scoreboard.map((entry, index) => ({
       id: entry.player.id,
       name: entry.player.name,
       color: entry.player.color,
-      avatar: avatarFor(index),
+      avatar: caras.get(entry.player.id) ?? avatarFor(index),
       territories: entry.territories,
       armies: entry.armies,
       eliminated: entry.player.eliminated,
@@ -1185,6 +1187,49 @@ export class RiskRoom implements OnInit, OnDestroy {
     if (this.seats.find((seat) => seat.id === thread)?.kind !== 'bot') return false;
     const lines = this.threadLines;
     return lines.length > 0 && !!lines[lines.length - 1]?.mine;
+  }
+
+  // ===== CARAS =====
+
+  readonly avatarChoices = AVATARES;
+
+  /**
+   * Reparto de caras: las elegidas mandan, el resto coge de las que sobran.
+   *
+   * Se reparte todo de una vez y no asiento por asiento, porque si no una cara
+   * elegida y una repartida pueden salir iguales, y dos jugadores con la misma
+   * cara rompen justo lo que la cara resuelve.
+   */
+  private avatarAssignment(): Map<string, string> {
+    const elegidas = new Set(
+      this.seats.map((seat) => seat.avatar).filter((avatar): avatar is string => !!avatar),
+    );
+    const libres = AVATARES.filter((emoji) => !elegidas.has(emoji));
+    const reparto = new Map<string, string>();
+    let siguiente = 0;
+    for (const seat of this.seats) {
+      reparto.set(seat.id, seat.avatar || libres[siguiente++ % libres.length] || '🎖');
+    }
+    return reparto;
+  }
+
+  get myAvatar(): string {
+    return this.avatarAssignment().get(this.seatId) ?? '🎖';
+  }
+
+  /**
+   * Caras que ya lleva otro.
+   *
+   * Dos jugadores con la misma cara rompen justo lo que la cara resuelve:
+   * saber de quién es cada ficha de un vistazo.
+   */
+  avatarTaken(emoji: string): boolean {
+    return this.seats.some((seat) => seat.id !== this.seatId && seat.avatar === emoji);
+  }
+
+  async chooseAvatar(emoji: string): Promise<void> {
+    if (this.avatarTaken(emoji)) return;
+    await this.rooms.updateSeat(this.roomId, this.seatId, { avatar: emoji });
   }
 
   onThreadChange(id: string | null): void {

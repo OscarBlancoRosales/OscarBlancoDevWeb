@@ -158,6 +158,49 @@ describe('RiskRoom (la mesa)', () => {
       expect(new Set(component.seats.map((seat) => seat.color)).size).toBe(4);
     });
 
+    /**
+     * La cara no es un adorno: durante la partida es tu ficha en el marcador y
+     * la puerta de tu conversación. Por eso se elige antes de empezar.
+     */
+    describe('elegir cara', () => {
+      it('empieza con una repartida, y elegir la cambia', async () => {
+        const primera = component.myAvatar;
+        expect(primera.length).toBeGreaterThan(0);
+
+        const otra = component.avatarChoices.find((emoji) => emoji !== primera)!;
+        await component.chooseAvatar(otra);
+        await wait();
+        expect(component.myAvatar).toBe(otra);
+      });
+
+      it('no deja coger la que ya lleva otro', async () => {
+        await component.addBot();
+        await wait();
+        const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+        await TestBed.inject(RiskRoomService).updateSeat(roomId, bot.id, { avatar: '🐉' });
+        await wait();
+
+        expect(component.avatarTaken('🐉')).toBe(true);
+        await component.chooseAvatar('🐉');
+        await wait();
+        expect(component.myAvatar).not.toBe('🐉');
+      });
+
+      it('y el reparto nunca repite cara, mezcle elegidas y repartidas', async () => {
+        await component.fillWithBots();
+        await wait();
+        await component.chooseAvatar(component.avatarChoices[3]);
+        await wait();
+        await component.startGame();
+        await wait(30);
+
+        const caras = component.rosterRows
+          .filter((row) => row.id !== 'advisor')
+          .map((row) => row.avatar);
+        expect(new Set(caras).size).toBe(caras.length);
+      });
+    });
+
     it('el propietario puede quitar a otros pero no a sí mismo', async () => {
       await component.addBot();
       await wait();

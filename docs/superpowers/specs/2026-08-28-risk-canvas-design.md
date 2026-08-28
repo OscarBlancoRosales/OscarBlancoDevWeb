@@ -138,10 +138,16 @@ fase 4 del backend propio pondrá el WebSocket sin que la pantalla se entere.
 
 ### 6. Avatares
 
-Cada jugador elige el suyo al entrar en la sala; los bots traen el suyo por
-perfil. Emoji de un juego cerrado, dibujado dentro de un anillo del color del
-jugador. Sin imágenes, sin subidas y sin almacenamiento: funciona en cualquier
-navegador y viaja en el asiento cuando el backend tome el relevo.
+Cada jugador elige el suyo en la sala de espera, de un juego cerrado de doce
+emoji dibujados dentro de un anillo con su color. Sin imágenes, sin subidas y
+sin almacenamiento propio: funciona en cualquier navegador y viaja en el
+asiento cuando el backend tome el relevo.
+
+Quien no elija recibe una de las que sobren. El reparto se hace de una vez para
+toda la mesa, no asiento por asiento: si no, una cara elegida y una repartida
+pueden salir iguales, y dos jugadores con la misma cara rompen justo lo que la
+cara resuelve. Por el mismo motivo, las caras que ya lleva otro no se pueden
+coger.
 
 ## Qué NO se construye
 
@@ -179,8 +185,24 @@ desde su avatar.
 
 ## Entregas
 
-| # | Qué | Terminada cuando |
-|---|-----|------------------|
-| 1 | Rendimiento del tablero y umbral de arrastre | El arrastre no provoca ciclos de detección de cambios y pulsar no mueve el mapa |
-| 2 | Las cuatro esquinas y los controles contextuales | Desaparecen la barra de acción y los paneles con pestañas, y no se pierde ninguna función |
-| 3 | Chat por avatar, canales y respuestas de los bots | Se puede hablar en general o con un bot concreto, y contesta |
+| # | Qué | Terminada cuando | Estado |
+|---|-----|------------------|--------|
+| 1 | Rendimiento del tablero y umbral de arrastre | El arrastre no provoca ciclos de detección de cambios y pulsar no mueve el mapa | Hecha |
+| 2 | Las cuatro esquinas y los controles contextuales | Desaparecen la barra de acción y los paneles con pestañas, y no se pierde ninguna función | Hecha |
+| 3 | Chat por avatar, canales y respuestas de los bots | Se puede hablar en general o con un bot concreto, y contesta | Hecha |
+
+Lo medido en la entrega 1, con el mapa del mundo y revirtiendo el cambio para
+comprobar que los tests lo atrapan:
+
+| | Antes | Después |
+|---|---|---|
+| Llamadas a `classesFor` por toque en el mapa | 42 | 0 |
+| Repintados durante un arrastre de 200 movimientos | 200 | 0 |
+| Margen antes de que arrastrar mueva el mapa | 0 px | 8 px |
+
+## Lo que queda fuera
+
+Los pactos con tope por ronda que se hablaron al principio no entran aquí: el
+chat privado con los bots es la conversación, pero un pacto que el motor
+respete es una regla del juego, y las reglas del juego no se tocan en un
+rediseño de pantalla.
