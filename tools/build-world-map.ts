@@ -169,7 +169,7 @@ async function main(): Promise<void> {
 
   // 6. Rutas marítimas: las adyacencias del tablero que sobre el mapa no se tocan.
   const touching = adjacencyByContact(shapes, contactThresholdFor(BOARD_WIDTH));
-  const seaRoutes: Array<[string, string]> = [];
+  const seaRoutes: [string, string][] = [];
   const seen = new Set<string>();
   for (const [id, neighbours] of Object.entries(WORLD_ADJACENCY)) {
     for (const other of neighbours) {
@@ -198,7 +198,7 @@ async function main(): Promise<void> {
   lines.push(`export const WORLD_BOARD_HEIGHT = ${boardHeight};`);
   lines.push('');
   lines.push('/** Adyacencias del tablero que hay que dibujar como salto por mar. */');
-  lines.push('export const WORLD_SEA_ROUTES: Array<[string, string]> = [');
+  lines.push('export const WORLD_SEA_ROUTES: [string, string][] = [');
   for (const [a, b] of seaRoutes) lines.push(`  ['${a}', '${b}'],`);
   lines.push('];');
   lines.push('');

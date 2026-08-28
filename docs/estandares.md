@@ -123,8 +123,8 @@ un valor por defecto cómodo para producción y un punto de entrada para el test
 Cero tolerancia.
 
 **Avisos (no bloquean, pero no pueden crecer):** las mismas reglas sobre el código
-que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1197 al
-escribir esto, y `--max-warnings 1197` impide que suban.
+que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1195 al
+escribir esto, y `--max-warnings 1195` impide que suban.
 
 El motivo de no ponerlos como error es práctico: son más de mil, la mayoría
 aserciones `!` e interpolaciones sin tipo. Un repositorio en rojo permanente
