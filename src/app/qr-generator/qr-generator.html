@@ -12,16 +12,14 @@
       [placeholder]="i18n.t('qr.placeholder')"
       rows="3"></textarea>
 
-    <div class="tool-flags qr-flags">
-      <div class="flag">
-        <span class="flag-label">{{ i18n.t('qr.presets') }}</span>
-        <div class="preset-row">
-          @for (p of presets; track p.id) {
-            <button class="btn btn--sm" (click)="usePreset(p.id)">{{ p.label }}</button>
-          }
-        </div>
-      </div>
+    <div class="presets">
+      <span class="flag-label">{{ i18n.t('qr.presets') }}</span>
+      @for (p of presets; track p.id) {
+        <button class="btn btn--sm" (click)="usePreset(p.id)">{{ p.label }}</button>
+      }
+    </div>
 
+    <div class="tool-flags qr-flags">
       <div class="flag">
         <label class="flag-label" for="qr-size">{{ i18n.t('qr.size') }}</label>
         <select id="qr-size" class="select" [(ngModel)]="size" (ngModelChange)="generateQR()">
@@ -41,7 +39,7 @@
         </select>
       </div>
 
-      <div class="flag flag--row">
+      <div class="flag flag--bare">
         <label class="check">
           <input type="checkbox" [(ngModel)]="transparent" (ngModelChange)="generateQR()" />
           <span class="check-box"></span>

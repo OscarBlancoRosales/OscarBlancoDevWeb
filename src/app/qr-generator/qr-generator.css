@@ -9,21 +9,13 @@
   align-items: flex-end;
 }
 
-.flag--row {
-  flex-direction: row;
-  align-items: center;
-  padding-bottom: 8px;
-}
-
-.preset-row {
+/* Las plantillas van en su propia fila: son atajos, no una opción más */
+.presets {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-}
-
-.btn--sm {
-  padding: 6px 11px;
-  font-size: 12px;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
 }
 
 .qr-body {

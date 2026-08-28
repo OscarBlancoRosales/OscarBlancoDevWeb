@@ -29,12 +29,16 @@
             </button>
           </div>
         </div>
-        <div class="flag flag--row">
-          <button class="btn btn--sm" (click)="swap()" [disabled]="!outputText" [title]="i18n.t('decoder.swapHint')">
-            ⇅ {{ i18n.t('decoder.swap') }}
-          </button>
-        </div>
       }
+    </div>
+
+    <div class="tool-actions">
+      <button class="btn" (click)="swap()" [disabled]="!outputText" [title]="i18n.t('decoder.swapHint')">
+        ⇅ {{ i18n.t('decoder.swap') }}
+      </button>
+      <button class="btn btn--danger" (click)="clear()" [disabled]="!inputText">
+        {{ i18n.t('common.clear') }}
+      </button>
     </div>
 
     <div class="panes">
@@ -66,10 +70,5 @@
       </div>
     </div>
 
-    <div class="tool-actions">
-      <button class="btn btn--danger" (click)="clear()" [disabled]="!inputText">
-        {{ i18n.t('common.clear') }}
-      </button>
-    </div>
   </div>
 </app-terminal-layout>

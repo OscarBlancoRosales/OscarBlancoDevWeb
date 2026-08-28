@@ -1,5 +1,3 @@
-/* Lo propio del generador de iconos; el resto sale de las piezas compartidas. */
-
 /* La zona de soltar es toda ella el botón: en móvil se toca donde sea */
 .drop {
   display: flex;
@@ -97,12 +95,6 @@
 
 .file-meta.warn {
   color: var(--warn);
-}
-
-.btn--sm {
-  align-self: flex-start;
-  padding: 6px 12px;
-  font-size: 12px;
 }
 
 .progress {

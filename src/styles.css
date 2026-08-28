@@ -132,28 +132,54 @@ body {
    PIEZAS DE HERRAMIENTA
 
    Todas las herramientas se pintan con estas clases en vez de repetir cada
-   una sus propios colores. La idea es que una herramienta parezca la salida
-   de un comando: un prompt arriba, las opciones como banderas y el resultado
-   en bloque monoespaciado.
+   una sus propios colores y sus propios tamaños. La regla de oro: TODOS los
+   controles miden lo mismo de alto y comparten la misma escala de espacios.
+   Es lo que hace que una fila de campos parezca una fila y no cosas sueltas.
    ========================================================================= */
+
+:root {
+  /* Un solo alto para inputs, selects, botones y segmentados. */
+  --control-h: 38px;
+  --radius: 3px;
+
+  /* Escala de espacios: nada de números inventados por el camino. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Anchos de campo, por tamaño. */
+  --w-xs: 76px;
+  --w-sm: 120px;
+  --w-md: 200px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    /* El pulgar necesita 44 px: es el mínimo que se acierta sin mirar. */
+    --control-h: 44px;
+  }
+}
 
 .tool {
   max-width: 900px;
   margin: 0 auto;
-  padding: 22px 20px 40px;
+  padding: var(--sp-5) var(--sp-4) var(--sp-6);
 }
 
 /* La cabecera es el comando que acabas de escribir */
 .tool-head {
-  margin-bottom: 18px;
-  padding-bottom: 14px;
+  margin-bottom: var(--sp-4);
+  padding-bottom: var(--sp-3);
   border-bottom: 1px solid var(--border);
 }
 
 .tool-cmd {
   display: flex;
   align-items: baseline;
-  gap: 9px;
+  gap: var(--sp-2);
   font-size: 17px;
   font-weight: 700;
   color: var(--bright);
@@ -166,25 +192,28 @@ body {
 }
 
 .tool-sub {
-  margin-top: 4px;
+  margin-top: var(--sp-1);
   padding-left: 22px;
   font-size: 12px;
   color: var(--muted);
 }
 
-/* Las opciones, como banderas de un comando */
+/* ===== FILA DE CAMPOS =====
+   Cada campo es una columna con su etiqueta encima y su control debajo. Al
+   tener todos los controles el mismo alto, los de abajo quedan alineados
+   aunque unos lleven etiqueta y otros no. */
 .tool-flags {
   display: flex;
   flex-wrap: wrap;
-  gap: 14px 22px;
+  gap: var(--sp-3) var(--sp-4);
   align-items: flex-end;
-  margin-bottom: 16px;
+  margin-bottom: var(--sp-4);
 }
 
 .flag {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: var(--sp-1);
   min-width: 0;
 }
 
@@ -193,6 +222,12 @@ body {
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
+  /* Alto fijo: si una etiqueta ocupa dos líneas, su campo no se descuelga. */
+  line-height: 16px;
+  height: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .flag-label::before {
@@ -200,19 +235,53 @@ body {
   opacity: 0.55;
 }
 
-/* Campos de texto */
+/* Los campos sin etiqueta se alinean con los que la llevan: se les mete el
+   hueco de la etiqueta y se centra su contenido en el alto de un control. */
+.flag--bare {
+  padding-top: calc(16px + var(--sp-1));
+}
+
+.flag--bare > * {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--control-h);
+}
+
+/* Varias casillas en la misma columna */
+.flag--checks {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: var(--control-h);
+}
+
+/* ===== CONTROLES: todos con el mismo alto ===== */
 .input,
-.textarea,
-.select {
-  padding: 8px 11px;
-  background: var(--bg-soft);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--bright);
+.select,
+.btn,
+.seg {
+  height: var(--control-h);
+  border-radius: var(--radius);
   font: inherit;
   font-size: 13px;
+  box-sizing: border-box;
+}
+
+.input,
+.select,
+.textarea {
+  padding: 0 11px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  color: var(--bright);
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.select {
+  padding-right: 6px;
+  cursor: pointer;
 }
 
 .input:focus,
@@ -231,23 +300,51 @@ body {
 .textarea {
   width: 100%;
   min-height: 140px;
+  padding: 10px 11px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  line-height: 1.55;
   resize: vertical;
-  line-height: 1.5;
 }
 
 .input--sm {
-  width: 90px;
+  width: var(--w-sm);
+}
+
+.input--xs {
+  width: var(--w-xs);
+  text-align: center;
+}
+
+/* Números sin las flechitas del navegador, que descuadran el alto */
+.input[type='number'] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.input[type='number']::-webkit-outer-spin-button,
+.input[type='number']::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+/* El icono de calendario del navegador es negro sobre negro */
+.input[type='date'],
+.input[type='time'] {
+  color-scheme: dark;
 }
 
 /* Interruptores en vez de casillas del sistema, que no van con el tema */
 .check {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2);
   cursor: pointer;
   font-size: 13px;
   color: var(--text);
   user-select: none;
+  /* Alto de objetivo táctil, aunque la caja dibujada sea pequeña */
+  min-height: 26px;
 }
 
 .check input {
@@ -261,19 +358,23 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
   background: var(--bg-soft);
   color: var(--accent);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1;
   transition: border-color 0.15s, background 0.15s;
 }
 
 .check:hover .check-box {
+  border-color: var(--accent);
+}
+
+.check input:checked + .check-box {
   border-color: var(--accent);
 }
 
@@ -287,16 +388,18 @@ body {
   outline-offset: 2px;
 }
 
-/* Botones */
+/* ===== BOTONES ===== */
 .btn {
-  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 var(--sp-4);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 3px;
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
   cursor: pointer;
+  white-space: nowrap;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
@@ -317,28 +420,71 @@ body {
   font-weight: 600;
 }
 
-.btn--primary:hover:not(:disabled) {
-  background: var(--accent-soft);
-}
-
 .btn--danger:hover:not(:disabled) {
   color: var(--error);
   border-color: var(--error);
   background: transparent;
 }
 
+/* Botón chico para las filas de atajos: más bajo, pero no menos alto que el
+   dedo necesita en móvil. */
+.btn--sm {
+  height: calc(var(--control-h) - 8px);
+  padding: 0 var(--sp-3);
+  font-size: 12px;
+}
+
 .tool-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 9px;
-  margin-bottom: 18px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
 }
 
-/* El resultado, como la salida de un comando */
+/* ===== SEGMENTADO =====
+   Estaba copiado en siete herramientas, cada una con sus medidas. Ahora es
+   una sola pieza y todas se ven iguales. */
+.seg {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.seg-btn {
+  height: 100%;
+  padding: 0 var(--sp-3);
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+
+.seg-btn:hover {
+  color: var(--accent);
+}
+
+.seg-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.seg-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ===== SALIDA ===== */
 .out {
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
-  border-radius: 3px;
+  border-radius: var(--radius);
   background: var(--bg-soft);
   overflow: hidden;
 }
@@ -347,8 +493,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 7px 12px;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
   font-size: 11px;
   letter-spacing: 1px;
@@ -357,7 +503,7 @@ body {
 }
 
 .out-body {
-  padding: 12px;
+  padding: var(--sp-3);
   font-size: 13px;
   line-height: 1.6;
   color: var(--bright);
@@ -370,8 +516,9 @@ body {
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: var(--sp-3);
+  min-height: 40px;
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   transition: background 0.12s;
@@ -387,9 +534,10 @@ body {
 
 .row-index {
   flex-shrink: 0;
-  min-width: 30px;
+  width: 24px;
   font-size: 11px;
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .row-value {
@@ -401,6 +549,8 @@ body {
 
 .row-copy {
   flex-shrink: 0;
+  width: 20px;
+  text-align: right;
   font-size: 11px;
   color: var(--muted);
 }
@@ -409,12 +559,14 @@ body {
   color: var(--accent);
 }
 
-/* Avisos */
+/* ===== AVISOS ===== */
 .note {
-  padding: 9px 12px;
-  border-radius: 3px;
-  font-size: 12px;
+  padding: var(--sp-2) var(--sp-3);
+  margin-bottom: var(--sp-4);
   border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .note--ok {
@@ -431,33 +583,115 @@ body {
   color: var(--muted);
 }
 
+/* ===== DOS PANELES ENFRENTADOS =====
+   Lo usan el codificador, el formateador y el probador de expresiones. */
+.panes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  height: 30px;
+  padding: 0 var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pane-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  padding: 0 var(--sp-1);
+}
+
+.pane-btn:hover:not(:disabled) {
+  color: var(--accent);
+}
+
+.pane-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pane .textarea,
+.pane-body {
+  flex: 1;
+  min-height: 220px;
+  margin: 0;
+  padding: var(--sp-3);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--bright);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+}
+
+.pane .textarea:focus {
+  box-shadow: none;
+}
+
+.pane-body--error {
+  color: var(--error);
+}
+
 @media (max-width: 768px) {
   .tool {
-    padding: 16px 12px 32px;
+    padding: var(--sp-4) var(--sp-3) var(--sp-6);
   }
 
   .tool-cmd {
     font-size: 15px;
   }
 
+  /* En una pantalla estrecha, un campo por fila se lee mejor que tres
+     apretados; los que caben de lado siguen cabiendo. */
   .tool-flags {
-    gap: 12px 16px;
-  }
-
-  /* Con el pulgar hacen falta objetivos más grandes */
-  .btn {
-    padding: 10px 16px;
-    font-size: 13px;
+    gap: var(--sp-3);
   }
 
   .input,
   .select {
-    padding: 10px 11px;
     font-size: 14px;
   }
 
-  .check-box {
-    width: 20px;
-    height: 20px;
+  .input--sm {
+    width: 100%;
+    min-width: var(--w-sm);
+  }
+
+  /* Dos paneles no caben: se apilan */
+  .panes {
+    grid-template-columns: 1fr;
+  }
+
+  .pane .textarea,
+  .pane-body {
+    min-height: 150px;
   }
 }
