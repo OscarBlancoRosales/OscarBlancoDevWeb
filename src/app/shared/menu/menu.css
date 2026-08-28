@@ -19,12 +19,12 @@
   width: 44px;
   height: 38px;
   backdrop-filter: blur(10px);
-  box-shadow: 0 2px 12px rgba(0, 255, 0, 0.15);
+  box-shadow: 0 2px 12px rgba(var(--accent-rgb), 0.15);
 }
 
 .menu-button:hover {
   background: #0f0;
-  box-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+  box-shadow: 0 0 20px rgba(var(--accent-rgb), 0.4);
 }
 
 .menu-button span {

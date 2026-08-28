@@ -154,7 +154,7 @@
 
 .data-item:hover,
 .data-item.hovered {
-  background: rgba(0, 255, 0, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   transform: translateX(5px);
 }
 
@@ -195,7 +195,7 @@
 .social-link:hover {
   color: #0f0;
   border-color: #0f0;
-  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+  box-shadow: 0 0 15px rgba(var(--accent-rgb), 0.4);
   transform: translateY(-3px);
 }
 
