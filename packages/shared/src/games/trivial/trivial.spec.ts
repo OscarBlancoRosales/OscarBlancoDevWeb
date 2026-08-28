@@ -225,3 +225,53 @@ describe('lo que ve cada asiento', () => {
     expect(vista.rondas).toBe(PREGUNTAS.length);
   });
 });
+
+describe('lo que hace un asiento sin nadie detras', () => {
+  const CON_BOT: Seat[] = [
+    { id: 'ana', displayName: 'Ana', isBot: false, connected: true },
+    { id: 'maquina', displayName: 'Sabelotodo', isBot: true, connected: false },
+  ];
+
+  function conBot(): TrivialState {
+    return trivialModule.createState(CON_BOT, {
+      preguntas: PREGUNTAS,
+      semilla: 3,
+      nivelBot: 'sabelotodo',
+    });
+  }
+
+  it('se sienta a la mesa en cuanto empieza el concurso', () => {
+    expect(trivialModule.botAction?.(conBot(), 'maquina', CON_BOT)).toEqual({ tipo: 'empezar' });
+  });
+
+  it('no se sienta dos veces', () => {
+    const sentado = trivialModule.apply(conBot(), { tipo: 'empezar' }, 'maquina', CON_BOT);
+    expect(trivialModule.botAction?.(sentado, 'maquina', CON_BOT)).toBeNull();
+  });
+
+  it('contesta algo legal cuando hay pregunta', () => {
+    let state = trivialModule.apply(conBot(), { tipo: 'empezar' }, 'maquina', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'empezar' }, 'ana', CON_BOT);
+
+    const jugada = trivialModule.botAction?.(state, 'maquina', CON_BOT);
+    expect(jugada?.tipo).toBe('responder');
+    expect(jugada && trivialModule.validate(state, jugada, 'maquina', CON_BOT)).toBeNull();
+  });
+
+  it('no contesta dos veces la misma ronda', () => {
+    let state = trivialModule.apply(conBot(), { tipo: 'empezar' }, 'maquina', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'empezar' }, 'ana', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'maquina', CON_BOT);
+
+    expect(trivialModule.botAction?.(state, 'maquina', CON_BOT)).toBeNull();
+  });
+
+  it('nunca pasa de ronda por su cuenta', () => {
+    let state = trivialModule.apply(conBot(), { tipo: 'empezar' }, 'maquina', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'empezar' }, 'ana', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'maquina', CON_BOT);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', CON_BOT);
+
+    expect(trivialModule.botAction?.(state, 'maquina', CON_BOT)).toBeNull();
+  });
+});

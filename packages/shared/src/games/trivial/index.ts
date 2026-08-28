@@ -1,5 +1,7 @@
 import { OPCIONES, TrivialAction } from './tipos';
 import { repartoDe, respuestaDe } from './reglas';
+import { respuestaDelBot } from './bot';
+import { rngFor } from '../../engine/rng';
 import type {
   NivelBot,
   Pregunta,
@@ -92,10 +94,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
     switch (action.tipo) {
       case 'empezar': {
         const orden = [...state.orden, by];
-        // El concurso arranca cuando están todos los que hay en la sala: con la
-        // mesa a medias, quien llega tarde se encontraría la primera pregunta ya
-        // contestada.
-        const todos = orden.length >= seats.filter((seat) => !seat.isBot).length;
+        // Arranca cuando están todos los asientos, bots incluidos: con la mesa a
+        // medias, quien llega tarde se encontraría la primera pregunta ya
+        // contestada. Contar solo a las personas hacía que un bot, que se sienta
+        // solo y al instante, diera por empezado el concurso él sin nadie más.
+        const todos = orden.length >= seats.length;
         return { ...state, jugadas, orden, fase: todos ? 'ronda' : 'presentacion' };
       }
 
@@ -158,6 +161,27 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       explicacion: cerrada && pregunta ? pregunta.explicacion : null,
       resultados: cerrada && ronda ? resultadosDe(ronda) : null,
     } satisfies TrivialView;
+  },
+
+  /**
+   * Lo que hace un asiento sin nadie detrás.
+   *
+   * Se sienta cuando empieza el concurso y contesta cuando hay pregunta. No
+   * pasa nunca de ronda: cerrar la ronda a los demás es cosa de quien abrió la
+   * sala, y un bot no tiene por qué meter prisa a nadie.
+   */
+  botAction(state, seat) {
+    const rng = rngFor(state.semilla, state.jugadas, `trivial:${seat}`);
+
+    if (state.fase === 'presentacion') {
+      return state.orden.includes(seat) ? null : { tipo: 'empezar' };
+    }
+    if (state.fase !== 'ronda' || !state.orden.includes(seat)) return null;
+
+    const ronda = rondaActual(state);
+    if (!ronda || ronda.cerrada || respuestaDe(ronda.respuestas, seat)) return null;
+
+    return { tipo: 'responder', valor: respuestaDelBot(ronda.pregunta, state.nivelBot, rng) };
   },
 
   /** Irse no borra lo ganado: el marcador es de la partida, no de la conexión. */
