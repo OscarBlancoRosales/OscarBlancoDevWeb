@@ -5,7 +5,7 @@ import { CANAL_GENERAL, ChatLine, RiskRoster, RosterRow } from './risk-roster';
 function ficha(over: Partial<RosterRow> & { id: string; name: string }): RosterRow {
   return {
     color: '#00e676',
-    avatar: '🦁',
+    portrait: 'assets/risk/commanders/hierro.png',
     territories: 5,
     armies: 12,
     eliminated: false,
@@ -16,9 +16,9 @@ function ficha(over: Partial<RosterRow> & { id: string; name: string }): RosterR
 }
 
 const FICHAS: RosterRow[] = [
-  ficha({ id: 'p1', name: 'Óscar', avatar: '🦁' }),
-  ficha({ id: 'p2', name: 'Napoleón', avatar: '👑', unread: 2 }),
-  ficha({ id: 'p3', name: 'Sun Tzu', avatar: '🐉', eliminated: true }),
+  ficha({ id: 'p1', name: 'Óscar', portrait: 'assets/risk/commanders/hierro.png' }),
+  ficha({ id: 'p2', name: 'Napoleón', portrait: 'assets/risk/commanders/marea.png', unread: 2 }),
+  ficha({ id: 'p3', name: 'Sun Tzu', portrait: 'assets/risk/commanders/sol.png', eliminated: true }),
 ];
 
 const LINEAS: ChatLine[] = [
@@ -57,7 +57,33 @@ describe('RiskRoster', () => {
     const napoleon = filaDe('Napoleón');
     expect(napoleon.textContent).toContain('5');
     expect(napoleon.textContent).toContain('12');
-    expect(napoleon.querySelector('.avatar')!.textContent!.trim()).toBe('👑');
+    expect(napoleon.querySelector('.avatar img')!.getAttribute('src')).toContain('marea.png');
+  });
+
+  /**
+   * El canal de todos y el estratega no son personas. Ponerles cara sería
+   * mentir sobre qué hay al otro lado, así que llevan glifo.
+   */
+  it('las fichas que no son una persona llevan glifo, no retrato', () => {
+    fixture.componentRef.setInput('rows', [
+      ...FICHAS,
+      {
+        id: 'advisor',
+        name: 'Estratega',
+        color: '#888',
+        glyph: '🧠',
+        territories: 0,
+        armies: 0,
+        eliminated: false,
+        strength: 0,
+        unread: 0,
+      } satisfies RosterRow,
+    ]);
+    fixture.detectChanges();
+
+    const estratega = filaDe('Estratega');
+    expect(estratega.querySelector('.avatar img')).toBeNull();
+    expect(estratega.querySelector('.avatar.sin-cara')!.textContent!.trim()).toBe('🧠');
   });
 
   it('marca de quién es el turno y quién está fuera', () => {
@@ -176,7 +202,7 @@ describe('RiskRoster', () => {
     it('una ficha que no conversa ofrece su botón en vez del campo', () => {
       fixture.componentRef.setInput('rows', [
         ...FICHAS,
-        ficha({ id: 'advisor', name: 'Estratega', avatar: '🧠', askLabel: 'Pedir consejo' }),
+        ficha({ id: 'advisor', name: 'Estratega', askLabel: 'Pedir consejo' }),
       ]);
       fixture.componentRef.setInput('openThread', 'advisor');
       fixture.detectChanges();

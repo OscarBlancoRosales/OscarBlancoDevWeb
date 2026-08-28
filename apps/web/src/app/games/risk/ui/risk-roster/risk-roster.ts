@@ -9,8 +9,16 @@ export interface RosterRow {
   id: string;
   name: string;
   color: string;
-  /** Emoji. Se elige en la sala de espera; los bots traen el suyo por perfil. */
-  avatar: string;
+  /**
+   * Retrato: el comandante que eligió, o el de su perfil si es un bot.
+   *
+   * Vacío para las fichas que no son una persona —el canal de todos, el
+   * estratega—, que se dibujan con su glifo: ponerles cara sería mentir sobre
+   * qué hay al otro lado.
+   */
+  portrait?: string;
+  /** Glifo de las fichas sin cara. */
+  glyph?: string;
   territories: number;
   armies: number;
   eliminated: boolean;

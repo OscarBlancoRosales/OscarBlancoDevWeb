@@ -8,6 +8,12 @@ import { RiskBoard } from '../risk-board/risk-board';
 import { RiskHud } from '../risk-hud/risk-hud';
 import { RiskPanel } from '../risk-panel/risk-panel';
 import { PanelId } from '../panel-id';
+import {
+  COMMANDERS,
+  Commander,
+  botPortrait,
+  commanderById,
+} from '../../commanders';
 import { CardView, RiskCards } from '../risk-cards/risk-cards';
 import {
   CANAL_GENERAL,
@@ -69,20 +75,8 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
 /** El estratega no es un jugador, pero tiene ficha propia en la lista. */
 const HILO_ESTRATEGA = 'advisor';
 
-/**
- * Caras para las fichas.
- *
- * Emoji y no imágenes: no hay que subir nada, no ocupa, se ve igual en
- * cualquier navegador y viaja en el asiento cuando el backend propio tome el
- * relevo. Se reparten por orden de clasificación, así que dos jugadores nunca
- * comparten cara en la misma mesa.
- */
-const AVATARES = ['🦁', '👑', '🐉', '🦅', '🐺', '🦊', '🐻', '🦈', '🐍', '🦂', '🐗', '🦉'];
-
-/** Cara de reserva para quien no ha elegido: por orden, para no repetir. */
-function avatarFor(index: number): string {
-  return AVATARES[index % AVATARES.length] ?? '🎖';
-}
+/** El estratega tampoco tiene cara: es un consejero, no un rival. */
+const GLIFO_ESTRATEGA = '🧠';
 
 /**
  * La mesa: sala de espera y partida en el mismo sitio.
@@ -1145,12 +1139,12 @@ export class RiskRoom implements OnInit, OnDestroy {
   get rosterRows(): RosterRow[] {
     const total = this.scoreboard.reduce((sum, entry) => sum + entry.armies, 0) || 1;
     const unread = this.unreadByThread();
-    const caras = this.avatarAssignment();
+    const caras = this.portraitAssignment();
     const rows: RosterRow[] = this.scoreboard.map((entry, index) => ({
       id: entry.player.id,
       name: entry.player.name,
       color: entry.player.color,
-      avatar: caras.get(entry.player.id) ?? avatarFor(index),
+      portrait: caras.get(entry.player.id) ?? COMMANDERS[index % COMMANDERS.length]!.portrait,
       territories: entry.territories,
       armies: entry.armies,
       eliminated: entry.player.eliminated,
@@ -1162,7 +1156,7 @@ export class RiskRoom implements OnInit, OnDestroy {
         id: HILO_ESTRATEGA,
         name: 'Estratega',
         color: '#8b9c93',
-        avatar: '🧠',
+        glyph: GLIFO_ESTRATEGA,
         territories: 0,
         armies: 0,
         eliminated: false,
@@ -1189,47 +1183,68 @@ export class RiskRoom implements OnInit, OnDestroy {
     return lines.length > 0 && !!lines[lines.length - 1]?.mine;
   }
 
-  // ===== CARAS =====
+  // ===== COMANDANTES =====
 
-  readonly avatarChoices = AVATARES;
+  readonly commanders = COMMANDERS;
+
+  /** El retrato de un perfil de bot, para verle la cara antes de sentarlo. */
+  botFace(profile: BotProfile): string {
+    return botPortrait(profile);
+  }
 
   /**
-   * Reparto de caras: las elegidas mandan, el resto coge de las que sobran.
+   * Reparto de comandantes: los elegidos mandan, el resto coge de los que
+   * sobran.
    *
-   * Se reparte todo de una vez y no asiento por asiento, porque si no una cara
-   * elegida y una repartida pueden salir iguales, y dos jugadores con la misma
-   * cara rompen justo lo que la cara resuelve.
+   * Se reparte todo de una vez y no asiento por asiento, porque si no un
+   * comandante elegido y uno repartido pueden salir iguales, y dos jugadores
+   * con la misma cara rompen justo lo que la cara resuelve: saber de quién es
+   * cada ficha de un vistazo.
+   *
+   * Los bots no entran en el reparto: su retrato sale de su perfil, y por eso
+   * el agresivo tiene cara de agresivo.
    */
-  private avatarAssignment(): Map<string, string> {
-    const elegidas = new Set(
-      this.seats.map((seat) => seat.avatar).filter((avatar): avatar is string => !!avatar),
+  private portraitAssignment(): Map<string, string> {
+    const humanos = this.seats.filter((seat) => seat.kind !== 'bot');
+    const elegidos = new Set(
+      humanos.map((seat) => seat.avatar).filter((id): id is string => !!commanderById(id)),
     );
-    const libres = AVATARES.filter((emoji) => !elegidas.has(emoji));
+    const libres = COMMANDERS.filter((commander) => !elegidos.has(commander.id));
     const reparto = new Map<string, string>();
     let siguiente = 0;
     for (const seat of this.seats) {
-      reparto.set(seat.id, seat.avatar || libres[siguiente++ % libres.length] || '🎖');
+      if (seat.kind === 'bot') {
+        reparto.set(seat.id, botPortrait(seat.botProfile));
+        continue;
+      }
+      const elegido = commanderById(seat.avatar);
+      const cara = elegido ?? libres[siguiente++ % Math.max(1, libres.length)] ?? COMMANDERS[0]!;
+      reparto.set(seat.id, cara.portrait);
     }
     return reparto;
   }
 
-  get myAvatar(): string {
-    return this.avatarAssignment().get(this.seatId) ?? '🎖';
+  /** El comandante que llevo, elegido o repartido. */
+  get myCommander(): Commander | undefined {
+    const retrato = this.portraitAssignment().get(this.seatId);
+    return COMMANDERS.find((commander) => commander.portrait === retrato);
   }
 
-  /**
-   * Caras que ya lleva otro.
-   *
-   * Dos jugadores con la misma cara rompen justo lo que la cara resuelve:
-   * saber de quién es cada ficha de un vistazo.
-   */
-  avatarTaken(emoji: string): boolean {
-    return this.seats.some((seat) => seat.id !== this.seatId && seat.avatar === emoji);
+  /** Comandantes que ya lleva otra persona. */
+  commanderTaken(id: string): boolean {
+    return this.seats.some(
+      (seat) => seat.id !== this.seatId && seat.kind !== 'bot' && seat.avatar === id,
+    );
   }
 
-  async chooseAvatar(emoji: string): Promise<void> {
-    if (this.avatarTaken(emoji)) return;
-    await this.rooms.updateSeat(this.roomId, this.seatId, { avatar: emoji });
+  async chooseCommander(id: string): Promise<void> {
+    if (this.commanderTaken(id)) return;
+    await this.rooms.updateSeat(this.roomId, this.seatId, { avatar: id });
+  }
+
+  /** El retrato de un asiento en la sala de espera. */
+  portraitOfSeat(seat: RoomSeat): string {
+    return this.portraitAssignment().get(seat.id) ?? COMMANDERS[0]!.portrait;
   }
 
   onThreadChange(id: string | null): void {

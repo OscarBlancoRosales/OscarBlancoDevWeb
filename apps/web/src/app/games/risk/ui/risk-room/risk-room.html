@@ -59,7 +59,9 @@
           <ul class="seat-list">
             <li class="seat" *ngFor="let seat of seats; trackBy: trackSeat" [class.me]="seat.id === seatId">
               <span class="seat-color" [style.background]="seat.color"></span>
-              <span class="seat-avatar" *ngIf="seat.avatar">{{ seat.avatar }}</span>
+              <span class="seat-portrait" [style.border-color]="seat.color">
+                <img [src]="portraitOfSeat(seat)" [alt]="seat.name" loading="lazy" />
+              </span>
               <div class="seat-info">
                 <span class="seat-name">
                   {{ seat.name }}
@@ -88,24 +90,32 @@
           </ul>
 
           <!--
-            Tu cara. Durante la partida es tu ficha y la puerta de tu chat, así
-            que se elige antes de empezar y no en mitad de un turno. Las que ya
-            lleva otro no se pueden coger: dos caras iguales rompen justo lo
-            que la cara resuelve.
+            Tu comandante. Durante la partida es tu ficha en el marcador y la
+            puerta de tu chat, así que se elige antes de empezar y no en mitad
+            de un turno. Los que ya lleva otro no se pueden coger: dos caras
+            iguales rompen justo lo que la cara resuelve.
           -->
-          <div class="avatar-picker">
-            <span class="avatar-picker-label">Tu cara</span>
-            <button
-              class="avatar-choice"
-              type="button"
-              *ngFor="let emoji of avatarChoices"
-              [class.mine]="myAvatar === emoji"
-              [disabled]="avatarTaken(emoji)"
-              [title]="avatarTaken(emoji) ? 'Ya la lleva otro' : 'Elegir esta cara'"
-              (click)="chooseAvatar(emoji)"
-            >
-              {{ emoji }}
-            </button>
+          <div class="commander-picker">
+            <div class="picker-head">
+              <h3>Elige comandante</h3>
+              <span class="picker-mine" *ngIf="myCommander as mio">{{ mio.name }}</span>
+            </div>
+            <div class="commander-grid">
+              <button
+                class="commander-card"
+                type="button"
+                *ngFor="let commander of commanders"
+                [class.mine]="myCommander?.id === commander.id"
+                [disabled]="commanderTaken(commander.id)"
+                [attr.aria-pressed]="myCommander?.id === commander.id"
+                (click)="chooseCommander(commander.id)"
+              >
+                <img [src]="commander.portrait" [alt]="commander.name" loading="lazy" />
+                <span class="commander-name">{{ commander.name }}</span>
+                <span class="commander-tagline">{{ commander.tagline }}</span>
+                <span class="commander-taken" *ngIf="commanderTaken(commander.id)">Ocupado</span>
+              </button>
+            </div>
           </div>
 
           <div class="empty-seats" *ngIf="freeSeats > 0">
@@ -122,6 +132,10 @@
             en cada turno.
           </p>
           <div class="bot-picker">
+            <!--
+              Con retrato: hay uno por perfil, así que el agresivo tiene cara de
+              agresivo. Se ve contra quién te sientas antes de leer nada.
+            -->
             <button
               type="button"
               class="profile-card"
@@ -129,6 +143,7 @@
               [class.active]="profile === newBotProfile"
               (click)="newBotProfile = profile"
             >
+              <img class="profile-face" [src]="botFace(profile)" [alt]="profileInfo[profile].label" loading="lazy" />
               <span class="profile-name">{{ profileInfo[profile].label }}</span>
               <span class="profile-desc">{{ profileInfo[profile].description }}</span>
             </button>

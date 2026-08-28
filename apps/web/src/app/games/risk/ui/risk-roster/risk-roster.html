@@ -27,7 +27,10 @@
       [class.current]="row.id === currentId"
       [class.out]="row.eliminated"
     >
-      <span class="avatar me" [style.border-color]="row.color">{{ row.avatar }}</span>
+      <span class="avatar me" [class.sin-cara]="!row.portrait" [style.border-color]="row.color">
+        <img *ngIf="row.portrait as cara" [src]="cara" [alt]="row.name" loading="lazy" />
+        <span *ngIf="!row.portrait">{{ row.glyph }}</span>
+      </span>
       <span class="row-name">{{ row.name }}</span>
       <span class="row-num">{{ row.territories }}</span>
       <span class="row-num muted">{{ row.armies }}</span>
@@ -45,8 +48,9 @@
         [attr.aria-expanded]="openThread === row.id"
         [attr.aria-label]="'Hablar con ' + row.name"
       >
-        <span class="avatar" [style.border-color]="row.color">
-          {{ row.avatar }}
+        <span class="avatar" [class.sin-cara]="!row.portrait" [style.border-color]="row.color">
+          <img *ngIf="row.portrait as cara" [src]="cara" [alt]="row.name" loading="lazy" />
+          <span *ngIf="!row.portrait">{{ row.glyph }}</span>
           <span class="unread dot" *ngIf="row.unread > 0"></span>
         </span>
         <span class="row-name">{{ row.name }}</span>

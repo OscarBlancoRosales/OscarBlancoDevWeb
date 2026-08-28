@@ -162,42 +162,61 @@ describe('RiskRoom (la mesa)', () => {
      * La cara no es un adorno: durante la partida es tu ficha en el marcador y
      * la puerta de tu conversación. Por eso se elige antes de empezar.
      */
-    describe('elegir cara', () => {
-      it('empieza con una repartida, y elegir la cambia', async () => {
-        const primera = component.myAvatar;
-        expect(primera.length).toBeGreaterThan(0);
+    describe('elegir comandante', () => {
+      it('empieza con uno repartido, y elegir lo cambia', async () => {
+        const primero = component.myCommander;
+        expect(primero, 'siempre hay una cara, se elija o no').toBeDefined();
 
-        const otra = component.avatarChoices.find((emoji) => emoji !== primera)!;
-        await component.chooseAvatar(otra);
+        const otro = component.commanders.find((c) => c.id !== primero!.id)!;
+        await component.chooseCommander(otro.id);
         await wait();
-        expect(component.myAvatar).toBe(otra);
+        expect(component.myCommander?.id).toBe(otro.id);
       });
 
-      it('no deja coger la que ya lleva otro', async () => {
-        await component.addBot();
-        await wait();
-        const bot = component.seats.find((seat) => seat.kind === 'bot')!;
-        await TestBed.inject(RiskRoomService).updateSeat(roomId, bot.id, { avatar: '🐉' });
+      it('no deja coger el que ya lleva otra persona', async () => {
+        // Otro humano en la mesa, no un bot: los bots no eligen comandante.
+        const rooms = TestBed.inject(RiskRoomService);
+        const otroAsiento = await rooms.claimSeat(roomId, {
+          name: 'Ana',
+          seatToken: 'ana-token',
+          color: PLAYER_COLORS[1],
+        });
+        await rooms.updateSeat(roomId, otroAsiento, { avatar: 'fantasma' });
         await wait();
 
-        expect(component.avatarTaken('🐉')).toBe(true);
-        await component.chooseAvatar('🐉');
+        expect(component.commanderTaken('fantasma')).toBe(true);
+        await component.chooseCommander('fantasma');
         await wait();
-        expect(component.myAvatar).not.toBe('🐉');
+        expect(component.myCommander?.id).not.toBe('fantasma');
       });
 
-      it('y el reparto nunca repite cara, mezcle elegidas y repartidas', async () => {
+      /** Dos caras iguales rompen justo lo que la cara resuelve. */
+      it('el reparto nunca repite cara, mezcle elegidas y repartidas', async () => {
         await component.fillWithBots();
         await wait();
-        await component.chooseAvatar(component.avatarChoices[3]);
+        await component.chooseCommander(component.commanders[3].id);
         await wait();
         await component.startGame();
         await wait(30);
 
         const caras = component.rosterRows
           .filter((row) => row.id !== 'advisor')
-          .map((row) => row.avatar);
+          .map((row) => row.portrait);
+        expect(caras.every((cara) => !!cara)).toBe(true);
         expect(new Set(caras).size).toBe(caras.length);
+      });
+
+      /** El bot agresivo tiene cara de bot agresivo: se reconoce sin leer. */
+      it('los bots llevan el retrato de su perfil, no uno elegido', async () => {
+        component.newBotProfile = 'vengativo';
+        await component.addBot();
+        await wait();
+        await component.startGame();
+        await wait(30);
+
+        const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+        const ficha = component.rosterRows.find((row) => row.id === bot.id)!;
+        expect(ficha.portrait).toContain('bots/vengativo.png');
       });
     });
 
@@ -619,7 +638,7 @@ describe('RiskRoom (la mesa)', () => {
       const esperados = component.state!.players.map((p) => p.name).sort();
       expect(nombres).toEqual(esperados);
       // Dos jugadores no pueden compartir cara en la misma mesa.
-      expect(new Set(fichas.map((r) => r.avatar)).size).toBe(fichas.length);
+      expect(new Set(fichas.map((r) => r.portrait)).size).toBe(fichas.length);
     });
 
     it('la repetición al mantener pulsado sólo se ofrece en refuerzos y en tu turno', () => {
