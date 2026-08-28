@@ -381,6 +381,16 @@ describe('Console (la portada)', () => {
       expect(component.game!.dir).toBe('up');
     });
 
+    it('y girar tampoco mueve la pantalla', () => {
+      const caja = fixture.nativeElement.querySelector('.cmd-input') as HTMLInputElement;
+      const focos: unknown[] = [];
+      caja.focus = ((opciones?: unknown) => focos.push(opciones)) as HTMLElement['focus'];
+      component.steer('down');
+      for (const opciones of focos) {
+        expect(opciones).toEqual({ preventScroll: true });
+      }
+    });
+
     it('la serpiente se mueve sola con el tiempo', () => {
       const cabeza = { ...component.game!.snake[0] };
       vi.advanceTimersByTime(400);
@@ -521,6 +531,27 @@ describe('Console (la portada)', () => {
       component.runJump();
       vi.advanceTimersByTime(200);
       expect(component.run!.y).toBeGreaterThan(0);
+    });
+
+    /**
+     * Mientras se juega, la línea de entrada está escondida arriba del todo.
+     * Si un botón del pad le devuelve el foco, el navegador desplaza la
+     * pantalla hasta ella y el tablero desaparece de la vista: pulsas para
+     * saltar y lo que consigues es perder el juego de vista.
+     */
+    it('los botones del pad no desplazan la pantalla', () => {
+      const caja = fixture.nativeElement.querySelector('.cmd-input') as HTMLInputElement;
+      const focos: unknown[] = [];
+      caja.focus = ((opciones?: unknown) => focos.push(opciones)) as HTMLElement['focus'];
+
+      component.runJump();
+      component.runDuck();
+
+      for (const opciones of focos) {
+        expect(opciones, 'enfocar sin preventScroll arrastra la pantalla').toEqual({
+          preventScroll: true,
+        });
+      }
     });
 
     it('mientras corres no estorban los chips ni el prompt', () => {
