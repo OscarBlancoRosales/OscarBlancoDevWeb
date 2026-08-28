@@ -1,4 +1,5 @@
 import { Value } from '@sinclair/typebox/value';
+import { moverBots } from './bots';
 import type { GameModule, RuleError, Seat, SeatId } from '@devweb/shared/games/module';
 import type { RoomStatus, SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { RoomRepository } from './repository';
@@ -44,6 +45,15 @@ export class RoomActor {
   private seats: Seat[] = [];
   private status: RoomStatus = 'lobby';
 
+  /**
+   * Si ahora mismo se están moviendo los bots.
+   *
+   * El conductor juega llamando a `submit`, y `submit` llama al conductor: sin
+   * esta bandera, el primer disparo de un bot abriría una ronda de bots dentro
+   * de otra hasta reventar la pila.
+   */
+  private moviendoBots = false;
+
   constructor(options: RoomActorOptions) {
     this.roomId = options.roomId;
     this.module = options.module;
@@ -63,6 +73,10 @@ export class RoomActor {
 
   get estado(): unknown {
     return this.state;
+  }
+
+  get asientos(): readonly Seat[] {
+    return this.seats;
   }
 
   /**
@@ -107,10 +121,19 @@ export class RoomActor {
     this.broadcast();
   }
 
+  /**
+   * Alguien entra en la sala.
+   *
+   * Al entrar también se deja jugar a los bots, y no es un detalle: si el
+   * proceso se reinicia con el turno en un bot, nadie volvería a moverlo —la
+   * persona no puede jugar porque no es su turno— y la partida se quedaría
+   * congelada esperando a quien no tiene a nadie detrás.
+   */
   subscribe(suscriptor: Suscriptor): void {
     this.suscriptores.add(suscriptor);
     this.refreshSeats();
     this.broadcast();
+    this.dejarJugarALosBots();
   }
 
   unsubscribe(suscriptor: Suscriptor): void {
@@ -168,7 +191,25 @@ export class RoomActor {
     }
 
     this.broadcast();
+    this.dejarJugarALosBots();
     return null;
+  }
+
+  /**
+   * Deja que jueguen los asientos que no tienen a nadie detrás.
+   *
+   * Va después de difundir el estado a propósito: quien está mirando ve primero
+   * su propia jugada y luego la respuesta, en vez de las dos de golpe cuando el
+   * bot termina su racha.
+   */
+  private dejarJugarALosBots(): void {
+    if (this.moviendoBots) return;
+    this.moviendoBots = true;
+    try {
+      moverBots(this, this.module);
+    } finally {
+      this.moviendoBots = false;
+    }
   }
 
   /**
