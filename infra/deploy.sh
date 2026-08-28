@@ -27,7 +27,11 @@ tar -xzf "$TARBALL" -C "$release"
 ( cd "$release" && npm ci --omit=dev --ignore-scripts=false --no-audit --no-fund )
 chown -R "$APP_USER:$APP_USER" "$release"
 
-previous=$(readlink -f "$APP_DIR/current" 2>/dev/null || echo '')
+# `readlink` a secas, sin -f: devuelve el destino SOLO si `current` ya es un
+# enlace, y vacío si no existe. Con -f devolvía la ruta que tendría, así que en
+# el primer despliegue `previous` acababa valiendo `/opt/devweb/current`... y la
+# vuelta atrás creaba un enlace apuntándose a sí mismo.
+previous=$(readlink "$APP_DIR/current" 2>/dev/null || true)
 ln -sfn "$release" "$APP_DIR/current"
 
 systemctl restart devweb-api
@@ -44,8 +48,15 @@ for _ in $(seq 1 30); do
 done
 
 echo "La entrega no responde al health. Volviendo a la anterior." >&2
-if [[ -n "$previous" && -d "$previous" ]]; then
+if [[ -n "$previous" && -d "$previous" && "$previous" != "$APP_DIR/current" ]]; then
   ln -sfn "$previous" "$APP_DIR/current"
   systemctl restart devweb-api
+  echo "Restaurada la entrega anterior: $previous" >&2
+else
+  # No hay a dónde volver: es el primer despliegue, o el anterior ya no está.
+  # Se para el servicio en vez de dejarlo reiniciándose en bucle para siempre.
+  systemctl stop devweb-api
+  echo "No hay entrega anterior a la que volver. Servicio parado." >&2
+  echo "Mira qué pasó con:  journalctl -u devweb-api -n 50 --no-pager" >&2
 fi
 exit 1
