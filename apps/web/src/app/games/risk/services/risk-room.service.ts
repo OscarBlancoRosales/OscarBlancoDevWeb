@@ -1,5 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { RoomSocket } from '../../../api/room-socket';
 import { RoomsApiService } from '../../../api/rooms-api.service';
 import { browserStorage } from '@devweb/shared/platform';
@@ -157,6 +157,10 @@ export class RiskRoomService {
   readonly log$: Observable<LoggedActionEntry[]> = this.logSubject.asObservable();
   readonly chat$: Observable<ChatEntry[]> = this.chatSubject.asObservable();
   readonly snapshot$: Observable<RoomSnapshot | null> = this.snapshotSubject.asObservable();
+
+  /** Lo que el servidor ha rechazado, para poder decirlo en pantalla. */
+  private rechazoSubject = new Subject<string>();
+  readonly rechazo$: Observable<string> = this.rechazoSubject.asObservable();
 
   constructor(
     private readonly rooms: RoomsApiService,
@@ -630,6 +634,19 @@ export class RiskRoomService {
   private recibir(mensaje: ServerMessage): void {
     if (mensaje.tipo === 'chat') {
       this.chatSubject.next(mensaje.entradas.map(aChat));
+      return;
+    }
+    /*
+     * Un «no» del servidor se dice, no se traga.
+     *
+     * Esto se ignoraba, y el resultado era el peor posible para entender qué
+     * pasa: mandabas un privado a un rival, el servidor lo rechazaba —porque
+     * todavía no conocía el campo del destinatario— y en pantalla no ocurría
+     * absolutamente nada. Parecía que el chat estaba roto cuando lo que había
+     * era un servidor sin actualizar diciendo que no.
+     */
+    if (mensaje.tipo === 'rechazada') {
+      this.rechazoSubject.next(mensaje.message);
       return;
     }
     if (mensaje.tipo !== 'estado') return;

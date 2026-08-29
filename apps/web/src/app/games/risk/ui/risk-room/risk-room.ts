@@ -196,6 +196,12 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
         this.seats = seats;
         this.cdr.markForCheck();
       }),
+      this.rooms.rechazo$.subscribe((motivo) => {
+        // Un «no» del servidor tiene que verse. Callarlo convierte cualquier
+        // desajuste entre el cliente y el servidor en «esto no funciona».
+        this.errorMessage = motivo;
+        this.cdr.markForCheck();
+      }),
       this.rooms.chat$.subscribe((chat) => {
         const previous = this.chat;
         this.chat = chat;

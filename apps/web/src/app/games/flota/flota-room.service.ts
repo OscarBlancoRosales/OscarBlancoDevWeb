@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, NgZone, Optional, signal } from '@angular/core';
 import { RoomSocket } from '../../api/room-socket';
 import { RoomsApiService } from '../../api/rooms-api.service';
 
@@ -34,10 +34,25 @@ export class FlotaRoomService {
   private seatId = '';
   private asientos: readonly SeatInfo[] = [];
 
+  private readonly socket: RoomSocket;
+
+  /**
+   * El socket es de la sala, no de la aplicación: si nadie da uno, se construye.
+   *
+   * Este juego se escribió cuando `RoomSocket` era inyectable y venía del
+   * inyector raíz. Al juntarlo con el resto pedía un proveedor que ya no
+   * existe, y TypeScript no comprueba proveedores: compilaba igual y sólo
+   * reventaba al abrir la pantalla, en blanco y con un NG0201 en la consola.
+   *
+   * El parámetro sigue siendo opcional para que se le pueda dar uno de mentira
+   * desde un test sin abrir un WebSocket de verdad.
+   */
   constructor(
     private readonly rooms: RoomsApiService,
-    private readonly socket: RoomSocket,
+    zone: NgZone,
+    @Optional() socket: RoomSocket | null = null,
   ) {
+    this.socket = socket ?? new RoomSocket(zone);
     this.socket.messages$.subscribe((mensaje) => {
       this.recibir(mensaje);
     });

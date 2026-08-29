@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, NgZone, Optional, signal } from '@angular/core';
 import { RoomSocket } from '../../api/room-socket';
 import { RoomsApiService } from '../../api/rooms-api.service';
 import type { Signal } from '@angular/core';
@@ -31,10 +31,18 @@ export class TrivialRoomService {
   private seatId = '';
   private asientos: readonly SeatInfo[] = [];
 
+  private readonly socket: RoomSocket;
+
+  /**
+   * El socket es de la sala, no de la aplicación: si nadie da uno, se construye.
+   * Ver la nota larga en el servicio de la flota.
+   */
   constructor(
     private readonly rooms: RoomsApiService,
-    private readonly socket: RoomSocket,
+    zone: NgZone,
+    @Optional() socket: RoomSocket | null = null,
   ) {
+    this.socket = socket ?? new RoomSocket(zone);
     this.socket.messages$.subscribe((mensaje) => {
       this.recibir(mensaje);
     });

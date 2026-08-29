@@ -35,8 +35,29 @@ sudo systemctl restart devweb-api
 ## Despliegues
 
 Los hace `.github/workflows/deploy-api.yml` en cada push a `main` que toque el
-servidor, el paquete compartido o la infraestructura. Necesita tres secretos en
-el repositorio: `VPS_HOST`, `VPS_USER` y `VPS_SSH_KEY`.
+servidor, el paquete compartido o la infraestructura. Necesita **cuatro**
+secretos en el repositorio: `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` y
+`VPS_HOST_KEY`.
+
+El cuarto es el que se olvida, y sin él el despliegue falla siempre en el paso
+de subir: `known_hosts` queda vacío y `ssh` se niega a conectar con un servidor
+que no reconoce. Es a propósito —aceptar la huella que conteste sería confiar en
+quien conteste— pero hay que rellenarlo a mano. Se saca así, desde una máquina
+de confianza:
+
+```bash
+ssh-keyscan -t ed25519 LA_IP
+```
+
+La línea entera que devuelve es el valor del secreto.
+
+> Si el despliegue automático está caído, la API se queda con lo último que se
+> subió a mano, y eso no se nota en ninguna pantalla: el sitio sigue en pie
+> sirviendo un servidor viejo. Cuando el cliente y el servidor dejan de hablar
+> el mismo idioma —un campo nuevo en un mensaje, por ejemplo— lo que se ve es
+> una función que «no funciona», no un error. Merece la pena mirar
+> `/health` y comparar `uptimeSeconds` con la fecha del último cambio del
+> servidor antes de buscar el fallo en el código.
 
 Cada entrega va a su propia carpeta bajo `/opt/devweb/releases/` y `current` es
 un enlace simbólico. El script espera a que `/health` responda; si no responde en
