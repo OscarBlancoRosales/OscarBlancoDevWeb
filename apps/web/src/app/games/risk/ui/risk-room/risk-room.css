@@ -16,20 +16,22 @@
   --danger: #ff5f57;
 }
 
+/*
+ * La sala de espera CRECE y se desplaza; la partida no.
+ *
+ * Antes esto llevaba `height: 100%` y `overflow: hidden`, que es lo que la
+ * pantalla de juego necesita —el mapa llega al borde y ahí no se desplaza
+ * nada— pero se aplicaba también a la sala de espera. En un móvil eso
+ * significaba que todo lo que no cupiera en una pantalla quedaba cortado y sin
+ * forma de llegar a ello: los comandantes, los bots y el botón de empezar.
+ * Quien manda en el alto sigue siendo el armazón del sitio, que ya se desplaza.
+ */
 .room {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px 14px 16px;
-  /*
-   * `100%` y no `100dvh`. Lo probé con `dvh` pensando en la barra del navegador
-   * del móvil y era peor: la mesa vive DENTRO del armazón del sitio, que ya se
-   * lleva su parte de alto, así que pedir la pantalla entera empujaba la barra
-   * de acción por debajo del borde. Quien manda en el alto es el armazón.
-   */
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 100%;
   color: var(--ink);
 }
 
@@ -45,6 +47,9 @@
   padding: 0;
   gap: 0;
   height: 100%;
+  min-height: 0;
+  /* Jugando sí: el mapa ocupa el hueco exacto y nada se desplaza detrás. */
+  overflow: hidden;
 }
 
 /* ===== CABECERA ===== */
@@ -277,6 +282,19 @@
   grid-template-columns: 1fr 320px;
   gap: 12px;
   align-items: start;
+}
+
+/*
+ * Por debajo de 900 px, una sola columna.
+ * `1fr 320px` en una pantalla de 390 dejaba la columna de la derecha —invitar,
+ * las reglas y el botón de empezar— fuera de la pantalla, y la de la izquierda
+ * aplastada a nada. No es que se viera mal: es que no se podía empezar la
+ * partida.
+ */
+@media (max-width: 900px) {
+  .waiting {
+    grid-template-columns: 1fr;
+  }
 }
 
 .waiting-main,
@@ -1192,6 +1210,17 @@
   posición propia: la hereda del hueco anclado.
 */
 .play-card {
+  /*
+   * Los eventos se reactivan AQUÍ, no en el tablero.
+   *
+   * El hueco que la sostiene es transparente al ratón —para que se pueda tocar
+   * el mapa por debajo— y el tablero intenta devolvérselos con
+   * `.anchor-slot > *`. Pero esta tarjeta es contenido proyectado: lleva el
+   * atributo de encapsulación de la SALA, no el del tablero, así que aquella
+   * regla no la alcanza nunca. El resultado era que el mapa se comía los clics
+   * y el `+` del paso no hacía nada.
+   */
+  pointer-events: auto;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1471,16 +1500,39 @@
   transform: scale(1.3);
 }
 
-/* La cara del perfil, arriba de su tarjeta. */
+/*
+ * La cara del perfil, en fila y pequeña.
+ *
+ * La puse a lo ancho de la tarjeta con proporción cuadrada, y cinco cuadrados
+ * de ciento cincuenta píxeles convertían «rellenar con IA» en el bloque más
+ * grande de la pantalla, por encima incluso de elegir comandante. Elegir un
+ * bot es marcar una casilla; elegir comandante es mirar caras. No merecen el
+ * mismo tamaño.
+ */
+.profile-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  align-items: center;
+}
+
 .profile-face {
-  display: block;
-  width: 100%;
-  aspect-ratio: 1;
+  grid-row: 1 / 3;
+  width: 44px;
+  height: 44px;
   object-fit: cover;
   object-position: center 15%;
-  border-radius: 8px;
+  border-radius: 50%;
   background: #eef2ee;
-  margin-bottom: 6px;
+}
+
+.profile-card .profile-name {
+  align-self: end;
+}
+
+.profile-card .profile-desc {
+  align-self: start;
 }
 
 /* ===================== EL PASO DE TROPAS ===================== */

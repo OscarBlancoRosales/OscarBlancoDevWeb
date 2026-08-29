@@ -926,14 +926,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
       return;
     }
 
-    // El dedo puede salirse del mapa a mitad de arrastre —en un móvil el mapa
-    // llega al borde de la pantalla— y sin capturarlo se perderían sus eventos.
-    try {
-      this.svgRef?.nativeElement.setPointerCapture(event.pointerId);
-    } catch {
-      // Un navegador que no lo permita no es motivo para no arrastrar.
-    }
-
     // Armado, todavía no arrastrando: hasta que el dedo no se aleja de verdad
     // esto puede acabar siendo un toque.
     this.panArmed = true;
@@ -958,6 +950,18 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
       // mismo gesto y ninguno de los dos salía bien.
       if (Math.hypot(dx, dy) <= this.TAP_MAX_MOVE) return;
       this.dragging = true;
+
+      // La captura se pide AQUÍ y no al apoyar el dedo, y la diferencia no es
+      // de estilo: capturando desde el `pointerdown`, tanto el `pointerup` como
+      // el `click` se reasignan al SVG y no llegan nunca al territorio, así que
+      // tocar un país dejaba de hacer absolutamente nada con el ratón. Cuando
+      // ya se está arrastrando no hay toque que estropear, y sí hace falta para
+      // que el gesto sobreviva al borde de la pantalla.
+      try {
+        this.svgRef?.nativeElement.setPointerCapture(event.pointerId);
+      } catch {
+        // Un navegador que no lo permita no es motivo para no arrastrar.
+      }
     }
     this.panX = this.panStartX + dx;
     this.panY = this.panStartY + dy;

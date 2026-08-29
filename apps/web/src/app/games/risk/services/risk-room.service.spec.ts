@@ -141,7 +141,11 @@ describe('crear una sala y sentarse en ella', () => {
       return Promise.resolve(this.sala);
     }
 
-    cambiarAsiento(): Promise<RoomInfo> {
+    /** Lo último que se le pidió cambiar, para poder mirarlo desde el test. */
+    ultimoCambio: unknown = null;
+
+    cambiarAsiento(_sala: string, _asiento: string, cambios: unknown): Promise<RoomInfo> {
+      this.ultimoCambio = cambios;
       return Promise.resolve(this.sala);
     }
   }
@@ -214,5 +218,71 @@ describe('crear una sala y sentarse en ella', () => {
     expect(primera).toBe('seat-nuevo');
     expect(segunda).toBe('seat-nuevo');
     expect(api.unidas).toBe(1);
+  });
+});
+
+/**
+ * Lo que no se copia a la metainformación del asiento se pierde sin decir nada.
+ *
+ * El comandante elegido se quedaba fuera, y el síntoma era exactamente el que
+ * describe quien juega: pinchas una cara, no cambia nada, y los demás tampoco
+ * la ven ocupada. No fallaba, no avisaba: simplemente no viajaba.
+ */
+describe('cambiar algo de tu asiento en una sala de servidor', () => {
+  class ApiQueApunta {
+    ultimoCambio: unknown = null;
+    private readonly sala: RoomInfo = {
+      id: 'sala-1',
+      game: 'risk',
+      name: 'Partida',
+      status: 'lobby',
+      config: {},
+      seats: [
+        {
+          id: 'seat-1',
+          displayName: 'Óscar',
+          isBot: false,
+          connected: true,
+          isOwner: true,
+          order: 0,
+          meta: { color: 'rojo' },
+        },
+      ],
+      createdAt: 0,
+      updatedAt: 0,
+    };
+
+    info(): Promise<RoomInfo> {
+      return Promise.resolve(this.sala);
+    }
+
+    cambiarAsiento(_sala: string, _asiento: string, cambios: unknown): Promise<RoomInfo> {
+      this.ultimoCambio = cambios;
+      return Promise.resolve(this.sala);
+    }
+  }
+
+  const zona = {
+    runOutsideAngular: (fn: () => unknown) => fn(),
+    run: (fn: () => unknown) => fn(),
+  } as NgZone;
+
+  it('el comandante elegido llega al servidor, y sin pisar lo que ya había', async () => {
+    const api = new ApiQueApunta();
+    const rooms = new RiskRoomService(api as unknown as RoomsApiService, zona);
+
+    await rooms.updateSeat('sala-1', 'seat-1', { avatar: 'fantasma' });
+
+    expect(api.ultimoCambio).toMatchObject({ meta: { avatar: 'fantasma' } });
+  });
+
+  it('y lo que no se sabe traducir no inventa una llamada vacía', async () => {
+    const api = new ApiQueApunta();
+    const rooms = new RiskRoomService(api as unknown as RoomsApiService, zona);
+
+    // `connected` lo decide la conexión del WebSocket, no un campo del asiento.
+    await rooms.updateSeat('sala-1', 'seat-1', { connected: false });
+
+    expect(api.ultimoCambio).toBeNull();
   });
 });

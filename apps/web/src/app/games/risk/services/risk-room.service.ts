@@ -433,9 +433,13 @@ export class RiskRoomService {
       return;
     }
 
+    // Lo que no se copie aquí se pierde sin decir nada. El comandante elegido
+    // se quedaba fuera, así que en una sala de servidor pinchabas una cara y no
+    // pasaba nada: ni cambiaba la tuya ni los demás la veían ocupada.
     const meta: Record<string, unknown> = {};
     if (changes.color !== undefined) meta['color'] = changes.color;
     if (changes.botProfile !== undefined) meta['botProfile'] = changes.botProfile;
+    if (changes.avatar !== undefined) meta['avatar'] = changes.avatar;
     if (changes.name === undefined && Object.keys(meta).length === 0) return;
 
     const actual = this.seatsSubject.value.find((asiento) => asiento.id === seatId);
