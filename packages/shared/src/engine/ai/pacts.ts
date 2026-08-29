@@ -1,6 +1,7 @@
 import type { GameMap, GameState, PlayerId, TerritoryId } from '../types';
 import { playerById } from '../engine';
 import { rngFor } from '../rng';
+import { normalizeText } from './mentions';
 import { rankedAttacks, standings, traitsOf } from './bot-brain';
 
 /**
@@ -41,21 +42,15 @@ export interface PactProposal {
  * «Castilla-La Mancha» gane a «Castilla y León» cuando ambas encajarían.
  */
 export function territoriesMentioned(map: GameMap, text: string): TerritoryId[] {
-  const limpio = plain(text);
+  const limpio = normalizeText(text);
   if (!limpio) return [];
   return map.territories
     .filter((territory) => territory.name.length >= 4)
     .sort((a, b) => b.name.length - a.name.length)
-    .filter((territory) => limpio.includes(plain(territory.name)))
+    .filter((territory) => limpio.includes(normalizeText(territory.name)))
     .map((territory) => territory.id);
 }
 
-function plain(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase();
-}
 
 /**
  * Decide si un bot acepta no atacar lo que le piden.

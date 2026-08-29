@@ -63,3 +63,7 @@ tmp-prueba/
 # Espacio de trabajo de los agentes y ficheros de usar y tirar
 .claude/
 tmp-*.txt
+
+# La base de datos que deja el servidor al correrlo en local.
+# Lleva cuentas y salas: no es algo que deba acabar en el repositorio.
+apps/server/data/

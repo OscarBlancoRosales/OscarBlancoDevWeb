@@ -99,7 +99,7 @@
       <input
         type="text"
         [(ngModel)]="draft"
-        [attr.placeholder]="'Escribe a ' + talkingTo + '…'"
+        [attr.placeholder]="chatHint"
         maxlength="400"
         (keydown.enter)="submit()"
       />

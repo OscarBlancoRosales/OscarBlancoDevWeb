@@ -10,6 +10,7 @@ import {
   requestTurnPlan,
 } from '@devweb/shared/engine/ai/ai-orchestrator';
 import { considerPact, pactReply } from '@devweb/shared/engine/ai/pacts';
+import { mentionedSeat } from '@devweb/shared/engine/ai/mentions';
 import { chronicleFor, hasChronicle } from '@devweb/shared/engine/ai/chronicle';
 import { rngFor } from '@devweb/shared/engine/rng';
 import {
@@ -199,13 +200,27 @@ export class RiskGameService implements OnDestroy {
     if (!state || state.phase === 'game-over') return;
 
     for (const entry of chat.slice(-10)) {
-      if (entry.kind !== 'player' || !entry.to) continue;
+      if (entry.kind !== 'player') continue;
       if (this.answered.has(entry.key)) continue;
-      const seat = this.seats.find((candidate) => candidate.id === entry.to);
-      if (!seat || seat.kind !== 'bot') continue;
+      const seat = this.destinatario(entry);
+      if (!seat) continue;
       this.answered.add(entry.key);
       void this.replyAsBot(entry, seat);
     }
+  }
+
+  /**
+   * A qué comandante va un mensaje.
+   *
+   * En su canal privado, al dueño del canal. En el general no hay destinatario
+   * —es lo que lo hace general— así que vale con nombrarlo, como en cualquier
+   * mesa. Antes un mensaje sin destinatario no lo contestaba nadie: escribir
+   * «Forja, no me ataques» delante de todos no le llegaba a Forja.
+   */
+  private destinatario(entry: ChatEntry): RoomSeat | undefined {
+    const bots = this.seats.filter((candidate) => candidate.kind === 'bot');
+    if (entry.to) return bots.find((candidate) => candidate.id === entry.to);
+    return mentionedSeat(bots, entry.text);
   }
 
   /**
@@ -245,7 +260,10 @@ export class RiskGameService implements OnDestroy {
       // quedar escrito con las mismas palabras que lo que se cumple.
       text: acordado || pact.territories.length > 0 ? pactReply(this.map, pact) : answer.message,
       origin: acordado || pact.territories.length > 0 ? 'local' : answer.source,
-      to: entry.authorId,
+      // Se contesta donde te han hablado: a un privado en privado, y a quien
+      // te nombra delante de todos, delante de todos. Contestar siempre en
+      // privado dejaba la pregunta a la vista y la respuesta escondida.
+      ...(entry.to !== undefined && { to: entry.authorId }),
     });
   }
 

@@ -286,3 +286,54 @@ describe('cambiar algo de tu asiento en una sala de servidor', () => {
     expect(api.ultimoCambio).toBeNull();
   });
 });
+
+/**
+ * Un mensaje al canal de todos tiene que viajar sin `para`.
+ *
+ * No es un detalle de estilo. El esquema del servidor rechaza el mensaje
+ * entero cuando lleva un campo que no conoce, así que un cliente nuevo contra
+ * un servidor que aún no se ha desplegado se queda mudo: escribes y no aparece
+ * ni tu propia línea. Mientras el canal general no mande `para`, hablarle a un
+ * comandante nombrándole funciona en cualquiera de los dos.
+ */
+describe('lo que el chat pone en el cable', () => {
+  const zona = {
+    runOutsideAngular: (fn: () => unknown) => fn(),
+    run: (fn: () => unknown) => fn(),
+  } as NgZone;
+
+  function servicioQueApunta(): {
+    rooms: RiskRoomService;
+    enviados: Array<Record<string, unknown>>;
+  } {
+    const rooms = new RiskRoomService({} as unknown as RoomsApiService, zona);
+    const enviados: Array<Record<string, unknown>> = [];
+    (
+      rooms as unknown as {
+        socket: { decir(texto: string, extra: Record<string, unknown>): void };
+      }
+    ).socket.decir = (_texto, extra) => {
+      enviados.push(extra);
+    };
+    return { rooms, enviados };
+  }
+
+  const BASE = { authorId: 'seat-1', author: 'Óscar', kind: 'player' as const };
+
+  it('al canal de todos va sin destinatario', async () => {
+    const { rooms, enviados } = servicioQueApunta();
+
+    await rooms.sendChat('sala-1', { ...BASE, text: 'Forja, no me ataques' });
+
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0]).not.toHaveProperty('para');
+  });
+
+  it('a un canal privado va con destinatario', async () => {
+    const { rooms, enviados } = servicioQueApunta();
+
+    await rooms.sendChat('sala-1', { ...BASE, text: 'tregua?', to: 'seat-2' });
+
+    expect(enviados[0]).toMatchObject({ para: 'seat-2' });
+  });
+});

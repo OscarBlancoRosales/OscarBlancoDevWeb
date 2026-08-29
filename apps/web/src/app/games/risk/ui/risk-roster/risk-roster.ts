@@ -105,6 +105,17 @@ export class RiskRoster {
     return this.rows.find((row) => row.id === this.openThread)?.name ?? '';
   }
 
+  /**
+   * Lo que pone el campo de escribir.
+   *
+   * En el canal de todos dice que nombrar a un comandante sirve: contesta el
+   * que se nombra, y sin decirlo nadie lo probaría.
+   */
+  get chatHint(): string {
+    if (this.openThread === CANAL_GENERAL) return 'Escribe a todos… o nombra a un comandante';
+    return `Escribe a ${this.talkingTo}…`;
+  }
+
   /** Si el hilo abierto es de los que se piden en vez de conversarse. */
   get askLabel(): string | null {
     if (this.openThread === CANAL_GENERAL) return null;

@@ -58,7 +58,7 @@ class SalaFalsa {
   log$ = new BehaviorSubject<LoggedActionEntry[]>([]);
   /** El chat: por aquí llegan los privados a los que el bot contesta. */
   chat$ = new BehaviorSubject<ChatEntry[]>([]);
-  chats: Array<{ kind: string; text: string }> = [];
+  chats: Array<{ kind: string; text: string; to?: string }> = [];
   listenToRoom = vi.fn();
 
   /** Avería 1: aceptar la jugada de este asiento pero no anotarla (rechazo). */
@@ -83,7 +83,7 @@ class SalaFalsa {
     ]);
   }
 
-  async sendChat(_room: string, entry: { kind: string; text: string }) {
+  async sendChat(_room: string, entry: { kind: string; text: string; to?: string }) {
     if (this.reventarEscrituras > 0) {
       this.reventarEscrituras--;
       throw new Error('sin conexión');
@@ -199,4 +199,92 @@ describe('RiskGameService: los bots no pueden dejar la mesa colgada', () => {
     await dejarCorrer();
     expect(ultimo!.round, 'no pasó de la primera ronda').toBeGreaterThan(1);
   }, 60000);
+});
+
+describe('RiskGameService: hablarle a un comandante', () => {
+  let sala: SalaFalsa;
+  let service: RiskGameService;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    sala = new SalaFalsa();
+    service = new RiskGameService(sala as unknown as RiskRoomService);
+    // Los bots no llegan a mover: así el único chat que aparece es el del
+    // comandante contestando, y no la crónica de sus ataques.
+    service.botDelayMs = 1_000_000;
+    sala.seats$.next([asiento(0, 'human'), asiento(1, 'bot')]);
+    sala.meta$.next(meta());
+    service.attach('sala1', 's0');
+    // La primera tanda es historia: lo ya escrito al entrar no se contesta.
+    sala.chat$.next([]);
+  });
+
+  function escribir(texto: string, to?: string) {
+    sala.chat$.next([
+      {
+        key: 'k1',
+        kind: 'player',
+        authorId: 's0',
+        author: 'Humano 0',
+        text: texto,
+        ...(to !== undefined && { to }),
+      } as ChatEntry,
+    ]);
+  }
+
+  async function correr(veces: number) {
+    for (let i = 0; i < veces; i++) {
+      await Promise.resolve();
+      vi.advanceTimersByTime(50);
+      await Promise.resolve();
+    }
+  }
+
+  /**
+   * Deja salir el plan de turno del bot y borra el chat.
+   *
+   * Al empezar su turno el bot anuncia su plan, y esa línea también es suya:
+   * sin apartarla, la prueba tomaría el plan por la respuesta y pasaría sin
+   * comprobar nada.
+   */
+  async function asentar() {
+    await correr(20);
+    sala.chats.length = 0;
+  }
+
+  async function dejarContestar() {
+    for (let i = 0; i < 40; i++) {
+      await correr(1);
+      if (sala.chats.some((c) => c.kind === 'bot')) return;
+    }
+  }
+
+  it('contesta en el canal de todos a quien le nombra', async () => {
+    await asentar();
+    escribir('Bot 1, no me ataques este turno');
+    await dejarContestar();
+
+    const respuesta = sala.chats.find((c) => c.kind === 'bot');
+    expect(respuesta, 'el comandante nombrado tiene que contestar').toBeDefined();
+    // En el general se contesta en el general: si la respuesta fuera privada,
+    // la pregunta quedaría a la vista y la respuesta escondida.
+    expect(respuesta?.to).toBeUndefined();
+  });
+
+  it('sigue contestando en privado a su propio canal', async () => {
+    await asentar();
+    escribir('tregua?', 's1');
+    await dejarContestar();
+
+    const respuesta = sala.chats.find((c) => c.kind === 'bot');
+    expect(respuesta?.to).toBe('s0');
+  });
+
+  it('no contesta a un mensaje que no nombra a nadie', async () => {
+    await asentar();
+    escribir('vaya partida llevamos');
+    await dejarContestar();
+
+    expect(sala.chats.some((c) => c.kind === 'bot')).toBe(false);
+  });
 });
