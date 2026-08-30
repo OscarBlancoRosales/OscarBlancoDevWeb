@@ -77,8 +77,10 @@ describe('RiskBoard: coste de arrastrar el mapa', () => {
     await arrastrar(200);
     const despues = transformActual();
     expect(despues).not.toBe(antes);
-    // 200 pasos de un píxel en cada eje desde el origen.
-    expect(despues).toContain('translate(200 200)');
+    // 200 pasos de un píxel en cada eje, menos los seis primeros: hasta que el
+    // dedo no se aleja ocho píxeles esto todavía puede acabar siendo un toque,
+    // y el arrastre arranca donde deja de serlo. En diagonal, seis pasos.
+    expect(despues).toContain('translate(194 194)');
   });
 
   /**
@@ -137,7 +139,8 @@ describe('RiskBoard: coste de arrastrar el mapa', () => {
     svgTardio.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
 
     const grupo = tardio.nativeElement.querySelector('svg.board > g') as SVGGElement;
-    expect(grupo.getAttribute('transform')).toContain('translate(60 0)');
+    // 60 píxeles de dedo menos los nueve que tarda en dejar de ser un toque.
+    expect(grupo.getAttribute('transform')).toContain('translate(51 0)');
     tardio.destroy();
   });
 

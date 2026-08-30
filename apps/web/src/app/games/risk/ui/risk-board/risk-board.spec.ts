@@ -492,14 +492,58 @@ describe('RiskBoard', () => {
       expect(component.panX).toBe(0);
     });
 
-    it('arrastra el mapa', () => {
+    it('arrastra el mapa desde donde empieza el arrastre, sin dar un salto', () => {
       component.onPointerDown({ button: 0, pointerType: 'mouse', clientX: 0, clientY: 0 } as PointerEvent);
+
+      // Este movimiento sólo cruza el margen del toque: es el que decide que
+      // esto es un arrastre y no una pulsación. El mapa todavía no se mueve, y
+      // eso es lo suyo: si aquí saltara, saltaría justo los ocho píxeles del
+      // margen cada vez que empiezas a arrastrar.
       component.onPointerMove({ clientX: 40, clientY: 25 } as PointerEvent);
-      expect(component.panX).toBe(40);
-      expect(component.panY).toBe(25);
+      expect(component.panX).toBe(0);
+      expect(component.panY).toBe(0);
+
+      // A partir de ahí el mapa va con el dedo, punto por punto.
+      component.onPointerMove({ clientX: 60, clientY: 45 } as PointerEvent);
+      expect(component.panX).toBe(20);
+      expect(component.panY).toBe(20);
+
       component.onPointerUp();
       component.onPointerMove({ clientX: 200, clientY: 200 } as PointerEvent);
-      expect(component.panX).toBe(40);
+      expect(component.panX).toBe(20);
+    });
+
+    /**
+     * El fallo que hacía el arrastre inservible en un móvil.
+     *
+     * `panX` está en unidades del `viewBox` y lo que recorre un dedo son
+     * píxeles de pantalla. Sumar lo uno a lo otro parecía correcto en un
+     * portátil, donde el factor ronda 0,9, y en un móvil de 390 píxeles con un
+     * `viewBox` de 1000 el factor es 0,388: el mapa recorría 39 píxeles por
+     * cada 100 del dedo y se quedaba atrás.
+     */
+    it('convierte el recorrido del dedo a unidades del mapa', () => {
+      const svg = fixture.nativeElement.querySelector('svg.board') as SVGSVGElement;
+      // Un mapa dibujado a 0,4: un píxel de pantalla son 2,5 unidades.
+      const inversa = { a: 2.5, b: 0, c: 0, d: 2.5, e: 0, f: 0 };
+      (svg as unknown as { getScreenCTM: () => unknown }).getScreenCTM = () => ({
+        a: 0.4,
+        b: 0,
+        c: 0,
+        d: 0.4,
+        e: 0,
+        f: 0,
+        inverse: () => inversa,
+      });
+
+      component.onPointerDown({ button: 0, pointerType: 'mouse', clientX: 0, clientY: 0 } as PointerEvent);
+      component.onPointerMove({ clientX: 20, clientY: 0 } as PointerEvent); // cruza el margen
+      component.onPointerMove({ clientX: 120, clientY: 0 } as PointerEvent); // 100 px de dedo
+
+      // 100 píxeles de dedo son 250 unidades de mapa, que en pantalla vuelven a
+      // ser 100: el mapa va con el dedo, mida lo que mida la pantalla.
+      expect(component.panX).toBe(250);
+      expect(component.panX * 0.4).toBe(100);
     });
 
     it('cambiar de mapa recentra la vista', () => {

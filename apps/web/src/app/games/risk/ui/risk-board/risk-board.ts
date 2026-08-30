@@ -962,11 +962,44 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
       } catch {
         // Un navegador que no lo permita no es motivo para no arrastrar.
       }
+
+      // El arrastre empieza AQUÍ, no donde se apoyó el dedo: si no, al cruzar
+      // el margen el mapa pegaría un salto de esos ocho píxeles.
+      this.dragStartX = event.clientX;
+      this.dragStartY = event.clientY;
+      this.panStartX = this.panX;
+      this.panStartY = this.panY;
+      return;
     }
-    this.panX = this.panStartX + dx;
-    this.panY = this.panStartY + dy;
-    this.paintView();
+    this.arrastrarHasta(event.clientX, event.clientY);
   };
+
+  /**
+   * Mueve la vista para que el mapa siga al dedo.
+   *
+   * El desplazamiento se mide en el sistema del mapa, no en píxeles de
+   * pantalla. Son cosas distintas: `panX` vive en unidades del `viewBox` y lo
+   * que recorre un dedo son píxeles, y entre los dos hay el factor que mete
+   * `preserveAspectRatio`. Sumar píxeles a unidades del `viewBox` funcionaba de
+   * milagro en un portátil, donde el factor ronda 0,9, y se notaba muchísimo en
+   * un móvil: con el mapa a 388 píxeles de ancho y un `viewBox` de 1000, el
+   * factor es 0,388 y el mapa recorría 39 píxeles por cada 100 del dedo. No es
+   * que fuera lento: es que no te seguía.
+   */
+  private arrastrarHasta(clientX: number, clientY: number): void {
+    const inicio = this.toMapSpace(this.dragStartX, this.dragStartY);
+    const ahora = this.toMapSpace(clientX, clientY);
+    if (inicio && ahora) {
+      this.panX = this.panStartX + (ahora.x - inicio.x);
+      this.panY = this.panStartY + (ahora.y - inicio.y);
+    } else {
+      // Sin matriz no hay conversión posible; moverse de más es mejor que no
+      // moverse.
+      this.panX = this.panStartX + (clientX - this.dragStartX);
+      this.panY = this.panStartY + (clientY - this.dragStartY);
+    }
+    this.paintView();
+  }
 
   onPointerUp = (event?: PointerEvent): void => {
     if (event) this.activePointers.delete(event.pointerId);
