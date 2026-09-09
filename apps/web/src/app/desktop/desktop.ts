@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import {
+  AfterViewInit,
   ChangeDetectorRef,
   Component,
   ElementRef,
@@ -27,6 +28,7 @@ import {
   move,
   newDesktop,
   open,
+  refit,
   resize,
   restore,
   toggleMaximize,
@@ -71,7 +73,7 @@ const MOBILE_MAX = 768;
   templateUrl: './desktop.html',
   styleUrl: './desktop.css',
 })
-export class Desktop implements OnInit, OnDestroy {
+export class Desktop implements OnInit, AfterViewInit, OnDestroy {
   state: DesktopState = newDesktop(1200, 800);
   /** El componente ya cargado de cada ventana; vacío hasta que se abre. */
   loaded: Record<string, Type<unknown> | undefined> = {};
@@ -113,6 +115,15 @@ export class Desktop implements OnInit, OnDestroy {
       .subscribe(() => {
         this.syncRouteWindow();
       });
+  }
+
+  /**
+   * En `ngOnInit` el hueco todavía no existe, así que la primera medida sale
+   * de `window`. Aquí ya está pintado y se mide de verdad: sin esto, una
+   * sección abierta desde un enlace se quedaba sin llegar a los bordes.
+   */
+  ngAfterViewInit(): void {
+    this.measure();
   }
 
   ngOnDestroy(): void {
@@ -169,13 +180,11 @@ export class Desktop implements OnInit, OnDestroy {
     const ancho = caja?.clientWidth ?? window.innerWidth;
     const alto = caja?.clientHeight ?? window.innerHeight - 44;
     this.mobile = window.innerWidth <= MOBILE_MAX;
-    this.state = { ...this.state, area: { width: ancho, height: alto } };
     // Recolocar lo abierto dentro del área nueva, o al girar el móvil se
     // quedarían ventanas fuera de la pantalla y sin forma de recuperarlas.
-    for (const w of this.state.windows) {
-      const destino = this.mobile ? { width: ancho, height: alto } : { width: w.width, height: w.height };
-      this.state = resize(this.state, w.id, destino.width, destino.height);
-      if (this.mobile) this.maximizeIfNeeded(w.id);
+    this.state = refit(this.state, ancho, alto);
+    if (this.mobile) {
+      for (const w of this.state.windows) this.maximizeIfNeeded(w.id);
     }
     this.cdr.detectChanges();
   }
