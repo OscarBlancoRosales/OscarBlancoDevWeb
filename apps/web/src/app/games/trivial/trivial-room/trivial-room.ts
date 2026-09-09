@@ -1,14 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, effect, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { TrivialRoomService } from '../trivial-room.service';
-import { Presentador } from '../presentador';
 import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
-import type { Momento } from '@devweb/shared/games/trivial/guion';
-import type { TrivialView } from '@devweb/shared/games/trivial/tipos';
+import type { TipoPrueba, TrivialView } from '@devweb/shared/games/trivial/tipos';
 
 /** Cómo va la clasificación, ya ordenada y con nombres. */
 export interface PuestoEnLaMesa {
@@ -18,12 +16,28 @@ export interface PuestoEnLaMesa {
   readonly eresTu: boolean;
 }
 
+/** Cómo se llama cada prueba en pantalla, y qué pinta tiene. */
+interface Seccion {
+  readonly nombre: string;
+  readonly pista: string;
+}
+
+const SECCIONES: Readonly<Record<TipoPrueba, Seccion>> = {
+  test: { nombre: 'Test', pista: 'Cuatro opciones, una buena.' },
+  estimacion: { nombre: 'A ojo', pista: 'Sin opciones: escribe el número.' },
+  fallo: { nombre: 'Encuentra el fallo', pista: 'Está ahí. Míralo bien.' },
+  pulsa: { nombre: 'El primero que pulse', pista: 'Solo cobra el primero. Fallar cuesta.' },
+  rafaga: { nombre: 'Ráfaga', pista: 'Verdadero o falso. Encadenar multiplica.' },
+  bomba: { nombre: 'La bomba', pista: 'Contesta y pásala. Que no te pille.' },
+};
+
 /**
  * La mesa del concurso.
  *
- * Pinta lo que manda el servidor y le da voz al presentador. No sabe ninguna
- * respuesta hasta que la ronda se cierra, porque hasta entonces no se la
- * mandan.
+ * Pinta lo que manda el servidor, presentador incluido: lo que dice ya viene
+ * en la vista, así que los cinco de la mesa leen lo mismo a la vez. No sabe
+ * ninguna respuesta hasta que la ronda se cierra, porque hasta entonces no se
+ * la mandan.
  */
 @Component({
   selector: 'app-trivial-room',
@@ -35,7 +49,6 @@ export class TrivialRoom implements OnInit, OnDestroy {
   readonly vista: Signal<TrivialView | null>;
   readonly error: Signal<string | null>;
 
-  readonly frase = signal('');
   readonly roomId = signal('');
   readonly enlaceCopiado = signal(false);
 
@@ -45,9 +58,6 @@ export class TrivialRoom implements OnInit, OnDestroy {
   /** Las letras de las opciones, para no calcularlas en la plantilla. */
   readonly letras = ['A', 'B', 'C', 'D'];
 
-  private readonly presentador = new Presentador();
-  private semilla = 1;
-  private ultimoMomento = '';
 
   constructor(
     private readonly sala: TrivialRoomService,
@@ -56,13 +66,6 @@ export class TrivialRoom implements OnInit, OnDestroy {
   ) {
     this.vista = sala.vista;
     this.error = sala.error;
-
-    // El presentador habla cuando cambia el momento, no cuando se repinta la
-    // pantalla: colgado del ciclo de detección de cambios, pediría una frase
-    // nueva al modelo varias veces por segundo.
-    effect(() => {
-      this.hablarSiCambioElMomento(this.vista());
-    });
   }
 
   ngOnInit(): void {
@@ -77,10 +80,6 @@ export class TrivialRoom implements OnInit, OnDestroy {
     }
 
     this.roomId.set(sala);
-    // La semilla de lo que dice el presentador sale del identificador de la
-    // sala: así todos los de la mesa oyen la misma frase sin que el servidor
-    // tenga que mandarla.
-    this.semilla = numeroDe(sala);
     this.sala.reconectar(pase);
   }
 
@@ -150,29 +149,57 @@ export class TrivialRoom implements OnInit, OnDestroy {
     return this.vista()?.tuRespuesta === opcion;
   }
 
-  private hablarSiCambioElMomento(vista: TrivialView | null): void {
-    if (!vista) return;
+  // --- El programa --------------------------------------------------------
 
-    const momento = momentoDe(vista);
-    const clave = `${momento}:${vista.ronda}:${String(vista.cerrada)}`;
-    if (clave === this.ultimoMomento) return;
-    this.ultimoMomento = clave;
+  /** Lo que está diciendo el presentador. Viene del servidor, igual para todos. */
+  get dice(): string {
+    return this.vista()?.dice ?? '';
+  }
 
-    const lider = this.clasificacion.at(0);
-    void this.presentador
-      .decir(
-        momento,
-        {
-          quien: lider?.nombre ?? 'nadie',
-          puntos: lider?.puntos ?? 0,
-          ronda: vista.ronda,
-          rondas: vista.rondas,
-        },
-        this.semilla,
-      )
-      .then((dicho) => {
-        this.frase.set(dicho);
-      });
+  /** En qué sección del programa estamos. */
+  get seccion(): Seccion | null {
+    const tipo = this.vista()?.tipo;
+    return tipo ? SECCIONES[tipo] : null;
+  }
+
+  get esBomba(): boolean {
+    return this.vista()?.tipo === 'bomba';
+  }
+
+  get esRafaga(): boolean {
+    return this.vista()?.tipo === 'rafaga';
+  }
+
+  get esEstimacion(): boolean {
+    return this.vista()?.tipo === 'estimacion';
+  }
+
+  /** De quién es la bomba ahora mismo, con su nombre. */
+  get quienTieneLaBomba(): string {
+    const turno = this.vista()?.turno;
+    return turno ? this.sala.nombreDe(turno) : '';
+  }
+
+  /**
+   * Si te toca contestar a ti.
+   *
+   * En la bomba contesta uno; en el resto, todos. Sin esto, cuatro personas
+   * verían los botones activos en una prueba en la que solo juega una.
+   */
+  get puedesContestar(): boolean {
+    const vista = this.vista();
+    if (!vista || vista.cerrada) return false;
+    return vista.tuTurno && !this.yaContestaste;
+  }
+
+  /** Lo que queda de mecha, para pintarlo como una cuenta atrás. */
+  get mecha(): number {
+    return this.vista()?.mecha ?? 0;
+  }
+
+  /** Tu racha en la ráfaga, que es lo que multiplica. */
+  get racha(): number {
+    return this.vista()?.racha ?? 0;
   }
 
   async copiarEnlace(): Promise<void> {
@@ -191,22 +218,3 @@ export class TrivialRoom implements OnInit, OnDestroy {
   }
 }
 
-/** En qué momento del concurso estamos, para saber qué toca decir. */
-function momentoDe(vista: TrivialView): Momento {
-  if (vista.fase === 'presentacion') return 'bienvenida';
-  if (vista.fase === 'fin') return 'despedida';
-
-  if (vista.cerrada) {
-    const acertaron = vista.resultados?.some((resultado) => resultado.ganados > 0) ?? false;
-    return acertaron ? 'aciertaAlguien' : 'nadieAcierta';
-  }
-
-  return vista.ronda === vista.rondas ? 'ultimaRonda' : 'presentaRonda';
-}
-
-/** Un número estable a partir del identificador de la sala. */
-function numeroDe(sala: string): number {
-  let hash = 0;
-  for (const letra of sala) hash = (hash * 31 + letra.charCodeAt(0)) >>> 0;
-  return hash;
-}

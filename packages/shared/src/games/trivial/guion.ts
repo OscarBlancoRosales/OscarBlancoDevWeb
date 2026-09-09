@@ -8,6 +8,23 @@ export const MOMENTOS = [
   'empate',
   'ultimaRonda',
   'despedida',
+  // Las cortinillas de cada sección: lo que convierte una tanda de preguntas
+  // en un programa con partes.
+  'seccionTest',
+  'seccionEstimacion',
+  'seccionFallo',
+  'seccionPulsa',
+  'seccionRafaga',
+  'seccionBomba',
+  // Lo que pasa en el marcador, que es de lo que vive un presentador.
+  'lider',
+  'remonta',
+  'seHunde',
+  'pegados',
+  'rachaBuena',
+  // La bomba
+  'pasaLaBomba',
+  'explota',
 ] as const;
 
 export type Momento = (typeof MOMENTOS)[number];
@@ -65,6 +82,71 @@ const FRASES: Readonly<Record<Momento, readonly string[]>> = {
     '¡Última ronda! Aquí se decide todo. Óscar ya sabe quién va a ganar, pero no lo suelta.',
     'Y llegamos a la última. Lo que no sepáis ya, no lo vais a saber.',
     'Última pregunta. Respirad hondo, que esto no es la producción de un viernes.',
+  ],
+  seccionTest: [
+    'Sección de preguntas. Cuatro opciones, una buena y tres que parecen buenas.',
+    'Vamos con el test clásico. A ver si alguien ha abierto un libro este año.',
+    'Test. Como en la carrera, pero sin poder copiar al de al lado.',
+  ],
+  seccionEstimacion: [
+    'Ahora, a calcular. No hay opciones: hay que mojarse con un número.',
+    'Sección de estimaciones. Aquí no vale sonar convincente, vale acertar.',
+    'A ojo. Como cuando dais plazos, pero esto sí se comprueba.',
+  ],
+  seccionFallo: [
+    'Encontrad el fallo. Uno solo. Está ahí, mirándoos.',
+    'Sección de depuración. Como un martes por la mañana, pero cronometrado.',
+    'Ahí tenéis el código. Alguien lo escribió y alguien lo aprobó. Buscad.',
+  ],
+  seccionPulsa: [
+    '¡El primero que pulse! Solo cobra quien se lanza antes, y equivocarse cuesta. Suerte.',
+    'Atención: aquí gana el que se moja. El que duda, mira.',
+    'Sección de reflejos. Pulsar rápido y mal os va a salir caro.',
+  ],
+  seccionRafaga: [
+    '¡Ráfaga! Verdadero o falso, una detrás de otra, y encadenar multiplica.',
+    'Llega la ráfaga. Sin pensar, que para pensar ya estaba la sección anterior.',
+    'Verdadero o falso a toda leche. El que enlaza, arrasa.',
+  ],
+  seccionBomba: [
+    '¡LA BOMBA! Va pasando de mano en mano y explota cuando le da la gana. Que no os pille con ella.',
+    'Sección de la bomba. Contestad rápido y pasadla, que quema.',
+    'Y llega la bomba. Óscar dice que él nunca la ha perdido. Yo no le he visto jugar, pero le creo.',
+  ],
+  lider: [
+    'Vamos a mirar el marcador: manda {quien} con {puntos}. Todavía se puede arreglar.',
+    'Ahí arriba está {quien}, con {puntos} puntos. Los demás, a currárselo.',
+    'Marcador: {quien} en cabeza con {puntos}. Óscar diría que va por buen camino.',
+  ],
+  remonta: [
+    '¡{quien} adelanta! Se pone con {puntos}. Esto ha cambiado.',
+    'Ojo, que {quien} se ha colado por delante. {puntos} puntos.',
+    'Remontada de {quien}, que se planta en {puntos}. Bien jugado.',
+  ],
+  seHunde: [
+    '{quien} va con {puntos}. No quiero decir que esté perdido, pero está lejísimos.',
+    'Un aplauso para {quien}, que sigue ahí aunque el marcador diga otra cosa.',
+    'Y {quien}, con {puntos}. Óscar dice que lo importante es participar. Óscar miente.',
+  ],
+  pegados: [
+    'Esto está apretadísimo. Cualquiera de vosotros puede ganar esto.',
+    'Marcador pegado. Me encanta cuando pasa esto y no lo digo por decir.',
+    'Van todos a un palmo. Aquí la siguiente decide.',
+  ],
+  rachaBuena: [
+    '¡{quien} lleva {puntos} seguidas! Que alguien la pare.',
+    '{puntos} aciertos encadenados de {quien}. Esto ya no es suerte.',
+    'Racha de {puntos} para {quien}. Nivel Óscar, casi.',
+  ],
+  pasaLaBomba: [
+    '{quien} la suelta a tiempo. Quedan {puntos} respuestas de mecha.',
+    'Bien, {quien}, fuera esa bomba. {puntos} de mecha. Corre.',
+    'Pasa la bomba {quien}. Quedan {puntos}. Que empiece el sudor.',
+  ],
+  explota: [
+    '¡BOOM! Le estalla a {quien}. Se queda en {puntos}. Una pena, oye.',
+    'Se acabó para {quien}: explota en sus manos. {puntos} puntos. Ay.',
+    '¡Pum! {quien}, {puntos}. Óscar la habría pasado hace tres turnos.',
   ],
   despedida: [
     '¡Y hasta aquí! Gana {quien} con {puntos} puntos. Un aplauso, y otro para Óscar, que sigue siendo el mejor programador de la historia.',

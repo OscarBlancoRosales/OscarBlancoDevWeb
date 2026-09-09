@@ -29,6 +29,27 @@ export interface RoomActorOptions {
   /** Quién creó la sala. Su asiento es el único que puede hablar como la sala. */
   readonly ownerId?: string | null;
   readonly now?: () => number;
+  /** Quien le pone voz a la partida, si este juego tiene presentador. */
+  readonly narrador?: Narrador | null;
+}
+
+/**
+ * Quien comenta lo que pasa en la sala.
+ *
+ * Se le avisa después de cada jugada, con el estado de antes y el de después,
+ * y decide si hay algo que decir. Puede tardar -habla con un modelo- así que
+ * no se le espera: el juego sigue y la frase entra cuando llega.
+ */
+export interface Narrador {
+  trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void;
+}
+
+/** Si esa acción es de las que solo pone el servidor. */
+function esDeSistema(module: GameModule<unknown, unknown>, accion: unknown): boolean {
+  const tipos = module.accionesDeSistema;
+  if (!tipos || typeof accion !== 'object' || accion === null) return false;
+  const tipo = (accion as { tipo?: unknown }).tipo;
+  return typeof tipo === 'string' && tipos.includes(tipo);
 }
 
 /**
@@ -66,7 +87,10 @@ export class RoomActor {
    */
   private moviendoBots = false;
 
+  private readonly narrador: Narrador | null;
+
   constructor(options: RoomActorOptions) {
+    this.narrador = options.narrador ?? null;
     this.roomId = options.roomId;
     this.module = options.module;
     this.repository = options.repository;
@@ -300,6 +324,9 @@ export class RoomActor {
     if (!Value.Check(this.module.actionSchema, accion)) {
       return { code: 'accion-desconocida', message: 'Esa acción no existe en este juego.' };
     }
+    if (esDeSistema(this.module, accion)) {
+      return { code: 'accion-del-servidor', message: 'Esa acción no la mandas tú.' };
+    }
     if (!this.seats.some((seat) => seat.id === seatId)) {
       return { code: 'sin-asiento', message: 'No tienes asiento en esta sala.' };
     }
@@ -309,6 +336,9 @@ export class RoomActor {
 
     const rechazo = this.juzgar(accion, seatId);
     if (rechazo) return rechazo;
+
+    // El de antes, para que quien narra pueda comparar y saber qué ha pasado.
+    const antes = this.state;
 
     // `validate` acaba de decir que sí, así que esto no debería lanzar. Si lo
     // hace, es un fallo del módulo y no de quien juega: se rechaza la jugada y
@@ -333,7 +363,35 @@ export class RoomActor {
 
     this.broadcast();
     this.dejarJugarALosBots();
+    this.narrador?.trasJugada(this, antes, this.state);
     return null;
+  }
+
+  /**
+   * Una acción que pone el servidor, no una persona.
+   *
+   * Va por dentro de `submit` a propósito: se queda en el registro de eventos
+   * como todo lo demás, así que al recargar la página o reconstruir la sala el
+   * presentador ha dicho lo mismo. Lo único que se salta es la puerta.
+   */
+  aplicarDelSistema(seatId: SeatId, accion: unknown): void {
+    if (this.state === null) return;
+    if (!Value.Check(this.module.actionSchema, accion)) return;
+    if (!esDeSistema(this.module, accion)) return;
+
+    let siguiente: unknown;
+    try {
+      siguiente = this.module.apply(this.state, accion, seatId, this.seats);
+    } catch {
+      // Que el presentador se quede mudo no puede tumbar una partida.
+      return;
+    }
+
+    this.state = siguiente;
+    this.seq += 1;
+    const at = this.now();
+    this.repository.appendEvent(this.roomId, { seq: this.seq, seatId, action: accion, at });
+    this.broadcast();
   }
 
   /**

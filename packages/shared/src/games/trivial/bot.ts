@@ -33,8 +33,20 @@ export function respuestaDelBot(pregunta: Pregunta, nivel: NivelBot, rng: Rng): 
     : opcion(pregunta, nivel, rng);
 }
 
+/**
+ * Cuánto se le baja la puntería en «el primero que pulse».
+ *
+ * Un bot que acierta el noventa por ciento y contesta al instante convierte
+ * esa sección en un monólogo suyo: nadie llega nunca a pulsar. Callarlo no
+ * vale -la ronda no cerraría hasta que alguien acertase-, así que se lanza
+ * igual, pero se equivoca más. Que es justo lo que hace divertida la prueba.
+ */
+const PUNTERIA_AL_PULSAR = 0.55;
+
 function opcion(pregunta: Pregunta, nivel: NivelBot, rng: Rng): number {
-  if (rng.next() < ACIERTOS_POR_NIVEL[nivel]) return pregunta.correcta;
+  const puntería =
+    ACIERTOS_POR_NIVEL[nivel] * (pregunta.tipo === 'pulsa' ? PUNTERIA_AL_PULSAR : 1);
+  if (rng.next() < puntería) return pregunta.correcta;
 
   // Cuando falla, falla de verdad: elige entre las que no son la buena, y no
   // entre todas. Si no, un tercio de sus fallos acertaría de rebote y los

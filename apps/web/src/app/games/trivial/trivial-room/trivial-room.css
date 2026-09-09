@@ -261,3 +261,109 @@ button.principal:hover:not(:disabled) {
   font-size: 13px;
   margin: 0 0 16px;
 }
+
+/* ===== EL PROGRAMA =====
+   Cada prueba lleva su rótulo, como las secciones de un concurso de la tele:
+   sin él, veinte rondas seguidas se leen como una lista. */
+.rotulo {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+  border-left: 3px solid #0a0;
+  background: #0b160b;
+}
+
+.rotulo.peligro {
+  border-left-color: #c50;
+  background: #1a1005;
+}
+
+.parte {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #0f0;
+}
+
+.rotulo.peligro .parte {
+  color: #fa4;
+}
+
+.pista {
+  font-size: 12px;
+  color: #7a7;
+}
+
+.enunciado {
+  margin: 8px 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #cfc;
+}
+
+/* ===== LA BOMBA =====
+   La mecha se pinta como lo que es: lo que le queda antes de estallar. */
+.bomba {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 1px solid #6a3a00;
+  background: #150d05;
+}
+
+.bomba.tuya {
+  border-color: #c50;
+  background: #1e1005;
+  animation: latido 1s ease-in-out infinite;
+}
+
+@keyframes latido {
+  50% {
+    border-color: #fa4;
+  }
+}
+
+.mecha {
+  display: inline-flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.mecha i {
+  display: block;
+  width: 9px;
+  height: 16px;
+  background: #fa4;
+  box-shadow: 0 0 8px rgba(255, 170, 68, 0.6);
+}
+
+.quien-la-tiene {
+  margin: 0;
+  font-size: 13px;
+  color: #fc9;
+}
+
+.racha {
+  margin: 10px 0;
+  padding: 7px 11px;
+  border-left: 3px solid #0f0;
+  background: #0b160b;
+  font-size: 13px;
+  color: #cfc;
+}
+
+/* Restar es parte del juego en dos pruebas: tiene que verse que resta. */
+.ganados.resta {
+  color: #f66;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bomba.tuya {
+    animation: none;
+  }
+}

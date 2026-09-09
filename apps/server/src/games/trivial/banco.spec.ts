@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BANCO, PREGUNTAS_POR_PARTIDA, repartir } from './banco';
+import { BANCO, ESCALETA, RONDAS_POR_PROGRAMA, repartir } from './banco';
+import { BOMBA, PULSA, RAFAGA } from './pruebas';
 import { OPCIONES } from '@devweb/shared/games/trivial/tipos';
 
 describe('el banco', () => {
   it('tiene de sobra para una partida', () => {
-    expect(BANCO.length).toBeGreaterThanOrEqual(PREGUNTAS_POR_PARTIDA * 3);
+    expect(BANCO.length).toBeGreaterThanOrEqual(RONDAS_POR_PROGRAMA);
   });
 
   it('tiene preguntas de las tres clases', () => {
@@ -51,27 +52,95 @@ describe('el banco', () => {
   });
 });
 
-describe('repartir', () => {
-  it('da las que se le piden, sin repetir', () => {
-    const tanda = repartir(1, 10);
-    expect(tanda).toHaveLength(10);
-    expect(new Set(tanda.map((pregunta) => pregunta.id)).size).toBe(10);
+describe('la escaleta del programa', () => {
+  it('reparte sin repetir ninguna', () => {
+    const tanda = repartir(1);
+    expect(new Set(tanda.map((pregunta) => pregunta.id)).size).toBe(tanda.length);
   });
 
-  it('con la misma semilla da la misma tanda', () => {
-    expect(repartir(42, 10)).toEqual(repartir(42, 10));
+  it('con la misma semilla da el mismo programa', () => {
+    expect(repartir(42)).toEqual(repartir(42));
   });
 
-  it('con semillas distintas no da siempre lo mismo', () => {
-    expect(JSON.stringify(repartir(1, 10))).not.toBe(JSON.stringify(repartir(2, 10)));
+  it('con semillas distintas cambian las preguntas', () => {
+    expect(JSON.stringify(repartir(1))).not.toBe(JSON.stringify(repartir(2)));
   });
 
-  it('si se piden mas de las que hay, da todas las que hay', () => {
-    expect(repartir(1, BANCO.length + 50)).toHaveLength(BANCO.length);
+  /**
+   * Un programa que cambia de forma cada noche no es un programa: la apertura,
+   * la subida y el cierre van siempre en el mismo sitio.
+   */
+  it('pero el orden de las secciones es siempre el mismo', () => {
+    const seccionesDe = (semilla: number) => {
+      const tipos = repartir(semilla).map((pregunta) => pregunta.tipo);
+      return tipos.filter((tipo, i) => tipo !== tipos[i - 1]);
+    };
+    expect(seccionesDe(1)).toEqual(seccionesDe(999));
   });
 
-  it('mezcla clases de prueba en una partida', () => {
-    const clases = new Set(repartir(7, PREGUNTAS_POR_PARTIDA).map((pregunta) => pregunta.tipo));
-    expect(clases.size).toBeGreaterThan(1);
+  it('sigue la escaleta que está escrita', () => {
+    const tanda = repartir(3);
+    let desde = 0;
+    for (const seccion of ESCALETA) {
+      const tramo = tanda.slice(desde, desde + seccion.cuantas);
+      expect(tramo.length, seccion.tipo).toBe(seccion.cuantas);
+      for (const pregunta of tramo) expect(pregunta.tipo, pregunta.id).toBe(seccion.tipo);
+      desde += seccion.cuantas;
+    }
+    expect(tanda).toHaveLength(desde);
+  });
+
+  it('están las seis pruebas, que es de lo que va el programa', () => {
+    const clases = new Set(repartir(7).map((pregunta) => pregunta.tipo));
+    expect(clases).toEqual(new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba']));
+  });
+
+  /** Sin preguntas de sobra, dos partidas seguidas traen lo mismo. */
+  it('hay más preguntas de las que caben en una partida', () => {
+    for (const seccion of ESCALETA) {
+      const hay = [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA].filter(
+        (una) => una.tipo === seccion.tipo,
+      );
+      expect(hay.length, seccion.tipo).toBeGreaterThan(seccion.cuantas);
+    }
+  });
+
+  it('la bomba cierra el programa, que es donde están los vuelcos', () => {
+    expect(repartir(5).at(-1)?.tipo).toBe('bomba');
+  });
+});
+
+describe('las preguntas de las pruebas nuevas', () => {
+  const nuevas = [...PULSA, ...RAFAGA, ...BOMBA];
+
+  it('todas explican la respuesta', () => {
+    for (const pregunta of nuevas) {
+      expect(pregunta.explicacion.length, pregunta.id).toBeGreaterThan(15);
+    }
+  });
+
+  it('la correcta siempre existe entre las opciones', () => {
+    for (const pregunta of nuevas) {
+      expect(pregunta.correcta, pregunta.id).toBeGreaterThanOrEqual(0);
+      expect(pregunta.correcta, pregunta.id).toBeLessThan(pregunta.opciones.length);
+    }
+  });
+
+  it('la ráfaga es de verdadero o falso, no de cuatro opciones', () => {
+    for (const pregunta of RAFAGA) {
+      expect(pregunta.opciones, pregunta.id).toEqual(['Verdadero', 'Falso']);
+    }
+  });
+
+  /** Con la mecha corriendo no da tiempo a leerse un párrafo. */
+  it('las de la bomba se leen de un vistazo', () => {
+    for (const pregunta of BOMBA) {
+      expect(pregunta.enunciado.length, pregunta.id).toBeLessThan(70);
+    }
+  });
+
+  it('ninguna se repite con otra', () => {
+    const todas = [...BANCO, ...nuevas];
+    expect(new Set(todas.map((una) => una.id)).size).toBe(todas.length);
   });
 });
