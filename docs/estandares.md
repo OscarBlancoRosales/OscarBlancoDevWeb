@@ -123,8 +123,13 @@ un valor por defecto cómodo para producción y un punto de entrada para el test
 Cero tolerancia.
 
 **Avisos (no bloquean, pero no pueden crecer):** las mismas reglas sobre el código
-que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1351 al
-escribir esto, y `--max-warnings 1351` impide que suban.
+que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1352 al
+escribir esto, y `--max-warnings 1352` impide que suban.
+
+**El número lo dicta el CI, no tu máquina.** En Windows salen uno o dos menos
+que en Linux: alguna regla con tipos cuenta distinto según la plataforma. Si al
+bajarlo usas la cifra de tu portátil, el CI se queda por encima del tope y
+bloquea la rama entera. Cuando toques el tope, cógelo de la salida del CI.
 
 El motivo de no ponerlos como error es práctico: son más de mil, la mayoría
 aserciones `!` e interpolaciones sin tipo. Un repositorio en rojo permanente
