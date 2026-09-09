@@ -4,6 +4,7 @@ import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
+import { VozDeLaSala } from '../games/impostor/voz';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import { moduleFor } from './registry';
 import type {
@@ -13,6 +14,7 @@ import type {
   SeatGrant,
   SeatInfo,
 } from '@devweb/shared/contracts/rooms';
+import type { Narrador } from './actor';
 import type { RoomRepository, RoomRow } from './repository';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -312,7 +314,12 @@ export class RoomService {
    * actor: en una sala se entra y se sale, y un presentador que llame a la
    * gente por el nombre de quien había al abrir la mesa da más pena que gracia.
    */
-  private narradorPara(game: GameId, roomId: string): PresentadorDeSala | null {
+  private narradorPara(game: GameId, roomId: string): Narrador | null {
+    // El Impostor no tiene presentador: tiene una sala que habla, y que además
+    // es quien reparte la palabra. Ver `VozDeLaSala`.
+    if (game === 'impostor') {
+      return new VozDeLaSala(() => nombresDe(this.repository.listSeats(roomId)));
+    }
     if (game !== 'trivial') return null;
     return new PresentadorDeSala(
       this.ia,

@@ -1,0 +1,321 @@
+/* La misma piel que el resto de la casa: todo cuelga de las variables del
+   tema, así que la pantalla cambia de color sin enterarse de que hay temas. */
+* {
+  box-sizing: border-box;
+}
+
+.lobby {
+  padding: 20px 22px 32px;
+  color: var(--text);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.cabecera {
+  padding-bottom: 16px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cabecera h1 {
+  color: var(--accent);
+  font-size: 24px;
+  margin: 0 0 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 22px var(--glow);
+}
+
+.prompt {
+  color: rgba(var(--accent-rgb), 0.55);
+  margin-right: 6px;
+}
+
+.subtitulo {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  padding: 20px;
+}
+
+.panel h2 {
+  color: var(--accent);
+  font-size: 15px;
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+input[type='text'],
+select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+input[type='text']:focus,
+select:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+
+.bloque {
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin: 0;
+}
+
+.bloque legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+/* ===== TEMAS ===== */
+.temas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.tema {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 9px 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition:
+    border-color 0.13s,
+    background 0.13s,
+    color 0.13s;
+}
+
+.tema:hover {
+  color: var(--text);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.tema.elegido {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.tema-nombre {
+  font-size: 14px;
+}
+
+.tema-pinta {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* ===== MODOS ===== */
+.modos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modo {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 10px;
+  align-items: center;
+  border: 1px solid transparent;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.modo.elegido {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.modo input {
+  grid-row: span 2;
+  accent-color: var(--accent);
+}
+
+.modo .nombre {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.modo .descripcion {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ===== REGLAS ===== */
+.reglas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.regla {
+  gap: 5px;
+}
+
+.regla.apagada {
+  opacity: 0.5;
+}
+
+.regla .etiqueta {
+  font-size: 12px;
+}
+
+.nota {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ===== CARAS ===== */
+.caras {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+}
+
+.cara {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    border-color 0.13s,
+    background 0.13s,
+    color 0.13s;
+}
+
+.cara img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: grayscale(0.7) opacity(0.65);
+  transition:
+    filter 0.15s,
+    transform 0.15s;
+}
+
+.cara:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.cara:hover img {
+  filter: none;
+}
+
+.cara.elegido {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.cara.elegido img {
+  filter: none;
+  transform: scale(1.04);
+}
+
+.cara-nombre {
+  text-align: center;
+  line-height: 1.2;
+}
+
+.pinta {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+}
+
+/* ===== ACCIONES ===== */
+.accion {
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  padding: 11px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+}
+
+.accion:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.18);
+}
+
+.accion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.aviso {
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  background: color-mix(in srgb, var(--error) 10%, var(--bg-soft));
+  color: var(--error);
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.explicacion {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cara,
+  .cara img,
+  .tema {
+    transition: none;
+  }
+
+  .cara.elegido img {
+    transform: none;
+  }
+}

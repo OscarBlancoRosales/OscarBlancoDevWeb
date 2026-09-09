@@ -86,6 +86,18 @@ const SECCIONES: Routes = [
       import('./games/trivial/trivial-room/trivial-room').then((m) => m.TrivialRoom),
   },
   {
+    path: 'juegos/impostor',
+    data: { win: 'juegos' },
+    loadComponent: () =>
+      import('./games/impostor/impostor-lobby/impostor-lobby').then((m) => m.ImpostorLobby),
+  },
+  {
+    path: 'juegos/impostor/mesa',
+    data: { win: 'juegos' },
+    loadComponent: () =>
+      import('./games/impostor/impostor-room/impostor-room').then((m) => m.ImpostorRoom),
+  },
+  {
     path: 'juegos/risk',
     data: { win: 'juegos' },
     loadComponent: () => import('./games/risk/ui/risk-lobby/risk-lobby').then((m) => m.RiskLobby),

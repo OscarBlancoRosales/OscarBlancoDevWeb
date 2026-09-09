@@ -8,6 +8,7 @@ export const GameId = Type.Union([
   Type.Literal('risk'),
   Type.Literal('flota'),
   Type.Literal('trivial'),
+  Type.Literal('impostor'),
 ]);
 export const RoomStatus = Type.Union([
   Type.Literal('lobby'),

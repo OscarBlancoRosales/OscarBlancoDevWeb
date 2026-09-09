@@ -387,11 +387,23 @@ export class RoomActor {
       return;
     }
 
+    // Una acción del servidor que no cambia nada no se escribe. El reloj del
+    // debate lo cierra un temporizador, y ese temporizador puede saltar cuando
+    // la mesa ya ha cortado el debate a mano: apuntarlo igual metería un hueco
+    // en el registro por cada ronda.
+    if (siguiente === this.state) return;
+
     this.state = siguiente;
     this.seq += 1;
     const at = this.now();
     this.repository.appendEvent(this.roomId, { seq: this.seq, seatId, action: accion, at });
     this.broadcast();
+    // Una acción del servidor puede dejar el turno en un asiento sin nadie
+    // detrás: el reparto del Impostor abre la ronda, y el primero en hablar
+    // puede ser un bot. Sin esto, la mesa se queda esperando a quien no va a
+    // mover. En los juegos cuyas acciones de sistema no cambian el turno esto
+    // no encuentra nada que hacer y no cuesta nada.
+    this.dejarJugarALosBots();
   }
 
   /**

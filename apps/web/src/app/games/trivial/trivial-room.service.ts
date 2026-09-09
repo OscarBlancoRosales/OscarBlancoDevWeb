@@ -90,7 +90,7 @@ export class TrivialRoomService {
     nombreJugador: string,
     personaje: string | null = null,
   ): Promise<PaseDeSala> {
-    const grant = await this.rooms.unirse(roomId, nombreJugador, personaje);
+    const grant = await this.rooms.unirse(roomId, nombreJugador, personaje ? { personaje } : null);
     this.conectar(roomId, grant.seatId, grant.seatToken);
     return { roomId, seatId: grant.seatId, seatToken: grant.seatToken };
   }

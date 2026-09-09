@@ -56,6 +56,17 @@ describe('Games (portada de juegos)', () => {
     ).toBe(true);
   });
 
+  it('el impostor aparece como jugable y apunta a su lobby', () => {
+    const impostor = component.games.find((game) => game.id === 'impostor');
+    expect(impostor?.status).toBe('listo');
+    expect(impostor?.route).toBe('/juegos/impostor');
+  });
+
+  it('el impostor anuncia sus tres modos', () => {
+    const impostor = component.games.find((game) => game.id === 'impostor');
+    expect(impostor?.highlights.some((item) => item.toLowerCase().includes('modos'))).toBe(true);
+  });
+
   it('anuncia los mapas disponibles de verdad', () => {
     const risk = component.games.find((game) => game.id === 'risk')!;
     expect(risk.highlights.some((item) => item.includes(String(RISK_MAPS.length)))).toBe(true);
