@@ -43,7 +43,9 @@ function salaFalsa() {
     vista,
     mesa,
     bocadillos: () => bocadillos(),
-    ponerBocadillo: (seatId: string, texto: string) => bocadillos.set({ [seatId]: { texto } }),
+    ponerBocadillo: (seatId: string, texto: string) => {
+      bocadillos.set({ [seatId]: { texto } });
+    },
     error: signal<string | null>(null),
     chat: signal<readonly { kind: string; authorId: string; author: string; text: string }[]>([]),
     miAsiento: 'yo',
@@ -89,7 +91,7 @@ describe('la mesa de poker', () => {
     sala.vista.set({ ...BASE, ...vista });
     fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
-    return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    return (fixture.nativeElement as HTMLElement).textContent;
   }
 
   function dom(): HTMLElement {
@@ -132,7 +134,7 @@ describe('la mesa de poker', () => {
       pinta({ hanVotado: ['yo', 'bea'], votos: { yo: { tipo: 'numero', valor: 5 } } });
 
       const enElTapete = Array.from(dom().querySelectorAll('.sitio .carta')).map(
-        (carta) => carta.textContent?.trim() ?? '',
+        (carta) => carta.textContent.trim(),
       );
       expect(dom().querySelectorAll('.carta.tapada').length).toBeGreaterThan(0);
       // El dorso, la tuya y el hueco de quien no ha votado. Ningún voto ajeno.
@@ -281,7 +283,7 @@ describe('la mesa de poker', () => {
     it('la carta que has echado se queda marcada', () => {
       pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
       const elegida = dom().querySelector('.naipe.elegida');
-      expect(elegida?.textContent?.trim()).toBe('5');
+      expect(elegida?.textContent.trim()).toBe('5');
     });
 
     it('se dice cuántos faltan por votar', () => {

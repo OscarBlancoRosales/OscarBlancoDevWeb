@@ -119,7 +119,7 @@ export class MesaPoker implements OnInit, OnDestroy {
     const dichos = this.sala.bocadillos(this.ahora());
 
     return mesa.map((asiento, i) => {
-      const voto = vista.votos[asiento.id];
+      const voto = puedeFaltar(vista.votos, asiento.id);
       const suyo = voto?.tipo === 'numero' ? voto.valor : null;
 
       return {
@@ -131,7 +131,7 @@ export class MesaPoker implements OnInit, OnDestroy {
         carta: cartaDe(voto),
         tapada: !vista.revelado && asiento.id !== this.sala.miAsiento,
         desvio: vista.revelado && suyo !== null ? desvioDe(suyo, stats) : 0,
-        bocadillo: dichos[asiento.id]?.texto ?? '',
+        bocadillo: puedeFaltar(dichos, asiento.id)?.texto ?? '',
         x: sitios[i]?.x ?? 50,
         y: sitios[i]?.y ?? 50,
       };
@@ -302,4 +302,17 @@ export function guardarPaseDeMesa(pase: {
   } catch {
     // Sin almacenamiento se puede jugar; lo que no se puede es recargar.
   }
+}
+
+/**
+ * Un acceso a una tabla que dice la verdad: lo que no está, no está.
+ *
+ * TypeScript tipa `tabla[clave]` como si siempre hubiera algo, y en la web
+ * `noUncheckedIndexedAccess` sigue apagado por la deuda del motor de RISK (ver
+ * docs/estandares.md). Sin esto, el `?.` que de verdad hace falta —un asiento
+ * que aún no ha votado no tiene voto— parece que sobra, y el lint pide
+ * quitarlo. Quitarlo es lo que rompe la mesa en cuanto alguien no ha votado.
+ */
+function puedeFaltar<T>(tabla: Readonly<Record<string, T>>, clave: string): T | undefined {
+  return tabla[clave];
 }
