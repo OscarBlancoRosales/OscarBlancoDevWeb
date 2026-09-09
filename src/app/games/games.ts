@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { RISK_MAPS } from './risk/engine/maps/map-registry';
+import { GAME_ART } from '../shared/portraits';
 
 interface GameCard {
   id: string;
@@ -10,6 +11,7 @@ interface GameCard {
   tagline: string;
   description: string;
   icon: string;
+  art?: string;
   players: string;
   duration: string;
   route: string | null;
@@ -37,6 +39,7 @@ export class Games {
       description:
         'El clásico de siempre, con reglas completas: refuerzos, canje de cartas, ataques con dados, reagrupación y bonificación por continente.',
       icon: '🌍',
+      art: GAME_ART.risk,
       players: '2 – 6 jugadores',
       duration: '30 – 90 min',
       route: '/juegos/risk',
@@ -53,6 +56,7 @@ export class Games {
       tagline: 'Coordenadas, faroles y mucha paciencia',
       description: 'Tableros ocultos, disparos por turnos y estadísticas de puntería al final.',
       icon: '🚢',
+      art: GAME_ART['hundir-la-flota'],
       players: '2 jugadores',
       duration: '10 – 20 min',
       route: null,
@@ -65,11 +69,26 @@ export class Games {
       tagline: 'Preguntas que duelen en la retro',
       description: 'Preguntas de programación, historia de la informática y cultura de oficina.',
       icon: '🧠',
+      art: GAME_ART.trivial,
       players: '2 – 8 jugadores',
       duration: '15 – 30 min',
       route: null,
       status: 'en-obras',
       highlights: ['En diseño'],
+    },
+    {
+      id: 'impostor',
+      name: 'Impostor',
+      tagline: 'Alguien miente. Alguien siempre miente.',
+      description:
+        'Deducción social. Completa tareas, acusa en la reunión y no te fíes de la sonrisa.',
+      icon: '🎭',
+      art: GAME_ART.impostor,
+      players: '4 – 12 jugadores',
+      duration: '10 – 25 min',
+      route: null,
+      status: 'en-obras',
+      highlights: ['24 memes clásicos jugables', 'En diseño'],
     },
   ];
 

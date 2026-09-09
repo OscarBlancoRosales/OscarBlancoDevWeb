@@ -143,6 +143,13 @@
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6));
 }
 
+.game-art {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(var(--accent-rgb), 0.35));
+}
+
 .game-status {
   font-size: 9px;
   letter-spacing: 1px;

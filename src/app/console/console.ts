@@ -821,7 +821,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     this.game = newGame(28, 14, Math.random);
     if (anunciar) this.say('ok', 'console.snakeStart');
     this.refresh();
-    this.focusInput();
+    this.focusForGame();
     this.gameTimer = setInterval(() => this.tickGame(), 130);
   }
 
@@ -884,7 +884,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   steer(dir: Dir): void {
     if (!this.game) return;
     this.game = turn(this.game, dir);
-    this.focusInput();
+    this.focusForGame();
   }
 
   quitGame(): void {
@@ -912,7 +912,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     this.run = newRun(46, 9);
     if (anunciar) this.say('ok', 'console.runStart');
     this.refresh();
-    this.focusInput();
+    this.focusForGame();
     this.scheduleRun();
   }
 
@@ -996,13 +996,13 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   runJump(): void {
     if (!this.run) return;
     this.run = jump(this.run);
-    this.focusInput();
+    this.focusForGame();
   }
 
   runDuck(): void {
     if (!this.run) return;
     this.run = duck(this.run, true);
-    this.focusInput();
+    this.focusForGame();
     setTimeout(() => {
       if (this.run) {
         this.run = duck(this.run, false);
@@ -1117,8 +1117,25 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     if (this.menuOpen) this.menuOpen = false;
   }
 
+  /**
+   * Devolver el foco a la línea de entrada, sin mover la pantalla.
+   *
+   * Mientras se juega, esa línea está escondida arriba del todo: un focus()
+   * normal desplaza el scroll hasta ella y te deja mirando el techo de la
+   * terminal en vez del tablero.
+   */
   focusInput(): void {
-    this.cmdInput?.nativeElement.focus();
+    this.cmdInput?.nativeElement.focus({ preventScroll: true });
+  }
+
+  /**
+   * El foco durante el juego, que en pantalla táctil no se toca: enfocar allí
+   * abre el teclado y te tapa media partida. Con los dedos ya se juega con
+   * los botones, y el teclado no hace falta.
+   */
+  private focusForGame(): void {
+    if (this.isTouch()) return;
+    this.focusInput();
   }
 
   /** Tocar el cuerpo de la terminal devuelve el foco al input, como en una real. */

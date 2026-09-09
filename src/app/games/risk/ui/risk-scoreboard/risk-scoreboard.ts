@@ -8,6 +8,7 @@ export interface ScoreRow {
   territories: number;
   armies: number;
   eliminated: boolean;
+  portraitSrc?: string;
 }
 
 /**

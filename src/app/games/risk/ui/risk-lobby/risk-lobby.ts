@@ -17,6 +17,12 @@ import {
   RoomSummary,
   localSeatToken,
 } from '../../services/risk-room.service';
+import {
+  DEFAULT_COMMANDER_ID,
+  RISK_COMMANDERS,
+  RISK_FACTION_PORTRAITS,
+  RISK_UNIT_ICONS,
+} from '../../../../shared/portraits';
 
 /**
  * Puerta de entrada al RISK.
@@ -58,6 +64,8 @@ export class RiskLobby implements OnInit, OnDestroy {
 
   // Entrada del jugador
   playerName = '';
+  readonly commanders = RISK_COMMANDERS;
+  portraitId = DEFAULT_COMMANDER_ID;
 
   previewState: GameState | null = null;
 
@@ -101,6 +109,7 @@ export class RiskLobby implements OnInit, OnDestroy {
     });
     this.isAdmin = !!this.auth.currentUser;
     this.playerName = localStorage.getItem('risk_player_name') ?? '';
+    this.portraitId = localStorage.getItem('risk_portrait_id') ?? DEFAULT_COMMANDER_ID;
     this.roomName = this.isAdmin ? `Partida de ${this.ownerName()}` : '';
 
     const roomParam = this.route.snapshot.queryParamMap.get('room');
@@ -246,6 +255,7 @@ export class RiskLobby implements OnInit, OnDestroy {
         name,
         seatToken: this.ownerUid(),
         color: PLAYER_COLORS[0],
+        portraitId: this.portraitId,
         isOwner: true,
       });
 
@@ -280,6 +290,7 @@ export class RiskLobby implements OnInit, OnDestroy {
         name,
         seatToken: this.seatToken(),
         color: PLAYER_COLORS[0],
+        portraitId: this.portraitId,
       });
       this.remember(name, roomId, seatId);
       await this.router.navigate(['/juegos/risk/mesa'], { queryParams: { room: roomId } });
@@ -300,6 +311,7 @@ export class RiskLobby implements OnInit, OnDestroy {
         name,
         seatToken: this.ownerUid(),
         color: PLAYER_COLORS[0],
+        portraitId: this.portraitId,
         isOwner: true,
       });
       this.remember(name, summary.meta.id, seatId);
@@ -312,6 +324,7 @@ export class RiskLobby implements OnInit, OnDestroy {
       name,
       seatToken: this.ownerUid(),
       color: PLAYER_COLORS[0],
+      portraitId: this.portraitId,
       isOwner: true,
     });
     this.remember(name, summary.meta.id, seatId);
@@ -375,9 +388,18 @@ export class RiskLobby implements OnInit, OnDestroy {
     return this.isAdmin ? this.ownerUid() : localSeatToken();
   }
 
+  factionArt(factionId: string): string | undefined {
+    return RISK_FACTION_PORTRAITS[factionId]?.src;
+  }
+
+  unitArt(kind: string): string | undefined {
+    return RISK_UNIT_ICONS[kind];
+  }
+
   private remember(name: string, roomId: string, seatId: string): void {
     localStorage.setItem('risk_player_name', name);
     localStorage.setItem('risk_room_id', roomId);
     localStorage.setItem('risk_seat_id', seatId);
+    localStorage.setItem('risk_portrait_id', this.portraitId);
   }
 }

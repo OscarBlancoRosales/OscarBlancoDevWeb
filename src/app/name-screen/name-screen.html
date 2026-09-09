@@ -19,6 +19,23 @@
             El nombre es requerido (mínimo 2 caracteres)
           </div>
         </div>
+
+        <div class="form-group">
+          <label>Tu icono</label>
+          <div class="avatar-grid">
+            <button
+              type="button"
+              class="avatar-pick"
+              *ngFor="let avatar of avatars"
+              [class.active]="avatar.id === avatarId"
+              (click)="avatarId = avatar.id"
+              [title]="avatar.blurb"
+            >
+              <img [src]="avatar.src" [alt]="avatar.name" />
+              <span>{{ avatar.name }}</span>
+            </button>
+          </div>
+        </div>
         
         <button type="submit" class="btn btn-primary btn-full" [disabled]="nameForm.invalid || isLoading">
           {{ isLoading ? 'Uniéndose...' : 'Unirse a la sala' }}

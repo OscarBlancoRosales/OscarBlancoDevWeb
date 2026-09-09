@@ -48,6 +48,7 @@ import { missionProgress } from '../../engine/missions';
 import { CARD_ICON, CARD_LABEL, isValidSet } from '../../engine/cards';
 import { BOT_PROFILES, BOT_PROFILE_IDS, standings } from '../../engine/ai/bot-brain';
 import { BotProfile } from '../../engine/types';
+import { RISK_BOT_PORTRAITS, factionPortraitSrc, seatPortraitSrc } from '../../../../shared/portraits';
 import {
   AiSettings,
   FREE_MODELS,
@@ -312,14 +313,27 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   /** Filas del marcador compacto, en el orden de la clasificación. */
   get scoreRows(): ScoreRow[] {
-    return this.scoreboard.map((entry) => ({
-      id: entry.player.id,
-      name: entry.player.name,
-      color: entry.player.color,
-      territories: entry.territories,
-      armies: entry.armies,
-      eliminated: entry.player.eliminated,
-    }));
+    return this.scoreboard.map((entry) => {
+      const seat = this.seats.find((item) => item.id === entry.player.id);
+      return {
+        id: entry.player.id,
+        name: entry.player.name,
+        color: entry.player.color,
+        territories: entry.territories,
+        armies: entry.armies,
+        eliminated: entry.player.eliminated,
+        portraitSrc:
+          factionPortraitSrc(entry.player.factionId) ?? (seat ? seatPortraitSrc(seat) : undefined),
+      };
+    });
+  }
+
+  portraitOf(seat: RoomSeat): string | undefined {
+    return seatPortraitSrc(seat);
+  }
+
+  botArt(profile: BotProfile): string | undefined {
+    return RISK_BOT_PORTRAITS[profile]?.src;
   }
 
   /** Quién mueve ahora, para marcarlo en el marcador. */

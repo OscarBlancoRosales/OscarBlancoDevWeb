@@ -24,7 +24,8 @@
         <div class="card-glow"></div>
 
         <div class="card-top">
-          <span class="game-icon">{{ game.icon }}</span>
+          <img *ngIf="game.art" class="game-art" [src]="game.art" [alt]="game.name" />
+          <span class="game-icon" *ngIf="!game.art">{{ game.icon }}</span>
           <span class="game-status" [class.on]="game.status === 'listo'">
             {{ game.status === 'listo' ? 'JUGABLE' : 'EN OBRAS' }}
           </span>

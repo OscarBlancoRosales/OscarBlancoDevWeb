@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FirebaseRoomService, Player, RoomData } from '../services/firebase-room.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
+import { avatarById } from '../shared/portraits';
 
 interface VoteSummary {
   vote: string;
@@ -104,7 +105,8 @@ export class ScrumPoker implements OnInit, OnDestroy {
     
     // Unirse a la sala UNA SOLA VEZ
     if (!this.playerId) {
-      this.playerId = this.firebaseService.joinRoom(this.roomId, this.currentPlayerName);
+      const avatarId = localStorage.getItem('player_avatar') || undefined;
+      this.playerId = this.firebaseService.joinRoom(this.roomId, this.currentPlayerName, avatarId);
       localStorage.setItem('player_id', this.playerId);
     } else {
       this.firebaseService.listenToRoom(this.roomId);
@@ -473,6 +475,10 @@ export class ScrumPoker implements OnInit, OnDestroy {
   getDeviationLevel(): { level: string; class: string; message: string } {
     const info = this.getConsensusInfo();
     return { level: info.status, class: info.class, message: info.message };
+  }
+
+  avatarSrc(player: Player): string | undefined {
+    return avatarById(player.avatarId)?.src;
   }
 
   copyRoomLink(): void {

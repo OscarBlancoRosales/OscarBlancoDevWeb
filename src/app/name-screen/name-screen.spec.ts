@@ -47,6 +47,18 @@ describe('NameScreen (crear sala de Scrum Poker)', () => {
       expect(component.inviteCode).toContain(component.roomId);
     });
 
+    it('guarda el icono elegido junto al nombre', async () => {
+      const { component } = await montar(sesion(OSCAR));
+      const router = TestBed.inject(Router);
+      vi.spyOn(router, 'navigate').mockResolvedValue(true);
+      component.ngOnInit();
+      component.nameForm.setValue({ playerName: 'Ada' });
+      component.avatarId = 'duck';
+      component.joinRoom();
+      expect(localStorage.getItem('player_avatar')).toBe('duck');
+      expect(localStorage.getItem('player_name')).toBe('Ada');
+    });
+
     it('sin sesión, no: te manda al login y no crea nada', async () => {
       const { component } = await montar(sesion(null));
       const router = TestBed.inject(Router);

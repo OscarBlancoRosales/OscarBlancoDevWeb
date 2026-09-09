@@ -13,6 +13,7 @@
     [class.current]="row.id === currentId"
     [class.out]="row.eliminated"
   >
+    <img *ngIf="row.portraitSrc" class="score-art" [src]="row.portraitSrc" [alt]="row.name" />
     <span class="score-dot" [style.background]="row.color"></span>
     <ng-container *ngIf="!collapsed">
       <span class="score-name">{{ row.name }}</span>

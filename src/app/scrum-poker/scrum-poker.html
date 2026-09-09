@@ -35,7 +35,8 @@
              [class.min-vote]="showVotes && isMinVote(player)"
              [class.max-vote]="showVotes && isMaxVote(player)">
           <div class="player-avatar">
-            {{ player.name.charAt(0).toUpperCase() }}
+            <img *ngIf="avatarSrc(player) as art" [src]="art" [alt]="player.name" />
+            <span *ngIf="!avatarSrc(player)">{{ player.name.charAt(0).toUpperCase() }}</span>
           </div>
           <div class="player-details">
             <span class="player-name">{{ player.name }}</span>

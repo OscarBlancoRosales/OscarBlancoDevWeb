@@ -92,6 +92,8 @@ export interface RoomSeat {
   /** Identidad persistente del ocupante: uid de Firebase o token local. */
   seatToken: string;
   color: string;
+  /** Comandante elegido. Cosmético: el motor no lo usa. */
+  portraitId?: string;
   order: number;
   joinedAt: number;
   lastSeen: number;
@@ -336,6 +338,7 @@ export class RiskRoomService {
       kind?: PlayerKind;
       botProfile?: BotProfile;
       color: string;
+      portraitId?: string;
       isOwner?: boolean;
     },
   ): Promise<string> {
@@ -354,6 +357,7 @@ export class RiskRoomService {
       botProfile: seat.botProfile,
       seatToken: seat.seatToken,
       color: seat.color,
+      portraitId: seat.portraitId ?? existing?.portraitId,
       order,
       joinedAt: existing?.joinedAt ?? now,
       lastSeen: now,

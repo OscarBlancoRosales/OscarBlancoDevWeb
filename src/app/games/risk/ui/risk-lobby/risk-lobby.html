@@ -23,8 +23,21 @@
           </span>
         </div>
         <p class="hint">
-          Escribe tu nombre y entras. Si ya jugaste antes en esta sala, recuperarás tus ejércitos.
+          Escribe tu nombre, elige comandante y entras. Si ya jugaste antes en esta sala, recuperarás tus ejércitos.
         </p>
+        <div class="portrait-grid">
+          <button
+            type="button"
+            class="portrait-pick"
+            *ngFor="let commander of commanders"
+            [class.active]="commander.id === portraitId"
+            (click)="portraitId = commander.id"
+            [title]="commander.blurb"
+          >
+            <img [src]="commander.src" [alt]="commander.name" />
+            <span>{{ commander.name }}</span>
+          </button>
+        </div>
         <div class="row">
           <input
             class="field"
@@ -63,6 +76,24 @@
             <span>Tu nombre en la mesa</span>
             <input class="field" type="text" [(ngModel)]="playerName" maxlength="24" placeholder="General…" />
           </label>
+        </div>
+
+        <div class="subsection">
+          <h3>Comandante</h3>
+          <p class="hint">La cara que verán los demás. El color de tus ejércitos se reparte al empezar.</p>
+          <div class="portrait-grid">
+            <button
+              type="button"
+              class="portrait-pick"
+              *ngFor="let commander of commanders"
+              [class.active]="commander.id === portraitId"
+              (click)="portraitId = commander.id"
+              [title]="commander.blurb"
+            >
+              <img [src]="commander.src" [alt]="commander.name" />
+              <span>{{ commander.name }}</span>
+            </button>
+          </div>
         </div>
 
         <div class="subsection">
@@ -107,6 +138,12 @@
               <div class="faction" *ngFor="let faction of sc.factions">
                 <ng-container *ngIf="faction.side === side.id">
                   <span class="faction-name">
+                    <img
+                      *ngIf="factionArt(faction.id) as art"
+                      class="faction-art"
+                      [src]="art"
+                      [alt]="faction.name"
+                    />
                     <span class="faction-dot" [style.background]="faction.color"></span>
                     {{ faction.name }}
                   </span>
@@ -221,6 +258,7 @@
 
           <div class="terrain-legend" *ngIf="advancedUnits">
             <div class="terrain-item" *ngFor="let troop of troops">
+              <img *ngIf="unitArt(troop.id) as art" class="unit-art" [src]="art" [alt]="troop.name" />
               <span class="terrain-glyph" [style.color]="troop.color">{{ troop.glyph }}</span>
               <span class="terrain-text">
                 <strong>{{ troop.name }} ({{ troop.cost }})</strong>

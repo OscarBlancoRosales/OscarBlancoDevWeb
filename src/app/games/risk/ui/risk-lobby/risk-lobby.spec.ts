@@ -60,6 +60,11 @@ describe('RiskLobby', () => {
     expect(component.maps).toEqual(RISK_MAPS);
   });
 
+  it('ofrece seis comandantes y arranca con Vanguardia', () => {
+    expect(component.commanders).toHaveLength(6);
+    expect(component.portraitId).toBe('vanguardia');
+  });
+
   it('arranca con el primer mapa seleccionado', () => {
     expect(component.selectedMap.id).toBe(RISK_MAPS[0].id);
   });

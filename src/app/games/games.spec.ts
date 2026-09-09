@@ -32,6 +32,13 @@ describe('Games (portada de juegos)', () => {
     expect(risk.route).toBe('/juegos/risk');
   });
 
+  it('el Impostor está en la portada, aún en obras', () => {
+    const impostor = component.games.find((game) => game.id === 'impostor')!;
+    expect(impostor.status).toBe('en-obras');
+    expect(impostor.route).toBeNull();
+    expect(impostor.art).toContain('impostor.png');
+  });
+
   it('anuncia los mapas disponibles de verdad', () => {
     const risk = component.games.find((game) => game.id === 'risk')!;
     expect(risk.highlights.some((item) => item.includes(String(RISK_MAPS.length)))).toBe(true);

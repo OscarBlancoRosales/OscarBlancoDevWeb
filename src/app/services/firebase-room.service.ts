@@ -9,6 +9,8 @@ export interface Player {
   currentVote: number;
   hasVoted: boolean;
   isCurrentPlayer?: boolean;
+  /** Avatar elegido en la pantalla de nombre. */
+  avatarId?: string;
   voteBreakdown: {
     numbers: number;
     coffee: number;
@@ -53,7 +55,7 @@ export class FirebaseRoomService {
   }
 
   // Unirse a una sala existente
-  joinRoom(roomId: string, playerName: string): string {
+  joinRoom(roomId: string, playerName: string, avatarId?: string): string {
     // Generar ID único para el jugador
     const playerId = Math.random().toString(36).substr(2, 9);
     
@@ -70,6 +72,7 @@ export class FirebaseRoomService {
         joint: 0
       }
     };
+    if (avatarId) playerData.avatarId = avatarId;
     
     set(playerRef, playerData);
     

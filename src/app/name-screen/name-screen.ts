@@ -5,6 +5,7 @@ import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { FirebaseAuthService } from '../firebase-auth.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
+import { DEFAULT_AVATAR_ID, DEV_AVATARS } from '../shared/portraits';
 
 @Component({
   selector: 'app-name-screen',
@@ -37,8 +38,12 @@ export class NameScreen implements OnInit, OnDestroy {
   }
 
   isInvited = false;
+  readonly avatars = DEV_AVATARS;
+  avatarId = DEFAULT_AVATAR_ID;
 
   ngOnInit(): void {
+    this.avatarId = localStorage.getItem('player_avatar') ?? DEFAULT_AVATAR_ID;
+
     // Verificar si viene por invitación (tiene parámetro room en la URL)
     const roomIdParam = this.route.snapshot.queryParamMap.get('room');
     this.isInvited = !!roomIdParam;
@@ -125,6 +130,7 @@ export class NameScreen implements OnInit, OnDestroy {
 
     // Guardar nombre del jugador y roomId
     localStorage.setItem('player_name', playerName);
+    localStorage.setItem('player_avatar', this.avatarId);
     localStorage.setItem('current_room_id', this.roomId);
     // Limpiar playerId anterior para que se genere uno nuevo
     localStorage.removeItem('player_id');

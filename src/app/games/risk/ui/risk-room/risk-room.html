@@ -58,6 +58,7 @@
 
           <ul class="seat-list">
             <li class="seat" *ngFor="let seat of seats; trackBy: trackSeat" [class.me]="seat.id === seatId">
+              <img *ngIf="portraitOf(seat) as art" class="seat-art" [src]="art" [alt]="seat.name" />
               <span class="seat-color" [style.background]="seat.color"></span>
               <div class="seat-info">
                 <span class="seat-name">
@@ -107,6 +108,7 @@
               [class.active]="profile === newBotProfile"
               (click)="newBotProfile = profile"
             >
+              <img *ngIf="botArt(profile) as art" class="profile-art" [src]="art" [alt]="" />
               <span class="profile-name">{{ profileInfo[profile].label }}</span>
               <span class="profile-desc">{{ profileInfo[profile].description }}</span>
             </button>

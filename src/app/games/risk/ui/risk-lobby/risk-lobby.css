@@ -517,7 +517,7 @@
 .terrain-item {
   display: flex;
   gap: 0.55rem;
-  align-items: baseline;
+  align-items: center;
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--muted);
@@ -605,6 +605,60 @@
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, 0.35);
   flex: none;
+}
+
+.faction-art {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  flex: none;
+}
+
+.unit-art {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex: none;
+}
+
+.portrait-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.portrait-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
+}
+
+.portrait-pick img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.portrait-pick:hover {
+  border-color: rgba(var(--accent-rgb), 0.45);
+  color: var(--bright);
+}
+
+.portrait-pick.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.25), 0 0 18px rgba(var(--accent-rgb), 0.18);
 }
 
 .faction small {

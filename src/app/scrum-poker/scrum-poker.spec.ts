@@ -113,7 +113,7 @@ describe('ScrumPoker', () => {
       localStorage.setItem('current_room_id', 'ROOM-ABC123');
       localStorage.setItem('player_name', 'Óscar');
       ({ sala } = await montar());
-      expect(sala.joinRoom).toHaveBeenCalledWith('ROOM-ABC123', 'Óscar');
+      expect(sala.joinRoom).toHaveBeenCalledWith('ROOM-ABC123', 'Óscar', undefined);
       expect(localStorage.getItem('player_id')).toBe('jugador-1');
     });
   });
