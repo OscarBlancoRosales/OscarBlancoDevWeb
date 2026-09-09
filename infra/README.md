@@ -20,6 +20,18 @@ fail2ban, actualizaciones de seguridad automáticas, el usuario de servicio
 `devweb` sin shell, el servicio `devweb-api`, la copia diaria y una plantilla de
 configuración en `/etc/devweb/api.env` con el secreto de firma ya generado.
 
+> **Volver a aprovisionar una máquina que ya está en producción es seguro**, pero
+> conviene saber por qué: el `api.conf` del repositorio es de solo puerto 80 —en
+> la primera pasada el certificado aún no existe—, y certbot añade el bloque TLS
+> a ese mismo fichero. El script mira si ya hay un `listen 443` y, si lo hay, no
+> lo toca. Sin esa comprobación, reaprovisionar dejaba el sitio sin HTTPS.
+>
+> Si alguna vez pasa, se recupera con:
+>
+> ```bash
+> sudo certbot --nginx -d api.oscarblancorosales.com --agree-tos >      -m oscar.blanco.r@gmail.com --redirect --non-interactive
+> ```
+
 Quedan dos cosas que la máquina no puede decidir sola:
 
 ```bash

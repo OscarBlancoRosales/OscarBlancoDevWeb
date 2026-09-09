@@ -176,8 +176,24 @@ fi
 
 paso "nginx"
 install -d -m 755 /var/www/certbot
-install -m 644 "$REPO_DIR/infra/nginx/api.conf" /etc/nginx/sites-available/devweb-api.conf
-ln -sf /etc/nginx/sites-available/devweb-api.conf /etc/nginx/sites-enabled/devweb-api.conf
+
+# La configuración del repositorio es de solo puerto 80, y tiene que serlo: en
+# la primera pasada el certificado todavía no existe, y un bloque TLS que
+# apunta a un certificado que no está impide que nginx arranque.
+#
+# Pero certbot AÑADE el bloque TLS a este mismo fichero. Reinstalarlo a ciegas
+# en la segunda pasada se lleva por delante el HTTPS y deja el sitio contestando
+# solo por el 80 — que es exactamente lo que pasó la primera vez que alguien
+# volvió a aprovisionar una máquina ya en producción.
+#
+# Así que se mira antes: si ya hay TLS, esto no es asunto nuestro.
+nginx_conf=/etc/nginx/sites-available/devweb-api.conf
+if grep -qs 'listen.*443' "$nginx_conf"; then
+  echo "nginx ya tiene TLS puesto por certbot; se deja como está."
+else
+  install -m 644 "$REPO_DIR/infra/nginx/api.conf" "$nginx_conf"
+fi
+ln -sf "$nginx_conf" /etc/nginx/sites-enabled/devweb-api.conf
 rm -f /etc/nginx/sites-enabled/default
 
 # Instalar una configuración sin comprobarla deja el problema para la próxima
