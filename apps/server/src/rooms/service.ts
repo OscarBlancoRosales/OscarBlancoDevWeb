@@ -4,6 +4,8 @@ import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
+import { DealerDeMesa } from '../games/poker/dealer';
+import type { Narrador } from './actor';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import { moduleFor } from './registry';
 import type {
@@ -312,7 +314,20 @@ export class RoomService {
    * actor: en una sala se entra y se sale, y un presentador que llame a la
    * gente por el nombre de quien había al abrir la mesa da más pena que gracia.
    */
-  private narradorPara(game: GameId, roomId: string): PresentadorDeSala | null {
+  private narradorPara(game: GameId, roomId: string): Narrador | null {
+    if (game === 'scrum') {
+      // Solo la mesa de poker tiene crupier. La versión clásica se queda como
+      // estaba: quien la abre no quiere a nadie metiéndole prisa.
+      if (this.repository.findRoom(roomId)?.config['version'] !== 'mesa') return null;
+      return new DealerDeMesa(this.ia, {
+        nombres: () => nombresDe(this.repository.listSeats(roomId)),
+        humanos: () =>
+          this.repository
+            .listSeats(roomId)
+            .filter((asiento) => !asiento.isBot)
+            .map((asiento) => asiento.seatId),
+      });
+    }
     if (game !== 'trivial') return null;
     return new PresentadorDeSala(
       this.ia,

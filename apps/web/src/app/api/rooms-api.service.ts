@@ -16,6 +16,8 @@ export class RoomsApiService {
     game: GameId;
     name: string;
     displayName: string;
+    /** Lo que el juego necesite del asiento de quien abre: su cara, su color. */
+    meta?: Record<string, unknown>;
     config?: Record<string, unknown>;
     /** Los rivales que no son personas. Se sientan al crear la sala o nunca. */
     bots?: readonly string[];
@@ -33,13 +35,26 @@ export class RoomsApiService {
     });
   }
 
-  /** Unirse NO exige sesión: quien llega por un enlace juega como invitado. */
-  /** `personaje` es del concurso: se elige en la misma pantalla que el nombre. */
-  unirse(roomId: string, displayName: string, personaje?: string | null): Promise<SeatGrant> {
+  /**
+   * Se sienta en una sala. NO exige sesión: quien llega por un enlace juega
+   * como invitado.
+   *
+   * `personaje` es del concurso y `meta` es para lo que necesite cada juego -el
+   * avatar de la mesa de poker-. Va en la misma petición que el nombre porque
+   * se elige en la misma pantalla: en dos llamadas, si la segunda falla te
+   * quedas sentado sin cara.
+   */
+  unirse(
+    roomId: string,
+    displayName: string,
+    personaje?: string | null,
+    meta?: Record<string, unknown>,
+  ): Promise<SeatGrant> {
+    const suyo = { ...(personaje && { personaje }), ...meta };
     return this.api.request<SeatGrant>({
       method: 'POST',
       path: `/salas/${encodeURIComponent(roomId)}/unirse`,
-      body: { displayName, ...(personaje && { meta: { personaje } }) },
+      body: { displayName, ...(Object.keys(suyo).length > 0 && { meta: suyo }) },
     });
   }
 

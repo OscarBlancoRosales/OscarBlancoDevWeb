@@ -141,7 +141,7 @@ export class NameScreen implements OnInit, OnDestroy {
       this.cdr.markForCheck();
 
       setTimeout(() => {
-        void this.router.navigate(['/scrum-poker']);
+        void this.router.navigate(['/scrum-poker/clasico']);
       }, 1000);
     } catch (fallo) {
       this.error = AuthApiService.mensajeDe(fallo);

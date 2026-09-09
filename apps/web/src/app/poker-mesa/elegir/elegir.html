@@ -1,0 +1,55 @@
+<app-terminal-layout title="Scrum Poker">
+  <div class="eleccion">
+    <header class="cabecera">
+      <h1><span class="prompt">&gt;</span> Scrum Poker</h1>
+      <p class="subtitulo">
+        Dos maneras de estimar lo mismo. Los votos, las medias y las
+        desviaciones son idénticos: lo que cambia es dónde te sientas.
+      </p>
+    </header>
+
+    @if (mirando()) {
+      <p class="pie">Mirando a qué mesa te han invitado…</p>
+    } @else {
+    <div class="opciones">
+      <button type="button" class="opcion" (click)="clasica()">
+        <span class="etiqueta">Clásica</span>
+        <h2>La de siempre</h2>
+        <p>
+          Lista de jugadores, votos acumulativos y el panel de estadísticas con
+          sus desviaciones y sus agrupaciones. Rápida y sin adornos.
+        </p>
+        <ul>
+          <li>Voto sumando valores</li>
+          <li>Outliers y polarización</li>
+          <li>Sin nada que elegir antes de entrar</li>
+        </ul>
+        <span class="entrar">Entrar →</span>
+      </button>
+
+      <button type="button" class="opcion nueva" (click)="mesa()">
+        <span class="etiqueta">v2</span>
+        <h2>La mesa de poker</h2>
+        <p>
+          Cada uno en su sitio alrededor del tapete, con su cara y su carta boca
+          abajo. Chat con bocadillos y un crupier que va comentando la jugada.
+        </p>
+        <ul>
+          <li>Mesa, cartas y avatares a elegir</li>
+          <li>Chat que sale encima de tu cabeza</li>
+          <li>Crupier que mete prisa y pide explicaciones</li>
+        </ul>
+        <span class="entrar">Entrar →</span>
+      </button>
+    </div>
+
+    }
+
+    @if (invitacion() && !mirando()) {
+      <p class="pie">
+        No se ha podido saber de qué versión es esa mesa. Elige tú y, si no es
+        la que abrió quien te invitó, vuelve aquí y prueba la otra.
+      </p>
+    }
+  </div>
+</app-terminal-layout>
