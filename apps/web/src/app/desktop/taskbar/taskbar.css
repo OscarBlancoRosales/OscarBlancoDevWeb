@@ -1,50 +1,112 @@
-/* La barra de tareas y su menú de inicio. */
+/* La barra de tareas: inicio, buscador, ventanas abiertas y bandeja. */
 
 .bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 44px;
-  min-height: 44px;
+  gap: 6px;
+  height: 46px;
+  min-height: 46px;
   padding: 0 8px;
-  background: var(--bg-chrome);
-  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-chrome) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
   user-select: none;
 }
 
+/* ===== BOTÓN DE INICIO ===== */
 .start {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 12px;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  transition: background 0.15s;
 }
 
 .start:hover,
 .start.open {
-  color: var(--accent);
-  border-color: var(--accent);
   background: var(--accent-soft);
 }
 
-.start-glyph {
-  font-size: 14px;
+/* Cuatro cuadraditos: el logo de toda la vida, pero con mi color */
+.start-logo {
+  display: grid;
+  grid-template-columns: repeat(2, 7px);
+  grid-template-rows: repeat(2, 7px);
+  gap: 2px;
+}
+
+.start-logo i {
+  display: block;
+  background: var(--accent);
+  border-radius: 1px;
+  box-shadow: 0 0 6px var(--glow);
+  transition: transform 0.15s;
+}
+
+.start:hover .start-logo i:nth-child(1) { transform: translate(-1px, -1px); }
+.start:hover .start-logo i:nth-child(2) { transform: translate(1px, -1px); }
+.start:hover .start-logo i:nth-child(3) { transform: translate(-1px, 1px); }
+.start:hover .start-logo i:nth-child(4) { transform: translate(1px, 1px); }
+
+/* ===== BUSCADOR EN LA BARRA ===== */
+.search-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  width: 210px;
+  padding: 0 12px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: text;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.search-open:hover {
+  border-color: var(--accent);
+  color: var(--text);
+  background: var(--accent-soft);
+}
+
+.search-glyph {
+  font-size: 15px;
+  line-height: 1;
   color: var(--accent);
 }
 
-/* Los botones de las ventanas abiertas */
+.search-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ===== VENTANAS ABIERTAS ===== */
 .tasks {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
   flex: 1;
   min-width: 0;
   overflow-x: auto;
@@ -56,22 +118,36 @@
 }
 
 .task {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
+  gap: 7px;
+  height: 34px;
   max-width: 190px;
-  padding: 0 11px;
+  padding: 0 12px;
   background: transparent;
-  border: 1px solid transparent;
-  border-bottom: 2px solid transparent;
-  border-radius: 3px;
+  border: none;
+  border-radius: 5px;
   color: var(--muted);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
   flex-shrink: 0;
-  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  transition: color 0.15s, background 0.15s;
+}
+
+/* La rayita de debajo dice cuál está abierta y cuál está delante */
+.task::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  width: 5px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--muted);
+  transform: translateX(-50%);
+  transition: width 0.18s, background 0.18s;
 }
 
 .task:hover {
@@ -79,15 +155,18 @@
   background: var(--accent-soft);
 }
 
-/* La de delante lleva subrayado, como en cualquier barra de tareas */
 .task.active {
   color: var(--accent);
-  background: var(--accent-soft);
-  border-bottom-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.task.active::after {
+  width: 18px;
+  background: var(--accent);
 }
 
 .task.min {
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .task-icon {
@@ -101,47 +180,92 @@
   white-space: nowrap;
 }
 
+/* ===== BANDEJA ===== */
 .tray {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
   flex-shrink: 0;
   padding-left: 8px;
-  border-left: 1px solid var(--border);
+}
+
+.lang {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+
+.lang-btn {
+  height: 22px;
+  padding: 0 8px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+}
+
+.lang-btn:hover {
+  color: var(--text);
+}
+
+.lang-btn.on {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .tray-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 28px;
-  padding: 0 8px;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
   background: transparent;
-  border: 1px solid transparent;
-  border-radius: 3px;
-  color: var(--muted);
-  font: inherit;
-  font-size: 11px;
+  border: none;
+  border-radius: 5px;
   cursor: pointer;
+  transition: background 0.12s;
 }
 
 .tray-btn:hover {
-  border-color: var(--border);
-  color: var(--text);
+  background: var(--accent-soft);
 }
 
 .swatch {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
   background: var(--accent);
   box-shadow: 0 0 8px var(--glow);
 }
 
+/* Hora arriba y fecha debajo, alineadas a la derecha */
 .clock {
-  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 0 8px 0 4px;
+  line-height: 1.15;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+.clock-time {
+  font-size: 12px;
+}
+
+.clock-date {
+  font-size: 10px;
+  color: var(--muted);
 }
 
 /* ===== MENÚ DE INICIO ===== */
@@ -154,43 +278,49 @@
 .menu {
   position: fixed;
   left: 8px;
-  bottom: 50px;
+  bottom: 52px;
   z-index: 901;
-  width: min(340px, calc(100vw - 16px));
-  max-height: min(70vh, 520px);
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(72vh, 560px);
   display: flex;
   flex-direction: column;
-  background: var(--bg-soft);
-  border: 1px solid var(--accent);
-  border-radius: 4px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+  background: color-mix(in srgb, var(--bg-soft) 92%, transparent);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 10px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
   overflow: hidden;
-  animation: menu-in 0.13s ease-out;
+  animation: menu-in 0.14s ease-out;
 }
 
 @keyframes menu-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(10px);
   }
 }
 
-.menu-head {
+.menu-search {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 9px;
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
 }
 
-.menu-user {
-  font-size: 13px;
-  font-weight: 700;
+.menu-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
   color: var(--bright);
+  font: inherit;
+  font-size: 13px;
 }
 
-.menu-sub {
-  font-size: 11px;
+.menu-input::placeholder {
   color: var(--muted);
 }
 
@@ -207,7 +337,7 @@
   padding: 9px 10px;
   background: transparent;
   border: none;
-  border-radius: 3px;
+  border-radius: 5px;
   color: var(--text);
   font: inherit;
   font-size: 13px;
@@ -223,30 +353,70 @@
   outline: none;
 }
 
+/* El primero de la lista es el que abre el Enter */
+.menu-item:first-child {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 .menu-glyph {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 6px;
   color: var(--accent);
+  font-size: 14px;
+}
+
+.menu-empty {
+  padding: 22px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.menu-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.menu-user {
   font-size: 13px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.menu-sub {
+  font-size: 11px;
+  color: var(--muted);
 }
 
 @media (max-width: 768px) {
   /* En móvil no hay sitio para los nombres: los iconos hablan solos */
-  .start-text,
+  .search-text,
   .task-name,
-  .tray-text {
+  .clock-date,
+  .sep {
     display: none;
   }
 
   .bar {
-    height: 52px;
-    min-height: 52px;
+    height: 54px;
+    min-height: 54px;
+  }
+
+  .search-open {
+    width: 44px;
+    justify-content: center;
+    padding: 0;
+    height: 36px;
   }
 
   .start,
@@ -254,20 +424,20 @@
     height: 38px;
   }
 
-  .task {
-    padding: 0 12px;
-  }
-
   .menu {
     left: 8px;
     right: 8px;
     width: auto;
-    bottom: 58px;
+    bottom: 60px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .menu {
     animation: none;
+  }
+
+  .start:hover .start-logo i {
+    transform: none;
   }
 }

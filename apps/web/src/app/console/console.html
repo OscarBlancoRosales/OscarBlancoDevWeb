@@ -1,81 +1,84 @@
 <div
   class="terminal-window"
+  [class.embedded]="embedded"
   [attr.data-theme]="theme"
   [class.navigating]="navigating"
   [class.glitching]="glitchOn"
   [class.powered-off]="poweredOff">
   <!-- ===== BARRA DE TÍTULO ===== -->
-  <div class="titlebar" (click)="closeMenuIfOpen()">
-    <div class="titlebar-left">
-      <span class="tb-icon">❯_</span>
-      <span class="tb-path">oscar@obr</span>
-    </div>
-
-    <div class="titlebar-title">OBR Terminal — Oscar Blanco Rosales</div>
-
-    <div class="titlebar-right">
-      <button
-        class="tb-btn"
-        (click)="openPalette(); $event.stopPropagation()"
-        [attr.aria-label]="i18n.t('console.paletteTitle')"
-        [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
-        ⌘
-      </button>
-
-      <button
-        class="lang-btn"
-        [class.active]="i18n.lang === 'es'"
-        (click)="i18n.setLang('es'); $event.stopPropagation()"
-        title="Español"
-        aria-label="Español">
-        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
-          <rect width="60" height="40" fill="#c60b1e" />
-          <rect y="10" width="60" height="20" fill="#ffc400" />
-        </svg>
-      </button>
-      <button
-        class="lang-btn"
-        [class.active]="i18n.lang === 'en'"
-        (click)="i18n.setLang('en'); $event.stopPropagation()"
-        title="English"
-        aria-label="English">
-        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
-          <rect width="60" height="40" fill="#00247d" />
-          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
-          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
-          <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
-          <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
-        </svg>
-      </button>
-
-      <button
-        class="tb-btn"
-        (click)="toggleMenu(); $event.stopPropagation()"
-        [title]="i18n.t('console.sectionsTitle')"
-        aria-label="Menu">
-        ≡
-      </button>
-
-      <!-- Controles de ventana: no son de adorno, cada uno hace algo -->
-      <div class="win-ctrl">
-        <button class="win-btn" (click)="toggleFold(); $event.stopPropagation()" [title]="i18n.t('console.winFold')">─</button>
-        <button class="win-btn" (click)="toggleFullscreen(); $event.stopPropagation()" [title]="i18n.t('console.winFull')">▢</button>
-        <button class="win-btn win-btn--close" (click)="powerOff(); $event.stopPropagation()" [title]="i18n.t('console.winOff')">✕</button>
+  @if (!embedded) {
+    <div class="titlebar" (click)="closeMenuIfOpen()">
+      <div class="titlebar-left">
+        <span class="tb-icon">❯_</span>
+        <span class="tb-path">oscar@obr</span>
       </div>
 
-      @if (menuOpen) {
-        <div class="menu-dropdown" (click)="$event.stopPropagation()">
-          @for (item of menuItems; track item.id) {
-            <div class="menu-item" (click)="navigate(item.route!, $event)">
-              <span class="menu-icon">❯</span>
-              <span class="menu-name">{{ item.id }}</span>
-              <span class="menu-alt">{{ item.aliases[0] }}</span>
-            </div>
-          }
+      <div class="titlebar-title">OBR Terminal — Oscar Blanco Rosales</div>
+
+      <div class="titlebar-right">
+        <button
+          class="tb-btn"
+          (click)="openPalette(); $event.stopPropagation()"
+          [attr.aria-label]="i18n.t('console.paletteTitle')"
+          [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
+          ⌘
+        </button>
+
+        <button
+          class="lang-btn"
+          [class.active]="i18n.lang === 'es'"
+          (click)="i18n.setLang('es'); $event.stopPropagation()"
+          title="Español"
+          aria-label="Español">
+          <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+            <rect width="60" height="40" fill="#c60b1e" />
+            <rect y="10" width="60" height="20" fill="#ffc400" />
+          </svg>
+        </button>
+        <button
+          class="lang-btn"
+          [class.active]="i18n.lang === 'en'"
+          (click)="i18n.setLang('en'); $event.stopPropagation()"
+          title="English"
+          aria-label="English">
+          <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+            <rect width="60" height="40" fill="#00247d" />
+            <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
+            <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
+            <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
+            <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
+          </svg>
+        </button>
+
+        <button
+          class="tb-btn"
+          (click)="toggleMenu(); $event.stopPropagation()"
+          [title]="i18n.t('console.sectionsTitle')"
+          aria-label="Menu">
+          ≡
+        </button>
+
+        <!-- Controles de ventana: no son de adorno, cada uno hace algo -->
+        <div class="win-ctrl">
+          <button class="win-btn" (click)="toggleFold(); $event.stopPropagation()" [title]="i18n.t('console.winFold')">─</button>
+          <button class="win-btn" (click)="toggleFullscreen(); $event.stopPropagation()" [title]="i18n.t('console.winFull')">▢</button>
+          <button class="win-btn win-btn--close" (click)="powerOff(); $event.stopPropagation()" [title]="i18n.t('console.winOff')">✕</button>
         </div>
-      }
+
+        @if (menuOpen) {
+          <div class="menu-dropdown" (click)="$event.stopPropagation()">
+            @for (item of menuItems; track item.id) {
+              <div class="menu-item" (click)="navigate(item.route!, $event)">
+                <span class="menu-icon">❯</span>
+                <span class="menu-name">{{ item.id }}</span>
+                <span class="menu-alt">{{ item.aliases[0] }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </div>
-  </div>
+  }
 
   <!-- ===== CUERPO ===== -->
   <div class="terminal-body" (click)="onBodyClick()" #body>
@@ -232,23 +235,25 @@
     </div>
   }
 
-  <!-- ===== BARRA DE ESTADO ===== -->
-  <div class="statusbar">
-    <div class="status-left">
-      <a href="https://github.com/oscarblanco-dev" target="_blank" rel="noopener" class="status-link">GitHub</a>
-      <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" rel="noopener" class="status-link">LinkedIn</a>
-      <a href="mailto:oscar.blanco.r&#64;gmail.com" class="status-link">Email</a>
+  @if (!embedded) {
+    <!-- ===== BARRA DE ESTADO ===== -->
+    <div class="statusbar">
+      <div class="status-left">
+        <a href="https://github.com/oscarblanco-dev" target="_blank" rel="noopener" class="status-link">GitHub</a>
+        <a href="https://www.linkedin.com/in/oscar-blanco-a5108b349/" target="_blank" rel="noopener" class="status-link">LinkedIn</a>
+        <a href="mailto:oscar.blanco.r&#64;gmail.com" class="status-link">Email</a>
+      </div>
+      <div class="status-right">
+        <span class="status-item status-theme">{{ theme }}</span>
+        <span class="status-item">UTF-8</span>
+        <span class="status-item">LF</span>
+        <span class="status-item status-clock">{{ clock() }}</span>
+        <span class="status-item status-online"><span class="dot"></span>{{ i18n.t('console.online') }}</span>
+      </div>
     </div>
-    <div class="status-right">
-      <span class="status-item status-theme">{{ theme }}</span>
-      <span class="status-item">UTF-8</span>
-      <span class="status-item">LF</span>
-      <span class="status-item status-clock">{{ clock() }}</span>
-      <span class="status-item status-online"><span class="dot"></span>{{ i18n.t('console.online') }}</span>
-    </div>
-  </div>
+  }
 
-  <app-command-palette
+<app-command-palette
     [open]="paletteOpen"
     (closed)="closePalette()"
     (picked)="runFromPalette($event)" />

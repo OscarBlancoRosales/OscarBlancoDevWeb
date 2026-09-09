@@ -74,3 +74,25 @@ export function startMenuItems(): DesktopItem[] {
   const anunciadas = new Set(navCommands().map((c) => c.id));
   return DESKTOP_ITEMS.filter((i) => i.kind === 'terminal' || anunciadas.has(i.command ?? ''));
 }
+
+/**
+ * Busca entre lo que hay en el escritorio, como el buscador de la barra de
+ * inicio de cualquier sistema: vale el nombre que se lee, el del comando o
+ * cualquiera de sus alias, para que dé igual si buscas «fechas», «timestamp»
+ * o «epoch».
+ */
+export function searchItems(query: string, t: (clave: string) => string): DesktopItem[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return startMenuItems();
+
+  return startMenuItems().filter((item) => {
+    const cmd = item.command ? findCommand(item.command) : undefined;
+    const candidatos = [
+      item.id,
+      t(item.labelKey).toLowerCase(),
+      ...(cmd ? [cmd.id, ...cmd.aliases, t(cmd.descKey).toLowerCase()] : []),
+      ...(item.run ? [item.run] : []),
+    ];
+    return candidatos.some((texto) => texto.includes(q));
+  });
+}

@@ -1071,3 +1071,10 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Dentro de una ventana del escritorio: sin marco propio, que ya lo pone la
+   ventana, y ocupando el hueco que le den. */
+.terminal-window.embedded {
+  width: 100%;
+  height: 100%;
+}

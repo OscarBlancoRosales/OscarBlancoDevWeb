@@ -59,12 +59,12 @@ export class DesktopWindow {
     };
     // Capturar el puntero: si el ratón se sale de la ventana, el arrastre
     // sigue siendo nuestro y no se queda a medias.
-    (event.target as HTMLElement).setPointerCapture?.(event.pointerId);
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
   }
 
   onPointerMove(event: PointerEvent): void {
     const drag = this.drag;
-    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag?.pointerId !== event.pointerId) return;
     event.preventDefault();
 
     const dx = event.clientX - drag.startX;
@@ -79,7 +79,7 @@ export class DesktopWindow {
 
   onPointerUp(event: PointerEvent): void {
     if (this.drag?.pointerId !== event.pointerId) return;
-    (event.target as HTMLElement).releasePointerCapture?.(event.pointerId);
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
     this.drag = null;
   }
 
@@ -97,7 +97,7 @@ export class DesktopWindow {
       ArrowUp: [0, -paso],
       ArrowDown: [0, paso],
     };
-    const salto = saltos[event.key];
+    const salto = saltos[event.key] as [number, number] | undefined;
     if (!salto) return;
     event.preventDefault();
     this.moved.emit({ x: this.win.x + salto[0], y: this.win.y + salto[1] });

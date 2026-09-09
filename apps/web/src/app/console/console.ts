@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 // AfterViewInit va aparte: solo hace falta para dejar el cursor puesto.
 import { I18nService } from '../services/i18n.service';
+import { ShellModeService } from '../desktop/shell-mode.service';
 import { SECRET_THEME, Theme, ThemeService } from '../services/theme.service';
 import {
   CommandDef,
@@ -177,6 +178,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     public i18n: I18nService,
     public themes: ThemeService,
+    private shell: ShellModeService,
   ) {
     this.history = this.readStored(HISTORY_KEY, [] as string[]);
     this.gameBest = Number(this.readStored(SNAKE_BEST_KEY, 0)) || 0;
@@ -219,6 +221,15 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   }
 
   // ===== TRADUCCIÓN AL PINTAR =====
+
+  /**
+   * Dentro de una ventana del escritorio no pinta su chrome: la barra de
+   * título y la de estado ya las pone la ventana, y dibujar las suyas dejaba
+   * dos barras una encima de otra.
+   */
+  get embedded(): boolean {
+    return this.shell.embedded();
+  }
 
   lineText(line: OutLine): string {
     if (line.key) return this.i18n.t(line.key, line.params);

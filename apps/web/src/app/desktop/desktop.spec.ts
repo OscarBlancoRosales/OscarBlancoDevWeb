@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Desktop } from './desktop';
-import { DESKTOP_ITEMS } from './desktop-items';
+import { DESKTOP_ITEMS, DesktopItem } from './desktop-items';
 import { ShellModeService } from './shell-mode.service';
 
 /**
@@ -28,17 +28,23 @@ describe('el escritorio', () => {
   });
 
   /** El icono de un item por su id, tal y como lo pulsaría alguien. */
-  function item(id: string) {
-    return DESKTOP_ITEMS.find((i) => i.id === id)!;
+  function item(id: string): DesktopItem {
+    const encontrado = DESKTOP_ITEMS.find((i) => i.id === id);
+    if (!encontrado) throw new Error(`no hay ningún icono con el id «${id}»`);
+    return encontrado;
+  }
+
+  /** El DOM del escritorio, con tipo: `nativeElement` es `any` a secas. */
+  function dom(): HTMLElement {
+    return fixture.nativeElement as HTMLElement;
   }
 
   it('se pintan todos los iconos', () => {
-    const iconos = fixture.nativeElement.querySelectorAll('.icon');
-    expect(iconos.length).toBe(DESKTOP_ITEMS.length);
+    expect(dom().querySelectorAll('.icon').length).toBe(DESKTOP_ITEMS.length);
   });
 
   it('la barra de tareas está siempre, para poder volver de cualquier sitio', () => {
-    expect(fixture.nativeElement.querySelector('app-taskbar')).toBeTruthy();
+    expect(dom().querySelector('app-taskbar')).toBeTruthy();
   });
 
   it('abrir un icono monta su ventana', async () => {
@@ -49,7 +55,7 @@ describe('el escritorio', () => {
   it('y la ventana trae dentro la herramienta de verdad', async () => {
     await desktop.launch(item('uuid'));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('app-desktop-window')).toBeTruthy();
+    expect(dom().querySelector('app-desktop-window')).toBeTruthy();
   });
 
   it('abrir lo mismo dos veces no monta dos ventanas', async () => {
@@ -104,7 +110,7 @@ describe('el escritorio', () => {
   describe('el cartel de bienvenida', () => {
     it('sale la primera vez, que es cuando hace falta', () => {
       expect(desktop.showWelcome).toBe(true);
-      expect(fixture.nativeElement.querySelector('.welcome')).toBeTruthy();
+      expect(dom().querySelector('.welcome')).toBeTruthy();
     });
 
     it('se puede quitar y no vuelve a aparecer', () => {
