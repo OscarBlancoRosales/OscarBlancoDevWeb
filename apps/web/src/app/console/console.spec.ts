@@ -3,6 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Console } from './console';
 import { navCommands } from './commands';
+import { ShellModeService } from '../desktop/shell-mode.service';
 
 /**
  * La portada es la puerta de entrada al sitio: si una sección no está aquí, no
@@ -243,6 +244,12 @@ describe('Console (la portada)', () => {
   describe('cambiar de idioma', () => {
     beforeEach(() => {
       fixture.detectChanges();
+    });
+
+    beforeEach(() => {
+      // De qué idioma se parte, dicho a las claras: el de las pruebas es
+      // inglés, y estos tests van de que cambiarlo reescribe la pantalla.
+      component.i18n.setLang('es');
     });
 
     /** Todo lo que se lee en pantalla ahora mismo. */
@@ -556,6 +563,35 @@ describe('Console (la portada)', () => {
 
     it('mientras corres no estorban los chips ni el prompt', () => {
       expect(fixture.nativeElement.querySelector('.chips')).toBeFalsy();
+    });
+  });
+
+  /**
+   * Dentro de una ventana del escritorio, la consola no pinta su barra de
+   * título ni su barra de estado: las pone la ventana. Sin esto se veían dos
+   * barras, una encima de otra, con las banderas perdidas en la de dentro.
+   */
+  describe('dentro de una ventana del escritorio', () => {
+    beforeEach(() => {
+      TestBed.inject(ShellModeService).embedded.set(true);
+      fixture.detectChanges();
+    });
+
+    afterEach(() => {
+      TestBed.inject(ShellModeService).embedded.set(false);
+    });
+
+    it('no dibuja una segunda barra de título', () => {
+      expect(fixture.nativeElement.querySelector('.titlebar')).toBeFalsy();
+    });
+
+    it('ni una segunda barra de estado', () => {
+      expect(fixture.nativeElement.querySelector('.statusbar')).toBeFalsy();
+    });
+
+    it('pero la terminal sigue estando entera', () => {
+      expect(fixture.nativeElement.querySelector('.cmd-input')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.stream')).toBeTruthy();
     });
   });
 

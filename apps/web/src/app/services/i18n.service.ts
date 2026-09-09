@@ -172,6 +172,11 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'desk.menuSub': { es: 'Full Stack Developer', en: 'Full Stack Developer' },
   'desk.nextTheme': { es: 'Cambiar el color de todo', en: 'Change the colours' },
   'desk.dismiss': { es: 'Quitar este aviso', en: 'Dismiss' },
+  'desk.search': { es: 'Buscar', en: 'Search' },
+  'desk.searchPlaceholder': { es: 'Escribe para buscar herramientas...', en: 'Type here to search tools...' },
+  'desk.noResults': { es: 'Nada que se parezca a eso.', en: 'Nothing looks like that.' },
+  'desk.language': { es: 'Idioma', en: 'Language' },
+  'desk.showDesktop': { es: 'Mostrar el escritorio', en: 'Show the desktop' },
   'desk.welcomeTitle': { es: 'Oscar Blanco Rosales', en: 'Oscar Blanco Rosales' },
   'desk.welcomeSub': { es: 'Full Stack Developer · C# · Angular · Flutter', en: 'Full Stack Developer · C# · Angular · Flutter' },
   'desk.welcomeText': {
@@ -370,10 +375,39 @@ export class I18nService {
   langChange$ = new Subject<Lang>();
 
   constructor() {
-    const saved = localStorage.getItem('app_lang') as Lang;
-    if (saved === 'es' || saved === 'en') {
-      this.currentLang = saved;
+    this.currentLang = this.chooseLang();
+  }
+
+  /**
+   * Lo que elegiste tú manda. Si no has elegido nada, el idioma del navegador:
+   * antes se abría siempre en castellano y quien llegaba con el navegador en
+   * inglés tenía que buscar la bandera para entender la web.
+   */
+  private chooseLang(): Lang {
+    try {
+      const guardado = localStorage.getItem('app_lang');
+      if (guardado === 'es' || guardado === 'en') return guardado;
+    } catch {
+      // Sin almacenamiento se decide igual, mirando el navegador.
     }
+    return this.fromBrowser();
+  }
+
+  /** El sitio es de un español: lo que no sea inglés, castellano. */
+  private fromBrowser(): Lang {
+    try {
+      // Con tipo propio: hay navegadores viejos que no traen `languages`.
+      const nav: { languages?: readonly string[]; language?: string } = navigator;
+      const idiomas = nav.languages?.length ? nav.languages : [nav.language ?? ''];
+      for (const idioma of idiomas) {
+        const base = idioma.toLowerCase().split('-')[0];
+        if (base === 'es') return 'es';
+        if (base === 'en') return 'en';
+      }
+    } catch {
+      // Un navegador que no dice su idioma no es motivo para romper nada.
+    }
+    return 'es';
   }
 
   get lang(): Lang {
@@ -382,7 +416,11 @@ export class I18nService {
 
   setLang(lang: Lang): void {
     this.currentLang = lang;
-    localStorage.setItem('app_lang', lang);
+    try {
+      localStorage.setItem('app_lang', lang);
+    } catch {
+      // Navegar en privado no debería costarte el idioma de esta visita.
+    }
     this.langChange$.next(lang);
   }
 

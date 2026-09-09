@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { DESKTOP_ITEMS, DesktopItem, itemRoute, startMenuItems } from './desktop-items';
+import {
+  DESKTOP_ITEMS,
+  DesktopItem,
+  itemRoute,
+  searchItems,
+  startMenuItems,
+} from './desktop-items';
 import { findCommand, navCommands } from '../console/commands';
 
 /**
@@ -84,5 +90,35 @@ describe('el menú de inicio', () => {
 
   it('incluye el cronómetro escondido, que por comando sí se llega', () => {
     expect(startMenuItems().some((i) => i.command === 'throwdown')).toBe(false);
+  });
+});
+
+describe('el buscador de la barra', () => {
+  /** Traducción de mentira: devuelve la clave, que basta para buscar por id. */
+  const tal = (clave: string) => clave;
+
+  it('sin escribir nada, lo ofrece todo', () => {
+    expect(searchItems('', tal).length).toBe(startMenuItems().length);
+  });
+
+  it('encuentra por el nombre del comando', () => {
+    expect(searchItems('uuid', tal).some((i) => i.id === 'uuid')).toBe(true);
+  });
+
+  /** Da igual cómo lo llames tú: «fechas», «timestamp» o «epoch». */
+  it('y también por los alias del comando', () => {
+    expect(searchItems('epoch', tal).some((i) => i.id === 'timestamp')).toBe(true);
+  });
+
+  it('da igual mayúsculas y espacios de más', () => {
+    expect(searchItems('  QR  ', tal).some((i) => i.id === 'qr')).toBe(true);
+  });
+
+  it('lo que no está, no aparece', () => {
+    expect(searchItems('zzzzzzzz', tal)).toEqual([]);
+  });
+
+  it('no ofrece lo que está escondido del menú', () => {
+    expect(searchItems('throwdown', tal)).toEqual([]);
   });
 });
