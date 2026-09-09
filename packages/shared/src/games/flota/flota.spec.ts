@@ -45,11 +45,18 @@ describe('colocacion', () => {
     expect(state.turno).toBe('ana');
   });
 
-  it('abre fuego quien desplego primero', () => {
+  /**
+   * Antes abria fuego quien desplegaba primero, y con bots eso era una carrera:
+   * un bot coloca en cuanto alguien se conecta a la sala, asi que quien abria
+   * la partida dependia de si su despliegue se colaba antes que el tuyo. El
+   * mismo test de integracion fallaba a ratos por esto.
+   */
+  it('abre fuego quien se sento primero, no quien desplego antes', () => {
     const inicial = flotaModule.createState(SEATS, {});
     const una = flotaModule.apply(inicial, { tipo: 'desplegar', barcos: FLOTA_BEA }, 'bea', SEATS);
     const dos = flotaModule.apply(una, { tipo: 'desplegar', barcos: FLOTA_ANA }, 'ana', SEATS);
-    expect(dos.turno).toBe('bea');
+
+    expect(dos.turno).toBe(SEATS[0]?.id);
   });
 
   it('no deja desplegar dos veces', () => {

@@ -3,7 +3,7 @@ import { flotaAleatoria, siguienteDisparo } from './bot';
 import { rngFor } from '../../engine/rng';
 import { disparar, flotaHundida, indice, punteria, tableroVacio, validarFlota } from './reglas';
 import type { Barco, Bando, FlotaState, FlotaView, Nivel } from './tipos';
-import type { GameModule, RuleError, SeatId } from '../module';
+import type { GameModule, RuleError, Seat, SeatId } from '../module';
 
 const NIVELES: readonly Nivel[] = ['novato', 'marino', 'almirante'];
 
@@ -60,7 +60,7 @@ export const flotaModule: GameModule<FlotaState, FlotaAction> = {
     }
   },
 
-  apply(state, action, by) {
+  apply(state, action, by, seats) {
     const jugadas = state.jugadas + 1;
 
     switch (action.tipo) {
@@ -74,7 +74,13 @@ export const flotaModule: GameModule<FlotaState, FlotaAction> = {
           orden,
           bandos,
           fase: completa ? 'combate' : 'colocacion',
-          turno: completa ? (orden[0] ?? null) : null,
+          // Abre la mesa quien se sentó primero, no quien colocó antes.
+          //
+          // Con `orden[0]` el primer turno se lo llevaba quien desplegara antes,
+          // y los bots despliegan en cuanto alguien se conecta a la sala: quién
+          // abría la partida dependía de si el despliegue del bot se colaba
+          // antes de que llegara el tuyo. Una carrera decidiendo el turno.
+          turno: completa ? (abreLaMesa(seats, orden) ?? null) : null,
         };
       }
 
@@ -206,4 +212,15 @@ function bandoDe(state: FlotaState, seat: SeatId): Bando | undefined {
 
 function esNivel(valor: unknown): valor is Nivel {
   return typeof valor === 'string' && (NIVELES as readonly string[]).includes(valor);
+}
+
+/**
+ * Quién abre el combate: el asiento de menor orden en la mesa.
+ *
+ * Se cae a quien desplegó primero si por lo que sea no hay asientos, para no
+ * dejar una partida sin turno y por tanto muerta.
+ */
+function abreLaMesa(seats: readonly Seat[], orden: readonly SeatId[]): SeatId | undefined {
+  const sentados = [...seats].sort((a, b) => a.order - b.order || (a.id < b.id ? -1 : 1));
+  return sentados[0]?.id ?? orden[0];
 }
