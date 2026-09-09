@@ -32,7 +32,7 @@ const ConfigSchema = Type.Object({
   PUBLIC_WEB_URL: Type.String({ minLength: 1, default: 'http://localhost:4200' }),
 
   SMTP_URL: Type.String({ default: '' }),
-  MAIL_FROM: Type.String({ default: 'DevWeb <no-reply@localhost>' }),
+  MAIL_FROM: Type.String({ default: 'no-reply@localhost' }),
 });
 
 export type Config = Static<typeof ConfigSchema> & { readonly corsOrigins: readonly string[] };

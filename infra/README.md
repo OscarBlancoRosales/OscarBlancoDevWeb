@@ -225,7 +225,7 @@ Pon estas dos líneas (la contraseña es la API key entera):
 
 ```
 SMTP_URL=smtps://resend:re_TU_API_KEY@smtp.resend.com:465
-MAIL_FROM=DevWeb <no-reply@oscarblancorosales.com>
+MAIL_FROM=Óscar Blanco Rosales <no-reply@oscarblancorosales.com>
 ```
 
 7. **Pruébalo antes de fiarte**, que para eso está:

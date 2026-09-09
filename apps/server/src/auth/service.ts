@@ -63,7 +63,8 @@ export class AuthService {
         subject: 'Alguien ha intentado registrarse con tu correo',
         text:
           `Hola ${existente.displayName}:\n\n` +
-          'Alguien ha intentado crear una cuenta en DevWeb con este correo, que ya ' +
+          `Alguien ha intentado crear una cuenta en ${this.sitio} con este correo, ` +
+          'que ya ' +
           'tiene una.\n\nSi has sido tú, entra con tu contraseña de siempre. Si la ' +
           'has olvidado, pide una nueva desde la pantalla de acceso.\n\n' +
           'Si no has sido tú, no tienes que hacer nada: tu cuenta no ha cambiado.',
@@ -190,6 +191,18 @@ export class AuthService {
   }
 
   /**
+   * Cómo se llama esto en los correos.
+   *
+   * Sale del dominio público y no de un literal escrito a mano: «DevWeb» es el
+   * nombre del repositorio, no el del sitio, y acabó saliendo en el asunto de
+   * los correos que recibe la gente. Derivarlo de la URL evita que vuelva a
+   * pasar y que haya que cambiarlo en cuatro sitios el día que cambie.
+   */
+  private get sitio(): string {
+    return this.publicWebUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+  }
+
+  /**
    * Pasa una cuenta a activa, si le corresponde.
    *
    * Es el único sitio del servicio que escribe `active`, y por eso puede
@@ -251,7 +264,10 @@ export class AuthService {
 
     await this.mailer.send({
       to: user.email,
-      subject: purpose === 'verify' ? 'Verifica tu cuenta de DevWeb' : 'Cambiar tu contraseña de DevWeb',
+      subject:
+        purpose === 'verify'
+          ? `Verifica tu cuenta de ${this.sitio}`
+          : `Cambiar tu contraseña de ${this.sitio}`,
       text:
         purpose === 'verify'
           ? `Hola ${user.displayName}:\n\nActiva tu cuenta aquí:\n${link}\n\nEl enlace caduca en 24 horas.`

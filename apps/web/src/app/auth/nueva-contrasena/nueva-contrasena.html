@@ -10,6 +10,7 @@
         <input
           id="password"
           type="password"
+          autocomplete="new-password"
           formControlName="password"
           [placeholder]="'Mínimo ' + minimo + ' caracteres'"
           [class.input-error]="password?.invalid && password?.touched"
@@ -31,6 +32,7 @@
         <input
           id="repetida"
           type="password"
+          autocomplete="new-password"
           formControlName="repetida"
           placeholder="La misma otra vez"
           [class.input-error]="formulario.errors?.['noCoinciden'] && repetida?.touched"

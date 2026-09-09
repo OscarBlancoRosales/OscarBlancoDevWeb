@@ -51,6 +51,34 @@ describe('AuthService', () => {
     auth.verifyEmail(tokenDe(correo.enviados[0]));
   }
 
+  /**
+   * Lo que la gente lee no puede llevar el nombre del repositorio.
+   *
+   * «DevWeb» es como se llama el repositorio, no el sitio, y se coló en el
+   * asunto de todos los correos de alta hasta que alguien recibió uno y lo dijo.
+   * El nombre sale del dominio público, así que basta con vigilar que no vuelva
+   * a aparecer un literal.
+   */
+  describe('cómo se presenta en los correos', () => {
+    it('el asunto y el cuerpo llevan el dominio, nunca el nombre del repositorio', async () => {
+      await auth.register(ALTA);
+      const [verificacion] = correo.enviados;
+
+      expect(verificacion.subject).toContain('oscarblancorosales.com');
+      expect(`${verificacion.subject} ${verificacion.text}`).not.toContain('DevWeb');
+    });
+
+    it('tampoco en el aviso a quien ya tenía cuenta', async () => {
+      await auth.register(ALTA);
+      correo.enviados.length = 0;
+      await auth.register(ALTA);
+      const [aviso] = correo.enviados;
+
+      expect(aviso.text).toContain('oscarblancorosales.com');
+      expect(`${aviso.subject} ${aviso.text}`).not.toContain('DevWeb');
+    });
+  });
+
   describe('registro', () => {
     it('manda el correo de verificación', async () => {
       await auth.register(ALTA);

@@ -9,6 +9,7 @@
           <input
             id="email"
             type="email"
+            autocomplete="email"
             formControlName="email"
             placeholder="admin@oscarblanco.dev"
             [class.input-error]="email?.invalid && email?.touched"
@@ -30,6 +31,7 @@
           <input
             id="password"
             type="password"
+            autocomplete="current-password"
             formControlName="password"
             placeholder="Tu contraseña"
             [class.input-error]="password?.invalid && password?.touched"
