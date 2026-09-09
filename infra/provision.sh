@@ -29,6 +29,15 @@ paso() { printf '\n\033[1;36m==> %s\033[0m\n' "$1"; }
 
 paso "Paquetes base"
 export DEBIAN_FRONTEND=noninteractive
+
+# Esperar al cerrojo de dpkg en vez de morirse.
+#
+# `unattended-upgrades` se despierta solo y coge el cerrojo cuando le apetece.
+# Sin esto, aprovisionar justo en ese minuto falla con «Could not get lock» y
+# deja la máquina a medias, que es la peor manera de fallar: parece que ha ido
+# bien salvo por un paso, y hay que adivinar cuál.
+apt-get() { command apt-get -o DPkg::Lock::Timeout=600 "$@"; }
+
 apt-get update -qq
 apt-get install -y -qq \
   curl ca-certificates gnupg git \
@@ -216,7 +225,7 @@ fi
 
 cat <<EOF
 
-Listo. Quedan dos cosas que esta máquina no puede decidir sola:
+Listo. Quedan tres cosas que esta máquina no puede decidir sola:
 
   1. Que $DOMAIN apunte por DNS a esta IP. Cuando lo haga:
 
