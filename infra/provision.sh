@@ -208,7 +208,25 @@ paso "Servicio"
 install -m 644 "$REPO_DIR/infra/systemd/devweb-api.service" /etc/systemd/system/devweb-api.service
 install -m 755 "$REPO_DIR/infra/backup.sh" /usr/local/bin/devweb-backup
 install -m 755 "$REPO_DIR/infra/deploy.sh" /usr/local/bin/devweb-deploy
-install -m 755 "$REPO_DIR/infra/probar-correo.mjs" /usr/local/bin/devweb-probar-correo
+# El probador de correo NO se instala directamente en /usr/local/bin, y hay dos
+# motivos encadenados:
+#
+#  - Sin extensión y sin shebang, el sistema lo ejecutaba con `sh`: intentaba
+#    interpretar JavaScript como órdenes de shell y escupía cuarenta errores.
+#  - Y aunque tuviera shebang, `import 'nodemailer'` se resuelve subiendo desde
+#    la carpeta del script, así que desde /usr/local/bin no lo encontraría: las
+#    dependencias viven en la entrega, bajo /opt/devweb/current/node_modules.
+#
+# Así que el script vive junto a la aplicación, con su extensión .mjs intacta, y
+# en /usr/local/bin queda un lanzador que dice con qué se ejecuta. El enlace de
+# node_modules sigue a `current`, de modo que apunta siempre a la entrega viva.
+install -m 644 -o "$APP_USER" -g "$APP_USER" "$REPO_DIR/infra/probar-correo.mjs" "$APP_DIR/probar-correo.mjs"
+ln -sfn "$APP_DIR/current/node_modules" "$APP_DIR/node_modules"
+cat > /usr/local/bin/devweb-probar-correo <<EOF
+#!/bin/sh
+exec node $APP_DIR/probar-correo.mjs "\$@"
+EOF
+chmod 755 /usr/local/bin/devweb-probar-correo
 
 # Permiso para desplegar sin contraseña, y solo para desplegar. `visudo -c`
 # antes de instalarlo: un fichero de sudoers con una errata puede dejar la
