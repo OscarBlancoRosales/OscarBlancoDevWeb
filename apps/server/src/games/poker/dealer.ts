@@ -13,8 +13,14 @@ import type { Narrador, RoomActor } from '../../rooms/actor';
 /** Más largo que esto no es un comentario de crupier: es un monólogo. */
 const LARGO_MAXIMO = 300;
 
-/** Lo que se espera al modelo antes de darlo por perdido. */
-const PACIENCIA_MS = 6000;
+/**
+ * Lo que se espera al modelo antes de darlo por perdido.
+ *
+ * Doce segundos y no seis: los modelos gratuitos de OpenRouter tienen cola, y
+ * con seis se agotaba el plazo antes de que contestaran. Mientras tanto la
+ * mesa ya está leyendo la frase escrita, así que esperar no cuesta nada.
+ */
+const PACIENCIA_MS = 12_000;
 
 /**
  * Cuánto aguanta el dealer antes de meter prisa, y cada cuánto insiste.
@@ -60,6 +66,8 @@ export class DealerDeMesa implements Narrador {
     private readonly ajustes: AiSettings | null,
     private readonly mesa: LaMesa,
     private readonly modelo: Llamada = chatWithFallback,
+    /** Dónde se apunta que el modelo ha fallado. Sin esto no hay diagnóstico. */
+    private readonly avisar: (motivo: string) => void = () => undefined,
   ) {}
 
   trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void {
@@ -207,10 +215,14 @@ export class DealerDeMesa implements Narrador {
         this.modelo(this.ajustes, mensajes, { maxTokens: 120 }),
         seAgota(),
       ]);
-      return aceptable(respuesta.text) ? respuesta.text.trim() : null;
-    } catch {
-      // Sin red, sin cuota o con la clave mal: se queda el guion escrito y la
-      // mesa no se entera de que ha pasado nada.
+      if (aceptable(respuesta.text)) return respuesta.text.trim();
+      this.avisar(`el modelo contestó algo que no se puede enseñar (${respuesta.text.length} letras)`);
+      return null;
+    } catch (fallo) {
+      // La mesa no se entera -se queda el guion escrito-, pero quien mantiene
+      // el servidor sí: «la clave está puesta y no improvisa» es imposible de
+      // diagnosticar si el motivo se traga aquí en silencio.
+      this.avisar(fallo instanceof Error ? fallo.message : 'el modelo falló sin decir por qué');
       return null;
     }
   }

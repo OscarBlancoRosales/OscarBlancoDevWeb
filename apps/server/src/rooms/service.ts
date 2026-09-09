@@ -32,6 +32,8 @@ export interface RoomServiceOptions {
   readonly now?: () => number;
   /** Con qué modelo habla el presentador del concurso. Sin esto, solo guion. */
   readonly ia?: AiSettings | null;
+  /** Dónde se apuntan los problemas que no rompen nada pero hay que saber. */
+  readonly avisar?: (mensaje: string) => void;
 }
 
 /**
@@ -52,12 +54,18 @@ export class RoomService {
   readonly fallosAlCerrar: string[] = [];
 
   private readonly ia: AiSettings | null;
+  private readonly avisar: (mensaje: string) => void;
 
   constructor(options: RoomServiceOptions) {
     this.repository = options.repository;
     this.maxSeats = options.maxSeats ?? 16;
     this.now = options.now ?? Date.now;
     this.ia = options.ia ?? null;
+    this.avisar =
+      options.avisar ??
+      ((mensaje) => {
+        console.warn(mensaje);
+      });
   }
 
   crear(input: {
@@ -325,14 +333,21 @@ export class RoomService {
       // Solo la mesa de poker tiene crupier. La versión clásica se queda como
       // estaba: quien la abre no quiere a nadie metiéndole prisa.
       if (this.repository.findRoom(roomId)?.config['version'] !== 'mesa') return null;
-      return new DealerDeMesa(this.ia, {
-        nombres: () => nombresDe(this.repository.listSeats(roomId)),
-        humanos: () =>
-          this.repository
-            .listSeats(roomId)
-            .filter((asiento) => !asiento.isBot)
-            .map((asiento) => asiento.seatId),
-      });
+      return new DealerDeMesa(
+        this.ia,
+        {
+          nombres: () => nombresDe(this.repository.listSeats(roomId)),
+          humanos: () =>
+            this.repository
+              .listSeats(roomId)
+              .filter((asiento) => !asiento.isBot)
+              .map((asiento) => asiento.seatId),
+        },
+        undefined,
+        (motivo) => {
+          this.avisar(`El crupier no pudo hablar con el modelo: ${motivo}`);
+        },
+      );
     }
     if (game !== 'trivial') return null;
     return new PresentadorDeSala(
@@ -346,6 +361,9 @@ export class RoomService {
             .filter((asiento) => asiento.isBot)
             .map((asiento) => asiento.seatId),
         ),
+      (motivo) => {
+        this.avisar(`El presentador no pudo hablar con el modelo: ${motivo}`);
+      },
     );
   }
 

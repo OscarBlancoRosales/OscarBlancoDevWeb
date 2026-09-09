@@ -176,8 +176,13 @@ export class MesaService {
 
   private recibir(mensaje: ServerMessage): void {
     if (mensaje.tipo === 'chat') {
-      // Se acumulan: el servidor manda las nuevas, no la lista entera.
-      this._chat.set([...this._chat(), ...mensaje.entradas].slice(-80));
+      // Se acumulan por número de orden y no a pelo: al conectar llega el
+      // historial entero, y sumarlo al que ya había repetía cada frase.
+      const porSeq = new Map(this._chat().map((entrada) => [entrada.seq, entrada]));
+      for (const entrada of mensaje.entradas) porSeq.set(entrada.seq, entrada);
+      this._chat.set(
+        [...porSeq.values()].sort((uno, otro) => uno.seq - otro.seq).slice(-80),
+      );
       return;
     }
     if (mensaje.tipo === 'rechazada') {

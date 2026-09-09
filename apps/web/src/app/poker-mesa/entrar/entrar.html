@@ -34,8 +34,10 @@
               type="button"
               class="cara"
               [class.elegida]="avatar === uno.id"
+              [class.cogida]="estaCogido(uno.id)"
+              [disabled]="estaCogido(uno.id)"
               [attr.aria-pressed]="avatar === uno.id"
-              [title]="uno.nombre"
+              [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
               (click)="avatar = uno.id"
             >
               <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
@@ -51,8 +53,10 @@
               type="button"
               class="cara"
               [class.elegida]="avatar === uno.id"
+              [class.cogida]="estaCogido(uno.id)"
+              [disabled]="estaCogido(uno.id)"
               [attr.aria-pressed]="avatar === uno.id"
-              [title]="uno.nombre"
+              [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
               (click)="avatar = uno.id"
             >
               <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />

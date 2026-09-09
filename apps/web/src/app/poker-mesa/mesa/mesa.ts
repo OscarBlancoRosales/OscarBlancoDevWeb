@@ -39,8 +39,15 @@ export interface EnLaMesa {
   readonly y: number;
 }
 
-/** Los números que se ofrecen, que es la escala de Fibonacci de toda la vida. */
-const CARTAS = [0, 1, 2, 3, 5, 8, 13, 21, 34];
+/**
+ * Las fichas con las que se vota, que se van sumando.
+ *
+ * No es una baraja de Fibonacci cerrada: aquí se compone el número exacto
+ * apilando fichas -un siete es cinco y dos- porque así se vota de verdad en
+ * esta casa, y porque una escala fija obliga a redondear a lo que haya. Los
+ * valores son los mismos que en la versión clásica.
+ */
+const FICHAS = [1, 2, 3, 5, 10, 20];
 
 /**
  * La mesa de planning poker.
@@ -59,7 +66,7 @@ const CARTAS = [0, 1, 2, 3, 5, 8, 13, 21, 34];
 export class MesaPoker implements OnInit, OnDestroy {
   readonly vista: Signal<ScrumView | null>;
   readonly error: Signal<string | null>;
-  readonly cartas = CARTAS;
+  readonly fichas = FICHAS;
 
   readonly roomId = signal('');
   readonly enlaceCopiado = signal(false);
@@ -144,6 +151,36 @@ export class MesaPoker implements OnInit, OnDestroy {
     return estadisticaDe(vista ? numericos(vista.votos) : []);
   }
 
+  /**
+   * Cuántos han votado cada número, de más votado a menos.
+   *
+   * Es lo que de verdad enseña si la mesa está de acuerdo: una media de ocho
+   * puede ser todos en ocho o la mitad en tres y la mitad en trece, y esas dos
+   * reuniones no se parecen en nada.
+   */
+  get reparto(): { valor: string; cuantos: number; porciento: number }[] {
+    const vista = this.vista();
+    if (!vista?.revelado) return [];
+
+    const cuenta = new Map<string, number>();
+    for (const voto of Object.values(vista.votos)) {
+      const clave = voto.tipo === 'numero' ? String(voto.valor) : voto.tipo === 'cafe' ? '☕' : '🚬';
+      cuenta.set(clave, (cuenta.get(clave) ?? 0) + 1);
+    }
+
+    // Sobre el total de votos y no sobre el más votado: con cuatro votos
+    // distintos, medir contra el máximo pinta las cuatro barras llenas y
+    // parece que todo el mundo está de acuerdo en todo.
+    const votos = Math.max(1, Object.keys(vista.votos).length);
+    return [...cuenta.entries()]
+      .map(([valor, cuantos]) => ({
+        valor,
+        cuantos,
+        porciento: Math.round((cuantos / votos) * 100),
+      }))
+      .sort((uno, otro) => otro.cuantos - uno.cuantos || Number(uno.valor) - Number(otro.valor));
+  }
+
   /** Si la mesa se ha partido en dos, para poder avisarlo. */
   get bandos(): { bajos: number[]; altos: number[] } | null {
     const vista = this.vista();
@@ -189,14 +226,27 @@ export class MesaPoker implements OnInit, OnDestroy {
     return voto?.tipo === 'cafe' || voto?.tipo === 'porro' ? voto.tipo : null;
   }
 
-  votar(valor: number): void {
-    this.sala.votar({ tipo: 'numero', valor });
+  /**
+   * Echa una ficha más al montón.
+   *
+   * El total sale de lo que ya hay en la mesa y no de una cuenta aparte: si se
+   * llevara por un lado, recargar la página o entrar desde otro sitio dejaría
+   * el montón de la pantalla y el voto del servidor diciendo cosas distintas.
+   */
+  echarFicha(valor: number): void {
+    this.sala.votar({ tipo: 'numero', valor: (this.tuVoto ?? 0) + valor });
   }
 
+  /** El número exacto, para quien lo tiene claro y no quiere ir sumando. */
   votarSuelto(): void {
     if (this.numeroSuelto === null) return;
     this.sala.votar({ tipo: 'numero', valor: Math.max(0, Math.round(this.numeroSuelto)) });
     this.numeroSuelto = null;
+  }
+
+  /** Lo que llevas apostado ahora mismo, para enseñarlo grande. */
+  get apostado(): number {
+    return this.tuVoto ?? 0;
   }
 
   pedirCafe(): void {
@@ -218,6 +268,25 @@ export class MesaPoker implements OnInit, OnDestroy {
   otraRonda(): void {
     this.sala.nuevaRonda(this.asuntoNuevo.trim() || undefined);
     this.asuntoNuevo = '';
+  }
+
+  /**
+   * Cambia lo que se está estimando sin tocar los votos.
+   *
+   * Se manda como ronda nueva porque es lo único que el juego sabe hacer con
+   * el asunto; si ya hay votos echados, se avisa antes de borrarlos.
+   */
+  ponerAsunto(evento: Event): void {
+    const escrito = (evento.target as HTMLInputElement).value.trim();
+    const vista = this.vista();
+    if (!vista || escrito === vista.asunto) return;
+
+    const hayVotos = vista.hanVotado.length > 0;
+    if (hayVotos && !confirm('Cambiar el asunto empieza una ronda nueva. ¿Seguimos?')) {
+      (evento.target as HTMLInputElement).value = vista.asunto;
+      return;
+    }
+    this.sala.nuevaRonda(escrito);
   }
 
   hablar(): void {

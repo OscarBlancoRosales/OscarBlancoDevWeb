@@ -6,6 +6,7 @@ import { TerminalLayout } from '../../shared/terminal-layout/terminal-layout';
 import { AuthApiService } from '../../api/auth-api.service';
 import { MesaService } from '../mesa.service';
 import { guardarPaseDeMesa } from '../mesa/mesa';
+import { RoomsApiService } from '../../api/rooms-api.service';
 import { AVATARES, avatarPorId, fotoDelAvatar } from '@devweb/shared/games/poker-reparto';
 import type { AvatarDeMesa } from '@devweb/shared/games/poker-reparto';
 
@@ -31,6 +32,8 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
   readonly trabajando = signal(false);
   readonly error = signal('');
   readonly invitacion = signal('');
+  /** Los que ya tiene alguien sentado. No se pueden coger. */
+  readonly cogidos = signal<readonly string[]>([]);
 
   nombreSala = 'Estimando lo de siempre';
   nombreJugador = '';
@@ -41,16 +44,46 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
   constructor(
     private readonly sala: MesaService,
     private readonly auth: AuthApiService,
+    private readonly rooms: RoomsApiService,
     private readonly router: Router,
     private readonly ruta: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
-    this.invitacion.set(this.ruta.snapshot.queryParamMap.get('sala') ?? '');
+    const sala = this.ruta.snapshot.queryParamMap.get('sala') ?? '';
+    this.invitacion.set(sala);
     this.sesion = this.auth.settledUser$.subscribe((user) => {
       this.conSesion.set(!!user);
       this.sesionResuelta.set(true);
     });
+    if (sala) void this.mirarQuienHay(sala);
+  }
+
+  /**
+   * Qué caras están cogidas ya en esa mesa.
+   *
+   * Repartir por detrás al que llega tarde no basta: eligiendo a ciegas te
+   * llevas una sorpresa al sentarte. Aquí se ven cogidas y no se pueden pulsar.
+   */
+  private async mirarQuienHay(sala: string): Promise<void> {
+    try {
+      const info = await this.rooms.info(sala);
+      const puestos = info.seats
+        .map((asiento) => asiento.meta?.['avatar'])
+        .filter((avatar): avatar is string => typeof avatar === 'string');
+      this.cogidos.set(puestos);
+      if (puestos.includes(this.avatar)) this.avatar = this.primeroLibre();
+    } catch {
+      // Si no se puede mirar, se elige a ciegas y el reparto lo arregla luego.
+    }
+  }
+
+  estaCogido(id: string): boolean {
+    return this.cogidos().includes(id);
+  }
+
+  private primeroLibre(): string {
+    return AVATARES.find((uno) => !this.estaCogido(uno.id))?.id ?? AVATARES[0].id;
   }
 
   ngOnDestroy(): void {

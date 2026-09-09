@@ -118,6 +118,25 @@
   filter: none;
 }
 
+/* Los que ya tiene alguien: se ven, pero no se pueden coger */
+.cara.cogida {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.cara.cogida img {
+  filter: grayscale(1) opacity(0.5);
+}
+
+.cara.cogida:hover {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.cara.cogida:hover img {
+  filter: grayscale(1) opacity(0.5);
+}
+
 .cara.elegida {
   color: var(--accent);
   border-color: var(--accent);
