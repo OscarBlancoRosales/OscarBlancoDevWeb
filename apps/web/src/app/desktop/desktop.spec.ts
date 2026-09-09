@@ -238,12 +238,60 @@ describe('el escritorio', () => {
       expect(desk.state.windows).toEqual([]);
     });
 
+    /**
+     * Crear una sala pide sesión, y la pantalla de acceso echaba fuera del
+     * escritorio justo en mitad del camino que acabábamos de arreglar.
+     */
+    it('las pantallas de cuenta también se quedan dentro', async () => {
+      const desk = await entrarPor('/auth');
+      expect(desk.routeWin).toBe('cuenta');
+      expect(harness.routeNativeElement?.querySelector('app-taskbar')).toBeTruthy();
+    });
+
+    it('y los enlaces del correo, igual', async () => {
+      const desk = await entrarPor('/auth/verificar');
+      expect(desk.routeWin).toBe('cuenta');
+    });
+
+    /** No hay icono de «Cuenta», así que el título sale de la ruta. */
+    it('una sección sin icono coge su título de la ruta, traducido', async () => {
+      const desk = await entrarPor('/auth');
+      const ventana = desk.state.windows.find((w) => w.id === 'cuenta');
+      expect(ventana?.title).toBe(desk.i18n.t('desk.account'));
+    });
+
     /** Pulsar su icono no puede montar otra cosa dentro de esa ventana. */
     it('el icono de una sección ya abierta solo la trae al frente', async () => {
       const desk = await entrarPor('/qr-generator');
       await desk.launch(item('qr'));
       expect(desk.state.windows.filter((w) => w.id === 'qr').length).toBe(1);
       expect(desk.loaded['qr']).toBeUndefined();
+    });
+  });
+
+  /**
+   * El nombre de la ventana se guardaba ya traducido, así que al cambiar de
+   * idioma la barra de tareas se quedaba con «Códigos QR» en mitad de una web
+   * en inglés.
+   */
+  describe('el nombre de las ventanas', () => {
+    it('cambia de idioma con el resto', async () => {
+      desktop.i18n.setLang('es');
+      await desktop.launch(item('qr'));
+      expect(desktop.state.windows[0].title).toBe('Códigos QR');
+
+      desktop.i18n.setLang('en');
+      expect(desktop.state.windows[0].title).toBe('QR codes');
+    });
+
+    it('y el de todas las abiertas a la vez', async () => {
+      desktop.i18n.setLang('es');
+      await desktop.launch(item('qr'));
+      await desktop.launch(item('uuid'));
+
+      desktop.i18n.setLang('en');
+      const titulos = desktop.state.windows.map((w) => w.title);
+      expect(titulos).toEqual(['QR codes', 'UUID']);
     });
   });
 

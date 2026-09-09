@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ScrumRoomService, Player, RoomData } from '../api/scrum-room.service';
+import { I18nService } from '../services/i18n.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 interface VoteSummary {
@@ -66,7 +67,8 @@ export class ScrumPoker implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private rooms: ScrumRoomService,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public i18n: I18nService
   ) {}
 
   ngOnInit(): void {
@@ -133,7 +135,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
       localStorage.setItem('seat_token', asiento.seatToken);
     } catch {
       this.ngZone.run(() => {
-        this.errorDeSala = 'No se ha podido entrar en la sala. Puede que ya no exista.';
+        this.errorDeSala = this.i18n.t('poker.cantJoin');
         this.cdr.detectChanges();
       });
     }
@@ -399,19 +401,18 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   // Global consensus status based on σ
   getConsensusInfo(): { status: string; class: string; icon: string; message: string } {
-    if (this.validVoters < 2) {
-      return { status: 'Esperando', class: 'waiting', icon: '⏳', message: 'Faltan votos' };
-    }
-    
-    if (this.standardDeviation === 0) {
-      return { status: 'Consenso Total', class: 'perfect', icon: '✅', message: 'Todos de acuerdo' };
-    } else if (this.standardDeviation < 1.5) {
-      return { status: 'Consenso', class: 'consensus', icon: '👍', message: 'Buen acuerdo' };
-    } else if (this.standardDeviation < 3) {
-      return { status: 'Dispersión', class: 'dispersion', icon: '📊', message: 'Hay diferencias' };
-    } else {
-      return { status: 'Desacuerdo', class: 'disagreement', icon: '⚠️', message: 'Discutir estimaciones' };
-    }
+    const info = (clase: string, icono: string, clave: string) => ({
+      status: this.i18n.t(`poker.st${clave}`),
+      message: this.i18n.t(`poker.msg${clave}`),
+      class: clase,
+      icon: icono,
+    });
+
+    if (this.validVoters < 2) return info('waiting', '⏳', 'Waiting');
+    if (this.standardDeviation === 0) return info('perfect', '✅', 'Perfect');
+    if (this.standardDeviation < 1.5) return info('consensus', '👍', 'Consensus');
+    if (this.standardDeviation < 3) return info('dispersion', '📊', 'Spread');
+    return info('disagreement', '⚠️', 'Disagree');
   }
 
   // Detect voting clusters by proximity (groups votes within threshold)

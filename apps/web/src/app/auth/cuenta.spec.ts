@@ -1,11 +1,13 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { describe, expect, it, vi } from 'vitest';
+import { Auth } from './auth';
 import { Registro } from './registro/registro';
 import { Verificar } from './verificar/verificar';
 import { Olvide } from './olvide/olvide';
 import { NuevaContrasena, coinciden } from './nueva-contrasena/nueva-contrasena';
 import { AuthApiService } from '../api/auth-api.service';
+import { I18nService } from '../services/i18n.service';
 import { ApiError } from '../api/api-client';
 import type { Type } from '@angular/core';
 import type { FormGroup } from '@angular/forms';
@@ -27,6 +29,9 @@ async function montar<T>(
       { provide: AuthApiService, useValue: auth },
     ],
   }).compileComponents();
+  // Estas pruebas leen los textos en castellano, y el idioma lo decide ahora
+  // el navegador: jsdom dice inglés, así que hay que fijarlo.
+  TestBed.inject(I18nService).setLang('es');
   return TestBed.createComponent(componente);
 }
 
@@ -34,6 +39,60 @@ const texto = (fixture: ComponentFixture<unknown>): string => {
   fixture.detectChanges();
   return (fixture.nativeElement as HTMLElement).textContent;
 };
+
+/**
+ * Las pantallas de cuenta estaban escritas a fuego: quien llegaba con la web
+ * en inglés se encontraba «Contraseña olvidada» en mitad de todo lo demás
+ * traducido. Y a estas se llega desde un correo, sin más contexto.
+ */
+describe('el idioma de las pantallas de cuenta', () => {
+  const sinLlamadas: Partial<AuthApiService> = {};
+
+  /** Cambia el idioma y repinta: sin zone.js hay que avisar del cambio. */
+  function enIdioma(fixture: ComponentFixture<unknown>, lang: 'es' | 'en'): string {
+    TestBed.inject(I18nService).setLang(lang);
+    fixture.changeDetectorRef.markForCheck();
+    return texto(fixture);
+  }
+
+  it('el acceso se lee en el idioma que toque', async () => {
+    const fixture = await montar(Auth, sinLlamadas);
+    expect(enIdioma(fixture, 'es')).toContain('Entrar');
+    expect(enIdioma(fixture, 'en')).toContain('Log in');
+    fixture.destroy();
+  });
+
+  it('y el alta también', async () => {
+    const fixture = await montar(Registro, sinLlamadas);
+    expect(enIdioma(fixture, 'es')).toContain('Crear cuenta');
+    expect(enIdioma(fixture, 'en')).toContain('Create account');
+    fixture.destroy();
+  });
+
+  it('y la contraseña olvidada', async () => {
+    const fixture = await montar(Olvide, sinLlamadas);
+    expect(enIdioma(fixture, 'es')).toContain('Contraseña olvidada');
+    expect(enIdioma(fixture, 'en')).toContain('Forgotten password');
+    fixture.destroy();
+  });
+
+  it('y la contraseña nueva', async () => {
+    const fixture = await montar(NuevaContrasena, sinLlamadas, { token: 'abc' });
+    expect(enIdioma(fixture, 'es')).toContain('Contraseña nueva');
+    expect(enIdioma(fixture, 'en')).toContain('New password');
+    fixture.destroy();
+  });
+
+  /** El mínimo de caracteres se cuela en el texto, no se escribe aparte. */
+  it('el mínimo de caracteres se dice dentro de la frase', async () => {
+    const fixture = await montar(Registro, sinLlamadas);
+    const i18n = TestBed.inject(I18nService);
+    expect(i18n.t('cuenta.minChars', { n: 10 })).toBe('Mínimo 10 caracteres');
+    i18n.setLang('en');
+    expect(i18n.t('cuenta.minChars', { n: 10 })).toBe('At least 10 characters');
+    fixture.destroy();
+  });
+});
 
 describe('Crear cuenta', () => {
   const DATOS = {

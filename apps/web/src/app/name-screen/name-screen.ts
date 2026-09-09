@@ -1,15 +1,15 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthApiService } from '../api/auth-api.service';
 import { ScrumRoomService } from '../api/scrum-room.service';
+import { I18nService } from '../services/i18n.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 @Component({
   selector: 'app-name-screen',
-  imports: [CommonModule, ReactiveFormsModule, TerminalLayout],
+  imports: [ReactiveFormsModule, TerminalLayout],
   templateUrl: './name-screen.html',
   styleUrl: './name-screen.css',
 })
@@ -31,7 +31,8 @@ export class NameScreen implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private auth: AuthApiService,
     private rooms: ScrumRoomService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    public i18n: I18nService
   ) {
     this.nameForm = this.fb.group({
       playerName: ['', [Validators.required, Validators.minLength(2)]]
@@ -42,6 +43,9 @@ export class NameScreen implements OnInit, OnDestroy {
 
   /** Lo que se le enseña a la persona si algo falla al crear o entrar. */
   error = '';
+
+  /** Para cambiar el icono del botón de copiar por un visto. */
+  copied = false;
 
   ngOnInit(): void {
     // Verificar si viene por invitación (tiene parámetro room en la URL)
@@ -148,9 +152,14 @@ export class NameScreen implements OnInit, OnDestroy {
   }
 
   copyInviteLink(): void {
-    navigator.clipboard.writeText(this.inviteCode).then(() => {
-      // Podríamos mostrar un toast o mensaje temporal
-      console.log('Enlace copiado al portapapeles');
+    void navigator.clipboard.writeText(this.inviteCode).then(() => {
+      // Un visto durante un par de segundos: sin señal, no sabes si copió.
+      this.copied = true;
+      this.cdr.markForCheck();
+      setTimeout(() => {
+        this.copied = false;
+        this.cdr.markForCheck();
+      }, 2000);
     });
   }
 }

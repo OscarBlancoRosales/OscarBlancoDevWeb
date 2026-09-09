@@ -64,7 +64,7 @@ describe('AuthService', () => {
       await auth.register(ALTA);
       const [verificacion] = correo.enviados;
 
-      expect(verificacion.subject).toContain('oscarblancorosales.com');
+      expect(verificacion.subject).toContain('OBRWeb');
       expect(`${verificacion.subject} ${verificacion.text}`).not.toContain('DevWeb');
     });
 
@@ -74,7 +74,7 @@ describe('AuthService', () => {
       await auth.register(ALTA);
       const [aviso] = correo.enviados;
 
-      expect(aviso.text).toContain('oscarblancorosales.com');
+      expect(aviso.text).toContain('OBRWeb');
       expect(`${aviso.subject} ${aviso.text}`).not.toContain('DevWeb');
     });
   });

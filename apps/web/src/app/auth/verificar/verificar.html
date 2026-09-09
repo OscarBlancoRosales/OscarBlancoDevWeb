@@ -1,11 +1,14 @@
-<app-panel-cuenta titulo="Verificar la cuenta" [error]="estado() === 'fallo' ? error() : ''">
+<app-panel-cuenta
+  [titulo]="i18n.t('cuenta.verifyTitle')"
+  [error]="estado() === 'fallo' ? error() : ''"
+>
   @switch (estado()) {
     @case ('comprobando') {
-      <p class="tool-subtitle">Comprobando el enlace…</p>
+      <p class="tool-subtitle">{{ i18n.t('cuenta.checking') }}</p>
     }
     @case ('activada') {
-      <p class="aviso">Cuenta activada. Ya puedes entrar.</p>
-      <p class="pie"><a routerLink="/auth">Ir a iniciar sesión</a></p>
+      <p class="aviso">{{ i18n.t('cuenta.activated') }}</p>
+      <p class="pie"><a routerLink="/auth">{{ i18n.t('cuenta.goLogin') }}</a></p>
     }
     @case ('fallo') {
       <!--
@@ -14,9 +17,9 @@
         aquí. Por eso el camino de salida es pedir otro, no reintentar.
       -->
       <p class="pie">
-        Si el enlace ha caducado o ya lo habías usado,
-        <a routerLink="/auth/registro">vuelve a darte de alta</a>
-        y te mandamos uno nuevo.
+        {{ i18n.t('cuenta.expired') }}
+        <a routerLink="/auth/registro">{{ i18n.t('cuenta.signupAgain') }}</a>
+        {{ i18n.t('cuenta.andWeSendNew') }}
       </p>
     }
   }

@@ -12,10 +12,10 @@
     <div class="header-actions">
       <button (click)="copyRoomLink()" class="action-btn invite">
         <span class="btn-icon">📋</span>
-        <span class="btn-text">Invitar</span>
+        <span class="btn-text">{{ i18n.t('poker.invite') }}</span>
       </button>
       <button (click)="leaveRoom()" class="action-btn leave">
-        <span class="btn-text">Salir</span>
+        <span class="btn-text">{{ i18n.t('poker.leave') }}</span>
       </button>
     </div>
   </header>
@@ -24,7 +24,7 @@
     <!-- Left Panel: Players -->
     <aside class="players-panel">
       <div class="panel-header">
-        <h2>Jugadores</h2>
+        <h2>{{ i18n.t('poker.players') }}</h2>
         <span class="player-count">{{ players.length }}</span>
       </div>
       
@@ -43,19 +43,19 @@
           <div class="player-details">
             <span class="player-name">{{ player.name }}</span>
             <span class="player-status" *ngIf="!showVotes">
-              {{ player.hasVoted ? 'Votó' : 'Esperando...' }}
+              {{ i18n.t(player.hasVoted ? 'poker.voted' : 'poker.waiting') }}
             </span>
             <span class="player-indicator min" *ngIf="showVotes && isMinVote(player) && !isHighDeviation(player)">
-              ⬇ Voto más bajo
+              ⬇ {{ i18n.t('poker.lowest') }}
             </span>
             <span class="player-indicator max" *ngIf="showVotes && isMaxVote(player) && !isHighDeviation(player)">
-              ⬆ Voto más alto
+              ⬆ {{ i18n.t('poker.highest') }}
             </span>
             <span class="player-deviation high" *ngIf="showVotes && isHighDeviation(player)">
-              ⚠️ Outlier ({{ getPlayerZScore(player).toFixed(1) }}σ)
+              ⚠️ {{ i18n.t('poker.outlier') }} ({{ getPlayerZScore(player).toFixed(1) }}σ)
             </span>
             <span class="player-deviation light" *ngIf="showVotes && isLightDeviation(player)">
-              📊 Desviación ({{ getPlayerZScore(player).toFixed(1) }}σ)
+              📊 {{ i18n.t('poker.deviation') }} ({{ getPlayerZScore(player).toFixed(1) }}σ)
             </span>
           </div>
           <div class="player-vote">
@@ -88,18 +88,21 @@
           </button>
           <button class="vote-btn-unified coffee flex-grow" 
                   (click)="replaceVote('coffee')"
+                  [title]="i18n.t('poker.coffee')"
                   [disabled]="showVotes"
                   [class.selected]="hasVoted && voteBreakdown.coffee > 0">
             ☕
           </button>
           <button class="vote-btn-unified joint flex-grow" 
                   (click)="replaceVote('joint')"
+                  [title]="i18n.t('poker.joint')"
                   [disabled]="showVotes"
                   [class.selected]="hasVoted && voteBreakdown.joint > 0">
             🚬
           </button>
           <button class="vote-btn-unified clear-vote flex-grow" 
                   (click)="clearMyVote()"
+                  [title]="i18n.t('poker.clearVote')"
                   [disabled]="showVotes || !hasVoted"
                   [class.active]="hasVoted">
             ✕
@@ -108,6 +111,7 @@
                  class="custom-input-unified flex-grow"
                  [(ngModel)]="customVoteInput" 
                  placeholder="#"
+                 [title]="i18n.t('poker.customVote')"
                  (keydown.enter)="submitCustomVote()"
                  [disabled]="showVotes"
                  min="0">
@@ -130,7 +134,7 @@
         <div class="stats-inline">
           <div class="stat-item primary">
             <span class="stat-num">{{ average }}</span>
-            <span class="stat-lbl">Media</span>
+            <span class="stat-lbl">{{ i18n.t('poker.average') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ standardDeviation }}</span>
@@ -138,11 +142,11 @@
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ minVote }}-{{ maxVote }}</span>
-            <span class="stat-lbl">Rango</span>
+            <span class="stat-lbl">{{ i18n.t('poker.range') }}</span>
           </div>
           <div class="stat-item">
             <span class="stat-num">{{ totalVotes }}</span>
-            <span class="stat-lbl">Votos</span>
+            <span class="stat-lbl">{{ i18n.t('poker.votes') }}</span>
           </div>
         </div>
 
@@ -150,16 +154,16 @@
         <div class="polarization-alert" *ngIf="hasPolarization()">
           <div class="polarization-header">
             <span class="polarization-icon">⚡</span>
-            <span class="polarization-title">Dos visiones detectadas</span>
+            <span class="polarization-title">{{ i18n.t('poker.polarized') }}</span>
           </div>
           <div class="polarization-groups">
             <div class="group-low">
-              <span class="group-label">⬇ Bajos:</span>
+              <span class="group-label">⬇ {{ i18n.t('poker.low') }}:</span>
               <span class="group-value">{{ getLowVoteRange() }}</span>
               <span class="group-players">({{ getLowVoters().join(', ') }})</span>
             </div>
             <div class="group-high">
-              <span class="group-label">⬆ Altos:</span>
+              <span class="group-label">⬆ {{ i18n.t('poker.high') }}:</span>
               <span class="group-value">{{ getHighVoteRange() }}</span>
               <span class="group-players">({{ getHighVoters().join(', ') }})</span>
             </div>
@@ -183,15 +187,15 @@
         <button class="control-btn-sm reveal" 
                 (click)="revealVotes()" 
                 [disabled]="showVotes">
-          Revelar
+          {{ i18n.t('poker.reveal') }}
         </button>
         <button class="control-btn-sm reset" (click)="resetVotes()">
-          Nueva Ronda
+          {{ i18n.t('poker.newRound') }}
         </button>
       </div>
       <!-- Mensaje para no-creadores -->
       <div class="controls-info" *ngIf="!isRoomCreator">
-        <span class="info-text">👑 Solo el moderador puede revelar votos</span>
+        <span class="info-text">👑 {{ i18n.t('poker.onlyHost') }}</span>
       </div>
     </section>
   </main>

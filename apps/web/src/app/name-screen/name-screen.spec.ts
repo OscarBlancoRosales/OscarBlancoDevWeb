@@ -52,6 +52,54 @@ describe('NameScreen (crear sala de Scrum Poker)', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => localStorage.clear());
 
+  /**
+   * La pantalla estaba a medias en inglés -«Join Room» con el resto en
+   * castellano- y ni una palabra pasaba por el sistema de idiomas.
+   */
+  describe('el idioma', () => {
+    function texto(fixture: ComponentFixture<NameScreen>): string {
+      fixture.detectChanges();
+      return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    }
+
+    it('en español se lee en español', async () => {
+      const { fixture, component } = await montar(sesion(OSCAR), { room: 'SALA-1' });
+      component.i18n.setLang('es');
+      expect(texto(fixture)).toContain('Entrar en la sala');
+      fixture.destroy();
+    });
+
+    it('y en inglés, en inglés', async () => {
+      const { fixture, component } = await montar(sesion(OSCAR), { room: 'SALA-1' });
+      component.i18n.setLang('en');
+      expect(texto(fixture)).toContain('Join the room');
+      fixture.destroy();
+    });
+
+    it('ya no queda nada suelto en inglés cuando estás en español', async () => {
+      const { fixture, component } = await montar(sesion(OSCAR), { room: 'SALA-1' });
+      component.i18n.setLang('es');
+      expect(texto(fixture)).not.toContain('Join Room');
+      expect(texto(fixture)).not.toContain('Your name');
+      fixture.destroy();
+    });
+
+    /** Crear una sala y que te inviten a una no son lo mismo. */
+    it('dice si vas a crear la sala o a entrar en una', async () => {
+      const invitado = await montar(sesion(OSCAR), { room: 'SALA-1' });
+      invitado.component.i18n.setLang('es');
+      invitado.component.ngOnInit();
+      expect(texto(invitado.fixture)).toContain('Entrar en la sala');
+      invitado.fixture.destroy();
+
+      const creador = await montar(sesion(OSCAR));
+      creador.component.i18n.setLang('es');
+      creador.component.ngOnInit();
+      expect(texto(creador.fixture)).toContain('Crear una sala');
+      creador.fixture.destroy();
+    });
+  });
+
   it('se crea', async () => {
     const { component } = await montar(sesion(OSCAR));
     expect(component).toBeTruthy();

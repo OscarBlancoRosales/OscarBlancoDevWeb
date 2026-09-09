@@ -67,6 +67,52 @@ describe('ScrumPoker', () => {
   beforeEach(() => localStorage.clear());
   afterEach(() => localStorage.clear());
 
+  /**
+   * El estado del consenso salía escrito a fuego en castellano dentro del
+   * componente, así que quien tenía la web en inglés se encontraba «Consenso
+   * Total» en mitad de una pantalla en inglés.
+   */
+  describe('el idioma del consenso', () => {
+    it('en español lo dice en español', async () => {
+      const { component, fixture } = await montar();
+      component.i18n.setLang('es');
+      expect(component.getConsensusInfo().status).toBe('Esperando');
+      fixture.destroy();
+    });
+
+    it('y en inglés, en inglés', async () => {
+      const { component, fixture } = await montar();
+      component.i18n.setLang('en');
+      expect(component.getConsensusInfo().status).toBe('Waiting');
+      expect(component.getConsensusInfo().message).toBe('Votes missing');
+      fixture.destroy();
+    });
+
+    /** El icono y la clase de estilo no dependen del idioma. */
+    it('el icono y el color son los mismos en los dos idiomas', async () => {
+      const { component, fixture } = await montar();
+      component.i18n.setLang('es');
+      const es = component.getConsensusInfo();
+      component.i18n.setLang('en');
+      const en = component.getConsensusInfo();
+      expect([en.icon, en.class]).toEqual([es.icon, es.class]);
+      fixture.destroy();
+    });
+
+    it('cada grado de acuerdo tiene su propio texto', async () => {
+      const { component, fixture } = await montar();
+      component.i18n.setLang('es');
+      const vistos = new Set<string>();
+      for (const desviacion of [0, 1, 2, 5]) {
+        component.validVoters = 3;
+        component.standardDeviation = desviacion;
+        vistos.add(component.getConsensusInfo().status);
+      }
+      expect(vistos.size).toBe(4);
+      fixture.destroy();
+    });
+  });
+
   describe('entrando a la sala', () => {
     it('sin nombre elegido te manda a identificarte', async () => {
       // Esto es lo que hacían TODOS los tests de este fichero sin saberlo: el

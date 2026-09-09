@@ -179,6 +179,167 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'desk.groupHome': { es: 'Quién soy', en: 'Who I am' },
   'desk.groupTools': { es: 'Herramientas', en: 'Tools' },
   'desk.groupPlay': { es: 'Para jugar', en: 'To play' },
+  'desk.account': { es: 'Cuenta', en: 'Account' },
+
+  // === SCRUM POKER ===
+  'poker.invite': { es: 'Invitar', en: 'Invite' },
+  'poker.leave': { es: 'Salir', en: 'Leave' },
+  'poker.players': { es: 'Jugadores', en: 'Players' },
+  'poker.voted': { es: 'Votó', en: 'Voted' },
+  'poker.waiting': { es: 'Esperando...', en: 'Waiting...' },
+  'poker.lowest': { es: 'Voto más bajo', en: 'Lowest vote' },
+  'poker.highest': { es: 'Voto más alto', en: 'Highest vote' },
+  'poker.outlier': { es: 'Se sale del grupo', en: 'Off the group' },
+  'poker.deviation': { es: 'Se desvía', en: 'Drifting' },
+  'poker.average': { es: 'Media', en: 'Average' },
+  'poker.range': { es: 'Rango', en: 'Range' },
+  'poker.votes': { es: 'Votos', en: 'Votes' },
+  'poker.polarized': { es: 'Dos visiones distintas', en: 'Two different views' },
+  'poker.low': { es: 'Bajos', en: 'Low' },
+  'poker.high': { es: 'Altos', en: 'High' },
+  'poker.reveal': { es: 'Revelar', en: 'Reveal' },
+  'poker.newRound': { es: 'Nueva ronda', en: 'New round' },
+  'poker.onlyHost': {
+    es: 'Solo quien creó la sala puede revelar los votos',
+    en: 'Only whoever created the room can reveal the votes',
+  },
+  'poker.customVote': { es: 'Otro número', en: 'Another number' },
+  'poker.clearVote': { es: 'Quitar mi voto', en: 'Clear my vote' },
+  'poker.coffee': { es: 'Necesito un café', en: 'I need a coffee' },
+  'poker.joint': { es: 'Esto no hay quien lo estime', en: 'No way to estimate this' },
+  'poker.cantJoin': {
+    es: 'No se ha podido entrar en la sala. Puede que ya no exista.',
+    en: 'Could not join the room. It may no longer exist.',
+  },
+
+  // El estado del consenso, según lo repartidos que estén los votos
+  'poker.stWaiting': { es: 'Esperando', en: 'Waiting' },
+  'poker.msgWaiting': { es: 'Faltan votos', en: 'Votes missing' },
+  'poker.stPerfect': { es: 'Consenso total', en: 'Full consensus' },
+  'poker.msgPerfect': { es: 'Todos de acuerdo', en: 'Everyone agrees' },
+  'poker.stConsensus': { es: 'Consenso', en: 'Consensus' },
+  'poker.msgConsensus': { es: 'Buen acuerdo', en: 'Good agreement' },
+  'poker.stSpread': { es: 'Dispersión', en: 'Spread' },
+  'poker.msgSpread': { es: 'Hay diferencias', en: 'There are differences' },
+  'poker.stDisagree': { es: 'Desacuerdo', en: 'Disagreement' },
+  'poker.msgDisagree': { es: 'Hay que hablarlo', en: 'Worth talking it through' },
+
+  // === CUENTA ===
+  'cuenta.panel': { es: 'Cuenta', en: 'Account' },
+  'cuenta.login': { es: 'Entrar', en: 'Log in' },
+  'cuenta.loginSub': {
+    es: 'Para tus salas de Scrum Poker y tus partidas',
+    en: 'For your Scrum Poker rooms and your games',
+  },
+  'cuenta.email': { es: 'Correo', en: 'Email' },
+  'cuenta.emailPh': { es: 'tu@correo.com', en: 'you@email.com' },
+  'cuenta.emailRequired': { es: 'Hace falta un correo.', en: 'An email is needed.' },
+  'cuenta.emailBad': {
+    es: 'Ese correo no tiene buena pinta.',
+    en: 'That email does not look right.',
+  },
+  'cuenta.password': { es: 'Contraseña', en: 'Password' },
+  'cuenta.passwordPh': { es: 'Tu contraseña', en: 'Your password' },
+  'cuenta.passwordRequired': { es: 'Hace falta una contraseña.', en: 'A password is needed.' },
+  'cuenta.entering': { es: 'Entrando…', en: 'Logging in…' },
+  'cuenta.noAccount': { es: '¿No tienes cuenta?', en: 'No account yet?' },
+  'cuenta.createOne': { es: 'Créate una', en: 'Create one' },
+  'cuenta.forgot': { es: 'He olvidado la contraseña', en: 'I forgot my password' },
+
+  'cuenta.register': { es: 'Crear cuenta', en: 'Create account' },
+  'cuenta.registerSub': {
+    es: 'Para montar salas propias en Scrum Poker y RISK',
+    en: 'To run your own rooms in Scrum Poker and RISK',
+  },
+  'cuenta.yourName': { es: 'Cómo te llamas', en: 'What you go by' },
+  'cuenta.yourNamePh': { es: 'El nombre que verán los demás', en: 'The name others will see' },
+  'cuenta.nameRequired': { es: 'Pon un nombre.', en: 'Put a name in.' },
+  'cuenta.nameTooLong': { es: 'Como mucho 40 caracteres.', en: 'At most 40 characters.' },
+  'cuenta.minChars': { es: 'Mínimo {n} caracteres', en: 'At least {n} characters' },
+  'cuenta.minCharsDot': { es: 'Mínimo {n} caracteres.', en: 'At least {n} characters.' },
+  'cuenta.creating': { es: 'Creando…', en: 'Creating…' },
+  'cuenta.haveAccount': { es: '¿Ya tienes cuenta?', en: 'Already have an account?' },
+  'cuenta.enterShort': { es: 'Entra', en: 'Log in' },
+  'cuenta.registerDone': {
+    es: 'Si ese correo no estaba dado de alta ya, te hemos enviado un enlace para activar la cuenta. Caduca en 24 horas.',
+    en: 'If that email was not already registered, we have sent it a link to activate the account. It expires in 24 hours.',
+  },
+  'cuenta.whenActive': { es: 'Cuando la actives,', en: 'Once you activate it,' },
+  'cuenta.enterHere': { es: 'entra por aquí', en: 'log in here' },
+  // Quien se registra y no recibe el correo se queda fuera: no puede entrar, y
+  // no se le ocurre que «he olvidado la contraseña» sirva también para activar
+  // la cuenta. Hay que decírselo justo donde se queda esperando.
+  'cuenta.notArriving': { es: '¿No te llega?', en: "Didn't it arrive?" },
+  'cuenta.sameLinkActivates': {
+    es: '— el mismo sirve para activar la cuenta.',
+    en: '— the same link activates the account.',
+  },
+
+  'cuenta.forgotTitle': { es: 'Contraseña olvidada', en: 'Forgotten password' },
+  'cuenta.forgotSub': {
+    es: 'Te mandamos un enlace para ponerla de nuevo, y sirve también para activar una cuenta sin verificar',
+    en: 'We will send you a link to set it again; it also activates an unverified account',
+  },
+  'cuenta.forgotDone': {
+    es: 'Si ese correo tiene cuenta, le hemos mandado un enlace para cambiar la contraseña. Caduca en una hora.',
+    en: 'If that email has an account, we have sent it a link to change the password. It expires in an hour.',
+  },
+  'cuenta.backToLogin': { es: 'Volver a entrar', en: 'Back to logging in' },
+  'cuenta.sending': { es: 'Enviando…', en: 'Sending…' },
+  'cuenta.sendLink': { es: 'Mandar el enlace', en: 'Send the link' },
+  'cuenta.rememberNow': { es: 'Ya me acuerdo, entrar', en: 'I remember now, log in' },
+
+  'cuenta.verifyTitle': { es: 'Verificar la cuenta', en: 'Verify the account' },
+  'cuenta.checking': { es: 'Comprobando el enlace…', en: 'Checking the link…' },
+  'cuenta.activated': { es: 'Cuenta activada. Ya puedes entrar.', en: 'Account activated. You can log in now.' },
+  'cuenta.goLogin': { es: 'Ir a iniciar sesión', en: 'Go and log in' },
+  'cuenta.expired': {
+    es: 'Si el enlace ha caducado o ya lo habías usado,',
+    en: 'If the link has expired or you had already used it,',
+  },
+  'cuenta.signupAgain': { es: 'vuelve a darte de alta', en: 'sign up again' },
+  'cuenta.andWeSendNew': { es: 'y te mandamos uno nuevo.', en: 'and we will send you a new one.' },
+
+  'cuenta.newPassTitle': { es: 'Contraseña nueva', en: 'New password' },
+  'cuenta.newPassSub': {
+    es: 'La anterior deja de valer en cuanto guardes esta',
+    en: 'The old one stops working the moment you save this one',
+  },
+  'cuenta.repeat': { es: 'Repítela', en: 'Repeat it' },
+  'cuenta.repeatPh': { es: 'La misma otra vez', en: 'The same one again' },
+  'cuenta.noMatch': { es: 'Las dos no son iguales.', en: 'The two are not the same.' },
+  'cuenta.saving': { es: 'Guardando…', en: 'Saving…' },
+  'cuenta.saveAndEnter': { es: 'Guardar y entrar', en: 'Save and log in' },
+  'cuenta.askAnotherLink': { es: 'Pide otro enlace', en: 'Ask for another link' },
+
+  // === ENTRAR EN UNA SALA ===
+  'join.title': { es: 'Entrar en la sala', en: 'Join the room' },
+  'join.sub': {
+    es: 'Escribe tu nombre para sentarte a la mesa',
+    en: 'Type your name to take a seat at the table',
+  },
+  'join.createTitle': { es: 'Crear una sala', en: 'Create a room' },
+  'join.createSub': {
+    es: 'Escribe tu nombre y te abro una mesa nueva',
+    en: 'Type your name and I will open a new table for you',
+  },
+  'join.yourName': { es: 'Tu nombre', en: 'Your name' },
+  'join.namePlaceholder': { es: 'Juan, María, Óscar...', en: 'John, Mary, Oscar...' },
+  'join.nameRequired': {
+    es: 'Hace falta un nombre de dos letras por lo menos',
+    en: 'A name of at least two letters is needed',
+  },
+  'join.joining': { es: 'Entrando...', en: 'Joining...' },
+  'join.join': { es: 'Unirse a la sala', en: 'Join the room' },
+  'join.create': { es: 'Crear la sala', en: 'Create the room' },
+  'join.room': { es: 'Sala', en: 'Room' },
+  'join.link': { es: 'Enlace de invitación', en: 'Invite link' },
+  'join.copy': { es: 'Copiar el enlace', en: 'Copy the link' },
+  'join.copied': { es: 'Copiado', en: 'Copied' },
+  'join.saved': {
+    es: 'Nombre guardado. Entrando en la sala...',
+    en: 'Name saved. Going into the room...',
+  },
   'desk.showDesktop': { es: 'Mostrar el escritorio', en: 'Show the desktop' },
   'desk.welcomeTitle': { es: 'Oscar Blanco Rosales', en: 'Oscar Blanco Rosales' },
   'desk.welcomeSub': { es: 'Full Stack Developer · C# · Angular · Flutter', en: 'Full Stack Developer · C# · Angular · Flutter' },
@@ -427,13 +588,13 @@ export class I18nService {
     this.langChange$.next(lang);
   }
 
-  t(key: string, params?: Record<string, string>): string {
+  t(key: string, params?: Record<string, string | number>): string {
     const entry = TRANSLATIONS[key];
     if (!entry) return key;
     let text = entry[this.currentLang] || entry['es'] || key;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
-        text = text.replace(`{${k}}`, v);
+        text = text.replace(`{${k}}`, String(v));
       }
     }
     return text;

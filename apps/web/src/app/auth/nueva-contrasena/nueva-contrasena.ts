@@ -11,6 +11,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthApiService } from '../../api/auth-api.service';
 import { PanelCuenta } from '../panel-cuenta/panel-cuenta';
 import { MINIMO_CONTRASENA } from '../registro/registro';
+import { I18nService } from '../../services/i18n.service';
 
 /**
  * Que las dos veces sea la misma.
@@ -54,6 +55,7 @@ export class NuevaContrasena implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private auth: AuthApiService,
+    public i18n: I18nService,
   ) {
     this.formulario = this.fb.group(
       {

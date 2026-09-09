@@ -1,44 +1,44 @@
 <app-panel-cuenta
-  titulo="Contraseña nueva"
-  subtitulo="La anterior deja de valer en cuanto guardes esta"
+  [titulo]="i18n.t('cuenta.newPassTitle')"
+  [subtitulo]="i18n.t('cuenta.newPassSub')"
   [error]="error()"
 >
   @if (hayToken()) {
     <form (ngSubmit)="cambiar()" [formGroup]="formulario">
       <div class="form-group">
-        <label for="password">Contraseña nueva</label>
+        <label for="password">{{ i18n.t('cuenta.newPassTitle') }}</label>
         <input
           id="password"
           type="password"
           autocomplete="new-password"
           formControlName="password"
-          [placeholder]="'Mínimo ' + minimo + ' caracteres'"
+          [placeholder]="i18n.t('cuenta.minChars', { n: minimo })"
           [class.input-error]="password?.invalid && password?.touched"
         />
         @if (password?.invalid && password?.touched) {
           <div class="error">
             @if (password?.errors?.['required']) {
-              <span>Hace falta una contraseña.</span>
+              <span>{{ i18n.t('cuenta.passwordRequired') }}</span>
             }
             @if (password?.errors?.['minlength']) {
-              <span>Mínimo {{ minimo }} caracteres.</span>
+              <span>{{ i18n.t('cuenta.minCharsDot', { n: minimo }) }}</span>
             }
           </div>
         }
       </div>
 
       <div class="form-group">
-        <label for="repetida">Repítela</label>
+        <label for="repetida">{{ i18n.t('cuenta.repeat') }}</label>
         <input
           id="repetida"
           type="password"
           autocomplete="new-password"
           formControlName="repetida"
-          placeholder="La misma otra vez"
+          [placeholder]="i18n.t('cuenta.repeatPh')"
           [class.input-error]="formulario.errors?.['noCoinciden'] && repetida?.touched"
         />
         @if (formulario.errors?.['noCoinciden'] && repetida?.touched) {
-          <div class="error">Las dos no son iguales.</div>
+          <div class="error">{{ i18n.t('cuenta.noMatch') }}</div>
         }
       </div>
 
@@ -47,12 +47,12 @@
         class="btn btn-primary btn-full"
         [disabled]="formulario.invalid || enviando()"
       >
-        {{ enviando() ? 'Guardando…' : 'Guardar y entrar' }}
+        {{ enviando() ? i18n.t('cuenta.saving') : i18n.t('cuenta.saveAndEnter') }}
       </button>
     </form>
   } @else {
     <p class="pie">
-      <a routerLink="/auth/olvide">Pide otro enlace</a>
+      <a routerLink="/auth/olvide">{{ i18n.t('cuenta.askAnotherLink') }}</a>
     </p>
   }
 </app-panel-cuenta>

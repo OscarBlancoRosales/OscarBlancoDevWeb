@@ -6,6 +6,15 @@ import type { Mailer } from './mailer';
 import type { AuthRepository, UserRow } from './repository';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
 
+/**
+ * Cómo se llama esto de cara a quien lo usa.
+ *
+ * «DevWeb» es el nombre del repositorio, y se coló en el asunto de todos los
+ * correos de alta hasta que alguien recibió uno y lo dijo. Lo que lee la gente
+ * no tiene por qué llamarse como la carpeta donde vive el código.
+ */
+export const NOMBRE_DEL_SITIO = 'OBRWeb';
+
 const HORA = 60 * 60 * 1000;
 const DIA = 24 * HORA;
 
@@ -63,7 +72,7 @@ export class AuthService {
         subject: 'Alguien ha intentado registrarse con tu correo',
         text:
           `Hola ${existente.displayName}:\n\n` +
-          `Alguien ha intentado crear una cuenta en ${this.sitio} con este correo, ` +
+          `Alguien ha intentado crear una cuenta en ${NOMBRE_DEL_SITIO} con este correo, ` +
           'que ya ' +
           'tiene una.\n\nSi has sido tú, entra con tu contraseña de siempre. Si la ' +
           'has olvidado, pide una nueva desde la pantalla de acceso.\n\n' +
@@ -191,18 +200,6 @@ export class AuthService {
   }
 
   /**
-   * Cómo se llama esto en los correos.
-   *
-   * Sale del dominio público y no de un literal escrito a mano: «DevWeb» es el
-   * nombre del repositorio, no el del sitio, y acabó saliendo en el asunto de
-   * los correos que recibe la gente. Derivarlo de la URL evita que vuelva a
-   * pasar y que haya que cambiarlo en cuatro sitios el día que cambie.
-   */
-  private get sitio(): string {
-    return this.publicWebUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  }
-
-  /**
    * Pasa una cuenta a activa, si le corresponde.
    *
    * Es el único sitio del servicio que escribe `active`, y por eso puede
@@ -266,8 +263,8 @@ export class AuthService {
       to: user.email,
       subject:
         purpose === 'verify'
-          ? `Verifica tu cuenta de ${this.sitio}`
-          : `Cambiar tu contraseña de ${this.sitio}`,
+          ? `Verifica tu cuenta de ${NOMBRE_DEL_SITIO}`
+          : `Cambiar tu contraseña de ${NOMBRE_DEL_SITIO}`,
       text:
         purpose === 'verify'
           ? `Hola ${user.displayName}:\n\nActiva tu cuenta aquí:\n${link}\n\nEl enlace caduca en 24 horas.`

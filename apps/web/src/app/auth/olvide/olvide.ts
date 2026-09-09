@@ -4,6 +4,7 @@ import type { AbstractControl } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthApiService } from '../../api/auth-api.service';
 import { PanelCuenta } from '../panel-cuenta/panel-cuenta';
+import { I18nService } from '../../services/i18n.service';
 
 /**
  * El estado va en señales, y no es un capricho de estilo.
@@ -28,6 +29,7 @@ export class Olvide {
   constructor(
     private fb: FormBuilder,
     private auth: AuthApiService,
+    public i18n: I18nService,
   ) {
     this.formulario = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
