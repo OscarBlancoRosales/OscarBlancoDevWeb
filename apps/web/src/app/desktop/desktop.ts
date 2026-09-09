@@ -9,11 +9,12 @@ import {
   Type,
   ViewChild,
 } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { I18nService } from '../services/i18n.service';
 import { ThemeService } from '../services/theme.service';
 import { findCommand } from '../console/commands';
-import { DesktopItem, DESKTOP_ITEMS } from './desktop-items';
+import { DesktopItem, DESKTOP_ITEMS, GROUPS, ItemGroup, itemsOf } from './desktop-items';
 import { DesktopWindow } from './desktop-window/desktop-window';
 import { ShellModeService } from './shell-mode.service';
 import { Taskbar } from './taskbar/taskbar';
@@ -66,7 +67,7 @@ const MOBILE_MAX = 768;
  */
 @Component({
   selector: 'app-desktop',
-  imports: [CommonModule, DesktopWindow, Taskbar],
+  imports: [CommonModule, DesktopWindow, RouterOutlet, Taskbar],
   templateUrl: './desktop.html',
   styleUrl: './desktop.css',
 })
@@ -78,13 +79,18 @@ export class Desktop implements OnInit, OnDestroy {
   runs: Record<string, string | undefined> = {};
 
   readonly items = DESKTOP_ITEMS;
+  readonly groups = GROUPS;
   mobile = false;
-  /** El cartel de bienvenida se puede quitar, y no vuelve a molestar. */
-  showWelcome = true;
+  /**
+   * La ventana que hospeda la sección de la dirección, si la hay. Es la que
+   * lleva dentro el `<router-outlet>`, y por eso manda sobre el contenido
+   * que hubiera cargado el icono: no puede haber dos cosas en una ventana.
+   */
+  routeWin: string | null = null;
+
+  private navegacion?: Subscription;
 
   @ViewChild('area') private area?: ElementRef<HTMLElement>;
-
-  private readonly WELCOME_KEY = 'desk_welcome_off';
 
   constructor(
     private cdr: ChangeDetectorRef,
@@ -97,15 +103,58 @@ export class Desktop implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.shell.embedded.set(true);
-    this.showWelcome = !this.readFlag(this.WELCOME_KEY);
     this.measure();
     this.restoreFromUrl();
+    this.syncRouteWindow();
+    // La sección puede cambiar sin que el escritorio se destruya: de la
+    // pantalla de nombre a la mesa de poker, por ejemplo.
+    this.navegacion = this.router.events
+      .pipe(filter((e) => e instanceof NavigationEnd))
+      .subscribe(() => {
+        this.syncRouteWindow();
+      });
   }
 
   ngOnDestroy(): void {
+    this.navegacion?.unsubscribe();
     // Al salir del escritorio las herramientas vuelven a traer su propia
     // ventana: si no, una ruta suelta se quedaría sin barra de título.
     this.shell.embedded.set(false);
+  }
+
+  // ===== LA SECCIÓN DE LA DIRECCIÓN =====
+
+  /**
+   * Abre en una ventana lo que pida la dirección, y la deja a pantalla
+   * completa: quien llega por un enlace compartido viene a eso, no a mirar
+   * el escritorio. Pero lo tiene detrás, con su barra, para saber dónde está
+   * y poder seguir.
+   */
+  private syncRouteWindow(): void {
+    const hijo = this.route.firstChild;
+    const datos = hijo?.snapshot.data ?? {};
+    const id = typeof datos['win'] === 'string' ? datos['win'] : null;
+
+    if (this.routeWin && this.routeWin !== id) {
+      this.state = close(this.state, this.routeWin);
+    }
+    this.routeWin = id;
+    if (!id) {
+      this.cdr.detectChanges();
+      return;
+    }
+
+    const item = DESKTOP_ITEMS.find((i) => i.id === id);
+    const titulo =
+      typeof datos['title'] === 'string'
+        ? datos['title']
+        : item
+          ? this.i18n.t(item.labelKey)
+          : id;
+
+    this.state = open(this.state, id, titulo);
+    this.maximizeIfNeeded(id);
+    this.cdr.detectChanges();
   }
 
   // ===== TAMAÑO =====
@@ -136,6 +185,14 @@ export class Desktop implements OnInit, OnDestroy {
   async launch(item: DesktopItem): Promise<void> {
     const titulo = this.i18n.t(item.labelKey);
 
+    // Si esa ventana ya la lleva la dirección, se trae al frente y ya está:
+    // montarle otro contenido dejaría dos cosas en la misma ventana.
+    if (item.id === this.routeWin) {
+      this.state = restore(this.state, item.id);
+      this.cdr.detectChanges();
+      return;
+    }
+
     if (!this.loaded[item.id]) {
       const cargar = CONTENT[item.id];
       if (!cargar) return;
@@ -161,6 +218,18 @@ export class Desktop implements OnInit, OnDestroy {
 
   closeWindow(id: string): void {
     this.state = close(this.state, id);
+    // Cerrar la ventana de una sección es salir de ella: si la dirección
+    // siguiera apuntando ahí, al recargar volvería a abrirse sola.
+    if (id === this.routeWin) {
+      this.routeWin = null;
+      // Sin arrastrar lo que traía la sección -el código de la sala, por
+      // ejemplo-, pero conservando las ventanas que sigan abiertas.
+      const quedan = this.state.windows.map((w) => w.id);
+      void this.router.navigate(['/'], {
+        queryParams: { abre: quedan.length ? quedan.join(',') : null },
+      });
+      return;
+    }
     this.syncUrl();
   }
 
@@ -207,13 +276,9 @@ export class Desktop implements OnInit, OnDestroy {
     return run ? { initialCommand: run } : {};
   }
 
-  dismissWelcome(): void {
-    this.showWelcome = false;
-    try {
-      localStorage.setItem(this.WELCOME_KEY, '1');
-    } catch {
-      // Si no hay almacenamiento, el cartel volverá. No es grave.
-    }
+  /** Los iconos de una zona, para pintarlas por separado. */
+  itemsOf(group: ItemGroup): DesktopItem[] {
+    return itemsOf(group);
   }
 
   label(item: DesktopItem): string {
@@ -234,9 +299,11 @@ export class Desktop implements OnInit, OnDestroy {
    * escritorio tal y como lo tienes montado.
    */
   private syncUrl(): void {
-    const abiertas = this.state.windows.map((w) => w.id);
+    const abiertas = this.state.windows.filter((w) => w.id !== this.routeWin).map((w) => w.id);
+    // Relativo a la sección abierta, si la hay: navegar relativo al
+    // escritorio nos sacaría de ella al abrir cualquier otra ventana.
     void this.router.navigate([], {
-      relativeTo: this.route,
+      relativeTo: this.route.firstChild ?? this.route,
       queryParams: { abre: abiertas.length ? abiertas.join(',') : null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -249,14 +316,6 @@ export class Desktop implements OnInit, OnDestroy {
     for (const id of abre.split(',').filter(Boolean)) {
       const item = DESKTOP_ITEMS.find((i) => i.id === id);
       if (item) void this.launch(item);
-    }
-  }
-
-  private readFlag(clave: string): boolean {
-    try {
-      return localStorage.getItem(clave) === '1';
-    } catch {
-      return false;
     }
   }
 }

@@ -1,8 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { routes } from '../app.routes';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Desktop } from './desktop';
-import { DESKTOP_ITEMS, DesktopItem } from './desktop-items';
+import { DESKTOP_ITEMS, DesktopItem, GROUPS, itemsOf } from './desktop-items';
 import { ShellModeService } from './shell-mode.service';
 
 /**
@@ -107,20 +109,141 @@ describe('el escritorio', () => {
     });
   });
 
-  describe('el cartel de bienvenida', () => {
-    it('sale la primera vez, que es cuando hace falta', () => {
-      expect(desktop.showWelcome).toBe(true);
-      expect(dom().querySelector('.welcome')).toBeTruthy();
+  /**
+   * La explicación de qué es esto va pintada en el fondo. Antes era un aviso
+   * con su aspa, y quien la cerraba se quedaba sin saber nunca más de quién
+   * era la web ni cómo moverse por ella.
+   */
+  describe('la firma del escritorio', () => {
+    it('está siempre, como parte del fondo', () => {
+      expect(dom().querySelector('.signature')).toBeTruthy();
     });
 
-    it('se puede quitar y no vuelve a aparecer', () => {
-      desktop.dismissWelcome();
-      // El primero se destruye antes de abrir el segundo: dos escritorios
-      // vivos a la vez chocan con la detección automática (NG0100).
+    it('no se puede cerrar: no hay nada que pulsar dentro', () => {
+      const firma = dom().querySelector('.signature');
+      expect(firma?.querySelector('button')).toBeNull();
+    });
+
+    it('sigue ahí después de abrir y cerrar cosas', async () => {
+      await desktop.launch(item('uuid'));
+      desktop.closeWindow('uuid');
+      fixture.detectChanges();
+      expect(dom().querySelector('.signature')).toBeTruthy();
+    });
+
+    it('cuenta quién soy y cómo moverse', () => {
+      const texto = dom().querySelector('.signature')?.textContent ?? '';
+      expect(texto).toContain('Oscar Blanco Rosales');
+      expect(texto.length).toBeGreaterThan(80);
+    });
+  });
+
+  /**
+   * Dieciséis iconos en fila son una lista; por zonas se lee de un vistazo.
+   */
+  describe('las zonas del escritorio', () => {
+    it('se pinta una banda por zona', () => {
+      expect(dom().querySelectorAll('.zone').length).toBe(GROUPS.length);
+    });
+
+    it('cada banda lleva su nombre', () => {
+      const titulos = Array.from(dom().querySelectorAll('.zone-title')).map(
+        (t) => t.textContent.trim(),
+      );
+      expect(titulos).toEqual(GROUPS.map((g) => desktop.i18n.t(g.labelKey)));
+    });
+
+    it('entre todas las zonas están todos los iconos, sin repetir ninguno', () => {
+      const repartidos = GROUPS.flatMap((g) => itemsOf(g.id)).map((i) => i.id);
+      expect(repartidos.sort()).toEqual(DESKTOP_ITEMS.map((i) => i.id).sort());
+    });
+
+    it('ninguna zona se queda vacía', () => {
+      for (const g of GROUPS) {
+        expect(itemsOf(g.id).length, g.id).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  /**
+   * Quien recibe una invitación de Scrum Poker, o el enlace de una mesa,
+   * aterrizaba antes en una pantalla suelta: votaba y se iba sin saber que
+   * había algo más detrás. Ahora esas direcciones abren el escritorio con la
+   * sección en una ventana a pantalla completa.
+   */
+  describe('cuando la dirección pide una sección', () => {
+    let harness: RouterTestingHarness;
+
+    afterEach(() => {
+      harness.fixture.destroy();
+    });
+
+    /**
+     * Monta el escritorio como lo monta el router de verdad, con esa
+     * dirección: creándolo a mano, el escritorio no tendría su propia rama
+     * del árbol de rutas y no vería nunca la sección.
+     */
+    async function entrarPor(url: string): Promise<Desktop> {
       fixture.destroy();
-      const otra = TestBed.createComponent(Desktop);
-      otra.detectChanges();
-      expect(otra.componentInstance.showWelcome).toBe(false);
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        providers: [provideRouter(routes)],
+      }).compileComponents();
+      harness = await RouterTestingHarness.create();
+      return harness.navigateByUrl(url, Desktop);
+    }
+
+    it('la sección se abre en su ventana', async () => {
+      const desk = await entrarPor('/qr-generator');
+      expect(desk.routeWin).toBe('qr');
+      expect(desk.state.windows.map((w) => w.id)).toContain('qr');
+    });
+
+    it('y a pantalla completa, que es a lo que viene quien abre el enlace', async () => {
+      const desk = await entrarPor('/qr-generator');
+      expect(desk.state.windows.find((v) => v.id === 'qr')?.maximized).toBe(true);
+    });
+
+    it('con la barra de tareas detrás, para poder seguir a otra cosa', async () => {
+      await entrarPor('/qr-generator');
+      expect(harness.routeNativeElement?.querySelector('app-taskbar')).toBeTruthy();
+    });
+
+    /** El paso por la pantalla de nombre no puede sacarte del escritorio. */
+    it('dos direcciones de la misma sección comparten ventana', async () => {
+      const desk = await entrarPor('/scrum-poker');
+      const antes = desk.state.windows.length;
+      await harness.navigateByUrl('/name-screen');
+      expect(desk.routeWin).toBe('poker');
+      expect(desk.state.windows.length).toBe(antes);
+    });
+
+    it('cambiar de sección cierra la anterior', async () => {
+      const desk = await entrarPor('/qr-generator');
+      await harness.navigateByUrl('/uuid-generator');
+      expect(desk.routeWin).toBe('uuid');
+      expect(desk.state.windows.map((w) => w.id)).not.toContain('qr');
+    });
+
+    it('cerrar su ventana devuelve al escritorio', async () => {
+      const desk = await entrarPor('/qr-generator');
+      desk.closeWindow('qr');
+      expect(desk.routeWin).toBeNull();
+      expect(desk.state.windows).toEqual([]);
+    });
+
+    it('el escritorio a secas no abre ninguna ventana', async () => {
+      const desk = await entrarPor('/');
+      expect(desk.routeWin).toBeNull();
+      expect(desk.state.windows).toEqual([]);
+    });
+
+    /** Pulsar su icono no puede montar otra cosa dentro de esa ventana. */
+    it('el icono de una sección ya abierta solo la trae al frente', async () => {
+      const desk = await entrarPor('/qr-generator');
+      await desk.launch(item('qr'));
+      expect(desk.state.windows.filter((w) => w.id === 'qr').length).toBe(1);
+      expect(desk.loaded['qr']).toBeUndefined();
     });
   });
 
