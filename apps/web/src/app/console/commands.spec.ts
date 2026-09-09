@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { routes } from '../app.routes';
+import type { Routes } from '@angular/router';
 import {
   COMMANDS,
   completions,
@@ -31,6 +32,8 @@ describe('registro de comandos', () => {
     'juegos/flota/mesa', // necesita una sala ya creada
     'juegos/trivial', // el lobby se abre desde /juegos
     'juegos/trivial/mesa', // necesita una sala ya creada
+    'juegos/impostor', // el lobby se abre desde /juegos
+    'juegos/impostor/mesa', // necesita una sala ya creada
     'auth/olvide', // se llega desde el login, no se busca a propósito
     // Estas dos son el destino de los enlaces del correo: sin el código que
     // llevan en la dirección no hacen nada, así que un comando que lleve a
@@ -39,10 +42,18 @@ describe('registro de comandos', () => {
     'auth/nueva-contrasena',
   ]);
 
+  /**
+   * Las secciones cuelgan del escritorio, así que no están en el primer nivel
+   * de `routes`: mirar solo ahí dejaba fuera del test a todas menos la consola.
+   * El agujero se vio al entrar el Impostor, que se coló sin que nadie avisara.
+   */
+  function todasLasRutas(desde: Routes): string[] {
+    return desde.flatMap((ruta) => [ruta.path ?? '', ...todasLasRutas(ruta.children ?? [])]);
+  }
+
   it('toda ruta navegable tiene un comando que lleva a ella', () => {
     const destinos = new Set(COMMANDS.map((c) => c.route).filter(Boolean));
-    const huerfanas = routes
-      .map((r) => r.path ?? '')
+    const huerfanas = todasLasRutas(routes)
       .filter((path) => !SIN_COMANDO.has(path))
       .filter((path) => !destinos.has('/' + path));
     expect(huerfanas, 'rutas sin comando en la consola').toEqual([]);
