@@ -110,8 +110,8 @@ export class Taskbar implements OnInit, OnDestroy {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      const primero = this.results[0];
-      if (primero) this.open(primero);
+      const encontrados = this.results;
+      if (encontrados.length) this.open(encontrados[0]);
     }
   }
 

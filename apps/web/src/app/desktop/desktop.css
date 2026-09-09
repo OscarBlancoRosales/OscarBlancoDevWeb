@@ -1,6 +1,6 @@
 /* =========================================================================
-   El escritorio. Los colores salen del tema del sitio, como todo lo demás:
-   el tapiz se pinta con el acento, así que cambiar de tema cambia el fondo.
+   El escritorio. El tapiz se pinta con el acento del tema, así que cambiar
+   de color cambia el fondo entero sin traer ni una imagen.
    ========================================================================= */
 
 .desktop {
@@ -17,8 +17,8 @@
 }
 
 /* ===== EL TAPIZ =====
-   Tres capas: unos focos de color al fondo, la rejilla tenue encima y un
-   viñeteado que oscurece los bordes para que las ventanas destaquen. */
+   Cinco capas: el cielo con su resplandor arriba, tres colinas abajo hechas
+   con elipses que se salen del borde, la rejilla y el viñeteado. */
 .area {
   position: relative;
   flex: 1;
@@ -27,13 +27,18 @@
   isolation: isolate;
   background-color: var(--bg);
   background-image:
-    radial-gradient(120% 90% at 12% 8%, rgba(var(--accent-rgb), 0.20), transparent 60%),
-    radial-gradient(90% 80% at 88% 100%, rgba(var(--accent-rgb), 0.13), transparent 62%),
-    radial-gradient(60% 55% at 65% 18%, rgba(var(--accent-rgb), 0.07), transparent 70%),
-    linear-gradient(160deg, rgba(255, 255, 255, 0.035), transparent 45%);
+    /* Las colinas, de la más cercana a la más lejana */
+    radial-gradient(150% 62% at 18% 132%, rgba(var(--accent-rgb), 0.26), transparent 58%),
+    radial-gradient(130% 58% at 72% 128%, rgba(var(--accent-rgb), 0.17), transparent 60%),
+    radial-gradient(180% 52% at 48% 124%, rgba(var(--accent-rgb), 0.10), transparent 62%),
+    /* El resplandor del cielo */
+    radial-gradient(90% 62% at 24% -8%, rgba(var(--accent-rgb), 0.22), transparent 62%),
+    radial-gradient(70% 44% at 84% 4%, rgba(var(--accent-rgb), 0.09), transparent 70%),
+    /* El aire, un pelín más claro arriba */
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.045), transparent 42%);
 }
 
-/* La rejilla del fondo, tenue, con dos pasos como el papel milimetrado */
+/* La rejilla, a dos pasos, desvanecida hacia los bordes */
 .area::before {
   content: "";
   position: absolute;
@@ -43,11 +48,11 @@
   background-image:
     linear-gradient(rgba(var(--accent-rgb), 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(var(--accent-rgb), 0.05) 1px, transparent 1px),
-    linear-gradient(rgba(var(--accent-rgb), 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(var(--accent-rgb), 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(var(--accent-rgb), 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.028) 1px, transparent 1px);
   background-size: 128px 128px, 128px 128px, 32px 32px, 32px 32px;
-  mask-image: radial-gradient(130% 110% at 50% 40%, #000 35%, transparent 100%);
-  -webkit-mask-image: radial-gradient(130% 110% at 50% 40%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(125% 105% at 50% 34%, #000 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(125% 105% at 50% 34%, #000 30%, transparent 100%);
 }
 
 /* Viñeteado: los bordes más oscuros que el centro */
@@ -57,87 +62,119 @@
   inset: 0;
   z-index: -1;
   pointer-events: none;
-  background: radial-gradient(115% 100% at 50% 45%, transparent 45%, rgba(0, 0, 0, 0.45) 100%);
+  background: radial-gradient(115% 100% at 50% 42%, transparent 42%, rgba(0, 0, 0, 0.5) 100%);
 }
 
-/* ===== EL CARTEL DE BIENVENIDA ===== */
-.welcome {
+/* ===== LA FIRMA =====
+   Va pintada en el fondo, no es un aviso: no se cierra ni se puede pulsar,
+   y las ventanas pasan por encima. Quien llega siempre sabe dónde está. */
+.signature {
   position: absolute;
-  right: 22px;
-  top: 22px;
-  z-index: 1;
-  width: min(340px, calc(100vw - 44px));
-  padding: 15px 17px;
-  background: color-mix(in srgb, var(--bg-soft) 88%, transparent);
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  border-radius: 10px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+  right: 30px;
+  bottom: 26px;
+  z-index: 0;
+  width: min(400px, 42vw);
+  text-align: right;
+  pointer-events: none;
+  user-select: none;
 }
 
-.welcome-head {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.welcome-logo {
-  color: var(--accent);
+.signature-name {
+  font-size: 26px;
   font-weight: 700;
-  font-size: 15px;
-  line-height: 1.4;
-}
-
-.welcome-title {
-  font-size: 14px;
-  font-weight: 700;
+  letter-spacing: 0.02em;
   color: var(--bright);
+  opacity: 0.62;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
 }
 
-.welcome-sub {
-  font-size: 11px;
-  color: var(--muted);
-}
-
-.welcome-close {
-  margin-left: auto;
-  background: none;
-  border: none;
-  color: var(--muted);
-  font: inherit;
+.signature-role {
+  margin-top: 2px;
   font-size: 12px;
-  cursor: pointer;
-  padding: 0 2px;
+  color: var(--accent);
+  opacity: 0.72;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.6);
 }
 
-.welcome-close:hover {
-  color: var(--error);
-}
-
-.welcome-text {
-  margin: 9px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
+.signature-text {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  line-height: 1.75;
   color: var(--text);
+  opacity: 0.42;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
 
-/* ===== LOS ICONOS ===== */
-/* En columnas por la izquierda, como cualquier escritorio: así las ventanas
-   nacen en el centro sin taparlos ni ser tapadas. */
-.icons {
+/* ===== LAS ZONAS =====
+   Dieciséis iconos seguidos son una lista. Repartidos en bandas -quién soy,
+   herramientas, para jugar- se entiende de un vistazo qué hay aquí. */
+.zones {
   position: relative;
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(auto-fill, 96px);
-  grid-auto-columns: 96px;
-  gap: 4px;
-  justify-content: start;
-  padding: 14px;
+  display: flex;
+  align-items: stretch;
   height: 100%;
+  padding: 12px 0 12px 12px;
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+/* Cada banda ocupa lo suyo y no más: si crecieran, tres zonas se repartirían
+   la pantalla entera y los iconos quedarían a kilómetros unos de otros. */
+.zone {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px;
+  border-left: 1px solid rgba(var(--accent-rgb), 0.12);
+}
+
+.zone:first-child {
+  border-left: none;
+  padding-left: 2px;
+}
+
+.zone-title {
+  margin: 0;
+  padding-bottom: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid rgba(var(--accent-rgb), 0.16);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  white-space: nowrap;
+}
+
+/* ===== LOS ICONOS =====
+   Se llenan hacia abajo y saltan a una columna nueva, como en cualquier
+   escritorio. Las filas van contadas y no con `auto-fill`: con `auto-fill` el
+   navegador calcula el ancho de la banda como si los iconos fueran en fila,
+   y las zonas acababan separadas por media pantalla. */
+.icons {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(6, 96px);
+  grid-auto-columns: 96px;
+  gap: 2px;
+  justify-content: start;
+  align-content: start;
+  flex: 1;
+  min-height: 0;
+}
+
+/* En pantallas bajas caben menos iconos por columna */
+@media (max-height: 760px) {
+  .icons {
+    grid-template-rows: repeat(5, 96px);
+  }
+}
+
+@media (max-height: 640px) {
+  .icons {
+    grid-template-rows: repeat(4, 96px);
+  }
 }
 
 .icon {
@@ -156,7 +193,7 @@
   transition: background 0.13s, border-color 0.13s;
 }
 
-/* El recuadro punteado de la selección, igual que al pinchar en el escritorio */
+/* El recuadro de la selección, igual que al pinchar en el escritorio */
 .icon:hover,
 .icon:focus-visible {
   background: rgba(var(--accent-rgb), 0.14);
@@ -192,7 +229,7 @@
   transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
-/* El brillo del cristal, en diagonal por la mitad de arriba */
+/* El brillo del cristal, en la mitad de arriba */
 .icon-glyph::after {
   content: "";
   position: absolute;
@@ -228,19 +265,46 @@
 
 /* ===== MÓVIL =====
    Ni ventanas sueltas ni doble toque: rejilla de iconos como una pantalla de
-   inicio, y lo que se abre ocupa todo. */
+   inicio, con sus apartados, y lo que se abre ocupa todo. */
 @media (max-width: 768px) {
+  /* La firma va arriba, de cabecera, y lo que scrollea es la rejilla */
+  .area {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .zones {
+    flex: 1;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    height: auto;
+    min-height: 0;
+    padding: 12px 10px;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .zone {
+    padding: 0;
+    border-left: none;
+  }
+
+  .zone-title {
+    white-space: normal;
+  }
+
+  .zone:first-child {
+    padding-left: 0;
+  }
+
   .icons {
     grid-auto-flow: row;
     grid-template-rows: none;
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
     grid-auto-columns: auto;
     gap: 6px;
-    padding: 14px 10px;
-    height: auto;
-    max-height: 100%;
-    overflow-y: auto;
-    overflow-x: hidden;
+    flex: none;
   }
 
   .icon {
@@ -254,10 +318,16 @@
     font-size: 23px;
   }
 
-  .welcome {
+  .signature {
     position: static;
     width: auto;
-    margin: 12px 10px 0;
+    flex: none;
+    padding: 14px 10px 2px;
+    text-align: left;
+  }
+
+  .signature-name {
+    font-size: 19px;
   }
 }
 

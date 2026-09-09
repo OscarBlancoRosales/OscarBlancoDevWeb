@@ -8,6 +8,7 @@ import {
   move,
   newDesktop,
   open,
+  refit,
   resize,
   restore,
   toggleMaximize,
@@ -226,8 +227,49 @@ describe('cuando cambia el tamaño de la pantalla', () => {
   it('las ventanas se recolocan dentro del escritorio nuevo', () => {
     let d = open(escritorio(), 'qr', 'qr');
     d = move(d, 'qr', 900, 600);
-    d = { ...d, area: { width: 600, height: 400 } };
-    d = resize(d, 'qr', d.windows[0].width, d.windows[0].height);
+    d = refit(d, 600, 400);
+    expect(d.windows[0].x + d.windows[0].width).toBeLessThanOrEqual(600);
+    expect(d.windows[0].y + d.windows[0].height).toBeLessThanOrEqual(400);
+  });
+
+  it('y el escritorio se queda con el tamaño nuevo', () => {
+    const d = refit(open(escritorio(), 'qr', 'qr'), 600, 400);
+    expect(d.area).toEqual({ width: 600, height: 400 });
+  });
+
+  /**
+   * Una maximizada tiene que seguir tocando los cuatro bordes. Sin esto, una
+   * sección abierta desde un enlace se quedaba con el tamaño de la primera
+   * medida -la de antes de que el escritorio estuviera pintado- y dejaba una
+   * franja de fondo a la derecha.
+   */
+  it('las maximizadas vuelven a ocupar el hueco entero', () => {
+    let d = open(escritorio(), 'poker', 'poker');
+    d = toggleMaximize(d, 'poker');
+    d = refit(d, 1600, 900);
+    const w = d.windows[0];
+    expect([w.x, w.y, w.width, w.height]).toEqual([0, 0, 1600, 900]);
+  });
+
+  it('y también si el escritorio encoge', () => {
+    let d = open(escritorio(), 'poker', 'poker');
+    d = toggleMaximize(d, 'poker');
+    d = refit(d, 500, 300);
+    expect([d.windows[0].width, d.windows[0].height]).toEqual([500, 300]);
+  });
+
+  /** Encoger y volver a estirar no puede perder el tamaño de antes. */
+  it('lo que no está maximizado no crece solo', () => {
+    let d = open(escritorio(), 'qr', 'qr', { width: 400, height: 300 });
+    d = refit(d, 1600, 900);
+    expect([d.windows[0].width, d.windows[0].height]).toEqual([400, 300]);
+  });
+
+  it('una minimizada también se recoloca, para que vuelva bien', () => {
+    let d = open(escritorio(), 'qr', 'qr');
+    d = move(d, 'qr', 900, 600);
+    d = minimize(d, 'qr');
+    d = refit(d, 600, 400);
     expect(d.windows[0].x + d.windows[0].width).toBeLessThanOrEqual(600);
   });
 });

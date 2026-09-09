@@ -163,6 +163,31 @@ export function resize(state: DesktopState, id: string, width: number, height: n
   });
 }
 
+/**
+ * Recoloca todo dentro de un escritorio de otro tamaño.
+ *
+ * Las maximizadas vuelven a ocupar el hueco entero: si no, al cambiar el
+ * tamaño de la ventana del navegador -o al montarse el escritorio, que mide
+ * antes de que el DOM tenga su tamaño de verdad- se quedaban ocupando el
+ * área vieja, y una sección abierta desde un enlace no llegaba a los bordes.
+ */
+export function refit(state: DesktopState, width: number, height: number): DesktopState {
+  const area = { width, height };
+  const windows = state.windows.map((w) => {
+    if (w.maximized) return { ...w, x: 0, y: 0, width, height };
+    const ancho = clamp(w.width, MIN_W, width);
+    const alto = clamp(w.height, MIN_H, height);
+    return {
+      ...w,
+      width: ancho,
+      height: alto,
+      x: clamp(w.x, 0, Math.max(0, width - ancho)),
+      y: clamp(w.y, 0, Math.max(0, height - alto)),
+    };
+  });
+  return { ...state, area, windows };
+}
+
 /** La que está delante del todo. Las minimizadas no cuentan. */
 export function activeWindow(state: DesktopState): WindowState | null {
   const visibles = state.windows.filter((w) => !w.minimized);

@@ -11,6 +11,20 @@ import { findCommand, navCommands } from '../console/commands';
 
 export type ItemKind = 'section' | 'terminal';
 
+/**
+ * En qué zona del escritorio vive cada icono. Dieciséis iconos en fila son
+ * una lista; repartidos por temas se leen de un vistazo: quién soy, con qué
+ * trabajar y con qué jugar.
+ */
+export type ItemGroup = 'casa' | 'herramientas' | 'juegos';
+
+/** Las zonas, en el orden en que se pintan de izquierda a derecha. */
+export const GROUPS: { id: ItemGroup; labelKey: string }[] = [
+  { id: 'casa', labelKey: 'desk.groupHome' },
+  { id: 'herramientas', labelKey: 'desk.groupTools' },
+  { id: 'juegos', labelKey: 'desk.groupPlay' },
+];
+
 export interface DesktopItem {
   id: string;
   /** Clave de i18n con el nombre que se lee debajo del icono. */
@@ -18,6 +32,8 @@ export interface DesktopItem {
   /** El dibujo, en caracteres: pega con la estética y se tiñe con el tema. */
   glyph: string;
   kind: ItemKind;
+  /** La zona del escritorio en la que se coloca. */
+  group: ItemGroup;
   /** Para los de sección: el comando del registro del que sale la ruta. */
   command?: string;
   /** Para los de terminal: lo que se escribe solo al abrirla. */
@@ -34,28 +50,37 @@ export const DESKTOP_ITEMS: DesktopItem[] = [
     labelKey: 'desk.terminal',
     glyph: '❯_',
     kind: 'terminal',
+    group: 'casa',
     command: 'terminal',
     width: 820,
     height: 560,
   },
-  { id: 'sobre-mi', labelKey: 'desk.about', glyph: '☻', kind: 'terminal', run: 'whoami', width: 720, height: 420 },
-  { id: 'proyectos', labelKey: 'desk.projects', glyph: '★', kind: 'terminal', run: 'projects', width: 720, height: 420 },
-  { id: 'contacto', labelKey: 'desk.contact', glyph: '✉', kind: 'terminal', run: 'contact', width: 700, height: 380 },
+  { id: 'sobre-mi', group: 'casa', labelKey: 'desk.about', glyph: '☻', kind: 'terminal', run: 'whoami', width: 720, height: 420 },
+  { id: 'proyectos', group: 'casa', labelKey: 'desk.projects', glyph: '★', kind: 'terminal', run: 'projects', width: 720, height: 420 },
+  { id: 'contacto', group: 'casa', labelKey: 'desk.contact', glyph: '✉', kind: 'terminal', run: 'contact', width: 700, height: 380 },
 
   // --- Secciones ---
-  { id: 'juegos', labelKey: 'desk.games', glyph: '◈', kind: 'section', command: 'juegos', width: 980, height: 640 },
-  { id: 'poker', labelKey: 'desk.poker', glyph: '♠', kind: 'section', command: 'poker', width: 900, height: 620 },
-  { id: 'qr', labelKey: 'desk.qr', glyph: '▚', kind: 'section', command: 'qr' },
-  { id: 'dni', labelKey: 'desk.dni', glyph: '▤', kind: 'section', command: 'dni' },
-  { id: 'color', labelKey: 'desk.color', glyph: '◐', kind: 'section', command: 'color' },
-  { id: 'regex', labelKey: 'desk.regex', glyph: '.*', kind: 'section', command: 'regex', width: 880 },
-  { id: 'base64', labelKey: 'desk.base64', glyph: '⇄', kind: 'section', command: 'base64', width: 880 },
-  { id: 'format', labelKey: 'desk.format', glyph: '{}', kind: 'section', command: 'format', width: 880 },
-  { id: 'lorem', labelKey: 'desk.lorem', glyph: '¶', kind: 'section', command: 'lorem' },
-  { id: 'timestamp', labelKey: 'desk.timestamp', glyph: '◷', kind: 'section', command: 'timestamp' },
-  { id: 'uuid', labelKey: 'desk.uuid', glyph: '#', kind: 'section', command: 'uuid' },
-  { id: 'iconos', labelKey: 'desk.icons', glyph: '▣', kind: 'section', command: 'iconos' },
+  { id: 'juegos', group: 'juegos', labelKey: 'desk.games', glyph: '◈', kind: 'section', command: 'juegos', width: 980, height: 640 },
+  { id: 'poker', group: 'juegos', labelKey: 'desk.poker', glyph: '♠', kind: 'section', command: 'poker', width: 900, height: 620 },
+  { id: 'qr', group: 'herramientas', labelKey: 'desk.qr', glyph: '▚', kind: 'section', command: 'qr' },
+  { id: 'dni', group: 'herramientas', labelKey: 'desk.dni', glyph: '▤', kind: 'section', command: 'dni' },
+  { id: 'color', group: 'herramientas', labelKey: 'desk.color', glyph: '◐', kind: 'section', command: 'color' },
+  { id: 'regex', group: 'herramientas', labelKey: 'desk.regex', glyph: '.*', kind: 'section', command: 'regex', width: 880 },
+  { id: 'base64', group: 'herramientas', labelKey: 'desk.base64', glyph: '⇄', kind: 'section', command: 'base64', width: 880 },
+  { id: 'format', group: 'herramientas', labelKey: 'desk.format', glyph: '{}', kind: 'section', command: 'format', width: 880 },
+  { id: 'lorem', group: 'herramientas', labelKey: 'desk.lorem', glyph: '¶', kind: 'section', command: 'lorem' },
+  { id: 'timestamp', group: 'herramientas', labelKey: 'desk.timestamp', glyph: '◷', kind: 'section', command: 'timestamp' },
+  { id: 'uuid', group: 'herramientas', labelKey: 'desk.uuid', glyph: '#', kind: 'section', command: 'uuid' },
+  { id: 'iconos', group: 'herramientas', labelKey: 'desk.icons', glyph: '▣', kind: 'section', command: 'iconos' },
 ];
+
+/**
+ * Los iconos de una zona, en el orden del catálogo. El escritorio los pinta
+ * en bandas para que no haya que leerse dieciséis nombres seguidos.
+ */
+export function itemsOf(group: ItemGroup): DesktopItem[] {
+  return DESKTOP_ITEMS.filter((i) => i.group === group);
+}
 
 /**
  * A dónde lleva un icono cuando se abre fuera del escritorio. Los que solo
