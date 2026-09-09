@@ -14,6 +14,7 @@ import { I18nService } from '../../services/i18n.service';
 import { ThemeService } from '../../services/theme.service';
 import { findCommand, navCommands } from '../../console/commands';
 import { CommandPalette } from '../command-palette/command-palette';
+import { ShellModeService } from '../../desktop/shell-mode.service';
 
 /**
  * La ventana que envuelve todas las herramientas.
@@ -33,6 +34,23 @@ export class TerminalLayout implements OnInit, AfterViewInit, OnDestroy {
   /** Lo que se lee en la barra de título, después de «OBR Terminal». */
   @Input() title = '';
   @Input() showStatusBar = true;
+  /**
+   * Dentro de una ventana del escritorio, la herramienta no pinta su propio
+   * chrome: el marco, el menú y el reloj ya los pone la ventana. Sin esto se
+   * verían dos barras de título, una dentro de otra.
+   *
+   * Se puede forzar con esta entrada, pero normalmente lo decide el escritorio
+   * a través del servicio: las herramientas no saben dónde las han puesto.
+   */
+  @Input() set embedded(valor: boolean) {
+    this.forcedEmbedded = valor;
+  }
+
+  get embedded(): boolean {
+    return this.forcedEmbedded || this.shell.embedded();
+  }
+
+  private forcedEmbedded = false;
 
   menuOpen = false;
   paletteOpen = false;
@@ -50,6 +68,7 @@ export class TerminalLayout implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     public i18n: I18nService,
     public themes: ThemeService,
+    private shell: ShellModeService,
   ) {}
 
   ngOnInit(): void {

@@ -3,6 +3,7 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   OnDestroy,
   OnInit,
   signal,
@@ -114,6 +115,15 @@ export const LOGO: string[] = [
   styleUrl: './console.css',
 })
 export class Console implements OnInit, AfterViewInit, OnDestroy {
+  /**
+   * Un comando que se ejecuta solo al abrirse.
+   *
+   * Lo usan los iconos del escritorio -«sobre mí», «proyectos»- para abrir la
+   * terminal con la respuesta ya puesta: así se ve de quién es la web sin
+   * tener que saber que hay comandos.
+   */
+  @Input() initialCommand = '';
+
   /** Todo lo que se ve en el cuerpo de la terminal. */
   output: OutLine[] = [];
   currentCommand = '';
@@ -175,6 +185,10 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.printBoot();
+    if (this.initialCommand) {
+      this.setCommand(this.initialCommand);
+      this.executeCommand();
+    }
     this.tickClock();
     this.clockTimer = setInterval(() => this.tickClock(), 1000);
     // Cambiar de bandera reescribe la pantalla entera, porque las líneas

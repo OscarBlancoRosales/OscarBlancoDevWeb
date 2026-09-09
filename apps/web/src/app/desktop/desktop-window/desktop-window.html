@@ -1,0 +1,44 @@
+<div
+  class="win"
+  [class.active]="active"
+  [class.maximized]="win.maximized"
+  [style.left.px]="win.x"
+  [style.top.px]="win.y"
+  [style.width.px]="win.width"
+  [style.height.px]="win.height"
+  [style.z-index]="win.z"
+  (pointerdown)="focused.emit()"
+  role="dialog"
+  [attr.aria-label]="win.title">
+  <div
+    class="win-title"
+    (pointerdown)="onPointerDown($event, 'move')"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+    (dblclick)="onTitleDoubleClick()"
+    (keydown)="onTitleKeydown($event)"
+    tabindex="0">
+    <span class="win-icon">❯_</span>
+    <span class="win-name">{{ win.title }}</span>
+    <div class="win-ctrl">
+      <button class="win-btn" (click)="minimized.emit(); $event.stopPropagation()" title="Minimizar">─</button>
+      <button class="win-btn" (click)="maximized.emit(); $event.stopPropagation()" title="Maximizar">▢</button>
+      <button class="win-btn win-btn--close" (click)="closed.emit(); $event.stopPropagation()" title="Cerrar">✕</button>
+    </div>
+  </div>
+
+  <div class="win-body">
+    <ng-content></ng-content>
+  </div>
+
+  @if (!win.maximized) {
+    <div
+      class="win-grip"
+      (pointerdown)="onPointerDown($event, 'resize')"
+      (pointermove)="onPointerMove($event)"
+      (pointerup)="onPointerUp($event)"
+      (pointercancel)="onPointerUp($event)"
+      title="Redimensionar"></div>
+  }
+</div>

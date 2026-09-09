@@ -16,7 +16,13 @@ import { IconGenerator } from './icon-generator/icon-generator';
 import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
 
 export const routes: Routes = [
-  { path: '', component: Console },
+  // El escritorio es ahora la puerta de entrada: quien llega ve de un vistazo
+  // todo lo que hay. La terminal sigue teniendo su propia dirección.
+  {
+    path: '',
+    loadComponent: () => import('./desktop/desktop').then((m) => m.Desktop),
+  },
+  { path: 'terminal', component: Console },
   { path: 'auth', component: Auth },
   { path: 'name-screen', component: NameScreen },
   { path: 'scrum-poker', component: ScrumPoker },

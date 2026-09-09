@@ -128,6 +128,13 @@ export const COMMANDS: CommandDef[] = [
     hidden: true,
   },
   {
+    id: 'terminal',
+    aliases: ['consola', 'shell', 'cli'],
+    group: 'nav',
+    descKey: 'cmd.terminal',
+    route: '/terminal',
+  },
+  {
     id: 'home',
     aliases: ['inicio', 'portada', '~'],
     group: 'nav',

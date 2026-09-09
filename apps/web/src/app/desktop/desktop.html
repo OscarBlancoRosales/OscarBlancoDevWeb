@@ -1,0 +1,57 @@
+<div class="desktop" [class.mobile]="mobile">
+  <!-- El fondo con los iconos -->
+  <div class="area" #area (click)="$event.target === area ? null : null">
+    @if (showWelcome) {
+      <div class="welcome">
+        <div class="welcome-head">
+          <span class="welcome-logo">❯_</span>
+          <div>
+            <div class="welcome-title">{{ i18n.t('desk.welcomeTitle') }}</div>
+            <div class="welcome-sub">{{ i18n.t('desk.welcomeSub') }}</div>
+          </div>
+          <button class="welcome-close" (click)="dismissWelcome()" [title]="i18n.t('desk.dismiss')">✕</button>
+        </div>
+        <p class="welcome-text">{{ i18n.t('desk.welcomeText') }}</p>
+      </div>
+    }
+
+    <div class="icons">
+      @for (item of items; track item.id) {
+        <button
+          class="icon"
+          [title]="hint(item)"
+          (dblclick)="launch(item)"
+          (click)="mobile ? launch(item) : null">
+          <span class="icon-glyph">{{ item.glyph }}</span>
+          <span class="icon-label">{{ label(item) }}</span>
+        </button>
+      }
+    </div>
+
+    <!-- Las ventanas -->
+    @for (w of state.windows; track w.id) {
+      @if (!w.minimized) {
+        <app-desktop-window
+          [win]="w"
+          [active]="active?.id === w.id"
+          (focused)="focusWindow(w.id)"
+          (closed)="closeWindow(w.id)"
+          (minimized)="minimizeWindow(w.id)"
+          (maximized)="maximizeWindow(w.id)"
+          (moved)="moveWindow(w.id, $event)"
+          (resized)="resizeWindow(w.id, $event)">
+          @if (loaded[w.id]) {
+            <ng-container
+              *ngComponentOutlet="loaded[w.id]!; inputs: inputsFor(w.id)"></ng-container>
+          }
+        </app-desktop-window>
+      }
+    }
+  </div>
+
+  <app-taskbar
+    [windows]="state.windows"
+    [activeId]="active?.id ?? null"
+    (launch)="launch($event)"
+    (toggled)="toggleFromTaskbar($event)" />
+</div>

@@ -1,0 +1,198 @@
+/* =========================================================================
+   El escritorio. Los colores salen del tema del sitio, como todo lo demás.
+   ========================================================================= */
+
+.desktop {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cascadia Code', 'Consolas', 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* El tapiz: una rejilla tenue, para que se note que es un escritorio */
+.area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background-image:
+    linear-gradient(rgba(var(--accent-rgb), 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(var(--accent-rgb), 0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ===== EL CARTEL DE BIENVENIDA ===== */
+.welcome {
+  position: absolute;
+  right: 22px;
+  top: 22px;
+  z-index: 1;
+  width: min(340px, calc(100vw - 44px));
+  padding: 14px 16px;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+}
+
+.welcome-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.welcome-logo {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.welcome-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.welcome-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.welcome-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.welcome-close:hover {
+  color: var(--error);
+}
+
+.welcome-text {
+  margin: 9px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* ===== LOS ICONOS ===== */
+/* En columnas por la izquierda, como cualquier escritorio: así las ventanas
+   nacen en el centro sin taparlos ni ser tapadas. */
+.icons {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(auto-fill, 88px);
+  grid-auto-columns: 92px;
+  gap: 4px;
+  justify-content: start;
+  padding: 14px;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  width: 92px;
+  padding: 10px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: background 0.13s, border-color 0.13s;
+}
+
+.icon:hover,
+.icon:focus-visible {
+  background: var(--accent-soft);
+  border-color: var(--border);
+  outline: none;
+}
+
+.icon:active {
+  border-color: var(--accent);
+}
+
+.icon-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-soft);
+  color: var(--accent);
+  font-size: 19px;
+  text-shadow: 0 0 12px var(--glow);
+}
+
+.icon:hover .icon-glyph {
+  border-color: var(--accent);
+}
+
+.icon-label {
+  font-size: 11px;
+  line-height: 1.3;
+  text-align: center;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* ===== MÓVIL =====
+   Ni ventanas sueltas ni doble toque: rejilla de iconos como una pantalla de
+   inicio, y lo que se abre ocupa todo. */
+@media (max-width: 768px) {
+  .icons {
+    grid-auto-flow: row;
+    grid-template-rows: none;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+    grid-auto-columns: auto;
+    gap: 4px;
+    padding: 14px 10px;
+    height: auto;
+    max-height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .icon {
+    width: auto;
+    padding: 12px 4px;
+  }
+
+  .icon-glyph {
+    width: 52px;
+    height: 52px;
+    font-size: 21px;
+  }
+
+  .welcome {
+    position: static;
+    width: auto;
+    margin: 12px 10px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    transition: none;
+  }
+}
