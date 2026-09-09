@@ -5,6 +5,9 @@ Description=Copia de seguridad de la base de DevWeb
 Type=oneshot
 User=devweb
 Group=devweb
+# El guión delante hace que el fichero sea opcional: sin él, la copia local
+# sigue funcionando y solo se pierde la subida al destino remoto.
+EnvironmentFile=-/etc/devweb/backup.env
 ExecStart=/usr/local/bin/devweb-backup
 NoNewPrivileges=true
 PrivateTmp=true

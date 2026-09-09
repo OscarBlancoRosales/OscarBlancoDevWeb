@@ -33,7 +33,7 @@ apt-get update -qq
 apt-get install -y -qq \
   curl ca-certificates gnupg git \
   nginx certbot python3-certbot-nginx \
-  ufw fail2ban unattended-upgrades sqlite3
+  ufw fail2ban unattended-upgrades sqlite3 rclone
 
 paso "Actualizaciones de seguridad automáticas"
 # Sin esto, la máquina envejece sola y nadie se entera hasta que es tarde.
@@ -84,6 +84,7 @@ ufw default allow outgoing
 ufw allow OpenSSH
 ufw allow 80/tcp
 ufw allow 443/tcp
+# El 9090 de Cockpit NO se abre: se llega por túnel ssh. Ver más abajo.
 ufw --force enable
 ufw status verbose
 
@@ -114,6 +115,55 @@ bantime = 1h
 findtime = 10m
 EOF
 systemctl enable --now fail2ban
+
+paso "Panel de administración (Cockpit)"
+# Un panel para mirar la máquina sin pelearse con ssh: servicios, logs, disco y
+# una terminal. Lee systemd y journald, no reimplementa nada, y se autentica con
+# los usuarios del sistema, así que dentro tienes tus permisos y no los de root.
+#
+# ESCUCHA SOLO EN LOCALHOST, y eso es lo que lo hace aceptable. Un panel de
+# administración publicado en internet es un segundo juego de credenciales que
+# rotar y un segundo servidor web que parchear. Se abre por túnel:
+#
+#   ssh -L 9090:localhost:9090 usuario@IP     y luego http://localhost:9090
+#
+# Solo `cockpit-system`, que es el que trae servicios, registro y terminal. Los
+# demás módulos (discos, red, paquetes) gestionan cosas que aquí ya gestiona
+# este fichero, y `cockpit-networkmanager` además se pelearía con la red que
+# configura el proveedor.
+if apt-get install -y -qq --no-install-recommends cockpit cockpit-system; then
+  install -d -m 755 /etc/systemd/system/cockpit.socket.d
+  # El `ListenStream=` vacío BORRA el 0.0.0.0:9090 que trae por defecto. Sin esa
+  # línea, la siguiente se suma a la de fábrica en vez de sustituirla, y el panel
+  # acabaría escuchando también de cara a internet.
+  cat > /etc/systemd/system/cockpit.socket.d/localhost.conf <<'EOF'
+[Socket]
+ListenStream=
+ListenStream=127.0.0.1:9090
+EOF
+
+  install -d -m 755 /etc/cockpit
+  # Sin esto Cockpit redirige a https y presenta un certificado autofirmado que
+  # el navegador rechaza. Por el túnel el tráfico ya va cifrado por ssh, y por
+  # dentro no sale de la propia máquina.
+  cat > /etc/cockpit/cockpit.conf <<'EOF'
+[WebService]
+AllowUnencrypted = true
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now cockpit.socket
+  systemctl restart cockpit.socket
+
+  # Que escuche donde debe no se supone: se comprueba.
+  if ss -ltnp 2>/dev/null | grep -q '127.0.0.1:9090'; then
+    echo "Cockpit escuchando solo en 127.0.0.1:9090."
+  else
+    echo "AVISO: Cockpit no está escuchando en 127.0.0.1:9090. Revísalo antes de fiarte." >&2
+  fi
+else
+  echo "AVISO: no se pudo instalar Cockpit. El resto de la máquina queda igual." >&2
+fi
 
 paso "nginx"
 install -d -m 755 /var/www/certbot
@@ -150,6 +200,11 @@ systemctl daemon-reload
 systemctl enable devweb-api.service
 systemctl enable --now devweb-backup.timer
 
+if [[ ! -f /etc/devweb/backup.env ]]; then
+  paso "Plantilla del destino de copias"
+  install -m 640 -o root -g "$APP_USER" "$REPO_DIR/infra/backup.env.example" /etc/devweb/backup.env
+fi
+
 if [[ ! -f "$ENV_FILE" ]]; then
   paso "Plantilla de configuración"
   install -m 640 -o root -g "$APP_USER" "$REPO_DIR/infra/api.env.example" "$ENV_FILE"
@@ -170,9 +225,24 @@ Listo. Quedan dos cosas que esta máquina no puede decidir sola:
   2. Revisar $ENV_FILE (el secreto de firma ya está generado) y
      rellenar SMTP_URL para el correo de verificación.
 
+  3. Configurar a dónde salen las copias, o se quedarán en este disco:
+
+       sudo rclone config --config /etc/devweb/rclone.conf
+       sudo chown root:$APP_USER /etc/devweb/rclone.conf
+       sudo chmod 640 /etc/devweb/rclone.conf
+       sudoedit /etc/devweb/backup.env
+
+     Los pasos, y por qué el remoto tiene que ir cifrado, en infra/README.md.
+
 Después, el primer despliegue:
 
        sudo systemctl start devweb-api
        curl -s https://$DOMAIN/health
+
+El panel de administración no está publicado. Para entrar, desde tu máquina:
+
+       ssh -L 9090:localhost:9090 ubuntu@IP
+
+y abre http://localhost:9090 con tu usuario del sistema.
 
 EOF

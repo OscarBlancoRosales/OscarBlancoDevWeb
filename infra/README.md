@@ -74,6 +74,91 @@ sudo systemctl start devweb-api
 **El timer no prueba que la copia sirva.** Restaurar una en local de vez en
 cuando es la única forma de saber que las copias valen para algo.
 
+### Que salgan de la máquina
+
+Una copia en el mismo disco que el original no es una copia, es un historial: si
+el disco se va, se van las dos. Con `DEVWEB_BACKUP_REMOTE` configurado, cada
+copia se sube a un destino de `rclone` y se comprueba que ha llegado.
+
+**El remoto tiene que ir cifrado.** Esa base lleva correos y hashes de
+contraseñas de gente real, y eso no se sube en claro a casa de un tercero. En
+`rclone` se hace encadenando un remoto `crypt` sobre el de almacenamiento: el
+`crypt` cifra el contenido y el nombre del fichero antes de que salgan de aquí,
+así que el proveedor guarda ruido.
+
+```bash
+sudo rclone config --config /etc/devweb/rclone.conf
+```
+
+Dos remotos, en este orden:
+
+1. **El almacenamiento.** Elige uno con **credenciales estáticas** —S3, Backblaze
+   B2, el Object Storage de OVH— y no uno de OAuth como Google Drive: los de
+   OAuth necesitan reescribir el fichero de configuración para refrescar el
+   token, y aquí `/etc` está montado en solo lectura para el servicio. Llámalo
+   por ejemplo `almacen`.
+2. **El cifrado.** Tipo `crypt`, con `remote` apuntando a `almacen:tu-cubo/devweb`
+   y una contraseña larga. Llámalo por ejemplo `copias`.
+
+Luego los permisos y el destino:
+
+```bash
+sudo chown root:devweb /etc/devweb/rclone.conf
+sudo chmod 640 /etc/devweb/rclone.conf
+sudoedit /etc/devweb/backup.env          # DEVWEB_BACKUP_REMOTE=copias:
+sudo -u devweb devweb-backup             # y lo pruebas ahora mismo
+```
+
+> **Guarda la contraseña del `crypt` fuera de esta máquina**, en tu gestor de
+> contraseñas. Está dentro de `/etc/devweb/rclone.conf`, y ese fichero se pierde
+> con la máquina — que es justo el día que vas a necesitar las copias. Sin esa
+> contraseña, lo que hay en el cubo es ruido para siempre.
+
+### Probar que una copia sirve
+
+Esto no se hace "algún día": se hace una vez ahora y se apunta la fecha. Se
+prueba **contra un fichero aparte**, sin tocar la base en marcha:
+
+```bash
+# La última copia local, o `rclone copy copias:EL_FICHERO .` si la traes de fuera
+ultima=$(ls -1t /var/lib/devweb/backups/devweb-*.db.gz | head -1)
+gunzip -c "$ultima" > /tmp/prueba.db
+
+sqlite3 /tmp/prueba.db 'PRAGMA integrity_check;'          # espera: ok
+sqlite3 /tmp/prueba.db 'SELECT COUNT(*) FROM users;'      # espera: tus cuentas
+sqlite3 /tmp/prueba.db 'SELECT COUNT(*) FROM rooms;'
+rm -f /tmp/prueba.db
+```
+
+Si `integrity_check` dice `ok` y las cuentas están, la copia vale. Restaurarla de
+verdad es lo que ya está descrito arriba.
+
+## El panel de administración
+
+Cockpit, para mirar la máquina sin pelearse con `ssh`: servicios, registro,
+disco y una terminal. Lee systemd y journald, no reimplementa nada, y se
+autentica con los usuarios del sistema — dentro tienes tus permisos, no los de
+root.
+
+**No está publicado en internet, y eso es lo que lo hace aceptable.** Escucha
+solo en `127.0.0.1:9090`; el 9090 no está abierto en el cortafuegos. Se entra
+por túnel, desde tu máquina:
+
+```bash
+ssh -L 9090:localhost:9090 ubuntu@IP
+```
+
+Y abres `http://localhost:9090`. Se comprueba con:
+
+```bash
+ss -ltnp | grep 9090      # debe decir 127.0.0.1:9090, nunca 0.0.0.0:9090
+```
+
+Un panel de administración publicado es un segundo juego de credenciales que
+rotar y un segundo servidor web que parchear, a cambio de ahorrarse un túnel.
+Por lo mismo aquí no hay Portainer: necesita montar el socket de Docker, y quien
+controla ese socket es root en la máquina sin pasar por `sudo`.
+
 ## El correo
 
 Sin esto **nadie puede activar su cuenta**: el registro contesta que todo ha ido
