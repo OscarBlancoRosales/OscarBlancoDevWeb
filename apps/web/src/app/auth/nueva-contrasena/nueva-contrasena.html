@@ -1,0 +1,56 @@
+<app-panel-cuenta
+  titulo="Contraseña nueva"
+  subtitulo="La anterior deja de valer en cuanto guardes esta"
+  [error]="error()"
+>
+  @if (hayToken()) {
+    <form (ngSubmit)="cambiar()" [formGroup]="formulario">
+      <div class="form-group">
+        <label for="password">Contraseña nueva</label>
+        <input
+          id="password"
+          type="password"
+          formControlName="password"
+          [placeholder]="'Mínimo ' + minimo + ' caracteres'"
+          [class.input-error]="password?.invalid && password?.touched"
+        />
+        @if (password?.invalid && password?.touched) {
+          <div class="error">
+            @if (password?.errors?.['required']) {
+              <span>Hace falta una contraseña.</span>
+            }
+            @if (password?.errors?.['minlength']) {
+              <span>Mínimo {{ minimo }} caracteres.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="repetida">Repítela</label>
+        <input
+          id="repetida"
+          type="password"
+          formControlName="repetida"
+          placeholder="La misma otra vez"
+          [class.input-error]="formulario.errors?.['noCoinciden'] && repetida?.touched"
+        />
+        @if (formulario.errors?.['noCoinciden'] && repetida?.touched) {
+          <div class="error">Las dos no son iguales.</div>
+        }
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary btn-full"
+        [disabled]="formulario.invalid || enviando()"
+      >
+        {{ enviando() ? 'Guardando…' : 'Guardar y entrar' }}
+      </button>
+    </form>
+  } @else {
+    <p class="pie">
+      <a routerLink="/auth/olvide">Pide otro enlace</a>
+    </p>
+  }
+</app-panel-cuenta>

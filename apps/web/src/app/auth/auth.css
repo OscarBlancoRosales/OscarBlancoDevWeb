@@ -100,3 +100,32 @@
   .tool-card { padding: 24px 16px; }
   .tool-title { font-size: 16px; }
 }
+/* Lo que ha ido bien. Mismo peso visual que .error, otro color: si el aviso de
+   éxito se lee más flojo que el de fallo, la gente cree que algo falló. */
+.aviso {
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+  padding: 8px 12px;
+  margin-top: 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* El error de un campo va pegado a su campo; este es el de toda la pantalla. */
+.error-bloque {
+  border-left: 2px solid currentColor;
+  padding: 8px 12px;
+  margin-top: 16px;
+  line-height: 1.5;
+}
+
+/* Los enlaces de debajo del formulario: a dónde ir si esta no era tu pantalla. */
+.pie {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--fg-dim, #7a7a7a);
+}
+
+.pie a {
+  color: var(--accent);
+}

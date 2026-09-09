@@ -1,0 +1,19 @@
+<app-terminal-layout [title]="'Cuenta — ' + titulo">
+  <div class="tool-content">
+    <div class="tool-card">
+      <h2 class="tool-title">&gt; {{ titulo }}</h2>
+      @if (subtitulo) {
+        <p class="tool-subtitle">{{ subtitulo }}</p>
+      }
+
+      <ng-content />
+
+      @if (aviso) {
+        <div class="aviso">{{ aviso }}</div>
+      }
+      @if (error) {
+        <div class="error error-bloque">{{ error }}</div>
+      }
+    </div>
+  </div>
+</app-terminal-layout>

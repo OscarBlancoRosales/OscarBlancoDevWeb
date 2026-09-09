@@ -1,0 +1,23 @@
+<app-panel-cuenta titulo="Verificar la cuenta" [error]="estado() === 'fallo' ? error() : ''">
+  @switch (estado()) {
+    @case ('comprobando') {
+      <p class="tool-subtitle">Comprobando el enlace…</p>
+    }
+    @case ('activada') {
+      <p class="aviso">Cuenta activada. Ya puedes entrar.</p>
+      <p class="pie"><a routerLink="/auth">Ir a iniciar sesión</a></p>
+    }
+    @case ('fallo') {
+      <!--
+        Un enlace caducado o ya usado es el caso normal, no una avería: el
+        token se gasta al activarla, así que abrir el correo dos veces acaba
+        aquí. Por eso el camino de salida es pedir otro, no reintentar.
+      -->
+      <p class="pie">
+        Si el enlace ha caducado o ya lo habías usado,
+        <a routerLink="/auth/registro">vuelve a darte de alta</a>
+        y te mandamos uno nuevo.
+      </p>
+    }
+  }
+</app-panel-cuenta>

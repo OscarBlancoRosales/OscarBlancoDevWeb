@@ -14,6 +14,12 @@ const TS_EXTRA = {
   '@typescript-eslint/no-explicit-any': 'error',
   '@typescript-eslint/explicit-module-boundary-types': 'error',
   '@typescript-eslint/no-non-null-assertion': 'error',
+  // El fallo que esta regla persigue es sacar un método de su objeto y perder
+  // el `this`. Un método ESTÁTICO no tiene ese problema: no hay instancia de la
+  // que separarlo. Sin esta excepción, cada `Validators.required` de cada
+  // formulario de Angular era un aviso, y once avisos que nunca son un fallo
+  // esconden a los que sí lo son.
+  '@typescript-eslint/unbound-method': ['error', { ignoreStatic: true }],
   // Interpolar un número en una plantilla es normal y no esconde ningún
   // `[object Object]`. Prohibirlo solo produce `String(...)` por todas partes.
   '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],

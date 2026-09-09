@@ -128,6 +128,14 @@ export const COMMANDS: CommandDef[] = [
     hidden: true,
   },
   {
+    id: 'registro',
+    aliases: ['registrarse', 'alta', 'signup', 'cuenta'],
+    group: 'nav',
+    descKey: 'cmd.registro',
+    route: '/auth/registro',
+    hidden: true,
+  },
+  {
     id: 'home',
     aliases: ['inicio', 'portada', '~'],
     group: 'nav',

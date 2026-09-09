@@ -27,6 +27,12 @@ describe('registro de comandos', () => {
     'scrum-poker', // se entra por /auth, que sí tiene comando
     'juegos/risk', // el lobby se abre desde /juegos
     'juegos/risk/mesa', // necesita una sala ya creada
+    'auth/olvide', // se llega desde el login, no se busca a propósito
+    // Estas dos son el destino de los enlaces del correo: sin el código que
+    // llevan en la dirección no hacen nada, así que un comando que lleve a
+    // ellas solo serviría para enseñar una pantalla rota.
+    'auth/verificar',
+    'auth/nueva-contrasena',
   ]);
 
   it('toda ruta navegable tiene un comando que lleva a ella', () => {

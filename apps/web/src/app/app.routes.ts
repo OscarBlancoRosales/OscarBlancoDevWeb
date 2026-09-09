@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { Console } from './console/console';
 import { Auth } from './auth/auth';
+import { Registro } from './auth/registro/registro';
+import { Verificar } from './auth/verificar/verificar';
+import { Olvide } from './auth/olvide/olvide';
+import { NuevaContrasena } from './auth/nueva-contrasena/nueva-contrasena';
 import { NameScreen } from './name-screen/name-screen';
 import { ScrumPoker } from './scrum-poker/scrum-poker';
 import { DniGenerator } from './dni-generator/dni-generator';
@@ -18,6 +22,13 @@ import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
 export const routes: Routes = [
   { path: '', component: Console },
   { path: 'auth', component: Auth },
+  { path: 'auth/registro', component: Registro },
+  // A estas dos llegan los enlaces del correo, con el código en la dirección.
+  // Las rutas las escribe el servidor al mandar el correo: si cambian aquí,
+  // hay que cambiarlas también en apps/server/src/auth/service.ts.
+  { path: 'auth/verificar', component: Verificar },
+  { path: 'auth/olvide', component: Olvide },
+  { path: 'auth/nueva-contrasena', component: NuevaContrasena },
   { path: 'name-screen', component: NameScreen },
   { path: 'scrum-poker', component: ScrumPoker },
   { path: 'dni-generator', component: DniGenerator },

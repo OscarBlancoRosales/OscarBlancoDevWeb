@@ -65,7 +65,7 @@ describe('Auth (iniciar sesión)', () => {
       component.loginForm.setValue({ email: 'oscar@ejemplo.com', password: 'mala' });
       await component.login();
       expect(ir).not.toHaveBeenCalled();
-      expect(component.errorMessage).toBe('Correo o contraseña incorrectos.');
+      expect(component.errorMessage()).toBe('Correo o contraseña incorrectos.');
     });
   });
 

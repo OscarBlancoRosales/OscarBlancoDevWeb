@@ -1,0 +1,48 @@
+<app-panel-cuenta
+  titulo="Contraseña olvidada"
+  subtitulo="Te mandamos un enlace para ponerla de nuevo"
+  [error]="error()"
+>
+  @if (hecho()) {
+    <!-- Mismo motivo que en el alta: decir si el correo existe convertiría
+         esta pantalla en un listado de quién tiene cuenta. -->
+    <p class="aviso">
+      Si ese correo tiene cuenta, le hemos mandado un enlace para cambiar la
+      contraseña. Caduca en una hora.
+    </p>
+    <p class="pie"><a routerLink="/auth">Volver a entrar</a></p>
+  } @else {
+    <form (ngSubmit)="pedir()" [formGroup]="formulario">
+      <div class="form-group">
+        <label for="email">Correo</label>
+        <input
+          id="email"
+          type="email"
+          formControlName="email"
+          placeholder="tu@correo.com"
+          [class.input-error]="email?.invalid && email?.touched"
+        />
+        @if (email?.invalid && email?.touched) {
+          <div class="error">
+            @if (email?.errors?.['required']) {
+              <span>Hace falta un correo.</span>
+            }
+            @if (email?.errors?.['email']) {
+              <span>Ese correo no tiene buena pinta.</span>
+            }
+          </div>
+        }
+      </div>
+
+      <button
+        type="submit"
+        class="btn btn-primary btn-full"
+        [disabled]="formulario.invalid || enviando()"
+      >
+        {{ enviando() ? 'Enviando…' : 'Mandar el enlace' }}
+      </button>
+    </form>
+
+    <p class="pie"><a routerLink="/auth">Ya me acuerdo, entrar</a></p>
+  }
+</app-panel-cuenta>

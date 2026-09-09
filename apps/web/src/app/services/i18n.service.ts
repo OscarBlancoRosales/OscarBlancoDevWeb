@@ -70,6 +70,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'cmd.iconos': { es: 'Iconos de app para iOS y Android', en: 'App icons for iOS and Android' },
   'cmd.throwdown': { es: 'Cronómetro de WODs del Tomelloso Throwdown', en: 'Tomelloso Throwdown WOD timer' },
   'cmd.login': { es: 'Identificarse en el sitio', en: 'Sign in to the site' },
+  'cmd.registro': { es: 'Crear una cuenta', en: 'Create an account' },
   'cmd.home': { es: 'Volver a esta terminal', en: 'Back to this terminal' },
   'cmd.whoami': { es: 'Quién hay detrás de todo esto', en: 'Who is behind all this' },
   'cmd.stack': { es: 'Tecnologías con las que trabajo', en: 'Technologies I work with' },

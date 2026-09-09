@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Router } from '@angular/router';
+import type { AbstractControl } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthApiService } from '../api/auth-api.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
@@ -33,14 +33,24 @@ export function safeNext(raw: string | null | undefined): string {
 
 @Component({
   selector: 'app-auth',
-  imports: [CommonModule, ReactiveFormsModule, TerminalLayout],
+  imports: [ReactiveFormsModule, RouterLink, TerminalLayout],
   templateUrl: './auth.html',
   styleUrl: './auth.css',
 })
 export class Auth implements OnInit {
   loginForm: FormGroup;
-  isLoading = false;
-  errorMessage = '';
+
+  /**
+   * En señales, porque los dos cambian DESPUÉS de un `await`.
+   *
+   * La aplicación corre sin zone.js: nadie vigila lo que ocurre cuando la
+   * petición vuelve, así que con campos normales el valor cambiaba y la
+   * pantalla se quedaba igual. Se veía como el peor de los fallos posibles en
+   * una pantalla de acceso: metías mal la contraseña y no pasaba nada de nada,
+   * ni error ni aviso.
+   */
+  readonly isLoading = signal(false);
+  readonly errorMessage = signal('');
 
   /**
    * Dónde vuelve el usuario después de identificarse. El lobby del RISK manda
@@ -73,11 +83,11 @@ export class Auth implements OnInit {
     return this.nextUrl;
   }
 
-  get email() {
+  get email(): AbstractControl | null {
     return this.loginForm.get('email');
   }
 
-  get password() {
+  get password(): AbstractControl | null {
     return this.loginForm.get('password');
   }
 
@@ -86,26 +96,26 @@ export class Auth implements OnInit {
       return;
     }
 
-    this.isLoading = true;
-    this.errorMessage = '';
+    this.isLoading.set(true);
+    this.errorMessage.set('');
 
-    const { email, password } = this.loginForm.value;
+    const { email, password } = this.loginForm.value as { email: string; password: string };
 
     try {
       // El token de acceso NO se guarda aquí: vive en memoria dentro del
       // cliente de la API. Lo que persiste es la cookie de refresco, que ningún
       // script puede leer. Guardarlo en localStorage sería regalárselo a
       // cualquier script inyectado en la página.
-      const usuario = await this.auth.entrar(String(email), String(password));
+      const usuario = await this.auth.entrar(email, password);
       localStorage.setItem('user_name', usuario.displayName);
 
       // Volver a donde el usuario quería ir (por defecto, crear sala de
       // Scrum Poker y poner nombre).
       await this.router.navigateByUrl(this.nextUrl);
     } catch (fallo) {
-      this.errorMessage = AuthApiService.mensajeDe(fallo);
+      this.errorMessage.set(AuthApiService.mensajeDe(fallo));
     } finally {
-      this.isLoading = false;
+      this.isLoading.set(false);
     }
   }
 
