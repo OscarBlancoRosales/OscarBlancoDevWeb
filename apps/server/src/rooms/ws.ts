@@ -127,6 +127,7 @@ export function roomSocket(service: RoomService): FastifyPluginCallbackTypebox {
             mensaje.texto,
             mensaje.comoLaSala ?? false,
             mensaje.origin,
+            mensaje.para,
           );
           if (negado) {
             suscriptor.send({ tipo: 'rechazada', code: negado.code, message: negado.message });

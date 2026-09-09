@@ -1,0 +1,120 @@
+* {
+  box-sizing: border-box;
+}
+
+.mesa {
+  padding: 20px 22px 32px;
+  color: #ccc;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.fase {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.titular h1 {
+  color: #0f0;
+  font-size: 20px;
+  margin: 0 0 6px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 22px rgba(0, 255, 0, 0.3);
+}
+
+.prompt {
+  color: #0a0;
+  margin-right: 6px;
+}
+
+.pie {
+  margin: 0;
+  color: #888;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.pie strong {
+  color: #cfc;
+}
+
+/* Uno al lado del otro cuando hay sitio, y uno debajo del otro cuando no: en un
+   móvil, dos tableros de diez columnas en la misma fila no se pueden ni tocar. */
+.tableros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+button {
+  border: 1px solid #2a2a2a;
+  background: #101010;
+  color: #ccc;
+  padding: 9px 14px;
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: #0a0;
+  color: #cfc;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+button.principal {
+  border-color: #0a0;
+  background: #0d160d;
+  color: #0f0;
+}
+
+button.principal:hover:not(:disabled) {
+  background: #123012;
+}
+
+.enlace {
+  border-style: dashed;
+}
+
+.punteria {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  margin: 0;
+  border-top: 1px solid #232323;
+  padding-top: 16px;
+}
+
+.punteria dt {
+  color: #888;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.punteria dd {
+  color: #0f0;
+  font-size: 16px;
+  margin: 0;
+}
+
+.aviso {
+  border: 1px solid #6a4a00;
+  background: #1a1405;
+  color: #fc6;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 0 0 16px;
+}

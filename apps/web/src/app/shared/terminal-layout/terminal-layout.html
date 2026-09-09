@@ -1,80 +1,82 @@
-<div class="terminal-window">
+<div class="terminal-window" [class.embedded]="embedded">
   <!-- ===== BARRA DE TÍTULO: la misma que la portada ===== -->
-  <div class="titlebar" (click)="closeMenuIfOpen()">
-    <button class="titlebar-left" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
-      <span class="tb-icon">❯_</span>
-      <span class="tb-path">oscar@obr</span>
-    </button>
-
-    <div class="titlebar-title">OBR Terminal{{ title ? ' — ' + title : '' }}</div>
-
-    <div class="titlebar-right">
-      <button
-        class="tb-btn"
-        (click)="openPalette(); $event.stopPropagation()"
-        [attr.aria-label]="i18n.t('console.paletteTitle')"
-        [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
-        ⌘
+  @if (!embedded) {
+    <div class="titlebar" (click)="closeMenuIfOpen()">
+      <button class="titlebar-left" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
+        <span class="tb-icon">❯_</span>
+        <span class="tb-path">oscar@obr</span>
       </button>
 
-      <button
-        class="lang-btn"
-        [class.active]="i18n.lang === 'es'"
-        (click)="i18n.setLang('es'); $event.stopPropagation()"
-        title="Español"
-        aria-label="Español">
-        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
-          <rect width="60" height="40" fill="#c60b1e" />
-          <rect y="10" width="60" height="20" fill="#ffc400" />
-        </svg>
-      </button>
-      <button
-        class="lang-btn"
-        [class.active]="i18n.lang === 'en'"
-        (click)="i18n.setLang('en'); $event.stopPropagation()"
-        title="English"
-        aria-label="English">
-        <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
-          <rect width="60" height="40" fill="#00247d" />
-          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
-          <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
-          <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
-          <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
-        </svg>
-      </button>
+      <div class="titlebar-title">OBR Terminal{{ title ? ' — ' + title : '' }}</div>
 
-      <button
-        class="tb-btn"
-        (click)="toggleMenu(); $event.stopPropagation()"
-        [title]="i18n.t('console.sectionsTitle')"
-        aria-label="Menu">
-        ≡
-      </button>
-
-      <div class="win-ctrl">
-        <button class="win-btn win-btn--close" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
-          ✕
+      <div class="titlebar-right">
+        <button
+          class="tb-btn"
+          (click)="openPalette(); $event.stopPropagation()"
+          [attr.aria-label]="i18n.t('console.paletteTitle')"
+          [title]="i18n.t('console.paletteTitle') + '  (Ctrl+K)'">
+          ⌘
         </button>
-      </div>
 
-      @if (menuOpen) {
-        <div class="menu-dropdown" (click)="$event.stopPropagation()">
-          <div class="menu-item" (click)="goHome($event)">
-            <span class="menu-icon">❯</span>
-            <span class="menu-name">terminal</span>
-            <span class="menu-alt">home</span>
-          </div>
-          @for (item of menuItems; track item.id) {
-            <div class="menu-item" (click)="navigate(item.route!, $event)">
-              <span class="menu-icon">❯</span>
-              <span class="menu-name">{{ item.id }}</span>
-              <span class="menu-alt">{{ item.aliases[0] }}</span>
-            </div>
-          }
+        <button
+          class="lang-btn"
+          [class.active]="i18n.lang === 'es'"
+          (click)="i18n.setLang('es'); $event.stopPropagation()"
+          title="Español"
+          aria-label="Español">
+          <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+            <rect width="60" height="40" fill="#c60b1e" />
+            <rect y="10" width="60" height="20" fill="#ffc400" />
+          </svg>
+        </button>
+        <button
+          class="lang-btn"
+          [class.active]="i18n.lang === 'en'"
+          (click)="i18n.setLang('en'); $event.stopPropagation()"
+          title="English"
+          aria-label="English">
+          <svg viewBox="0 0 60 40" width="19" height="13" aria-hidden="true">
+            <rect width="60" height="40" fill="#00247d" />
+            <path d="M0,0 L60,40 M60,0 L0,40" stroke="#fff" stroke-width="6" />
+            <path d="M0,0 L60,40 M60,0 L0,40" stroke="#cf142b" stroke-width="4" />
+            <path d="M30,0 V40 M0,20 H60" stroke="#fff" stroke-width="10" />
+            <path d="M30,0 V40 M0,20 H60" stroke="#cf142b" stroke-width="6" />
+          </svg>
+        </button>
+
+        <button
+          class="tb-btn"
+          (click)="toggleMenu(); $event.stopPropagation()"
+          [title]="i18n.t('console.sectionsTitle')"
+          aria-label="Menu">
+          ≡
+        </button>
+
+        <div class="win-ctrl">
+          <button class="win-btn win-btn--close" (click)="goHome($event)" [title]="i18n.t('console.backHome')">
+            ✕
+          </button>
         </div>
-      }
+
+        @if (menuOpen) {
+          <div class="menu-dropdown" (click)="$event.stopPropagation()">
+            <div class="menu-item" (click)="goHome($event)">
+              <span class="menu-icon">❯</span>
+              <span class="menu-name">terminal</span>
+              <span class="menu-alt">home</span>
+            </div>
+            @for (item of menuItems; track item.id) {
+              <div class="menu-item" (click)="navigate(item.route!, $event)">
+                <span class="menu-icon">❯</span>
+                <span class="menu-name">{{ item.id }}</span>
+                <span class="menu-alt">{{ item.aliases[0] }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
     </div>
-  </div>
+  }
 
   <!-- ===== LA HERRAMIENTA ===== -->
   <div class="terminal-body">
@@ -82,7 +84,7 @@
   </div>
 
   <!-- ===== BARRA DE ESTADO ===== -->
-  @if (showStatusBar) {
+  @if (showStatusBar && !embedded) {
     <div class="statusbar">
       <div class="status-left">
         <a href="https://github.com/oscarblanco-dev" target="_blank" rel="noopener" class="status-link">GitHub</a>

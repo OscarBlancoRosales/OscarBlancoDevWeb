@@ -193,13 +193,38 @@
 
 /* ===== CONTROLES ===== */
 
+/*
+  Al borde derecho y a media altura, NO en la esquina.
+  Las cuatro esquinas son de la interfaz de la partida —fase, jugadores, rastro
+  y cartas— y aquí el abanico de cartas se dibujaba justo encima del botón de
+  centrar. Esto es mobiliario del mapa, no del juego, así que se aparta.
+*/
 .board-controls {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+.board-controls:hover,
+.board-controls:focus-within {
+  opacity: 1;
+}
+
+/*
+  Con el dedo no hay `hover`, así que atenuar algo «hasta que pases por encima»
+  es atenuarlo para siempre. Medido en un móvil: los botones de vista se
+  quedaban al 45 % de opacidad y no había forma de subirlos.
+*/
+@media (hover: none) {
+  .board-controls {
+    opacity: 1;
+  }
 }
 
 .board-controls button {
@@ -227,8 +252,6 @@
 
 .board-tooltip {
   position: absolute;
-  left: 10px;
-  top: 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -336,4 +359,43 @@
   display: block;
   font-size: 0.7rem;
   color: var(--muted);
+}
+
+/*
+  Hueco anclado a un territorio.
+  Sin `transform`: la posición la calcula el componente, que es quien puede
+  medir la tarjeta y decidir si cabe encima del país o hay que ponerla debajo.
+*/
+.anchor-slot {
+  position: absolute;
+  z-index: 25;
+  /* El hueco no intercepta nada; lo que la sala meta dentro, sí. */
+  pointer-events: none;
+}
+
+.anchor-slot > * {
+  pointer-events: auto;
+}
+
+@media (pointer: coarse) {
+  /*
+    Con el dedo, 30 px no se aciertan. La misma regla de 44 px que rige en el
+    resto de la pantalla vale también para el mobiliario del mapa.
+  */
+  .board-controls button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/*
+  Con el dedo, acercar y alejar se hace con dos dedos.
+  Dos botones más ocupando el borde derecho son dos cosas que estorban para
+  hacer lo que ya se hace pellizcando. Se queda el de centrar, que no tiene
+  gesto equivalente y saca de un apuro cuando te has perdido en el mapa.
+*/
+@media (hover: none) {
+  .board-controls button:not(:last-child) {
+    display: none;
+  }
 }

@@ -1,0 +1,66 @@
+<app-terminal-layout title="Trivial de dev">
+  <div class="lobby">
+    <header class="cabecera">
+      <h1><span class="prompt">&gt;</span> Trivial de dev</h1>
+      <p class="subtitulo">
+        Un concurso de tres pruebas: test, estimación y pillar el fallo. Las respuestas viven en
+        el servidor, así que abrir las herramientas de desarrollo no te va a servir de nada.
+      </p>
+    </header>
+
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    @if (invitacion()) {
+      <section class="panel">
+        <h2>Te han invitado al concurso</h2>
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Concursante" />
+        </label>
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="unirse()">
+          {{ trabajando() ? 'Entrando…' : 'Entrar al concurso' }}
+        </button>
+      </section>
+    } @else if (conSesion()) {
+      <section class="panel">
+        <h2>Nuevo concurso</h2>
+
+        <label>
+          Nombre de la mesa
+          <input type="text" [(ngModel)]="nombreSala" maxlength="80" />
+        </label>
+
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Anfitrión" />
+        </label>
+
+        <fieldset class="rivales">
+          <legend>Contra quién</legend>
+          @for (opcion of rivales; track opcion.id) {
+            <label class="rival" [class.elegido]="rival === opcion.id">
+              <input type="radio" name="rival" [value]="opcion.id" [(ngModel)]="rival" />
+              <span class="nombre">{{ opcion.nombre }}</span>
+              <span class="descripcion">{{ opcion.descripcion }}</span>
+            </label>
+          }
+        </fieldset>
+
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="crear()">
+          {{ trabajando() ? 'Abriendo…' : 'Abrir la mesa' }}
+        </button>
+      </section>
+    } @else if (sesionResuelta()) {
+      <section class="panel">
+        <h2>Hace falta una cuenta para abrir una mesa</h2>
+        <p class="explicacion">
+          Solo para crearla: una sala sin dueño es una sala que nadie puede cerrar. Para concursar
+          en una mesa ajena basta con el enlace.
+        </p>
+        <a class="accion" routerLink="/auth">Entrar</a>
+      </section>
+    }
+  </div>
+</app-terminal-layout>

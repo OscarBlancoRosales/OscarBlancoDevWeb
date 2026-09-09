@@ -1,9 +1,16 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, Subscription, combineLatest } from 'rxjs';
-import { GameAction, GameMap, GameState } from '@devweb/shared/engine/types';
+import { GameAction, GameMap, GameState, TerritoryId } from '@devweb/shared/engine/types';
 import { currentPlayer, playerById } from '@devweb/shared/engine/engine';
 import { decideAction, StrategyBias } from '@devweb/shared/engine/ai/bot-brain';
-import { requestAdvice, requestChronicle, requestTurnPlan } from '@devweb/shared/engine/ai/ai-orchestrator';
+import {
+  requestAdvice,
+  requestChronicle,
+  requestReply,
+  requestTurnPlan,
+} from '@devweb/shared/engine/ai/ai-orchestrator';
+import { considerPact, pactReply } from '@devweb/shared/engine/ai/pacts';
+import { mentionedSeat } from '@devweb/shared/engine/ai/mentions';
 import { chronicleFor, hasChronicle } from '@devweb/shared/engine/ai/chronicle';
 import { rngFor } from '@devweb/shared/engine/rng';
 import {
@@ -122,6 +129,11 @@ export class RiskGameService implements OnDestroy {
    * no había forma de continuar.
    */
   private skippedPhases = new Set<string>();
+  /** Privados a bots que ya se han contestado, para no contestar dos veces. */
+  private answered = new Set<string>();
+  /** La primera emisión del chat es historia, no mensajes nuevos. */
+  private chatIsHistory = true;
+  private chatSubscription: Subscription | undefined;
   private currentBias: StrategyBias | undefined;
 
   constructor(private rooms: RiskRoomService) {}
@@ -161,10 +173,119 @@ export class RiskGameService implements OnDestroy {
 
       if (derived.state) this.afterStateUpdate(derived, snapshot?.upTo ?? 0);
     });
+
+    this.chatSubscription = this.rooms.chat$.subscribe((chat) => {
+      this.answerDirectMessages(chat);
+    });
+  }
+
+  /**
+   * Contesta a los privados dirigidos a un bot.
+   *
+   * Sólo lo hace el anfitrión, por la misma razón por la que sólo él mueve a
+   * los bots: si contestara cada navegador, un mensaje tendría tantas
+   * respuestas como gente hubiera mirando la partida.
+   */
+  private answerDirectMessages(chat: ChatEntry[]): void {
+    // Lo que ya estaba escrito al entrar no se contesta: si no, abrir una sala
+    // vieja dispararía una ráfaga de respuestas a conversaciones de ayer.
+    if (this.chatIsHistory) {
+      this.chatIsHistory = false;
+      for (const entry of chat) this.answered.add(entry.key);
+      return;
+    }
+
+    if (!this.isHost || !this.map) return;
+    const state = this.stateSubject.value;
+    if (!state || state.phase === 'game-over') return;
+
+    for (const entry of chat.slice(-10)) {
+      if (entry.kind !== 'player') continue;
+      if (this.answered.has(entry.key)) continue;
+      const seat = this.destinatario(entry);
+      if (!seat) continue;
+      this.answered.add(entry.key);
+      void this.replyAsBot(entry, seat);
+    }
+  }
+
+  /**
+   * A qué comandante va un mensaje.
+   *
+   * En su canal privado, al dueño del canal. En el general no hay destinatario
+   * —es lo que lo hace general— así que vale con nombrarlo, como en cualquier
+   * mesa. Antes un mensaje sin destinatario no lo contestaba nadie: escribir
+   * «Forja, no me ataques» delante de todos no le llegaba a Forja.
+   */
+  private destinatario(entry: ChatEntry): RoomSeat | undefined {
+    const bots = this.seats.filter((candidate) => candidate.kind === 'bot');
+    if (entry.to) return bots.find((candidate) => candidate.id === entry.to);
+    return mentionedSeat(bots, entry.text);
+  }
+
+  /**
+   * Pactos vivos: por bot, la ronda y lo que prometió no atacar.
+   *
+   * Vive aquí y no en el estado de la partida a propósito. El log de acciones
+   * es la verdad y tiene que poder reproducirse tal cual; un pacto no es una
+   * jugada, es lo que el anfitrión tiene en la cabeza al elegirla. Las jugadas
+   * que salen de él sí quedan en el log, así que la partida sigue siendo
+   * reproducible.
+   */
+  private pacts = new Map<string, { round: number; avoid: TerritoryId[] }>();
+
+  /** Lo que el modelo quiere, más lo que el bot haya prometido esta ronda. */
+  private biasWithPacts(botId: string, round: number): StrategyBias | undefined {
+    const pact = this.pacts.get(botId);
+    if (!pact || pact.round !== round || pact.avoid.length === 0) return this.currentBias;
+    return { ...(this.currentBias ?? {}), avoid: pact.avoid };
+  }
+
+  private async replyAsBot(entry: ChatEntry, seat: RoomSeat): Promise<void> {
+    const state = this.stateSubject.value;
+    if (!state || !this.map) return;
+
+    // Se valora el pacto ANTES de pedir palabras al modelo: quién acepta y
+    // quién no lo decide la posición, no el texto. Así funciona igual sin
+    // clave de IA, que es como se juega la mayoría de las veces.
+    const pact = considerPact(state, this.map, seat.id, entry.authorId, entry.text);
+    const acordado = pact.accepted && this.registerPact(seat.id, state.round, pact.territories);
+
+    const answer = await requestReply(state, this.map, seat.id, entry.text, this.aiSettings);
+    await this.rooms.sendChat(this.roomId, {
+      authorId: seat.id,
+      author: seat.name,
+      kind: 'bot',
+      // Si hay pacto, manda la frase que lo dice: lo que se promete tiene que
+      // quedar escrito con las mismas palabras que lo que se cumple.
+      text: acordado || pact.territories.length > 0 ? pactReply(this.map, pact) : answer.message,
+      origin: acordado || pact.territories.length > 0 ? 'local' : answer.source,
+      // Se contesta donde te han hablado: a un privado en privado, y a quien
+      // te nombra delante de todos, delante de todos. Contestar siempre en
+      // privado dejaba la pregunta a la vista y la respuesta escondida.
+      ...(entry.to !== undefined && { to: entry.authorId }),
+    });
+  }
+
+  /**
+   * Apunta un pacto si al bot le queda cupo esta ronda.
+   *
+   * Uno por ronda: sin tope, una conversación podría desactivar a un rival
+   * entero a base de mensajes, que es la partida que nadie quiere jugar.
+   */
+  private registerPact(botId: string, round: number, territories: TerritoryId[]): boolean {
+    const previo = this.pacts.get(botId);
+    if (previo && previo.round === round) return false;
+    this.pacts.set(botId, { round, avoid: [...territories] });
+    return true;
   }
 
   detach(): void {
     this.subscription?.unsubscribe();
+    this.chatSubscription?.unsubscribe();
+    this.chatSubscription = undefined;
+    this.answered.clear();
+    this.chatIsHistory = true;
     this.subscription = undefined;
     if (this.pendingTimer) clearTimeout(this.pendingTimer);
     this.pendingTimer = null;
@@ -175,6 +296,7 @@ export class RiskGameService implements OnDestroy {
     this.rejectedStreak = 0;
     this.rejectedKey = '';
     this.currentBias = undefined;
+    this.pacts.clear();
     this.stateSubject.next(null);
     this.derivedSubject.next(null);
     this.thinkingSubject.next(null);
@@ -313,7 +435,7 @@ export class RiskGameService implements OnDestroy {
       }
 
       const action =
-        decideAction(state, this.map, player.id, this.currentBias) ??
+        decideAction(state, this.map, player.id, this.biasWithPacts(player.id, state.round)) ??
         escapeAction(state, player.id);
       this.thinkingSubject.next(player.name);
       if (!action) {

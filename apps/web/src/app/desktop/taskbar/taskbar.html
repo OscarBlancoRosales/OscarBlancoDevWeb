@@ -1,0 +1,47 @@
+<div class="bar">
+  <button class="start" [class.open]="menuOpen" (click)="toggleMenu(); $event.stopPropagation()">
+    <span class="start-glyph">⊞</span>
+    <span class="start-text">{{ i18n.t('desk.start') }}</span>
+  </button>
+
+  <!-- Lo que hay abierto -->
+  <div class="tasks">
+    @for (w of windows; track w.id) {
+      <button
+        class="task"
+        [class.active]="w.id === activeId"
+        [class.min]="w.minimized"
+        (click)="toggled.emit(w.id)"
+        [title]="w.title">
+        <span class="task-icon">❯_</span>
+        <span class="task-name">{{ w.title }}</span>
+      </button>
+    }
+  </div>
+
+  <div class="tray">
+    <button class="tray-btn" (click)="nextTheme()" [title]="i18n.t('desk.nextTheme')">
+      <span class="swatch"></span>
+      <span class="tray-text">{{ themes.current }}</span>
+    </button>
+    <span class="clock">{{ clock() }}</span>
+  </div>
+</div>
+
+@if (menuOpen) {
+  <div class="menu-backdrop" (click)="closeMenu()"></div>
+  <div class="menu" (click)="$event.stopPropagation()">
+    <div class="menu-head">
+      <span class="menu-user">Oscar Blanco Rosales</span>
+      <span class="menu-sub">{{ i18n.t('desk.menuSub') }}</span>
+    </div>
+    <div class="menu-list">
+      @for (item of items; track item.id) {
+        <button class="menu-item" (click)="open(item)">
+          <span class="menu-glyph">{{ item.glyph }}</span>
+          <span class="menu-label">{{ label(item) }}</span>
+        </button>
+      }
+    </div>
+  </div>
+}

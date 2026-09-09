@@ -104,6 +104,11 @@ Tono sobrio de parte de guerra: hablas de columnas, carreteras, puentes, frentes
 No glorificas a ningún bando ni insultas a nadie, no inventas cifras de bajas, y no narras represión ni violencia contra civiles.
 Si la nota dice que la historia se tuerce (ataca el bando que no lo hizo), cuéntalo como lo que es: una campaña que en la guerra real no ocurrió así.`;
 
+const REPLY_PROMPT = `Eres un rival en una partida de RISK y te acaban de escribir por privado. Hablas en español de España, en primera persona, breve.
+Respondes SIEMPRE con un único objeto JSON: {"mensaje":"<1 o 2 frases>"}
+Juegas para ganar: puedes pactar, mentir, amenazar o desviar la conversación, pero nunca revelas que eres un programa ni hablas de reglas del juego que no vengan en el tablero.
+Usa los nombres de los territorios, no los códigos. No insultes.`;
+
 const ADVISOR_PROMPT = `Eres el estratega personal de un jugador de RISK. Hablas en español de España, directo y sin rodeos.
 Respondes SIEMPRE con un único objeto JSON: {"mensaje":"<consejo concreto de 2 o 3 frases para este turno>"}
 Céntrate en qué hacer AHORA: dónde colocar refuerzos, qué atacar y qué riesgo tiene. Usa los nombres de los territorios, no los códigos.`;
@@ -281,6 +286,85 @@ export async function requestAdvice(
     const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
     if (!message) return { message: local, source: 'local' };
     return { message: message.slice(0, 400), source: 'llm' };
+  } catch {
+    return { message: local, source: 'local' };
+  }
+}
+
+/**
+ * Lo que contesta un bot cuando NO hay modelo de lenguaje.
+ *
+ * Tiene que existir: la mayoría de las partidas se juegan sin clave de IA, y
+ * un rival que no contesta cuando le hablas está roto. No finge ser listo —
+ * dice algo corto, en carácter, y siempre agarrado a la posición real: a quién
+ * ve como amenaza y qué frontera le preocupa.
+ */
+export function localReply(state: GameState, map: GameMap, botId: PlayerId): string {
+  const bot = playerById(state, botId);
+  if (!bot) return 'Ahora no.';
+
+  const traits = traitsOf(bot.botProfile);
+  const lider = standings(state)[0];
+  const amenaza = threatMap(state, map, botId)[0];
+  const mejor = rankedAttacks(state, map, botId, bot.botProfile ?? 'oportunista')[0];
+
+  const partes: string[] = [];
+  if (lider && lider.playerId !== botId) {
+    partes.push(`Mientras ${playerById(state, lider.playerId)?.name ?? 'ese'} siga arriba, hablamos.`);
+  }
+  if (amenaza) {
+    partes.push(`Lo que me quita el sueño es ${nombreDe(map, amenaza.id)}.`);
+  }
+  if (mejor && traits.aggression > 0.25) {
+    partes.push(`Y no me quites la vista de ${nombreDe(map, mejor.to)}.`);
+  }
+  return partes.length > 0 ? partes.join(' ') : 'Tomo nota.';
+}
+
+function nombreDe(map: GameMap, id: TerritoryId): string {
+  return map.territories.find((territory) => territory.id === id)?.name ?? id;
+}
+
+/**
+ * Respuesta de un bot a un mensaje privado del jugador.
+ *
+ * Igual de tolerante a fallos que el resto: si el modelo falla, tarda o
+ * devuelve basura, contesta el cerebro local. Nunca se queda callado, porque
+ * un rival mudo parece un rival roto.
+ */
+export async function requestReply(
+  state: GameState,
+  map: GameMap,
+  botId: PlayerId,
+  question: string,
+  settings: AiSettings,
+  options: { fetchImpl?: typeof fetch } = {},
+): Promise<{ message: string; source: 'llm' | 'local' }> {
+  const local = localReply(state, map, botId);
+  if (!settings.enabled) return { message: local, source: 'local' };
+
+  const bot = playerById(state, botId);
+  const traits = traitsOf(bot?.botProfile);
+  const messages: ChatMessage[] = [
+    {
+      role: 'system',
+      content: `${REPLY_PROMPT}\nTe llamas ${bot?.name ?? 'un rival'} y tu carácter es: ${traits.description}`,
+    },
+    {
+      role: 'user',
+      content: `${describeBoard(state, map, botId)}\n\nTe escriben: «${question.slice(0, 400)}»`,
+    },
+  ];
+
+  try {
+    const { text } = await chatWithFallback(settings, messages, {
+      maxTokens: 300,
+      ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
+    });
+    const parsed = extractJson<{ mensaje?: unknown }>(text);
+    const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
+    if (!message) return { message: local, source: 'local' };
+    return { message: message.slice(0, 300), source: 'llm' };
   } catch {
     return { message: local, source: 'local' };
   }

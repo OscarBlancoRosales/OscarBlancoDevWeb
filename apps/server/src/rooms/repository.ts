@@ -32,6 +32,8 @@ export interface ChatRow {
   readonly text: string;
   readonly origin: string | null;
   readonly at: number;
+  /** Asiento al que va dirigido. Nulo es el canal de todos. */
+  readonly dirigidoA: string | null;
 }
 
 export interface EventRow {
@@ -105,6 +107,7 @@ interface ChatRecord {
   text: string;
   origin: string | null;
   at: number;
+  to_seat: string | null;
 }
 
 interface EventRecord {
@@ -139,11 +142,11 @@ export function createRoomRepository(db: Db): RoomRepository {
     deleteSeat: db.prepare('DELETE FROM seats WHERE room_id = ? AND seat_id = ?'),
 
     appendChat: db.prepare(
-      'INSERT INTO room_chat (room_id, seq, author_id, author, kind, text, origin, at)' +
-        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO room_chat (room_id, seq, author_id, author, kind, text, origin, at, to_seat)' +
+        ' VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     ),
     listChat: db.prepare(
-      'SELECT * FROM (SELECT seq, author_id, author, kind, text, origin, at FROM room_chat' +
+      'SELECT * FROM (SELECT seq, author_id, author, kind, text, origin, at, to_seat FROM room_chat' +
         ' WHERE room_id = ? ORDER BY seq DESC LIMIT ?) ORDER BY seq',
     ),
     lastChatSeq: db.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM room_chat WHERE room_id = ?'),
@@ -253,6 +256,7 @@ export function createRoomRepository(db: Db): RoomRepository {
         entrada.text,
         entrada.origin,
         entrada.at,
+        entrada.dirigidoA,
       );
     },
     listChat(roomId, limite) {
@@ -264,6 +268,7 @@ export function createRoomRepository(db: Db): RoomRepository {
         text: row.text,
         origin: row.origin,
         at: row.at,
+        dirigidoA: row.to_seat ?? null,
       }));
     },
     lastChatSeq(roomId) {

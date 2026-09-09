@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
+import { PREGUNTAS_POR_PARTIDA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
 import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
@@ -77,6 +78,116 @@ describe('salas', () => {
       });
 
       expect(response.statusCode).toBe(400);
+    });
+
+    it('sienta a los bots pedidos, y solo esos', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'flota',
+          name: 'Contra la maquina',
+          displayName: 'Óscar',
+          bots: ['Almirante'],
+          config: { nivelBot: 'almirante' },
+        },
+      });
+      const grant = response.json<SeatGrant>();
+
+      expect(response.statusCode).toBe(201);
+      expect(grant.room.seats).toHaveLength(2);
+      expect(grant.room.seats.filter((seat) => seat.isBot)).toMatchObject([
+        { displayName: 'Almirante', isBot: true },
+      ]);
+      // El pase que se devuelve es el de la persona, no el del bot.
+      expect(grant.seatId).toBe(grant.room.seats.find((seat) => !seat.isBot)?.id);
+    });
+
+    it('no sienta mas bots de los que caben en la sala', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'flota',
+          name: 'Multitud',
+          displayName: 'Óscar',
+          bots: Array.from({ length: 20 }, (_, i) => `Bot ${i}`),
+        },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(db.prepare('SELECT COUNT(*) AS total FROM rooms').get()).toMatchObject({ total: 0 });
+    });
+
+    it('una sala de trivial nace con sus preguntas repartidas', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: { game: 'trivial', name: 'Concurso', displayName: 'Óscar' },
+      });
+      const grant = response.json<SeatGrant>();
+
+      expect(response.statusCode).toBe(201);
+      const fila = db
+        .prepare('SELECT config_json FROM rooms WHERE id = ?')
+        .get(grant.room.id) as { config_json: string };
+      const config = JSON.parse(fila.config_json) as { preguntas?: unknown[] };
+      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+    });
+
+    it('las preguntas del trivial no las elige quien crea la sala', async () => {
+      // Mandar las tuyas sería elegir las respuestas que ya te sabes.
+      const response = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: { authorization: `Bearer ${token}` },
+        payload: {
+          game: 'trivial',
+          name: 'Con trampa',
+          displayName: 'Óscar',
+          config: { preguntas: [{ id: 'mia', tipo: 'test', correcta: 0 }] },
+        },
+      });
+      const grant = response.json<SeatGrant>();
+
+      const fila = db
+        .prepare('SELECT config_json FROM rooms WHERE id = ?')
+        .get(grant.room.id) as { config_json: string };
+      const config = JSON.parse(fila.config_json) as { preguntas?: { id: string }[] };
+      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+      expect(config.preguntas?.some((p) => p.id === 'mia')).toBe(false);
+    });
+
+    it('la semilla del trivial no la elige quien crea la sala', async () => {
+      // Con la semilla en manos del cliente, las preguntas son reproducibles:
+      // se juega una partida, se apuntan las respuestas y se vuelve a crear la
+      // sala con la misma semilla. El banco escondido no serviría de nada.
+      const preguntasDe = async (semilla: number): Promise<string[]> => {
+        const grant = (
+          await app.inject({
+            method: 'POST',
+            url: '/salas',
+            headers: { authorization: `Bearer ${token}` },
+            payload: {
+              game: 'trivial',
+              name: 'Concurso',
+              displayName: 'Óscar',
+              config: { semilla },
+            },
+          })
+        ).json<SeatGrant>();
+
+        const fila = db
+          .prepare('SELECT config_json FROM rooms WHERE id = ?')
+          .get(grant.room.id) as { config_json: string };
+        const config = JSON.parse(fila.config_json) as { preguntas: { id: string }[] };
+        return config.preguntas.map((pregunta) => pregunta.id);
+      };
+
+      expect(await preguntasDe(1)).not.toEqual(await preguntasDe(1));
     });
 
     it('el pase se guarda hasheado, nunca en claro', async () => {

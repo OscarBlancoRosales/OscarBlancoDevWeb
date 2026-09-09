@@ -3,6 +3,7 @@ import {
   describeBoard,
   localPlan,
   requestAdvice,
+  requestReply,
   requestTurnPlan,
   sanitizePlan,
 } from './ai-orchestrator';
@@ -263,5 +264,67 @@ describe('orquestador de la IA', () => {
       });
       expect(advice.source).toBe('local');
     });
+  });
+});
+
+/**
+ * Que un rival conteste cuando le hablas.
+ *
+ * Lo importante no es que lo haga bien con IA —eso depende del modelo— sino
+ * que NUNCA se quede callado: la mayoría de las partidas se juegan sin clave,
+ * y un rival mudo parece un rival roto.
+ */
+describe('requestReply: los bots contestan', () => {
+  it('sin IA configurada contesta igual, con el cerebro local', async () => {
+    const answer = await requestReply(board(), TINY_MAP, 'p2', '¿pacto?', DEFAULT_AI_SETTINGS);
+    expect(answer.source).toBe('local');
+    expect(answer.message.length).toBeGreaterThan(0);
+  });
+
+  it('y lo que dice sale de la posición de verdad, no de una frase hecha', async () => {
+    const answer = await requestReply(board(), TINY_MAP, 'p2', '¿pacto?', DEFAULT_AI_SETTINGS);
+    const nombres = TINY_MAP.territories.map((t) => t.name);
+    expect(nombres.some((nombre) => answer.message.includes(nombre))).toBe(true);
+  });
+
+  it('usa la respuesta del modelo cuando la hay', async () => {
+    const fetchImpl = vi.fn(async () => reply({ mensaje: 'Trato hecho, por ahora.' }));
+    const answer = await requestReply(board(), TINY_MAP, 'p2', '¿pacto?', enabled(), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(answer.source).toBe('llm');
+    expect(answer.message).toBe('Trato hecho, por ahora.');
+  });
+
+  it('le pasa al modelo lo que le has dicho y quién es él', async () => {
+    let enviado = '';
+    const fetchImpl = vi.fn(async (_url: unknown, init: unknown) => {
+      enviado = (init as { body: string }).body;
+      return reply({ mensaje: 'vale' });
+    });
+    await requestReply(board(), TINY_MAP, 'p2', 'no toques Lleida', enabled(), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(enviado).toContain('no toques Lleida');
+    expect(enviado).toContain('Te llamas');
+  });
+
+  it('si el modelo falla, contesta el cerebro local', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new Error('nope');
+    });
+    const answer = await requestReply(board(), TINY_MAP, 'p2', '¿pacto?', enabled(), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(answer.source).toBe('local');
+    expect(answer.message.length).toBeGreaterThan(0);
+  });
+
+  it('y si el modelo devuelve basura, también', async () => {
+    const fetchImpl = vi.fn(async () => reply({ otra_cosa: true }));
+    const answer = await requestReply(board(), TINY_MAP, 'p2', '¿pacto?', enabled(), {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(answer.source).toBe('local');
   });
 });

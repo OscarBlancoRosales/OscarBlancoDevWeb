@@ -1,15 +1,102 @@
+/*
+  Esquina, no barra.
+  Sin `right: 0`: el bloque ocupa lo que ocupa su texto y el mapa se ve por
+  debajo y por al lado. Una barra que cruza la pantalla le quita sitio al mapa
+  siempre, juegue quien juegue y toque lo que toque.
+*/
 .hud {
   position: absolute;
   top: 0;
   left: 0;
-  right: 0;
+  /* El relleno cuenta dentro del ancho: si no, el tope de la mitad de la
+     pantalla se pasa de largo y se pisa con las fichas. */
+  box-sizing: border-box;
   z-index: 21;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 8px;
-  background: linear-gradient(rgba(4, 10, 8, 0.92), rgba(4, 10, 8, 0));
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 14px 14px 8px;
+  /* Veladura en dos direcciones: legible sobre el mapa sin dibujar un marco. */
+  background: radial-gradient(
+    ellipse at top left,
+    rgba(4, 10, 8, 0.92),
+    rgba(4, 10, 8, 0.6) 55%,
+    rgba(4, 10, 8, 0) 100%
+  );
   font-size: 13px;
+  /* El mapa sigue siendo pulsable en el hueco que deja el degradado. */
+  pointer-events: none;
+}
+
+.hud button,
+.hud .hud-reserve {
+  pointer-events: auto;
+}
+
+.hud-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-round {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.hud-phase {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Cuando la fase se puede cerrar deja de ser una etiqueta y se nota. */
+button.hud-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 255, 140, 0.12);
+  border: 1px solid rgba(0, 255, 140, 0.55);
+  border-radius: 999px;
+  color: #00e676;
+  cursor: pointer;
+  padding: 0 12px;
+  /* 44px: lo mínimo para que un dedo acierte sin pelearse. */
+  min-height: 44px;
+}
+
+.hud-go {
+  font-weight: 700;
+}
+
+.hud-reserve {
+  font-size: 15px;
+  font-weight: 700;
+  color: #00e676;
+}
+
+.hud-undo,
+.hud-reset,
+.hud-leave,
+.hud-history,
+.hud-settings {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.hud-undo,
+.hud-reset,
+.hud-history,
+.hud-settings {
+  font-size: 16px;
 }
 
 .hud.my-turn .hud-turn {
@@ -17,43 +104,64 @@
   font-weight: 700;
 }
 
-.hud-leave,
-.hud-settings {
-  background: none;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  /* 44px: lo mínimo para que un dedo acierte sin pelearse. */
-  min-width: 44px;
-  min-height: 44px;
-}
-
-.hud-settings {
-  font-size: 16px;
-}
-
+.hud-turn,
 .hud-thinking {
-  margin-left: auto;
-  opacity: 0.75;
-  font-style: italic;
-  white-space: nowrap;
-}
-
-.hud-thinking + .hud-turn {
-  margin-left: 0;
-}
-
-.hud-turn {
-  margin-left: auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 44vw;
+}
+
+.hud-thinking {
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.hud-line.tools {
+  margin-top: -6px;
+  opacity: 0.7;
+}
+
+.hud-line.tools:hover,
+.hud-line.tools:focus-within {
+  opacity: 1;
+}
+
+/*
+  Con el dedo no hay `hover`: atenuar «hasta que pases por encima» deja salir,
+  historial y ajustes atenuados para siempre. Medido en un móvil: 0,7 fijo.
+*/
+@media (hover: none) {
+  .hud-line.tools {
+    opacity: 1;
+  }
 }
 
 @media (max-width: 640px) {
-  /* En un móvil no caben las tres etiquetas: la fase ya la canta la barra de
-     abajo, que es donde está la acción. */
-  .hud-phase {
-    display: none;
+  /*
+    Medido a 390 px: sin este tope, el bloque de fase llegaba hasta la mitad de
+    la pantalla y se pisaba con las fichas de los jugadores. Cada uno se queda
+    en su mitad y el texto envuelve, que en un móvil es lo normal.
+  */
+  .hud {
+    font-size: 12px;
+    padding-right: 10px;
+    max-width: 50vw;
   }
+
+  .hud-line {
+    flex-wrap: wrap;
+  }
+
+  .hud-turn,
+  .hud-thinking,
+  .hud-hint {
+    max-width: 46vw;
+  }
+}
+
+.hud-hint {
+  opacity: 0.65;
+  font-size: 12px;
+  max-width: 46vw;
 }

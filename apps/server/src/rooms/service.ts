@@ -1,7 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
+import { repartir } from '../games/trivial/banco';
 import { moduleFor } from './registry';
 import type {
   GameId,
@@ -55,9 +56,17 @@ export class RoomService {
     displayName: string;
     ownerId: string;
     config?: Record<string, unknown>;
+    bots?: readonly string[];
   }): SeatGrant {
     if (!moduleFor(input.game)) {
       throw new AppError('no-encontrado', 'Ese juego no existe.');
+    }
+
+    const bots = input.bots ?? [];
+    // Se comprueba antes de insertar nada: una sala a medio sentar sería una
+    // sala que hay que limpiar a mano.
+    if (bots.length + 1 > this.maxSeats) {
+      throw new AppError('sala-llena', 'No caben tantos jugadores en una sala.');
     }
 
     const at = this.now();
@@ -67,13 +76,19 @@ export class RoomService {
       ownerId: input.ownerId,
       name: input.name.trim(),
       status: 'lobby',
-      config: input.config ?? {},
+      config: conLoQueElJuegoNecesite(input.game, input.config ?? {}),
       createdAt: at,
       updatedAt: at,
     };
     this.repository.insertRoom(room);
 
-    return this.sentar(room, input.displayName, input.ownerId);
+    const grant = this.sentar(room, input.displayName, input.ownerId);
+    for (const nombre of bots) this.sentar(room, nombre, null, { isBot: true });
+
+    // El pase que sale de aquí es el de la persona: los asientos de los bots se
+    // devuelven en la sala, pero su pase no sale del proceso porque nadie se va
+    // a conectar con él.
+    return { ...grant, room: this.toInfo(this.buscar(room.id)) };
   }
 
   /**
@@ -380,4 +395,29 @@ export class RoomService {
       updatedAt: room.updatedAt,
     };
   }
+}
+
+/**
+ * Añade a la configuración lo que el juego necesita y el cliente no puede poner.
+ *
+ * Hoy son las preguntas del Trivial, y por eso este es el único sitio del
+ * servicio que sabe de un juego concreto. La alternativa —que el módulo se
+ * trajera el banco— metería las respuestas en el bundle de la web, que es
+ * exactamente lo que este juego no puede permitirse.
+ *
+ * Se sobreescriben **las preguntas y la semilla**, y lo segundo importa tanto
+ * como lo primero: si la semilla la eligiera quien crea la sala, el reparto
+ * sería reproducible a voluntad —una partida para apuntar las respuestas, otra
+ * con la misma semilla para ganarla— y esconder el banco no habría servido de
+ * nada. Por eso sale de `randomInt`, y no del reloj: dos salas creadas en el
+ * mismo milisegundo traerían la misma tanda.
+ */
+function conLoQueElJuegoNecesite(
+  game: GameId,
+  config: Record<string, unknown>,
+): Record<string, unknown> {
+  if (game !== 'trivial') return config;
+
+  const semilla = randomInt(0, 2 ** 31);
+  return { ...config, semilla, preguntas: repartir(semilla) };
 }

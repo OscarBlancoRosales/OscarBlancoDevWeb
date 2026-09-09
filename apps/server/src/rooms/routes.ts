@@ -58,6 +58,7 @@ export function roomRoutes({ service, jwtSecret }: RoomRoutesOptions): FastifyPl
           displayName: request.body.displayName,
           ownerId: request.userId,
           ...(request.body.config !== undefined && { config: request.body.config }),
+          ...(request.body.bots !== undefined && { bots: request.body.bots }),
         });
         await reply.status(201).send(grant);
       },

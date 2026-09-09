@@ -6,6 +6,7 @@ import { RiskRoomService } from '../../services/risk-room.service';
 import { RiskGameService } from '../../services/risk-game.service';
 import { DEFAULT_CONFIG, PLAYER_COLORS } from '@devweb/shared/engine/engine';
 import { territoriesOf } from '@devweb/shared/engine/rules';
+import { CANAL_GENERAL } from '../risk-roster/risk-roster';
 
 const wait = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -155,6 +156,68 @@ describe('RiskRoom (la mesa)', () => {
       await component.fillWithBots();
       await wait();
       expect(new Set(component.seats.map((seat) => seat.color)).size).toBe(4);
+    });
+
+    /**
+     * La cara no es un adorno: durante la partida es tu ficha en el marcador y
+     * la puerta de tu conversación. Por eso se elige antes de empezar.
+     */
+    describe('elegir comandante', () => {
+      it('empieza con uno repartido, y elegir lo cambia', async () => {
+        const primero = component.myCommander;
+        expect(primero, 'siempre hay una cara, se elija o no').toBeDefined();
+
+        const otro = component.commanders.find((c) => c.id !== primero!.id)!;
+        await component.chooseCommander(otro.id);
+        await wait();
+        expect(component.myCommander?.id).toBe(otro.id);
+      });
+
+      it('no deja coger el que ya lleva otra persona', async () => {
+        // Otro humano en la mesa, no un bot: los bots no eligen comandante.
+        const rooms = TestBed.inject(RiskRoomService);
+        const otroAsiento = await rooms.claimSeat(roomId, {
+          name: 'Ana',
+          seatToken: 'ana-token',
+          color: PLAYER_COLORS[1],
+        });
+        await rooms.updateSeat(roomId, otroAsiento, { avatar: 'fantasma' });
+        await wait();
+
+        expect(component.commanderTaken('fantasma')).toBe(true);
+        await component.chooseCommander('fantasma');
+        await wait();
+        expect(component.myCommander?.id).not.toBe('fantasma');
+      });
+
+      /** Dos caras iguales rompen justo lo que la cara resuelve. */
+      it('el reparto nunca repite cara, mezcle elegidas y repartidas', async () => {
+        await component.fillWithBots();
+        await wait();
+        await component.chooseCommander(component.commanders[3].id);
+        await wait();
+        await component.startGame();
+        await wait(30);
+
+        const caras = component.rosterRows
+          .filter((row) => row.id !== 'advisor')
+          .map((row) => row.portrait);
+        expect(caras.every((cara) => !!cara)).toBe(true);
+        expect(new Set(caras).size).toBe(caras.length);
+      });
+
+      /** El bot agresivo tiene cara de bot agresivo: se reconoce sin leer. */
+      it('los bots llevan el retrato de su perfil, no uno elegido', async () => {
+        component.newBotProfile = 'vengativo';
+        await component.addBot();
+        await wait();
+        await component.startGame();
+        await wait(30);
+
+        const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+        const ficha = component.rosterRows.find((row) => row.id === bot.id)!;
+        expect(ficha.portrait).toContain('bots/vengativo.png');
+      });
     });
 
     it('el propietario puede quitar a otros pero no a sí mismo', async () => {
@@ -484,7 +547,7 @@ describe('RiskRoom (la mesa)', () => {
         // el mapa manda, y lo demás se abre cuando hace falta. Se abre pulsando
         // el botón, no tocando el campo: en zoneless, cambiarlo a mano después
         // del primer pintado da NG0100, y además nadie juega así.
-        mounted.fixture.nativeElement.querySelector('.bar-panel-historia').click();
+        mounted.fixture.nativeElement.querySelector('.hud-history').click();
         mounted.fixture.detectChanges();
         const panel = mounted.fixture.nativeElement.querySelector('.missions-panel');
         expect(panel).not.toBeNull();
@@ -505,11 +568,22 @@ describe('RiskRoom (la mesa)', () => {
       fixture.detectChanges();
     });
 
-    it('el mapa está siempre, y las barras y el marcador encima', () => {
+    it('el mapa está siempre, y las esquinas encima', () => {
       expect(fixture.nativeElement.querySelector('app-risk-board')).toBeTruthy();
       expect(fixture.nativeElement.querySelector('app-risk-hud')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-risk-scoreboard')).toBeTruthy();
-      expect(fixture.nativeElement.querySelector('app-risk-action-bar')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-roster')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('app-risk-cards')).toBeTruthy();
+    });
+
+    /**
+     * La barra de abajo cruzaba la pantalla de lado a lado, así que le quitaba
+     * sitio al mapa siempre. Cada acción se ha ido a vivir pegada a lo que
+     * modifica, y por eso no hace falta ninguna barra.
+     */
+    it('no queda ninguna barra que cruce la pantalla', () => {
+      expect(fixture.nativeElement.querySelector('app-risk-action-bar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.action-bar')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.bar')).toBeNull();
     });
 
     it('ya no quedan columnas: el mapa no comparte sitio con nadie', () => {
@@ -525,17 +599,32 @@ describe('RiskRoom (la mesa)', () => {
 
     it('abre un panel y cierra el anterior', () => {
       // Dos a la vez taparían el mapa, que es lo que se quería evitar.
-      fixture.nativeElement.querySelector('.bar-panel-chat').click();
+      fixture.nativeElement.querySelector('.hud-history').click();
       fixture.detectChanges();
-      expect(component.openPanel).toBe('chat');
-      fixture.nativeElement.querySelector('.bar-panel-cartas').click();
+      expect(component.openPanel).toBe('historia');
+      fixture.nativeElement.querySelector('.hud-settings').click();
       fixture.detectChanges();
-      expect(component.openPanel).toBe('cartas');
+      expect(component.openPanel).toBe('ia');
       expect(fixture.nativeElement.querySelectorAll('.panel-shell').length).toBe(1);
     });
 
+    /**
+     * Las cartas comparten el mismo hueco que los paneles aunque vivan en su
+     * esquina: dos cosas abiertas a la vez taparían el mapa, que es justo lo
+     * que se quería evitar.
+     */
+    it('abrir las cartas cierra el panel que hubiera', () => {
+      fixture.nativeElement.querySelector('.hud-history').click();
+      fixture.detectChanges();
+      fixture.nativeElement.querySelector('.cards-fan').click();
+      fixture.detectChanges();
+      expect(component.openPanel).toBe('cartas');
+      expect(fixture.nativeElement.querySelector('.panel-shell')).toBeNull();
+      expect(fixture.nativeElement.querySelector('.cards-sheet')).toBeTruthy();
+    });
+
     it('volver a pulsar el mismo lo cierra', () => {
-      const boton = fixture.nativeElement.querySelector('.bar-panel-chat');
+      const boton = fixture.nativeElement.querySelector('.hud-history');
       boton.click();
       fixture.detectChanges();
       boton.click();
@@ -543,27 +632,72 @@ describe('RiskRoom (la mesa)', () => {
       expect(component.openPanel).toBeNull();
     });
 
-    it('el marcador lleva una fila por jugador', () => {
-      expect(component.scoreRows.length).toBe(component.state!.players.length);
-      const nombres = component.scoreRows.map((r) => r.name).sort();
+    it('las fichas llevan una por jugador, con su cara', () => {
+      const fichas = component.rosterRows.filter((row) => row.id !== 'advisor');
+      const nombres = fichas.map((r) => r.name).sort();
       const esperados = component.state!.players.map((p) => p.name).sort();
       expect(nombres).toEqual(esperados);
+      // Dos jugadores no pueden compartir cara en la misma mesa.
+      expect(new Set(fichas.map((r) => r.portrait)).size).toBe(fichas.length);
     });
 
-    it('la repetición al mantener pulsado sólo se ofrece en refuerzos y en tu turno', () => {
-      expect(component.repeatOnHold).toBe(
-        component.isMyTurn && component.state!.phase === 'reinforce',
-      );
+    /**
+     * Colocar tropas: un toque es una tropa, y para poner muchas está el paso
+     * `− n +` pegado al territorio.
+     *
+     * Antes se mantenía pulsado para colocar en cadena, y medido en un móvil un
+     * toque normal —450 ms— colocaba dos: ponías de más sin saber por qué.
+     */
+    it('el paso cuenta lo puesto en ese territorio, y el − lo quita', async () => {
+      if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
+
+      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      expect(component.placedAt(mio)).toBe(0);
+
+      component.onTerritoryClick(mio);
+      expect(component.placedAt(mio), 'un toque, una tropa').toBe(1);
+
+      component.addOne(mio);
+      expect(component.placedAt(mio)).toBe(2);
+
+      await component.removeOne(mio);
+      expect(component.placedAt(mio)).toBe(1);
     });
 
-    it('el chat, las cartas, la partida y los ajustes tienen todos su sitio', () => {
+    it('y el paso se ancla al territorio que estás tocando', () => {
+      if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
+      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      component.onTerritoryClick(mio);
+      expect(component.anchorTerritory).toBe(mio);
+    });
+
+    /**
+     * Las cartas ya no son un panel: son su esquina, y se abren tocándolas.
+     * Sigue habiendo que comprobar que la puerta existe, porque quedarse sin
+     * poder canjear un trío bloquea la partida entera.
+     */
+    it('las cartas se abren tocando las cartas', () => {
+      fixture.nativeElement.querySelector('.cards-fan').click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.cards-sheet')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('.cards-trade')).toBeTruthy();
+    });
+
+    /** El chat dejó de ser un panel: es la ficha de cada jugador. */
+    it('se habla desde la ficha de cada jugador, no desde ningún panel', () => {
+      const fichas = fixture.nativeElement.querySelectorAll('app-risk-roster button.roster-row');
+      expect(fichas.length).toBeGreaterThan(0);
+      fichas[0].click();
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('app-risk-roster .thread')).toBeTruthy();
+    });
+
+    it('la partida y los ajustes tienen todos su sitio', () => {
       // Al quitar la columna lateral, nada puede quedarse sin puerta. Se abren
       // pulsando, no asignando el campo: en zoneless, cambiarlo a mano después
       // del primer pintado da NG0100, y además nadie juega así.
       const puertas: Array<[string, string]> = [
-        ['.bar-panel-chat', 'Chat'],
-        ['.bar-panel-cartas', 'Cartas'],
-        ['.bar-panel-historia', 'Partida'],
+        ['.hud-history', 'Partida'],
         ['.hud-settings', 'Ajustes de IA'],
       ];
       for (const [selector, titulo] of puertas) {
@@ -798,16 +932,163 @@ describe('RiskRoom (la mesa)', () => {
       expect(spy).toHaveBeenCalledWith(['/juegos/risk']);
     });
 
-    it('envía mensajes al chat', async () => {
-      await component.sendChat();
+    it('envía mensajes al canal de todos', async () => {
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('   ');
       expect(component.chat.filter((entry) => entry.kind === 'player')).toHaveLength(0);
-      component.chatDraft = '  a por ellos  ';
-      await component.sendChat();
+
+      await component.sendToThread('  a por ellos  ');
       await wait();
       const mine = component.chat.filter((entry) => entry.kind === 'player');
       expect(mine).toHaveLength(1);
       expect(mine[0].text).toBe('a por ellos');
-      expect(component.chatDraft).toBe('');
+      // Sin destinatario: eso es lo que lo hace general.
+      expect(mine[0].to).toBeUndefined();
+    });
+
+    /**
+     * Un privado no es un susurro cifrado: el mensaje viaja entero por la base
+     * de datos. Lo que se comprueba aquí es que es una conversación aparte y
+     * que no se cuela en el canal de todos.
+     */
+    it('un privado va marcado y no aparece en el canal general', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const otro = component.state!.players.find((p) => p.id !== component.seatId)!;
+      component.onThreadChange(otro.id);
+      await component.sendToThread('pacto?');
+      await wait();
+
+      const mine = component.chat.filter((entry) => entry.kind === 'player');
+      expect(mine).toHaveLength(1);
+      expect(mine[0].to).toBe(otro.id);
+
+      expect(component.threadLines.map((l) => l.text)).toContain('pacto?');
+      component.onThreadChange(CANAL_GENERAL);
+      expect(component.threadLines.map((l) => l.text)).not.toContain('pacto?');
+    });
+
+    /**
+     * Un rival que no contesta cuando le hablas está roto. Aquí no hay clave de
+     * IA, así que contesta el cerebro local: eso es exactamente lo que hay que
+     * comprobar, porque es el caso de la mayoría de las partidas.
+     */
+    it('el bot al que escribes contesta, y sólo a ti', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+
+      const suyos = component.chat.filter((entry) => entry.authorId === bot.id && entry.to);
+      expect(suyos, 'el bot debería haber contestado').toHaveLength(1);
+      expect(suyos[0].to).toBe(component.seatId);
+      expect(suyos[0].text.length).toBeGreaterThan(0);
+
+      // Y su respuesta está en su hilo, no en el de todos.
+      expect(component.threadLines.map((l) => l.text)).toContain(suyos[0].text);
+      component.onThreadChange(CANAL_GENERAL);
+      expect(component.threadLines.map((l) => l.text)).not.toContain(suyos[0].text);
+    });
+
+    /**
+     * Hablar con un rival tiene que servir de algo. El pacto no cambia las
+     * reglas —el motor ni se entera— sino lo que el bot prefiere hacer.
+     */
+    describe('pactos', () => {
+      async function enPartida() {
+        await component.fillWithBots();
+        await wait();
+        await component.startGame();
+        await wait(30);
+        return component.seats.find((seat) => seat.kind === 'bot')!;
+      }
+
+      it('pedirle que no ataque algo concreto tiene respuesta con nombre y apellidos', async () => {
+        const bot = await enPartida();
+        const suyos = territoriesOf(component.state!, bot.id);
+        const vecino = component.map!.territories.find((t) => !suyos.includes(t.id))!;
+
+        component.onThreadChange(bot.id);
+        await component.sendToThread(`no ataques ${vecino.name}`);
+        await wait(80);
+
+        const respuesta = component.chat.filter((e) => e.authorId === bot.id && e.to).at(-1);
+        expect(respuesta, 'el bot debería contestar al pacto').toBeDefined();
+        expect(respuesta!.text).toContain(vecino.name);
+      });
+
+      it('si no le pides nada concreto, no hay pacto que valorar', async () => {
+        const bot = await enPartida();
+        component.onThreadChange(bot.id);
+        await component.sendToThread('hola, ¿qué tal?');
+        await wait(80);
+
+        const respuesta = component.chat.filter((e) => e.authorId === bot.id && e.to).at(-1);
+        expect(respuesta).toBeDefined();
+        // Contesta, pero no promete nada.
+        expect(respuesta!.text).not.toContain('Trato hecho');
+      });
+    });
+
+    it('no contesta dos veces al mismo mensaje', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+      await component.sendToThread('¿entonces?');
+      await wait(60);
+
+      const suyos = component.chat.filter((entry) => entry.authorId === bot.id && entry.to);
+      expect(suyos).toHaveLength(2);
+    });
+
+    /**
+     * El aviso de «escribiendo…» existe para el hueco entre tu mensaje y la
+     * respuesta, que sólo se nota cuando contesta un modelo de lenguaje por la
+     * red: el cerebro local contesta en el mismo suspiro.
+     *
+     * Así que se prueba la regla, no la carrera: se suelta el servicio para
+     * que nadie conteste y se comprueba que el aviso aparece y desaparece.
+     */
+    it('mientras no ha contestado, la ficha avisa de que está escribiendo', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      const bot = component.seats.find((seat) => seat.kind === 'bot')!;
+      component.onThreadChange(bot.id);
+      expect(component.threadWaiting).toBe(false);
+
+      TestBed.inject(RiskGameService).detach();
+      await component.sendToThread('¿pacto?');
+      await wait(60);
+      expect(component.threadWaiting, 'nadie ha contestado todavía').toBe(true);
+    });
+
+    it('y en el canal de todos no se espera a nadie', async () => {
+      await component.fillWithBots();
+      await wait();
+      await component.startGame();
+      await wait(30);
+
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('hola a todos');
+      await wait(60);
+      expect(component.threadWaiting).toBe(false);
     });
 
     it('el consejero responde bajo demanda una vez empezada la partida', async () => {
@@ -819,12 +1100,12 @@ describe('RiskRoom (la mesa)', () => {
       await wait();
       expect(component.advice.length).toBeGreaterThan(0);
       expect(component.advice.at(-1)!.author).toBe('Estratega IA');
-      expect(component.panel).toBe('chat');
+      expect(component.openThread).toBe('advisor');
     });
 
     it('mezcla chat y consejos ordenados por hora', async () => {
-      component.chatDraft = 'hola';
-      await component.sendChat();
+      component.onThreadChange(CANAL_GENERAL);
+      await component.sendToThread('hola');
       await component.askAdvisor();
       await wait();
       const feed = component.chatFeed;
@@ -906,7 +1187,7 @@ describe('RiskRoom (la mesa)', () => {
 
       // Y la mesa lo anuncia en pantalla.
       mounted.fixture.detectChanges();
-      const victory = mounted.fixture.nativeElement.querySelector('.action-block.victory');
+      const victory = mounted.fixture.nativeElement.querySelector('.victory-overlay');
       expect(victory).toBeTruthy();
       expect(victory.textContent).toContain(winner.name);
       expect(victory.textContent).toContain('ha ganado la partida');

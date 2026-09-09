@@ -60,7 +60,16 @@ export class RoomSocket {
    * del asiento. `comoAsiento` sirve para los bots, que los mueve un cliente, y
    * `comoLaSala` para los avisos del anfitrión.
    */
-  decir(texto: string, opciones: { comoAsiento?: string; comoLaSala?: boolean; origin?: string } = {}): void {
+  decir(
+    texto: string,
+    opciones: {
+      comoAsiento?: string;
+      comoLaSala?: boolean;
+      origin?: string;
+      /** Asiento al que va dirigido. Sin esto, es para todos. */
+      para?: string;
+    } = {},
+  ): void {
     this.mandar({ tipo: 'chat', texto, ...opciones });
   }
 

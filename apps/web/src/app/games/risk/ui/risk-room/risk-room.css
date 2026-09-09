@@ -10,26 +10,28 @@
   --line: #23302b;
   --panel: linear-gradient(165deg, #141a17 0%, #0b0e0d 100%);
   --ink: #d6e8de;
-  --ink-dim: var(--muted);
+  --ink-dim: #8b9c93;
   --ink-faint: #6a7a72;
   --neon: #00e676;
-  --danger: var(--error);
+  --danger: #ff5f57;
 }
 
+/*
+ * La sala de espera CRECE y se desplaza; la partida no.
+ *
+ * Antes esto llevaba `height: 100%` y `overflow: hidden`, que es lo que la
+ * pantalla de juego necesita —el mapa llega al borde y ahí no se desplaza
+ * nada— pero se aplicaba también a la sala de espera. En un móvil eso
+ * significaba que todo lo que no cupiera en una pantalla quedaba cortado y sin
+ * forma de llegar a ello: los comandantes, los bots y el botón de empezar.
+ * Quien manda en el alto sigue siendo el armazón del sitio, que ya se desplaza.
+ */
 .room {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 12px 14px 16px;
-  /*
-   * `100%` y no `100dvh`. Lo probé con `dvh` pensando en la barra del navegador
-   * del móvil y era peor: la mesa vive DENTRO del armazón del sitio, que ya se
-   * lleva su parte de alto, así que pedir la pantalla entera empujaba la barra
-   * de acción por debajo del borde. Quien manda en el alto es el armazón.
-   */
-  height: 100%;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 100%;
   color: var(--ink);
 }
 
@@ -45,6 +47,9 @@
   padding: 0;
   gap: 0;
   height: 100%;
+  min-height: 0;
+  /* Jugando sí: el mapa ocupa el hueco exacto y nada se desplaza detrás. */
+  overflow: hidden;
 }
 
 /* ===== CABECERA ===== */
@@ -85,7 +90,7 @@
   font-size: 10px;
   padding: 3px 9px;
   border-radius: 999px;
-  border: 1px solid var(--border);
+  border: 1px solid #2f3a34;
   color: var(--ink-dim);
   white-space: nowrap;
 }
@@ -120,7 +125,7 @@
 /* ===== BOTONES ===== */
 
 .btn {
-  border: 1px solid var(--border);
+  border: 1px solid #2f3a34;
   background: #101614;
   color: var(--ink);
   border-radius: 7px;
@@ -152,7 +157,7 @@
 
 .btn.go:hover:not(:disabled) {
   background: var(--neon);
-  color: var(--bg);
+  color: #04150b;
 }
 
 .btn.go.attack {
@@ -191,13 +196,13 @@
 
 .btn.start:hover:not(:disabled) {
   background: var(--neon);
-  color: var(--bg);
+  color: #04150b;
   box-shadow: 0 0 26px rgba(0, 230, 118, 0.35);
 }
 
 .ghost {
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid #2f3a34;
   color: var(--ink-dim);
   border-radius: 6px;
   padding: 4px 8px;
@@ -279,6 +284,19 @@
   align-items: start;
 }
 
+/*
+ * Por debajo de 900 px, una sola columna.
+ * `1fr 320px` en una pantalla de 390 dejaba la columna de la derecha —invitar,
+ * las reglas y el botón de empezar— fuera de la pantalla, y la de la izquierda
+ * aplastada a nada. No es que se viera mal: es que no se podía empezar la
+ * partida.
+ */
+@media (max-width: 900px) {
+  .waiting {
+    grid-template-columns: 1fr;
+  }
+}
+
 .waiting-main,
 .waiting-side {
   display: flex;
@@ -302,7 +320,7 @@
   padding: 9px 11px;
   border-radius: 8px;
   border: 1px solid #232b27;
-  background: var(--bg);
+  background: #0b100e;
 }
 
 .seat.me {
@@ -383,7 +401,7 @@
   text-align: left;
   border: 1px solid #232b27;
   border-radius: 8px;
-  background: var(--bg);
+  background: #0b100e;
   padding: 9px 11px;
   cursor: pointer;
   font-family: inherit;
@@ -489,21 +507,6 @@
  * de abajo, no pegadas al borde: ahí es donde está mirando el jugador cuando
  * acaba de tocar un territorio.
  */
-.sheet-layer {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 60px;
-  z-index: 23;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  pointer-events: none;
-}
-
-.sheet-layer > * {
-  pointer-events: auto;
-}
 
 .error.floating {
   position: absolute;
@@ -602,7 +605,7 @@
   padding: 7px 9px;
   border-radius: 7px;
   border: 1px solid transparent;
-  background: var(--bg);
+  background: #0b100e;
   transition: all 0.25s ease;
 }
 
@@ -673,37 +676,7 @@
 
 /* ===== BARRA DE ACCIÓN ===== */
 
-.action-bar {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--panel);
-  padding: 8px 10px;
-  display: flex;
-  align-items: center;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
-}
-
 /* Vacía no debe dejar un recuadro flotando sobre el mapa. */
-.action-bar:empty {
-  display: none;
-}
-
-.action-bar.my-turn {
-  border-color: rgba(0, 230, 118, 0.4);
-  box-shadow: 0 0 0 1px rgba(0, 230, 118, 0.08), 0 6px 24px rgba(0, 0, 0, 0.4);
-}
-
-.action-block {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.action-block.conquer {
-  animation: flash-in 0.4s ease-out;
-}
 
 @keyframes flash-in {
   from {
@@ -769,7 +742,7 @@
 }
 
 .dice-option {
-  border: 1px solid var(--border);
+  border: 1px solid #2f3a34;
   background: #101614;
   color: var(--ink-dim);
   border-radius: 6px;
@@ -791,15 +764,10 @@
   cursor: not-allowed;
 }
 
-.waiting-turn {
-  color: var(--ink-dim);
-  font-size: 12.5px;
-}
-
 .spinner {
   width: 12px;
   height: 12px;
-  border: 2px solid var(--border);
+  border: 2px solid #2f3a34;
   border-top-color: var(--neon);
   border-radius: 50%;
   display: inline-block;
@@ -812,31 +780,12 @@
   }
 }
 
-.victory {
-  gap: 14px;
-  font-size: 13px;
-}
-
 .victory-icon {
   font-size: 26px;
   filter: drop-shadow(0 0 12px rgba(255, 215, 64, 0.6));
 }
 
 /* ===== TIRA DE COMBATE ===== */
-
-.combat-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  padding: 8px 12px;
-  border-radius: 9px;
-  border: 1px solid #2b2320;
-  background: linear-gradient(90deg, rgba(255, 77, 109, 0.08), transparent 60%);
-  font-size: 11.5px;
-  color: var(--ink-dim);
-  animation: strip-in 0.35s ease-out;
-}
 
 @keyframes strip-in {
   from {
@@ -849,15 +798,6 @@
   }
 }
 
-.combat-label {
-  color: var(--ink);
-}
-
-.dice-group {
-  display: flex;
-  gap: 4px;
-}
-
 .die {
   width: 22px;
   height: 22px;
@@ -868,14 +808,6 @@
   font-weight: 700;
   color: #08110c;
   animation: die-roll 0.45s ease-out;
-}
-
-.dice-group.attacker .die {
-  background: linear-gradient(160deg, #ff8fa3, #ff4d6d);
-}
-
-.dice-group.defender .die {
-  background: linear-gradient(160deg, #9be7ff, #40c4ff);
 }
 
 @keyframes die-roll {
@@ -937,7 +869,7 @@
   padding: 0 4px;
   border-radius: 999px;
   background: var(--neon);
-  color: var(--bg);
+  color: #04150b;
   font-size: 9px;
   font-weight: 700;
   line-height: 15px;
@@ -952,7 +884,7 @@
 
 /* ===== CHAT ===== */
 
-.chat-feed,
+.event-feed,
 .event-feed {
   flex: 1;
   min-height: 140px;
@@ -962,17 +894,6 @@
   flex-direction: column;
   gap: 8px;
   padding-right: 4px;
-}
-
-.chat-msg {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 7px 9px;
-  border-radius: 8px;
-  background: var(--bg);
-  border-left: 2px solid var(--border);
-  animation: msg-in 0.25s ease-out;
 }
 
 @keyframes msg-in {
@@ -986,55 +907,11 @@
   }
 }
 
-.chat-msg.bot {
-  border-left-color: #a06cd5;
-  background: rgba(160, 108, 213, 0.06);
-}
-
-.chat-msg.advisor {
-  border-left-color: #ffd740;
-  background: rgba(255, 215, 64, 0.06);
-}
-
-.chat-msg.system {
-  border-left-color: #40c4ff;
-  background: rgba(64, 196, 255, 0.06);
-}
-
-.chat-author {
-  font-size: 10.5px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.llm-tag {
-  font-size: 8px;
-  letter-spacing: 0.6px;
-  padding: 1px 5px;
-  border-radius: 999px;
-  border: 1px solid rgba(160, 108, 213, 0.5);
-  color: #c39bff;
-}
-
-.chat-text {
-  font-size: 11.5px;
-  line-height: 1.55;
-  color: var(--ink);
-  word-break: break-word;
-}
-
-.chat-input {
-  display: flex;
-  gap: 6px;
-}
-
 .field {
   flex: 1;
   min-width: 0;
   background: #070b09;
-  border: 1px solid var(--border);
+  border: 1px solid #2f3a34;
   border-radius: 7px;
   padding: 8px 10px;
   color: var(--ink);
@@ -1046,17 +923,6 @@
 .field:focus {
   outline: none;
   border-color: var(--neon);
-}
-
-.btn.advisor {
-  border-color: rgba(255, 215, 64, 0.4);
-  color: #ffd740;
-}
-
-.btn.advisor:hover {
-  background: rgba(255, 215, 64, 0.12);
-  color: #ffd740;
-  box-shadow: 0 0 14px rgba(255, 215, 64, 0.2);
 }
 
 /* ===== EVENTOS ===== */
@@ -1094,54 +960,6 @@
 }
 
 /* ===== CARTAS ===== */
-
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
-  gap: 7px;
-}
-
-.risk-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 10px 6px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: linear-gradient(165deg, #131a16, #0a0e0c);
-  color: var(--ink);
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.18s ease;
-}
-
-.risk-card:hover {
-  border-color: #46584e;
-  transform: translateY(-2px);
-}
-
-.risk-card.selected {
-  border-color: var(--neon);
-  background: rgba(0, 230, 118, 0.1);
-  box-shadow: 0 0 16px rgba(0, 230, 118, 0.2);
-}
-
-.card-symbol {
-  font-size: 20px;
-}
-
-.card-kind {
-  font-size: 9.5px;
-  color: var(--neon);
-}
-
-.card-territory {
-  font-size: 9px;
-  color: var(--ink-faint);
-  text-align: center;
-  line-height: 1.3;
-}
 
 /* ===== FORMULARIO DE IA ===== */
 
@@ -1195,7 +1013,7 @@
 /* ===== SCROLLBARS ===== */
 
 .panel-body::-webkit-scrollbar,
-.chat-feed::-webkit-scrollbar,
+.event-feed::-webkit-scrollbar,
 .event-feed::-webkit-scrollbar {
   width: 7px;
 }
@@ -1224,10 +1042,6 @@
     font-size: 11px;
   }
 
-  .action-block {
-    gap: 7px;
-  }
-
   .btn.end {
     margin-left: 0;
     width: 100%;
@@ -1244,7 +1058,7 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   font-size: 0.72rem;
-  color: var(--text);
+  color: #b9c4cc;
   white-space: nowrap;
 }
 
@@ -1258,20 +1072,6 @@
 }
 
 /* ===== TROPAS ESPECIALIZADAS ===== */
-
-.troop-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-.troop-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #6e7681;
-}
 
 .troop-btn {
   display: inline-flex;
@@ -1359,13 +1159,13 @@
 .mission-who {
   font-size: 0.74rem;
   font-weight: 600;
-  color: var(--bright);
+  color: #e6edf3;
 }
 
 .mission-text {
   font-size: 0.74rem;
   line-height: 1.35;
-  color: var(--text);
+  color: #b9c4cc;
 }
 
 .mission-detail {
@@ -1401,4 +1201,412 @@
 
 .btn.undo:hover {
   background: rgba(255, 215, 64, 0.1);
+}
+
+/* ===================== CONTROLES PEGADOS A LA JUGADA ===================== */
+
+/*
+  Vive dentro del tablero, que es quien lo coloca sobre el territorio. No tiene
+  posición propia: la hereda del hueco anclado.
+*/
+.play-card {
+  /*
+   * Los eventos se reactivan AQUÍ, no en el tablero.
+   *
+   * El hueco que la sostiene es transparente al ratón —para que se pueda tocar
+   * el mapa por debajo— y el tablero intenta devolvérselos con
+   * `.anchor-slot > *`. Pero esta tarjeta es contenido proyectado: lleva el
+   * atributo de encapsulación de la SALA, no el del tablero, así que aquella
+   * regla no la alcanza nunca. El resultado era que el mapa se comía los clics
+   * y el `+` del paso no hacía nada.
+   */
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: max-content;
+  max-width: min(340px, 88vw);
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 255, 140, 0.35);
+  border-radius: 10px;
+  background: rgba(8, 18, 14, 0.96);
+  font-size: 13px;
+}
+
+.play-title {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.play-hint {
+  opacity: 0.7;
+}
+
+.play-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ===================== FIN DE PARTIDA ===================== */
+
+/*
+  Un cartel en medio de la pantalla, que es lo contrario de lo que hace el
+  resto de la interfaz. Aquí está justificado: detrás no queda nada que hacer.
+*/
+.victory-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 35;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 20px 26px;
+  border: 1px solid rgba(0, 255, 140, 0.45);
+  border-radius: 14px;
+  background: rgba(8, 18, 14, 0.97);
+  text-align: center;
+}
+
+.victory-icon {
+  font-size: 34px;
+}
+
+/* ===================== EL RASTRO ===================== */
+
+/*
+  Abajo a la izquierda. Sin marco y sin fondo propio: es un rastro de lo último
+  que ha pasado, no un panel que haya que abrir y cerrar. El resultado del
+  combate vivía en una tira que cruzaba la pantalla entera.
+*/
+.trail {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(46vw, 420px);
+  font-size: 12px;
+  /* No intercepta nada: por debajo sigue estando el mapa. */
+  pointer-events: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.trail-combat {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.trail-where {
+  font-weight: 700;
+}
+
+.trail-combat .die {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  border: 1px solid rgba(0, 255, 140, 0.4);
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.trail-combat .die.def {
+  border-color: rgba(255, 120, 120, 0.5);
+}
+
+.trail-losses {
+  opacity: 0.7;
+}
+
+.trail-conquered {
+  color: #00e676;
+  font-weight: 700;
+}
+
+.trail-line {
+  margin: 0;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trail-author {
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  /* En un móvil el rastro compite con la conversación, que sube desde abajo. */
+  .trail {
+    max-width: 62vw;
+    bottom: 62px;
+  }
+}
+
+/* ===================== ELEGIR CARA ===================== */
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ===================== ELEGIR COMANDANTE ===================== */
+
+.commander-picker {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line, rgba(0, 255, 140, 0.18));
+}
+
+.picker-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.picker-head h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.75;
+}
+
+.picker-mine {
+  color: #00e676;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.commander-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 8px;
+}
+
+/*
+  La carta es el retrato: la cara ocupa casi todo y el nombre va debajo, sobre
+  el propio retrato. Elegir personaje se hace mirando caras, no leyendo una
+  lista de nombres.
+*/
+.commander-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 2px solid rgba(0, 255, 140, 0.18);
+  border-radius: 10px;
+  background: #eef2ee;
+  color: #0b1310;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.commander-card:hover:not(:disabled) {
+  border-color: rgba(0, 255, 140, 0.6);
+  transform: translateY(-2px);
+}
+
+.commander-card.mine {
+  border-color: #00e676;
+  box-shadow: 0 0 18px rgba(0, 230, 118, 0.35);
+}
+
+.commander-card:disabled {
+  cursor: default;
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.commander-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: center 18%;
+}
+
+.commander-name {
+  padding: 5px 7px 0;
+  background: #0b1310;
+  color: #d8f5e4;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.commander-tagline {
+  padding: 1px 7px 7px;
+  background: #0b1310;
+  color: #8fb9a2;
+  font-size: 0.68rem;
+  line-height: 1.25;
+}
+
+/* Ocupado se dice encima de la cara, que es donde se está mirando. */
+.commander-taken {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(11, 19, 16, 0.9);
+  color: #ffb300;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* La cara en la lista de asientos: pequeña, con el aro de su color. */
+.seat-portrait {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 2px solid #444;
+  border-radius: 50%;
+  background: #eef2ee;
+  overflow: hidden;
+}
+
+.seat-portrait img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 20%;
+  transform: scale(1.3);
+}
+
+/*
+ * La cara del perfil, en fila y pequeña.
+ *
+ * La puse a lo ancho de la tarjeta con proporción cuadrada, y cinco cuadrados
+ * de ciento cincuenta píxeles convertían «rellenar con IA» en el bloque más
+ * grande de la pantalla, por encima incluso de elegir comandante. Elegir un
+ * bot es marcar una casilla; elegir comandante es mirar caras. No merecen el
+ * mismo tamaño.
+ */
+.profile-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  align-items: center;
+}
+
+.profile-face {
+  grid-row: 1 / 3;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  object-position: center 15%;
+  border-radius: 50%;
+  background: #eef2ee;
+}
+
+.profile-card .profile-name {
+  align-self: end;
+}
+
+.profile-card .profile-desc {
+  align-self: start;
+}
+
+/* ===================== EL PASO DE TROPAS ===================== */
+
+/*
+  Grande a propósito. Es el control que más se usa en todo el juego y el que
+  más veces se toca seguidas: si falla un toque de cada cinco, la fase entera
+  se vuelve una pelea.
+*/
+.play-row.stepper {
+  gap: 10px;
+}
+
+.step-btn {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid rgba(0, 255, 140, 0.45);
+  border-radius: 12px;
+  background: rgba(0, 255, 140, 0.12);
+  color: #00e676;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
+  /* Sin esto, mantener pulsado en un móvil selecciona el signo. */
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+.step-btn:active:not(:disabled) {
+  background: rgba(0, 255, 140, 0.28);
+}
+
+.step-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.step-count {
+  min-width: 34px;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.step-left {
+  opacity: 0.7;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  /*
+    El rastro, a una línea.
+    Tres líneas de conversación sobre el mapa en una pantalla de 390 px tapan
+    justo la mitad de abajo, que es por donde se juega con el pulgar.
+  */
+  .trail {
+    max-width: 78vw;
+  }
+
+  .trail-line:not(:last-child) {
+    display: none;
+  }
+
+  /*
+    El paso de tropas nunca por debajo del bloque de fase.
+    Anclado a un territorio que queda fuera de la pantalla por arriba, la
+    tarjeta se pegaba al borde superior y aterrizaba encima de la ronda, de la
+    fase y de las fichas a la vez.
+  */
+  .play-card {
+    max-width: min(300px, 92vw);
+  }
 }

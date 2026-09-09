@@ -51,25 +51,37 @@ export class Games {
       id: 'hundir-la-flota',
       name: 'Hundir la flota',
       tagline: 'Coordenadas, faroles y mucha paciencia',
-      description: 'Tableros ocultos, disparos por turnos y estadísticas de puntería al final.',
+      description:
+        'Tableros ocultos, disparos por turnos y estadísticas de puntería al final. Los barcos ' +
+        'que siguen a flote no viajan al navegador de nadie: los guarda el servidor.',
       icon: '🚢',
       players: '2 jugadores',
       duration: '10 – 20 min',
-      route: null,
-      status: 'en-obras',
-      highlights: ['En diseño'],
+      route: '/juegos/flota',
+      status: 'listo',
+      highlights: [
+        'Tres bots: grumete, marino y almirante',
+        'El tablero del rival no sale del servidor',
+        'Puntería de los dos al terminar',
+      ],
     },
     {
       id: 'trivial',
       name: 'Trivial de dev',
       tagline: 'Preguntas que duelen en la retro',
-      description: 'Preguntas de programación, historia de la informática y cultura de oficina.',
+      description:
+        'Un concurso con presentador: test, estimaciones y pillar el fallo en un trozo de ' +
+        'código. Programación, historia de la informática y cultura de oficina.',
       icon: '🧠',
       players: '2 – 8 jugadores',
       duration: '15 – 30 min',
-      route: null,
-      status: 'en-obras',
-      highlights: ['En diseño'],
+      route: '/juegos/trivial',
+      status: 'listo',
+      highlights: [
+        'Tres clases de prueba, no solo preguntas',
+        'Las respuestas se quedan en el servidor',
+        'Presentador con mucha labia y tres rivales de mesa',
+      ],
     },
   ];
 

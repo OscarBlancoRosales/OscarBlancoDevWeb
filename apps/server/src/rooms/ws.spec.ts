@@ -336,6 +336,71 @@ describe('una partida de scrum poker por WebSocket', () => {
       ana.cerrar();
     });
 
+    /**
+     * Un privado tiene que serlo de verdad.
+     *
+     * Mientras el chat vivía en la base de datos del navegador, un mensaje
+     * «privado» viajaba entero a todo el mundo y sólo se escondía al pintarlo:
+     * cualquiera con la consola abierta lo leía. Aquí el servidor decide a
+     * quién se lo manda, que es la única forma de que sea un secreto y no un
+     * disimulo.
+     */
+    describe('hablar en privado', () => {
+      it('el mensaje llega a los dos extremos', async () => {
+        const oscar = await conectar(anfitrion);
+        const ana = await conectar(invitada);
+
+        ana.enviar({ tipo: 'chat', texto: 'no ataques Cataluña', para: anfitrion.seatId });
+
+        const suyas = await ana.chat(1);
+        expect(suyas[0]).toMatchObject({ text: 'no ataques Cataluña', to: anfitrion.seatId });
+        const delOtro = await oscar.chat(1);
+        expect(delOtro[0]).toMatchObject({ text: 'no ataques Cataluña' });
+
+        oscar.cerrar();
+        ana.cerrar();
+      });
+
+      it('y NO llega a quien no es ninguno de los dos', async () => {
+        const tercero = (
+          await app.inject({
+            method: 'POST',
+            url: `/salas/${anfitrion.room.id}/unirse`,
+            payload: { displayName: 'Curioso' },
+          })
+        ).json<SeatGrant>();
+
+        const oscar = await conectar(anfitrion);
+        const ana = await conectar(invitada);
+        const curioso = await conectar(tercero);
+
+        ana.enviar({ tipo: 'chat', texto: 'esto no lo lee nadie más', para: anfitrion.seatId });
+        await oscar.chat(1);
+
+        // Algo público después, para tener una marca que el tercero SÍ recibe:
+        // si esperásemos sin más, un chat vacío no probaría nada.
+        ana.enviar({ tipo: 'chat', texto: 'buenas a todos' });
+        const suyas = await curioso.chat(1);
+
+        expect(suyas.map((e) => e.text)).toEqual(['buenas a todos']);
+        expect(suyas.some((e) => e.text.includes('no lo lee nadie'))).toBe(false);
+
+        oscar.cerrar();
+        ana.cerrar();
+        curioso.cerrar();
+      });
+
+      it('dirigirlo a un asiento que no está en la sala se rechaza', async () => {
+        const ana = await conectar(invitada);
+
+        ana.enviar({ tipo: 'chat', texto: 'hola', para: 'asiento-que-no-existe' });
+        const rechazo = await ana.esperarRechazo();
+
+        expect(rechazo).toMatchObject({ tipo: 'rechazada', code: 'sin-destinatario' });
+        ana.cerrar();
+      });
+    });
+
     it('firmar con el asiento de otra persona no cuela', async () => {
       const ana = await conectar(invitada);
 

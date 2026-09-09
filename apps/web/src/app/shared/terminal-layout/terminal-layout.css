@@ -327,3 +327,11 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* Dentro de una ventana del escritorio: sin marco propio y ocupando el hueco
+   que le da la ventana, que ya trae su barra de título y su borde. */
+.terminal-window.embedded {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

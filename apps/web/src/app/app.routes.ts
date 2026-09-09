@@ -20,7 +20,13 @@ import { IconGenerator } from './icon-generator/icon-generator';
 import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
 
 export const routes: Routes = [
-  { path: '', component: Console },
+  // El escritorio es ahora la puerta de entrada: quien llega ve de un vistazo
+  // todo lo que hay. La terminal sigue teniendo su propia dirección.
+  {
+    path: '',
+    loadComponent: () => import('./desktop/desktop').then((m) => m.Desktop),
+  },
+  { path: 'terminal', component: Console },
   { path: 'auth', component: Auth },
   { path: 'auth/registro', component: Registro },
   // A estas dos llegan los enlaces del correo, con el código en la dirección.
@@ -49,8 +55,27 @@ export const routes: Routes = [
     loadComponent: () => import('./games/games').then((m) => m.Games),
   },
   {
+    path: 'juegos/trivial',
+    loadComponent: () =>
+      import('./games/trivial/trivial-lobby/trivial-lobby').then((m) => m.TrivialLobby),
+  },
+  {
+    path: 'juegos/trivial/mesa',
+    loadComponent: () =>
+      import('./games/trivial/trivial-room/trivial-room').then((m) => m.TrivialRoom),
+  },
+  {
     path: 'juegos/risk',
     loadComponent: () => import('./games/risk/ui/risk-lobby/risk-lobby').then((m) => m.RiskLobby),
+  },
+  {
+    path: 'juegos/flota',
+    loadComponent: () =>
+      import('./games/flota/flota-lobby/flota-lobby').then((m) => m.FlotaLobby),
+  },
+  {
+    path: 'juegos/flota/mesa',
+    loadComponent: () => import('./games/flota/flota-room/flota-room').then((m) => m.FlotaRoom),
   },
   {
     path: 'juegos/risk/mesa',

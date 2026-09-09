@@ -1,5 +1,5 @@
 import { Injectable, NgZone } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { RoomSocket } from '../../../api/room-socket';
 import { RoomsApiService } from '../../../api/rooms-api.service';
 import { browserStorage } from '@devweb/shared/platform';
@@ -85,6 +85,8 @@ export interface RoomSeat {
   lastSeen: number;
   connected: boolean;
   isOwner: boolean;
+  /** Cara elegida en la sala de espera. Viaja en la metainformación del asiento. */
+  avatar?: string;
 }
 
 export interface LoggedActionEntry {
@@ -105,6 +107,14 @@ export interface ChatEntry {
   ts: number;
   /** 'llm' cuando el texto lo ha escrito un modelo de lenguaje. */
   origin?: 'llm' | 'local';
+  /**
+   * A quién va dirigido. Ausente es el canal de todos.
+   *
+   * Ahora sí es un secreto de verdad: el servidor no le manda un privado a
+   * quien no es ninguno de los dos extremos. Cuando esto vivía en Firebase el
+   * mensaje viajaba entero a todo el mundo y sólo se escondía al pintarlo.
+   */
+  to?: string;
 }
 
 export interface RoomSnapshot {
@@ -147,6 +157,10 @@ export class RiskRoomService {
   readonly log$: Observable<LoggedActionEntry[]> = this.logSubject.asObservable();
   readonly chat$: Observable<ChatEntry[]> = this.chatSubject.asObservable();
   readonly snapshot$: Observable<RoomSnapshot | null> = this.snapshotSubject.asObservable();
+
+  /** Lo que el servidor ha rechazado, para poder decirlo en pantalla. */
+  private rechazoSubject = new Subject<string>();
+  readonly rechazo$: Observable<string> = this.rechazoSubject.asObservable();
 
   constructor(
     private readonly rooms: RoomsApiService,
@@ -423,9 +437,13 @@ export class RiskRoomService {
       return;
     }
 
+    // Lo que no se copie aquí se pierde sin decir nada. El comandante elegido
+    // se quedaba fuera, así que en una sala de servidor pinchabas una cara y no
+    // pasaba nada: ni cambiaba la tuya ni los demás la veían ocupada.
     const meta: Record<string, unknown> = {};
     if (changes.color !== undefined) meta['color'] = changes.color;
     if (changes.botProfile !== undefined) meta['botProfile'] = changes.botProfile;
+    if (changes.avatar !== undefined) meta['avatar'] = changes.avatar;
     if (changes.name === undefined && Object.keys(meta).length === 0) return;
 
     const actual = this.seatsSubject.value.find((asiento) => asiento.id === seatId);
@@ -528,7 +546,15 @@ export class RiskRoomService {
    */
   async sendChat(
     roomId: string,
-    entry: { authorId: string; author: string; kind: ChatKind; text: string; origin?: 'llm' | 'local' },
+    entry: {
+      authorId: string;
+      author: string;
+      kind: ChatKind;
+      text: string;
+      origin?: 'llm' | 'local' | undefined;
+      /** Asiento al que va dirigido. Sin esto, es para todos. */
+      to?: string | undefined;
+    },
   ): Promise<void> {
     const text = entry.text.trim().slice(0, 600);
     if (!text) return;
@@ -541,6 +567,7 @@ export class RiskRoomService {
         text,
         ts: Date.now(),
         ...(entry.origin !== undefined && { origin: entry.origin }),
+        ...(entry.to !== undefined && { to: entry.to }),
       });
       this.emitLocal(roomId);
       return;
@@ -550,6 +577,7 @@ export class RiskRoomService {
       ...(entry.kind === 'bot' && { comoAsiento: entry.authorId }),
       ...(entry.kind === 'system' && { comoLaSala: true }),
       ...(entry.origin !== undefined && { origin: entry.origin }),
+      ...(entry.to !== undefined && { para: entry.to }),
     });
   }
 
@@ -606,6 +634,19 @@ export class RiskRoomService {
   private recibir(mensaje: ServerMessage): void {
     if (mensaje.tipo === 'chat') {
       this.chatSubject.next(mensaje.entradas.map(aChat));
+      return;
+    }
+    /*
+     * Un «no» del servidor se dice, no se traga.
+     *
+     * Esto se ignoraba, y el resultado era el peor posible para entender qué
+     * pasa: mandabas un privado a un rival, el servidor lo rechazaba —porque
+     * todavía no conocía el campo del destinatario— y en pantalla no ocurría
+     * absolutamente nada. Parecía que el chat estaba roto cuando lo que había
+     * era un servidor sin actualizar diciendo que no.
+     */
+    if (mensaje.tipo === 'rechazada') {
+      this.rechazoSubject.next(mensaje.message);
       return;
     }
     if (mensaje.tipo !== 'estado') return;
@@ -717,6 +758,7 @@ export function aSeat(seat: SeatInfo): RoomSeat {
     name: seat.displayName,
     kind: seat.isBot ? 'bot' : 'human',
     ...(typeof meta['botProfile'] === 'string' && { botProfile: meta['botProfile'] as BotProfile }),
+    ...(typeof meta['avatar'] === 'string' && { avatar: meta['avatar'] }),
     // La identidad del ocupante dentro del cliente es el propio asiento: el
     // pase no viaja a los demás, que es justo lo que antes sí pasaba.
     seatToken: seat.id,
@@ -737,6 +779,7 @@ export function aChat(entrada: {
   text: string;
   at: number;
   origin?: string;
+  to?: string | null;
 }): ChatEntry {
   return {
     key: entrada.seq.toString(36).padStart(10, '0'),
@@ -746,6 +789,7 @@ export function aChat(entrada: {
     text: entrada.text,
     ts: entrada.at,
     ...(entrada.origin === 'llm' || entrada.origin === 'local' ? { origin: entrada.origin } : {}),
+    ...(typeof entrada.to === 'string' && entrada.to ? { to: entrada.to } : {}),
   };
 }
 

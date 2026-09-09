@@ -3,7 +3,12 @@ import type { Static } from '@sinclair/typebox';
 
 const SIN_EXTRAS = { additionalProperties: false } as const;
 
-export const GameId = Type.Union([Type.Literal('scrum'), Type.Literal('risk')]);
+export const GameId = Type.Union([
+  Type.Literal('scrum'),
+  Type.Literal('risk'),
+  Type.Literal('flota'),
+  Type.Literal('trivial'),
+]);
 export const RoomStatus = Type.Union([
   Type.Literal('lobby'),
   Type.Literal('playing'),
@@ -19,6 +24,14 @@ export const CreateRoomRequest = Type.Object(
     name: Type.String({ minLength: 1, maxLength: 80 }),
     displayName: DisplayName,
     config: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+    /**
+     * Los rivales que no son personas, por su nombre.
+     *
+     * Se piden al crear la sala y no después porque un juego que empieza en
+     * cuanto está la mesa —la flota arranca al desplegar los dos bandos— no
+     * tiene un momento posterior en el que sentar a nadie.
+     */
+    bots: Type.Optional(Type.Array(DisplayName, { maxItems: 8 })),
   },
   SIN_EXTRAS,
 );
@@ -116,6 +129,13 @@ export const ChatEntry = Type.Object({
   text: Type.String(),
   origin: Type.Optional(Type.String()),
   at: Type.Integer(),
+  /**
+   * Asiento al que va dirigido. Ausente es el canal de todos.
+   *
+   * El servidor no le manda un privado a quien no es ninguno de los dos
+   * extremos, así que esto sólo llega a quien le toca.
+   */
+  to: Type.Optional(Type.String()),
 });
 
 // ---------------------------------------------------------------------------
@@ -151,6 +171,13 @@ export const ClientMessage = Type.Union([
        */
       comoLaSala: Type.Optional(Type.Boolean()),
       origin: Type.Optional(Type.String({ maxLength: 16 })),
+      /**
+       * Asiento al que va dirigido. Sin esto, el mensaje es para todos.
+       *
+       * El servidor comprueba que ese asiento existe en la sala: si no, el
+       * mensaje se rechaza en vez de quedarse escrito sin llegar a nadie.
+       */
+      para: Type.Optional(Type.String({ maxLength: 64 })),
     },
     SIN_EXTRAS,
   ),

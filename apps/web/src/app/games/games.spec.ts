@@ -32,6 +32,30 @@ describe('Games (portada de juegos)', () => {
     expect(risk.route).toBe('/juegos/risk');
   });
 
+  it('la flota aparece como jugable y apunta a su lobby', () => {
+    const flota = component.games.find((game) => game.id === 'hundir-la-flota');
+    expect(flota?.status).toBe('listo');
+    expect(flota?.route).toBe('/juegos/flota');
+  });
+
+  it('la flota anuncia el rival contra el que se juega', () => {
+    const flota = component.games.find((game) => game.id === 'hundir-la-flota');
+    expect(flota?.highlights.some((item) => item.toLowerCase().includes('bot'))).toBe(true);
+  });
+
+  it('el trivial aparece como jugable y apunta a su lobby', () => {
+    const trivial = component.games.find((game) => game.id === 'trivial');
+    expect(trivial?.status).toBe('listo');
+    expect(trivial?.route).toBe('/juegos/trivial');
+  });
+
+  it('el trivial anuncia que las respuestas no estan en el navegador', () => {
+    const trivial = component.games.find((game) => game.id === 'trivial');
+    expect(
+      trivial?.highlights.some((item) => item.toLowerCase().includes('servidor')),
+    ).toBe(true);
+  });
+
   it('anuncia los mapas disponibles de verdad', () => {
     const risk = component.games.find((game) => game.id === 'risk')!;
     expect(risk.highlights.some((item) => item.includes(String(RISK_MAPS.length)))).toBe(true);
@@ -59,9 +83,13 @@ describe('Games (portada de juegos)', () => {
   });
 
   it('no navega si el juego aún no está', () => {
+    // La tarjeta se fabrica aquí: hoy los tres juegos están terminados, y la
+    // regla tiene que seguir probada para el siguiente que entre en obras.
+    const enObras = { ...component.games[0], id: 'futuro', route: null, status: 'en-obras' as const };
     const router = TestBed.inject(Router);
     const spy = vi.spyOn(router, 'navigate').mockResolvedValue(true);
-    component.open(component.games.find((game) => !game.route)!);
+
+    component.open(enObras);
     expect(spy).not.toHaveBeenCalled();
   });
 

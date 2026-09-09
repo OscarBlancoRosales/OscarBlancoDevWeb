@@ -5,14 +5,6 @@
     *ngIf="rendered"
     [attr.viewBox]="rendered.viewBox"
     preserveAspectRatio="xMidYMid meet"
-    (wheel)="onWheel($event)"
-    (pointerdown)="onPointerDown($event)"
-    (pointermove)="onPointerMove($event)"
-    (pointerup)="onPointerUp()"
-    (pointerleave)="onPointerUp(); onTerritoryLeave()"
-    (touchstart)="onTouchStart($event)"
-    (touchmove)="onTouchMove($event)"
-    (touchend)="onTouchEnd()"
   >
     <defs>
       <!-- Fondo: rejilla tenue tipo carta náutica -->
@@ -42,7 +34,12 @@
     <rect class="sea" x="-4000" y="-4000" width="8000" height="8000" />
     <rect class="sea-grid" x="-4000" y="-4000" width="8000" height="8000" fill="url(#grid)" />
 
-    <g [attr.transform]="transform">
+    <!--
+      Sin `[attr.transform]` a propósito: el desplazamiento y el zoom se
+      escriben aquí a mano desde el componente. Atado a Angular, cada píxel de
+      arrastre repintaba el mapa entero.
+    -->
+    <g #viewport>
       <!-- Rutas marítimas -->
       <g class="routes">
         <path
@@ -55,16 +52,16 @@
       <!-- Territorios -->
       <g class="territories">
         <g
-          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          *ngFor="let territory of views; trackBy: trackView"
           class="territory"
-          [ngClass]="classesFor(territory)"
+          [ngClass]="territory.classes"
           (click)="onTerritoryClick(territory.id, $event)"
           (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
           (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >
-          <path class="territory-fill" [attr.d]="territory.path" [attr.fill]="ownerColorOf(territory.id)" />
+          <path class="territory-fill" [attr.d]="territory.path" [attr.fill]="territory.fill" />
           <path
             class="territory-continent"
             [attr.d]="territory.path"
@@ -77,19 +74,19 @@
       <!-- Fichas de ejércitos -->
       <g class="armies">
         <g
-          *ngFor="let territory of rendered.territories; trackBy: trackTerritory"
+          *ngFor="let territory of views; trackBy: trackView"
           class="army-badge"
-          [class.mine]="isMine(territory.id)"
-          [class.spotlight]="spotlight === territory.id"
-          [attr.transform]="'translate(' + territory.label.x + ' ' + territory.label.y + ')'"
+          [class.mine]="territory.mine"
+          [class.spotlight]="territory.spotlit"
+          [attr.transform]="territory.badgeTransform"
           (click)="onTerritoryClick(territory.id, $event)"
           (pointerdown)="onTerritoryPointerDown(territory.id, $event)"
           (pointerup)="onTerritoryPointerUp(territory.id, $event)"
           (mouseenter)="onTerritoryEnter(territory.id)"
           (mouseleave)="onTerritoryLeave()"
         >
-          <circle class="badge-ring" r="11" [attr.fill]="ownerColorOf(territory.id)" />
-          <text class="badge-text" y="4">{{ armiesOf(territory.id) }}</text>
+          <circle class="badge-ring" r="11" [attr.fill]="territory.fill" />
+          <text class="badge-text" y="4">{{ territory.armies }}</text>
           <!--
             Orografía: un glifo, no una trama sobre la silueta. Rellenar 42
             contornos de país con un patrón SVG deja el navegador clavado varios
@@ -98,10 +95,10 @@
           -->
           <text
             class="badge-terrain"
-            *ngIf="terrainGlyphOf(territory) as glyph"
+            *ngIf="territory.terrainGlyph as glyph"
             x="13"
             y="-6"
-            [attr.fill]="terrainTintOf(territory)"
+            [attr.fill]="territory.terrainTint"
           >
             {{ glyph }}
           </text>
@@ -111,9 +108,9 @@
           -->
           <g class="badge-units">
             <text
-              *ngFor="let unit of unitsOf(territory.id); let i = index; trackBy: trackUnit"
+              *ngFor="let unit of territory.units; trackBy: trackUnitView"
               class="badge-unit"
-              [attr.x]="unitOffsetX(i, unitsOf(territory.id).length)"
+              [attr.x]="unit.x"
               y="-13"
               [attr.fill]="unit.color"
             >
@@ -136,6 +133,15 @@
     <rect class="vignette" x="-4000" y="-4000" width="8000" height="8000" fill="url(#vignette)" />
   </svg>
 
+  <!--
+    Hueco pegado a un territorio. Lo coloca el componente en cada repintado del
+    mapa, para que siga a su país al arrastrar y al hacer zoom. La sala mete
+    aquí dentro los controles de la jugada que se está apuntando.
+  -->
+  <div class="anchor-slot" #anchorSlot>
+    <ng-content></ng-content>
+  </div>
+
   <!-- Controles de vista -->
   <div class="board-controls">
     <button type="button" (click)="zoomIn()" title="Acercar">+</button>
@@ -144,7 +150,7 @@
   </div>
 
   <!-- Cartel flotante del territorio bajo el cursor -->
-  <div class="board-tooltip" *ngIf="tooltip as info">
+  <div class="board-tooltip" #tooltipCard *ngIf="tooltip as info">
     <span class="tip-name">{{ info.name }}</span>
     <span class="tip-owner" [style.color]="info.color">{{ info.owner }}</span>
     <span class="tip-armies">{{ info.armies }} ejércitos</span>

@@ -1,4 +1,13 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import {
+  AfterViewChecked,
+  ChangeDetectorRef,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -6,9 +15,22 @@ import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../../shared/terminal-layout/terminal-layout';
 import { RiskBoard } from '../risk-board/risk-board';
 import { RiskHud } from '../risk-hud/risk-hud';
-import { RiskScoreboard, ScoreRow } from '../risk-scoreboard/risk-scoreboard';
 import { RiskPanel } from '../risk-panel/risk-panel';
-import { RiskActionBar, PanelId } from '../risk-action-bar/risk-action-bar';
+import { PanelId } from '../panel-id';
+import {
+  COMMANDERS,
+  Commander,
+  botPortrait,
+  commanderById,
+} from '../../commanders';
+import { CardView, RiskCards } from '../risk-cards/risk-cards';
+import {
+  CANAL_GENERAL,
+  ChatLine,
+  RiskRoster,
+  RosterRow,
+} from '../risk-roster/risk-roster';
+
 import {
   ChatEntry,
   RiskRoomService,
@@ -59,6 +81,12 @@ import {
 
 type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
 
+/** El estratega no es un jugador, pero tiene ficha propia en la lista. */
+const HILO_ESTRATEGA = 'advisor';
+
+/** El estratega tampoco tiene cara: es un consejero, no un rival. */
+const GLIFO_ESTRATEGA = '🧠';
+
 /**
  * La mesa: sala de espera y partida en el mismo sitio.
  * Aquí se junta todo: tablero, reglas, chat, IA y los controles del turno.
@@ -71,14 +99,14 @@ type Panel = 'chat' | 'eventos' | 'cartas' | 'ia';
     TerminalLayout,
     RiskBoard,
     RiskHud,
-    RiskScoreboard,
+    RiskRoster,
     RiskPanel,
-    RiskActionBar,
+    RiskCards,
   ],
   templateUrl: './risk-room.html',
   styleUrl: './risk-room.css',
 })
-export class RiskRoom implements OnInit, OnDestroy {
+export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   roomId = '';
   seatId = '';
   meta: RoomMeta | null = null;
@@ -101,7 +129,6 @@ export class RiskRoom implements OnInit, OnDestroy {
   selectedCards: string[] = [];
 
   panel: Panel = 'chat';
-  chatDraft = '';
   copied = false;
   errorMessage = '';
   showNames = true;
@@ -169,6 +196,12 @@ export class RiskRoom implements OnInit, OnDestroy {
         this.seats = seats;
         this.cdr.markForCheck();
       }),
+      this.rooms.rechazo$.subscribe((motivo) => {
+        // Un «no» del servidor tiene que verse. Callarlo convierte cualquier
+        // desajuste entre el cliente y el servidor en «esto no funciona».
+        this.errorMessage = motivo;
+        this.cdr.markForCheck();
+      }),
       this.rooms.chat$.subscribe((chat) => {
         const previous = this.chat;
         this.chat = chat;
@@ -200,6 +233,23 @@ export class RiskRoom implements OnInit, OnDestroy {
     );
 
     void this.rooms.markPresence(this.roomId, this.seatId);
+  }
+
+  @ViewChild('boardEl') private boardRef?: RiskBoard;
+  @ViewChild('hudEl', { read: ElementRef }) private hudRef?: ElementRef<HTMLElement>;
+
+  /**
+   * Le dice al tablero qué trozo de pantalla no debe tapar.
+   *
+   * Se hace aquí y no con un enlace en la plantilla a propósito: el `@ViewChild`
+   * no existe en el primer pintado, y enlazarlo cambiaría un valor ya
+   * comprobado en ese mismo ciclo —el NG0100 de toda la vida—. Como sólo se lee
+   * al colocar algo anclado, asignarlo a pelo es más simple y no le cuesta un
+   * repintado a nadie.
+   */
+  ngAfterViewChecked(): void {
+    const bloque = this.hudRef?.nativeElement ?? null;
+    if (this.boardRef && this.boardRef.avoid !== bloque) this.boardRef.avoid = bloque;
   }
 
   @HostListener('window:beforeunload')
@@ -308,17 +358,48 @@ export class RiskRoom implements OnInit, OnDestroy {
       }))
       .filter((entry) => !!entry.player);
   }
+  /**
+   * A qué territorio se pegan los controles de la jugada.
+   *
+   * Al destino si ya lo has elegido, y si no al origen: siempre al último sitio
+   * que has tocado, que es donde estás mirando.
+   */
+  get anchorTerritory(): TerritoryId | null {
+    if (!this.isMyTurn || !this.state) return null;
+    if (this.state.pendingOccupation) return this.state.pendingOccupation.to;
+    return this.selectedTo ?? this.selectedFrom;
+  }
 
-  /** Filas del marcador compacto, en el orden de la clasificación. */
-  get scoreRows(): ScoreRow[] {
-    return this.scoreboard.map((entry) => ({
-      id: entry.player.id,
-      name: entry.player.name,
-      color: entry.player.color,
-      territories: entry.territories,
-      armies: entry.armies,
-      eliminated: entry.player.eliminated,
-    }));
+  /**
+   * Qué hacer ahora, en una línea, dentro del bloque de fase.
+   *
+   * Sólo cuando hace falta: en cuanto has elegido un territorio, el control ya
+   * está pegado a él y esta frase sobra.
+   */
+  get phaseHint(): string {
+    if (!this.isMyTurn || !this.state) return '';
+    switch (this.state.phase) {
+      case 'setup-claim':
+        return 'Elige un territorio libre';
+      case 'setup-deploy':
+        return 'Refuerza un territorio tuyo';
+      case 'reinforce':
+        // Ya no se mantiene pulsado: un toque es una tropa, y para poner
+        // varias está el paso que sale pegado al territorio.
+        return this.reserveLeft > 0 && !this.selectedFrom ? 'Toca tus territorios' : '';
+      case 'attack':
+        return this.selectedFrom ? '' : 'Elige desde dónde atacas (hacen falta 2 ejércitos)';
+      case 'fortify':
+        if (this.state.fortifiedThisTurn) return 'Ya has reagrupado este turno';
+        return this.selectedFrom ? '' : 'Elige desde dónde mueves ejércitos';
+      default:
+        return '';
+    }
+  }
+
+  /** Las últimas voces públicas, para el rastro de abajo a la izquierda. */
+  get trailLines(): ChatEntry[] {
+    return this.chatFeed.filter((entry) => !entry.to).slice(-3);
   }
 
   /** Quién mueve ahora, para marcarlo en el marcador. */
@@ -333,15 +414,6 @@ export class RiskRoom implements OnInit, OnDestroy {
     return this.isMyTurn ? 'Es tu turno' : `Turno de ${this.active.name}`;
   }
 
-  /**
-   * Mantener pulsado sólo coloca tropas en refuerzos y cuando te toca.
-   *
-   * Fuera de ahí, mantener el dedo sobre un territorio enseña su ficha en vez
-   * de colocar. El tablero no sabe de fases, así que se decide aquí.
-   */
-  get repeatOnHold(): boolean {
-    return this.isMyTurn && this.state?.phase === 'reinforce';
-  }
 
   /** Panel abierto, si hay alguno. Sólo uno: dos taparían el mapa. */
   openPanel: PanelId | null = null;
@@ -734,6 +806,45 @@ export class RiskRoom implements OnInit, OnDestroy {
     return Math.max(0, (this.me?.reserve ?? 0) - (this.pendingDeploy?.armies ?? 0));
   }
 
+  /**
+   * Cuántas tropas llevas puestas en ese territorio este turno.
+   *
+   * Cuenta lo ya enviado y lo que todavía está esperando a salir, porque el
+   * número que se ve tiene que ser el que hay, no el que ha llegado a la sala.
+   */
+  placedAt(territoryId: TerritoryId): number {
+    const enviadas = (this.state?.placedThisTurn ?? [])
+      .filter((entrada) => entrada.territoryId === territoryId)
+      .reduce((suma, entrada) => suma + entrada.armies, 0);
+    const esperando =
+      this.pendingDeploy?.territoryId === territoryId ? this.pendingDeploy.armies : 0;
+    return enviadas + esperando;
+  }
+
+  /** Una más en el territorio que tienes delante. Es lo que hace el `+`. */
+  addOne(territoryId: TerritoryId): void {
+    this.errorMessage = '';
+    this.queueDeploy(territoryId);
+  }
+
+  /**
+   * Una menos. Es el deshacer, y vive donde está el error.
+   *
+   * Si todavía no ha salido, se quita de lo acumulado y no llega a viajar. Si
+   * ya salió, se deshace la última colocación, que es ésta: acabas de tocarla.
+   */
+  async removeOne(territoryId: TerritoryId): Promise<void> {
+    this.errorMessage = '';
+    const esperando = this.pendingDeploy;
+    if (esperando?.territoryId === territoryId && esperando.armies > 0) {
+      const quedan = esperando.armies - 1;
+      this.pendingDeploy = quedan > 0 ? { territoryId, armies: quedan } : null;
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.placedAt(territoryId) > 0) await this.undoDeploy(false);
+  }
+
   private queueDeploy(territoryId: TerritoryId): void {
     if (this.reserveLeft <= 0) return;
     // Cambiar de destino cierra lo anterior: una acción por territorio.
@@ -835,6 +946,39 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   get myCards(): Card[] {
     return this.me?.cards ?? [];
+  }
+
+  private cardViewsCache: CardView[] = [];
+  private cardViewsFrom: readonly Card[] | null = null;
+
+  /**
+   * La mano ya en palabras, para que la esquina de cartas no sepa reglas.
+   *
+   * Memorizada contra la identidad de la mano: un getter que devolviera un
+   * array nuevo en cada ciclo de detección de cambios obligaría a `*ngFor` a
+   * rehacer las cartas constantemente.
+   */
+  get cardViews(): CardView[] {
+    const cards = this.myCards;
+    if (this.cardViewsFrom === cards) return this.cardViewsCache;
+    this.cardViewsFrom = cards;
+    this.cardViewsCache = cards.map((card) => ({
+      id: card.id,
+      icon: this.cardIcon[card.symbol],
+      label: this.cardLabel[card.symbol],
+      territory: this.territoryName(card.territoryId),
+    }));
+    return this.cardViewsCache;
+  }
+
+  /** Se puede canjear ahora mismo, no sólo «el trío es válido». */
+  get canTradeNow(): boolean {
+    return this.selectedCardsAreValid && this.state?.phase === 'reinforce' && this.isMyTurn;
+  }
+
+  pickCard(id: string): void {
+    const card = this.myCards.find((c) => c.id === id);
+    if (card) this.toggleCard(card);
   }
 
   toggleCard(card: Card): void {
@@ -960,24 +1104,239 @@ export class RiskRoom implements OnInit, OnDestroy {
 
   // ===== CHAT =====
 
+  private feedCache: ChatEntry[] = [];
+  private feedFromChat: ChatEntry[] | null = null;
+  private feedFromAdvice: ChatEntry[] | null = null;
+
+  /**
+   * Chat y consejos en una sola lista ordenada por hora.
+   *
+   * Memorizada contra la identidad de las dos listas de origen. Sin esto, cada
+   * consulta copia y ordena hasta ciento veinte mensajes, y las fichas la
+   * consultan una vez por jugador para contar los no leídos: seis ordenaciones
+   * por ciclo de detección de cambios. Se notaba de verdad —el test de bots
+   * jugando solos pasó de correr a atascarse.
+   */
   get chatFeed(): ChatEntry[] {
-    return [...this.chat, ...this.advice].sort((a, b) => a.ts - b.ts).slice(-120);
+    if (this.feedFromChat === this.chat && this.feedFromAdvice === this.advice) {
+      return this.feedCache;
+    }
+    this.feedFromChat = this.chat;
+    this.feedFromAdvice = this.advice;
+    this.feedCache = [...this.chat, ...this.advice].sort((a, b) => a.ts - b.ts).slice(-120);
+    return this.feedCache;
   }
 
-  async sendChat(): Promise<void> {
-    const text = this.chatDraft.trim();
-    if (!text) return;
-    this.chatDraft = '';
+  /**
+   * Hilo abierto en la lista de jugadores, o ninguno.
+   *
+   * `CANAL_GENERAL` es el de todos; si no, el id del jugador con quien hablas.
+   */
+  openThread: string | null = null;
+  /** Hasta cuándo se ha leído cada hilo, para el aviso de sin leer. */
+  private seenAt: Record<string, number> = {};
+
+  /**
+   * A qué conversación pertenece un mensaje.
+   *
+   * Un privado pertenece al hilo del OTRO, sea yo quien escribe o quien recibe:
+   * una conversación es una sola cosa vista desde los dos lados.
+   */
+  private threadOf(entry: ChatEntry): string {
+    if (entry.kind === 'advisor') return HILO_ESTRATEGA;
+    if (!entry.to) return CANAL_GENERAL;
+    return entry.authorId === this.seatId ? entry.to : entry.authorId;
+  }
+
+  /** Un privado sólo se enseña a sus dos extremos. */
+  private visibleToMe(entry: ChatEntry): boolean {
+    if (!entry.to) return true;
+    return entry.to === this.seatId || entry.authorId === this.seatId;
+  }
+
+  get threadLines(): ChatLine[] {
+    const thread = this.openThread;
+    if (!thread) return [];
+    return this.chatFeed
+      .filter((entry) => this.visibleToMe(entry) && this.threadOf(entry) === thread)
+      .slice(-80)
+      .map((entry) => ({
+        key: entry.key,
+        author: entry.author,
+        color: this.colorOf(entry.authorId),
+        text: entry.text,
+        mine: entry.authorId === this.seatId,
+        fromLlm: entry.origin === 'llm',
+      }));
+  }
+
+  /**
+   * Los no leídos de todos los hilos, en una sola pasada.
+   *
+   * Una pasada y no una por ficha: contar por separado obliga a recorrer la
+   * conversación entera tantas veces como jugadores haya.
+   */
+  private unreadByThread(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const entry of this.chatFeed) {
+      if (!this.visibleToMe(entry)) continue;
+      if (entry.authorId === this.seatId) continue;
+      const thread = this.threadOf(entry);
+      if (thread === this.openThread) continue;
+      if (entry.ts <= (this.seenAt[thread] ?? 0)) continue;
+      counts[thread] = (counts[thread] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  get generalUnread(): number {
+    return this.unreadByThread()[CANAL_GENERAL] ?? 0;
+  }
+
+  /**
+   * Las fichas: marcador y lista de conversaciones a la vez.
+   *
+   * El estratega va como una ficha más, con su botón en vez de campo de texto,
+   * porque analiza tu posición y no conversa. Antes vivía en un botón dentro
+   * del panel de chat; al desaparecer ese panel necesitaba puerta.
+   */
+  get rosterRows(): RosterRow[] {
+    const total = this.scoreboard.reduce((sum, entry) => sum + entry.armies, 0) || 1;
+    const unread = this.unreadByThread();
+    const caras = this.portraitAssignment();
+    const rows: RosterRow[] = this.scoreboard.map((entry, index) => ({
+      id: entry.player.id,
+      name: entry.player.name,
+      color: entry.player.color,
+      portrait: caras.get(entry.player.id) ?? COMMANDERS[index % COMMANDERS.length]!.portrait,
+      territories: entry.territories,
+      armies: entry.armies,
+      eliminated: entry.player.eliminated,
+      strength: entry.armies / total,
+      unread: unread[entry.player.id] ?? 0,
+    }));
+    if (this.canNarrate) {
+      rows.push({
+        id: HILO_ESTRATEGA,
+        name: 'Estratega',
+        color: '#8b9c93',
+        glyph: GLIFO_ESTRATEGA,
+        territories: 0,
+        armies: 0,
+        eliminated: false,
+        strength: 0,
+        unread: unread[HILO_ESTRATEGA] ?? 0,
+        askLabel: '🧠 Pedir consejo',
+      });
+    }
+    return rows;
+  }
+
+  /**
+   * Si estamos esperando a que el bot conteste.
+   *
+   * Se deduce de la conversación: el último que ha hablado soy yo y enfrente
+   * hay una máquina. Sin este aviso, el hueco entre tu mensaje y su respuesta
+   * parece que se ha perdido el mensaje.
+   */
+  get threadWaiting(): boolean {
+    const thread = this.openThread;
+    if (!thread || thread === CANAL_GENERAL || thread === HILO_ESTRATEGA) return false;
+    if (this.seats.find((seat) => seat.id === thread)?.kind !== 'bot') return false;
+    const lines = this.threadLines;
+    return lines.length > 0 && !!lines[lines.length - 1]?.mine;
+  }
+
+  // ===== COMANDANTES =====
+
+  readonly commanders = COMMANDERS;
+
+  /** El retrato de un perfil de bot, para verle la cara antes de sentarlo. */
+  botFace(profile: BotProfile): string {
+    return botPortrait(profile);
+  }
+
+  /**
+   * Reparto de comandantes: los elegidos mandan, el resto coge de los que
+   * sobran.
+   *
+   * Se reparte todo de una vez y no asiento por asiento, porque si no un
+   * comandante elegido y uno repartido pueden salir iguales, y dos jugadores
+   * con la misma cara rompen justo lo que la cara resuelve: saber de quién es
+   * cada ficha de un vistazo.
+   *
+   * Los bots no entran en el reparto: su retrato sale de su perfil, y por eso
+   * el agresivo tiene cara de agresivo.
+   */
+  private portraitAssignment(): Map<string, string> {
+    const humanos = this.seats.filter((seat) => seat.kind !== 'bot');
+    const elegidos = new Set(
+      humanos.map((seat) => seat.avatar).filter((id): id is string => !!commanderById(id)),
+    );
+    const libres = COMMANDERS.filter((commander) => !elegidos.has(commander.id));
+    const reparto = new Map<string, string>();
+    let siguiente = 0;
+    for (const seat of this.seats) {
+      if (seat.kind === 'bot') {
+        reparto.set(seat.id, botPortrait(seat.botProfile));
+        continue;
+      }
+      const elegido = commanderById(seat.avatar);
+      const cara = elegido ?? libres[siguiente++ % Math.max(1, libres.length)] ?? COMMANDERS[0]!;
+      reparto.set(seat.id, cara.portrait);
+    }
+    return reparto;
+  }
+
+  /** El comandante que llevo, elegido o repartido. */
+  get myCommander(): Commander | undefined {
+    const retrato = this.portraitAssignment().get(this.seatId);
+    return COMMANDERS.find((commander) => commander.portrait === retrato);
+  }
+
+  /** Comandantes que ya lleva otra persona. */
+  commanderTaken(id: string): boolean {
+    return this.seats.some(
+      (seat) => seat.id !== this.seatId && seat.kind !== 'bot' && seat.avatar === id,
+    );
+  }
+
+  async chooseCommander(id: string): Promise<void> {
+    if (this.commanderTaken(id)) return;
+    await this.rooms.updateSeat(this.roomId, this.seatId, { avatar: id });
+  }
+
+  /** El retrato de un asiento en la sala de espera. */
+  portraitOfSeat(seat: RoomSeat): string {
+    return this.portraitAssignment().get(seat.id) ?? COMMANDERS[0]!.portrait;
+  }
+
+  onThreadChange(id: string | null): void {
+    const now = Date.now();
+    if (this.openThread) this.seenAt[this.openThread] = now;
+    this.openThread = id;
+    if (id) this.seenAt[id] = now;
+  }
+
+  async sendToThread(text: string): Promise<void> {
+    if (this.openThread === HILO_ESTRATEGA) {
+      await this.askAdvisor();
+      return;
+    }
+    const clean = text.trim();
+    if (!clean) return;
     await this.rooms.sendChat(this.roomId, {
       authorId: this.seatId,
       author: this.seats.find((seat) => seat.id === this.seatId)?.name ?? 'Jugador',
       kind: 'player',
-      text,
+      text: clean,
+      // El canal general va sin destinatario, que es lo que lo hace general.
+      to: this.openThread === CANAL_GENERAL ? undefined : (this.openThread ?? undefined),
     });
   }
 
   async askAdvisor(): Promise<void> {
-    this.panel = 'chat';
+    this.onThreadChange(HILO_ESTRATEGA);
     await this.game.askAdvisor();
   }
 
