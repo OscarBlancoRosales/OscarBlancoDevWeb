@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import type { AbstractControl } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthApiService } from '../../api/auth-api.service';
 import { PanelCuenta } from '../panel-cuenta/panel-cuenta';
 import { I18nService } from '../../services/i18n.service';
@@ -33,11 +33,22 @@ export class Registro {
   /** Cuando el alta se ha mandado, el formulario sobra y estorba. */
   readonly hecho = signal(false);
 
+  /**
+   * El alta es solo por invitación, y la invitación viaja en el enlace.
+   *
+   * Quien llega a esta dirección a pelo no puede hacer nada aquí, así que se le
+   * dice de entrada en vez de dejarle rellenar tres campos para que el servidor
+   * le conteste que no. No se enseña el valor: es la llave.
+   */
+  readonly invitacion = signal('');
+
   constructor(
     private fb: FormBuilder,
     private auth: AuthApiService,
+    private ruta: ActivatedRoute,
     public i18n: I18nService,
   ) {
+    this.invitacion.set(this.ruta.snapshot.queryParamMap.get('invitacion') ?? '');
     this.formulario = this.fb.group({
       displayName: ['', [Validators.required, Validators.maxLength(40)]],
       email: ['', [Validators.required, Validators.email]],
@@ -70,7 +81,7 @@ export class Registro {
     };
 
     try {
-      await this.auth.registrar(email, password, displayName);
+      await this.auth.registrar(email, password, displayName, this.invitacion());
       this.hecho.set(true);
     } catch (fallo) {
       this.error.set(AuthApiService.mensajeDe(fallo));

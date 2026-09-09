@@ -1,6 +1,7 @@
 import type { Db } from '../db/index';
 
 export type UserStatus = 'pending' | 'active' | 'blocked';
+export type UserRole = 'user' | 'admin';
 export type TokenPurpose = 'verify' | 'reset';
 
 export interface UserRow {
@@ -9,7 +10,23 @@ export interface UserRow {
   readonly passwordHash: string;
   readonly displayName: string;
   readonly status: UserStatus;
+  readonly role: UserRole;
   readonly createdAt: number;
+}
+
+/**
+ * Una invitación. Vale una sola vez y no va atada a ningún correo: quien tenga
+ * el enlace se registra con la dirección que quiera, y ahí se gasta.
+ */
+export interface InvitationRow {
+  readonly id: string;
+  readonly tokenHash: string;
+  readonly note: string;
+  readonly createdBy: string | null;
+  readonly createdAt: number;
+  readonly expiresAt: number;
+  readonly usedAt: number | null;
+  readonly usedBy: string | null;
 }
 
 export interface SessionRow {
@@ -42,6 +59,17 @@ export interface AuthRepository {
   updateUserStatus(id: string, status: UserStatus): void;
   updatePassword(id: string, passwordHash: string): void;
 
+  listUsers(): readonly UserRow[];
+  deleteUser(id: string): void;
+  /** Deja como admin exactamente a esos correos, y a nadie más. */
+  setAdmins(emails: readonly string[]): void;
+
+  insertInvitation(invitation: InvitationRow): void;
+  findInvitation(tokenHash: string): InvitationRow | null;
+  listInvitations(): readonly InvitationRow[];
+  markInvitationUsed(tokenHash: string, userId: string, at: number): void;
+  deleteInvitation(id: string): void;
+
   insertEmailToken(token: EmailTokenRow): void;
   findEmailToken(tokenHash: string): EmailTokenRow | null;
   markEmailTokenUsed(tokenHash: string, at: number): void;
@@ -61,7 +89,19 @@ interface UserRecord {
   password_hash: string;
   display_name: string;
   status: UserStatus;
+  role: UserRole;
   created_at: number;
+}
+
+interface InvitationRecord {
+  id: string;
+  token_hash: string;
+  note: string;
+  created_by: string | null;
+  created_at: number;
+  expires_at: number;
+  used_at: number | null;
+  used_by: string | null;
 }
 
 interface SessionRecord {
@@ -85,10 +125,26 @@ export function createAuthRepository(db: Db): AuthRepository {
     findUserByEmail: db.prepare('SELECT * FROM users WHERE email = ?'),
     findUserById: db.prepare('SELECT * FROM users WHERE id = ?'),
     insertUser: db.prepare(
-      'INSERT INTO users (id, email, password_hash, display_name, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (id, email, password_hash, display_name, status, role, created_at)' +
+        ' VALUES (?, ?, ?, ?, ?, ?, ?)',
     ),
     updateUserStatus: db.prepare('UPDATE users SET status = ? WHERE id = ?'),
     updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
+    listUsers: db.prepare('SELECT * FROM users ORDER BY created_at'),
+    deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
+    quitarAdmins: db.prepare("UPDATE users SET role = 'user' WHERE role = 'admin'"),
+    hacerAdmin: db.prepare("UPDATE users SET role = 'admin' WHERE email = ?"),
+
+    insertInvitation: db.prepare(
+      'INSERT INTO invitations (id, token_hash, note, created_by, created_at, expires_at, used_at, used_by)' +
+        ' VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)',
+    ),
+    findInvitation: db.prepare('SELECT * FROM invitations WHERE token_hash = ?'),
+    listInvitations: db.prepare('SELECT * FROM invitations ORDER BY created_at DESC'),
+    markInvitationUsed: db.prepare(
+      'UPDATE invitations SET used_at = ?, used_by = ? WHERE token_hash = ? AND used_at IS NULL',
+    ),
+    deleteInvitation: db.prepare('DELETE FROM invitations WHERE id = ?'),
 
     insertEmailToken: db.prepare(
       'INSERT INTO email_tokens (token_hash, user_id, purpose, expires_at, used_at) VALUES (?, ?, ?, ?, NULL)',
@@ -122,6 +178,7 @@ export function createAuthRepository(db: Db): AuthRepository {
         user.passwordHash,
         user.displayName,
         user.status,
+        user.role,
         user.createdAt,
       );
     },
@@ -130,6 +187,56 @@ export function createAuthRepository(db: Db): AuthRepository {
     },
     updatePassword(id, passwordHash) {
       statements.updatePassword.run(passwordHash, id);
+    },
+
+    listUsers() {
+      return (statements.listUsers.all() as UserRecord[]).flatMap((row) => {
+        const user = toUser(row);
+        return user ? [user] : [];
+      });
+    },
+    deleteUser(id) {
+      statements.deleteUser.run(id);
+    },
+
+    /**
+     * Quién administra se declara fuera, y aquí solo se obedece.
+     *
+     * Primero se quita a todos y luego se pone a los de la lista, en una sola
+     * transacción: así el fichero de configuración es la verdad completa y
+     * quitar un correo de allí quita el rol de verdad, en vez de dejarlo puesto
+     * para siempre porque una vez estuvo.
+     */
+    setAdmins(emails) {
+      const aplicar = db.transaction((lista: readonly string[]) => {
+        statements.quitarAdmins.run();
+        for (const email of lista) statements.hacerAdmin.run(email);
+      });
+      aplicar(emails);
+    },
+
+    insertInvitation(invitation) {
+      statements.insertInvitation.run(
+        invitation.id,
+        invitation.tokenHash,
+        invitation.note,
+        invitation.createdBy,
+        invitation.createdAt,
+        invitation.expiresAt,
+      );
+    },
+    findInvitation(tokenHash) {
+      const row = statements.findInvitation.get(tokenHash) as InvitationRecord | undefined;
+      return row ? toInvitation(row) : null;
+    },
+    listInvitations() {
+      return (statements.listInvitations.all() as InvitationRecord[]).map(toInvitation);
+    },
+    markInvitationUsed(tokenHash, userId, at) {
+      statements.markInvitationUsed.run(at, userId, tokenHash);
+    },
+    deleteInvitation(id) {
+      statements.deleteInvitation.run(id);
     },
 
     insertEmailToken(token) {
@@ -198,6 +305,20 @@ function toUser(row: UserRecord | undefined): UserRow | null {
     passwordHash: row.password_hash,
     displayName: row.display_name,
     status: row.status,
+    role: row.role,
     createdAt: row.created_at,
+  };
+}
+
+function toInvitation(row: InvitationRecord): InvitationRow {
+  return {
+    id: row.id,
+    tokenHash: row.token_hash,
+    note: row.note,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    expiresAt: row.expires_at,
+    usedAt: row.used_at,
+    usedBy: row.used_by,
   };
 }

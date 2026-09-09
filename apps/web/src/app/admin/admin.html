@@ -1,0 +1,130 @@
+<app-terminal-layout [title]="i18n.t('admin.title')">
+  <div class="admin">
+    @if (cargando()) {
+      <p class="admin-nota">{{ i18n.t('admin.loading') }}</p>
+    } @else if (!mando()) {
+      <!--
+        Lo mismo que contesta el servidor: un 404. Decir «no eres
+        administrador» confirma que hay un panel detrás al que apuntar.
+      -->
+      <h2 class="admin-titulo">&gt; 404</h2>
+      <p class="admin-nota">
+        {{ i18n.t('admin.nothingHere') }}
+        <a routerLink="/">{{ i18n.t('admin.backHome') }}</a>
+      </p>
+    } @else {
+      <section class="admin-bloque">
+        <h2 class="admin-titulo">&gt; {{ i18n.t('admin.invitations') }}</h2>
+        <p class="admin-sub">{{ i18n.t('admin.invitationsSub') }}</p>
+
+        <form class="admin-form" (ngSubmit)="crearInvitacion()">
+          <input
+            type="text"
+            name="nota"
+            [(ngModel)]="nota"
+            maxlength="120"
+            [placeholder]="i18n.t('admin.notePh')"
+          />
+          <input type="number" name="dias" [(ngModel)]="dias" min="1" max="90" />
+          <button type="submit" class="btn btn-primary" [disabled]="creando()">
+            {{ creando() ? i18n.t('admin.creating') : i18n.t('admin.createInvite') }}
+          </button>
+        </form>
+
+        @if (reciente(); as nueva) {
+          <div class="admin-enlace">
+            <p>{{ i18n.t('admin.linkOnce') }}</p>
+            <code>{{ nueva.enlace }}</code>
+            <button type="button" class="btn" (click)="copiar(nueva.enlace)">
+              {{ copiado() ? i18n.t('common.copied') : i18n.t('common.copy') }}
+            </button>
+          </div>
+        }
+
+        <table class="admin-tabla">
+          <thead>
+            <tr>
+              <th>{{ i18n.t('admin.note') }}</th>
+              <th>{{ i18n.t('admin.created') }}</th>
+              <th>{{ i18n.t('admin.expires') }}</th>
+              <th>{{ i18n.t('admin.state') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (invitacion of invitaciones(); track invitacion.id) {
+              <tr>
+                <td>{{ invitacion.nota || '—' }}</td>
+                <td>{{ fecha(invitacion.creadaEn) }}</td>
+                <td>{{ fecha(invitacion.expiraEn) }}</td>
+                <td>{{ estadoDe(invitacion) }}</td>
+                <td class="admin-acciones">
+                  @if (invitacion.usadaEn === null) {
+                    <button type="button" class="btn btn-peligro" (click)="revocar(invitacion)">
+                      {{ i18n.t('admin.revoke') }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="admin-vacio">{{ i18n.t('admin.noInvitations') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </section>
+
+      <section class="admin-bloque">
+        <h2 class="admin-titulo">&gt; {{ i18n.t('admin.users') }}</h2>
+
+        <table class="admin-tabla">
+          <thead>
+            <tr>
+              <th>{{ i18n.t('admin.name') }}</th>
+              <th>{{ i18n.t('cuenta.email') }}</th>
+              <th>{{ i18n.t('admin.state') }}</th>
+              <th>{{ i18n.t('admin.role') }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (usuario of usuarios(); track usuario.id) {
+              <tr>
+                <td>{{ usuario.displayName }}</td>
+                <td>{{ usuario.email }}</td>
+                <td>{{ i18n.t('admin.status.' + usuario.status) }}</td>
+                <td>{{ usuario.role === 'admin' ? i18n.t('admin.roleAdmin') : '—' }}</td>
+                <td class="admin-acciones">
+                  <!--
+                    A un administrador no se le toca desde aquí: su rol sale del
+                    fichero de la máquina y el servidor rechaza el intento.
+                  -->
+                  @if (usuario.role !== 'admin') {
+                    <button type="button" class="btn" (click)="cambiarEstado(usuario)">
+                      {{ usuario.status === 'blocked' ? i18n.t('admin.unblock') : i18n.t('admin.block') }}
+                    </button>
+                    <button type="button" class="btn btn-peligro" (click)="borrar(usuario)">
+                      {{ confirmando() === usuario.id ? i18n.t('admin.sure') : i18n.t('admin.delete') }}
+                    </button>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5" class="admin-vacio">{{ i18n.t('admin.noUsers') }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+        @if (confirmando()) {
+          <p class="admin-aviso">{{ i18n.t('admin.deleteWarning') }}</p>
+        }
+      </section>
+
+      @if (error()) {
+        <p class="admin-error">{{ error() }}</p>
+      }
+    }
+  </div>
+</app-terminal-layout>

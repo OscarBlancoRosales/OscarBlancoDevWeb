@@ -1,0 +1,161 @@
+.admin {
+  padding: 32px 20px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.admin-bloque {
+  margin-bottom: 40px;
+}
+
+.admin-titulo {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 0 4px 0;
+}
+
+.admin-sub,
+.admin-nota {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 16px 0;
+}
+
+.admin-nota a {
+  color: var(--accent);
+}
+
+.admin-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.admin-form input {
+  padding: 8px 10px;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--bright);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.admin-form input[type='text'] {
+  flex: 1 1 240px;
+}
+
+.admin-form input[type='number'] {
+  width: 70px;
+}
+
+.admin-form input:focus {
+  border-color: var(--accent);
+}
+
+/* El enlace sale una sola vez: tiene que verse entero y poder copiarse. */
+.admin-enlace {
+  border-left: 2px solid var(--accent);
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 12px;
+}
+
+.admin-enlace code {
+  display: block;
+  word-break: break-all;
+  color: var(--bright);
+  margin: 6px 0;
+}
+
+.admin-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.admin-tabla th,
+.admin-tabla td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-tabla th {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 10px;
+  font-weight: normal;
+}
+
+.admin-vacio {
+  color: var(--muted);
+  text-align: center;
+}
+
+.admin-acciones {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.btn {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--bright);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #000;
+  font-weight: bold;
+}
+
+.btn-peligro {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.admin-aviso {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.admin-error {
+  color: var(--error);
+  border-left: 2px solid currentColor;
+  padding: 8px 12px;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .admin {
+    padding: 20px 12px;
+  }
+
+  .admin-tabla th:nth-child(2),
+  .admin-tabla td:nth-child(2) {
+    word-break: break-all;
+  }
+}

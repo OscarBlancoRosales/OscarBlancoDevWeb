@@ -6,6 +6,7 @@ import { RONDAS_POR_PROGRAMA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
 import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -24,7 +25,7 @@ describe('salas', () => {
     db = openDatabase(':memory:');
     app = await buildApp({ config, db });
 
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: ALTA });
+    await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, invitacion: invitacionDePrueba(db) } });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',
@@ -228,7 +229,11 @@ describe('salas', () => {
     it('solo quien la creó puede borrarla', async () => {
       const grant = (await crearSala()).json<SeatGrant>();
 
-      await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, email: 'otra@example.com' } });
+      await app.inject({
+        method: 'POST',
+        url: '/auth/registro',
+        payload: { ...ALTA, email: 'otra@example.com', invitacion: invitacionDePrueba(db) },
+      });
       db.prepare("UPDATE users SET status = 'active'").run();
       const otra = await app.inject({
         method: 'POST',

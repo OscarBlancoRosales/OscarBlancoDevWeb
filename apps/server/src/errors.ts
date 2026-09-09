@@ -12,6 +12,7 @@ export type ErrorCode =
   | 'cuenta-sin-verificar'
   | 'email-ya-registrado'
   | 'token-invalido'
+  | 'invitacion-invalida'
   | 'sesion-caducada'
   | 'no-autenticado'
   | 'sin-permiso'
@@ -27,6 +28,7 @@ const STATUS: Record<ErrorCode, number> = {
   'cuenta-sin-verificar': 403,
   'email-ya-registrado': 409,
   'token-invalido': 400,
+  'invitacion-invalida': 403,
   'sesion-caducada': 401,
   'no-autenticado': 401,
   'sin-permiso': 403,

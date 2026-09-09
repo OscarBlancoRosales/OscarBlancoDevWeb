@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ScrumView } from '@devweb/shared/games/scrum';
 import type { ChatEntry, SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -114,7 +115,7 @@ describe('una partida de scrum poker por WebSocket', () => {
     const puerto = typeof direccion === 'string' ? 0 : (direccion?.port ?? 0);
     base = `ws://127.0.0.1:${puerto}/ws`;
 
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: ALTA });
+    await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, invitacion: invitacionDePrueba(db) } });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',

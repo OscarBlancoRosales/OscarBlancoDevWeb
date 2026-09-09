@@ -61,6 +61,9 @@ export class Auth implements OnInit {
    */
   private nextUrl = DEFAULT_AFTER_LOGIN;
 
+  /** Si el destino lo pidió alguien, mandarle ahí; si no, se decide al entrar. */
+  private destinoPedido = false;
+
   constructor(
     private fb: FormBuilder,
     private router: Router,
@@ -77,7 +80,9 @@ export class Auth implements OnInit {
   ngOnInit(): void {
     // Siempre mostrar el formulario de login.
     // El usuario debe autenticarse cada vez que entra desde el menú.
-    this.nextUrl = safeNext(this.route.snapshot.queryParamMap.get('next'));
+    const pedido = this.route.snapshot.queryParamMap.get('next');
+    this.destinoPedido = pedido !== null;
+    this.nextUrl = safeNext(pedido);
   }
 
   /** Para la plantilla: a dónde volveremos, por si queremos avisar. */
@@ -111,9 +116,11 @@ export class Auth implements OnInit {
       const usuario = await this.auth.entrar(email, password);
       localStorage.setItem('user_name', usuario.displayName);
 
-      // Volver a donde el usuario quería ir (por defecto, crear sala de
-      // Scrum Poker y poner nombre).
-      await this.router.navigateByUrl(this.nextUrl);
+      // Volver a donde el usuario quería ir. A quien administra y no venía de
+      // ninguna parte se le abre su panel: es a lo que entra.
+      const destino =
+        !this.destinoPedido && usuario.role === 'admin' ? '/admin' : this.nextUrl;
+      await this.router.navigateByUrl(destino);
     } catch (fallo) {
       this.errorMessage.set(AuthApiService.mensajeDe(fallo));
     } finally {

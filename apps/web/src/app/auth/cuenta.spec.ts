@@ -63,7 +63,7 @@ describe('el idioma de las pantallas de cuenta', () => {
   });
 
   it('y el alta también', async () => {
-    const fixture = await montar(Registro, sinLlamadas);
+    const fixture = await montar(Registro, sinLlamadas, { invitacion: 'la-llave' });
     expect(enIdioma(fixture, 'es')).toContain('Crear cuenta');
     expect(enIdioma(fixture, 'en')).toContain('Create account');
     fixture.destroy();
@@ -85,7 +85,7 @@ describe('el idioma de las pantallas de cuenta', () => {
 
   /** El mínimo de caracteres se cuela en el texto, no se escribe aparte. */
   it('el mínimo de caracteres se dice dentro de la frase', async () => {
-    const fixture = await montar(Registro, sinLlamadas);
+    const fixture = await montar(Registro, sinLlamadas, { invitacion: 'la-llave' });
     const i18n = TestBed.inject(I18nService);
     expect(i18n.t('cuenta.minChars', { n: 10 })).toBe('Mínimo 10 caracteres');
     i18n.setLang('en');
@@ -111,16 +111,34 @@ describe('Crear cuenta', () => {
     expect(registro.formulario.invalid).toBe(true);
   });
 
-  it('manda el alta y cambia el formulario por el aviso', async () => {
+  it('manda el alta con la invitación del enlace y cambia el formulario por el aviso', async () => {
     const registrarSpy = vi.fn().mockResolvedValue(undefined);
-    const fixture = await montar(Registro, { registrar: registrarSpy });
+    const fixture = await montar(Registro, { registrar: registrarSpy }, { invitacion: 'la-llave' });
     const { componentInstance: registro } = fixture;
 
     registro.formulario.setValue(DATOS);
     await registro.registrar();
 
-    expect(registrarSpy).toHaveBeenCalledWith(DATOS.email, DATOS.password, DATOS.displayName);
+    expect(registrarSpy).toHaveBeenCalledWith(
+      DATOS.email,
+      DATOS.password,
+      DATOS.displayName,
+      'la-llave',
+    );
     expect(registro.hecho()).toBe(true);
+  });
+
+  /**
+   * Sin invitación no hay alta, y decirlo antes ahorra rellenar tres campos
+   * para que el servidor conteste que no.
+   */
+  it('sin invitación en el enlace no enseña ni el formulario', async () => {
+    const fixture = await montar(Registro, { registrar: vi.fn() });
+
+    const visto = texto(fixture);
+    expect(visto).toContain('solo se entra con invitación');
+    expect(visto).not.toContain('Cómo te llamas');
+    fixture.destroy();
   });
 
   /**

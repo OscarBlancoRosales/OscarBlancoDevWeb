@@ -3,7 +3,7 @@ import { AppError } from '../errors';
 import { hashPassword, verifyPassword, wastePasswordTime } from './password';
 import { generateToken, hashToken } from './tokens';
 import type { Mailer } from './mailer';
-import type { AuthRepository, UserRow } from './repository';
+import type { AuthRepository, InvitationRow, UserRow } from './repository';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
 
 /**
@@ -24,6 +24,8 @@ export interface AuthServiceOptions {
   readonly publicWebUrl: string;
   readonly refreshTtlDays: number;
   readonly now?: () => number;
+  /** Lo que hay que llevarse además de la cuenta cuando se borra. */
+  readonly alBorrarUsuario?: (userId: string) => void;
 }
 
 export interface IssuedSession {
@@ -44,7 +46,17 @@ export class AuthService {
   private readonly refreshTtlMs: number;
   private readonly now: () => number;
 
+  /**
+   * Qué más hay que llevarse cuando se borra una cuenta.
+   *
+   * Va como aviso y no como dependencia porque el servicio de sesiones no tiene
+   * por qué saber que existen las salas: quien las conoce es quien monta la
+   * aplicación, y es ahí donde se decide qué arrastra un borrado.
+   */
+  private readonly alBorrarUsuario: ((userId: string) => void) | undefined;
+
   constructor(options: AuthServiceOptions) {
+    this.alBorrarUsuario = options.alBorrarUsuario;
     this.repository = options.repository;
     this.mailer = options.mailer;
     this.publicWebUrl = options.publicWebUrl.replace(/\/+$/, '');
@@ -57,8 +69,23 @@ export class AuthService {
    *
    * La cuenta nace en `pending`: existe, pero no entra. Verificar es lo que la
    * activa.
+   *
+   * Y hace falta una invitación. Se comprueba ANTES que nada —antes incluso de
+   * mirar si el correo existe— porque sin eso el alta seguiría sirviendo para
+   * averiguar quién está registrado: bastaría con probar correos y ver a cuál
+   * le llega el aviso.
    */
-  async register(input: { email: string; password: string; displayName: string }): Promise<void> {
+  async register(input: {
+    email: string;
+    password: string;
+    displayName: string;
+    invitacion: string;
+  }): Promise<void> {
+    const invitacion = this.invitacionUtilizable(input.invitacion);
+    if (!invitacion) {
+      throw new AppError('invitacion-invalida', 'Esa invitación no vale o ya se ha usado.');
+    }
+
     const email = normalizeEmail(input.email);
 
     // Contestar "ese correo ya está registrado" convierte el alta en un
@@ -87,11 +114,123 @@ export class AuthService {
       passwordHash: await hashPassword(input.password),
       displayName: input.displayName.trim(),
       status: 'pending',
+      role: 'user',
       createdAt: this.now(),
     };
     this.repository.insertUser(user);
+    // Se gasta aquí, no al verificar: si no, un mismo enlace daría de alta a
+    // media docena de personas mientras ninguna abriera su correo.
+    this.repository.markInvitationUsed(hashToken(input.invitacion), user.id, this.now());
 
     await this.sendEmailToken(user, 'verify');
+  }
+
+  /** La invitación que sirve para darse de alta ahora mismo, o `null`. */
+  private invitacionUtilizable(token: string): InvitationRow | null {
+    if (!token) return null;
+    const invitacion = this.repository.findInvitation(hashToken(token));
+    if (!invitacion) return null;
+    if (invitacion.usedAt !== null) return null;
+    if (invitacion.expiresAt <= this.now()) return null;
+    return invitacion;
+  }
+
+  // ===== ADMINISTRACIÓN =====
+
+  /**
+   * Deja como administradores exactamente a esos correos.
+   *
+   * Se llama al arrancar con lo que diga la configuración de la máquina, y por
+   * eso no hay ninguna ruta que ascienda a nadie: quien manda es quien tiene
+   * acceso al servidor, no quien consigue una sesión con suerte. Quitar un
+   * correo del fichero le quita el rol en el siguiente arranque.
+   */
+  fijarAdministradores(emails: readonly string[]): void {
+    this.repository.setAdmins(emails.map((email) => normalizeEmail(email)));
+  }
+
+  listarUsuarios(): PublicUser[] {
+    return this.repository.listUsers().map(toPublicUser);
+  }
+
+  cambiarEstado(userId: string, status: 'active' | 'blocked'): PublicUser {
+    const user = this.repository.findUserById(userId);
+    if (!user) throw new AppError('no-encontrado', 'Esa cuenta no existe.');
+    if (user.role === 'admin') {
+      throw new AppError('sin-permiso', 'A un administrador no se le toca desde aquí.');
+    }
+
+    this.repository.updateUserStatus(userId, status);
+    // Bloquear a alguien que sigue con la sesión abierta no le bloquea nada
+    // hasta que caduque: hay que echarlo ahora.
+    if (status === 'blocked') this.repository.revokeAllForUser(userId, this.now());
+    return toPublicUser({ ...user, status });
+  }
+
+  /**
+   * Borra una cuenta. Lo suyo se va con ella.
+   *
+   * Un administrador no se borra desde aquí: si el rol sale de la configuración
+   * de la máquina, borrarlo por una petición dejaría el sistema diciendo una
+   * cosa y comportándose de otra hasta el siguiente arranque.
+   */
+  borrarUsuario(userId: string): void {
+    const user = this.repository.findUserById(userId);
+    if (!user) throw new AppError('no-encontrado', 'Esa cuenta no existe.');
+    if (user.role === 'admin') {
+      throw new AppError('sin-permiso', 'A un administrador no se le borra desde aquí.');
+    }
+
+    this.repository.revokeAllForUser(userId, this.now());
+    this.repository.deleteUser(userId);
+    this.alBorrarUsuario?.(userId);
+  }
+
+  /** Crea una invitación de un solo uso y devuelve su enlace. */
+  crearInvitacion(input: { creadaPor: string; nota: string; diasDeVida: number }): {
+    id: string;
+    enlace: string;
+    expiraEn: number;
+  } {
+    const token = generateToken();
+    const id = randomUUID();
+    const expiresAt = this.now() + input.diasDeVida * DIA;
+
+    this.repository.insertInvitation({
+      id,
+      tokenHash: hashToken(token),
+      note: input.nota.trim(),
+      createdBy: input.creadaPor,
+      createdAt: this.now(),
+      expiresAt,
+      usedAt: null,
+      usedBy: null,
+    });
+
+    // El enlace se devuelve UNA vez, aquí. El token solo se guarda hasheado, así
+    // que ni el panel ni la base pueden volver a enseñarlo: si se pierde, se
+    // crea otra invitación y ya está.
+    return { id, enlace: `${this.publicWebUrl}/auth/registro?invitacion=${token}`, expiraEn: expiresAt };
+  }
+
+  listarInvitaciones(): {
+    id: string;
+    nota: string;
+    creadaEn: number;
+    expiraEn: number;
+    usadaEn: number | null;
+  }[] {
+    return this.repository.listInvitations().map((fila) => ({
+      id: fila.id,
+      nota: fila.note,
+      creadaEn: fila.createdAt,
+      expiraEn: fila.expiresAt,
+      usadaEn: fila.usedAt,
+    }));
+  }
+
+  revocarInvitacion(id: string): void {
+    this.repository.deleteInvitation(id);
   }
 
   /**
@@ -295,5 +434,6 @@ function toPublicUser(user: UserRow): PublicUser {
     email: user.email,
     displayName: user.displayName,
     status: user.status,
+    role: user.role,
   };
 }

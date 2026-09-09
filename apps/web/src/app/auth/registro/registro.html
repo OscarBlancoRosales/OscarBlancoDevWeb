@@ -18,6 +18,12 @@
       <a routerLink="/auth/olvide">{{ i18n.t('cuenta.askAnotherLink') }}</a>
       {{ i18n.t('cuenta.sameLinkActivates') }}
     </p>
+  } @else if (!invitacion()) {
+    <p class="aviso">{{ i18n.t('cuenta.inviteOnly') }}</p>
+    <p class="pie">
+      {{ i18n.t('cuenta.haveAccount') }}
+      <a routerLink="/auth">{{ i18n.t('cuenta.enterShort') }}</a>.
+    </p>
   } @else {
     <form (ngSubmit)="registrar()" [formGroup]="formulario">
       <div class="form-group">

@@ -53,6 +53,31 @@ describe('Auth (iniciar sesión)', () => {
       expect(ir).toHaveBeenCalledWith('/juegos/risk');
     });
 
+    it('a quien administra le abre su panel, que es a lo que entra', async () => {
+      const { component } = await montar({}, () =>
+        Promise.resolve({ id: 'u1', displayName: 'Óscar', role: 'admin' }),
+      );
+      component.ngOnInit();
+      const router = TestBed.inject(Router);
+      const ir = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      component.loginForm.setValue({ email: 'jefe@ejemplo.com', password: 'secreta' });
+      await component.login();
+      expect(ir).toHaveBeenCalledWith('/admin');
+    });
+
+    /** Si venía de algún sitio, manda ese sitio: administrar no es lo que pedía. */
+    it('salvo que viniera de algún sitio', async () => {
+      const { component } = await montar({ next: '/juegos/risk' }, () =>
+        Promise.resolve({ id: 'u1', displayName: 'Óscar', role: 'admin' }),
+      );
+      component.ngOnInit();
+      const router = TestBed.inject(Router);
+      const ir = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      component.loginForm.setValue({ email: 'jefe@ejemplo.com', password: 'secreta' });
+      await component.login();
+      expect(ir).toHaveBeenCalledWith('/juegos/risk');
+    });
+
     it('si el login falla no te mueve de sitio', async () => {
       // Falla como falla el servidor de verdad: con el error de la API y su
       // mensaje, que es el que acaba viendo la persona.

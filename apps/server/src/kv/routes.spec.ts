@@ -4,6 +4,7 @@ import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db/index';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -23,7 +24,7 @@ describe('almacén de configuraciones', () => {
     await app.inject({
       method: 'POST',
       url: '/auth/registro',
-      payload: { email, password: 'contraseña-larga-1', displayName: 'Alguien' },
+      payload: { invitacion: invitacionDePrueba(db), email, password: 'contraseña-larga-1', displayName: 'Alguien' },
     });
     db.prepare("UPDATE users SET status = 'active' WHERE email = ?").run(email);
     const acceso = await app.inject({

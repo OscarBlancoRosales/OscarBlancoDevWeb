@@ -44,6 +44,8 @@ export const RegisterRequest = Type.Object(
     email: Email,
     password: Password,
     displayName: DisplayName,
+    /** El alta es por invitación: sin una válida y sin usar, no se entra. */
+    invitacion: Type.String({ minLength: 8, maxLength: 200 }),
   },
   SIN_EXTRAS,
 );
@@ -83,6 +85,14 @@ export const PublicUser = Type.Object({
   email: Email,
   displayName: DisplayName,
   status: Type.Union([Type.Literal('pending'), Type.Literal('active'), Type.Literal('blocked')]),
+  /**
+   * Para saber si enseñar el panel de administración, nada más.
+   *
+   * Que aquí ponga `admin` no abre ninguna puerta: cada ruta de administración
+   * lo vuelve a comprobar contra la base. Esto solo evita pintar un botón que
+   * iba a acabar en un 403.
+   */
+  role: Type.Union([Type.Literal('user'), Type.Literal('admin')]),
 });
 
 /**

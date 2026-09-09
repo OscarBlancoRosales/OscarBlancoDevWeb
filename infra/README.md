@@ -166,7 +166,7 @@ rm -f /tmp/prueba.db
 Si `integrity_check` dice `ok` y las cuentas están, la copia vale. Restaurarla de
 verdad es lo que ya está descrito arriba.
 
-## El panel de administración
+## Cockpit: el panel de la máquina
 
 Cockpit, para mirar la máquina sin pelearse con `ssh`: servicios, registro,
 disco y una terminal. Lee systemd y journald, no reimplementa nada, y se
@@ -191,6 +191,39 @@ Un panel de administración publicado es un segundo juego de credenciales que
 rotar y un segundo servidor web que parchear, a cambio de ahorrarse un túnel.
 Por lo mismo aquí no hay Portainer: necesita montar el socket de Docker, y quien
 controla ese socket es root en la máquina sin pasar por `sudo`.
+
+## Quién administra la web, y quién puede darse de alta
+
+El alta es **solo por invitación**, y las invitaciones las reparte el panel de
+`/admin`. El rol de administrador se decide en la máquina, no desde ninguna
+ruta: en `ADMIN_EMAILS`, separado por comas.
+
+```bash
+sudo nano /etc/devweb/api.env      # ADMIN_EMAILS=tu@correo.com
+sudo systemctl restart devweb-api
+```
+
+Al arrancar, el servicio le da el rol a esas cuentas y **se lo quita a todas las
+demás**. Así ni robando una sesión de administrador se puede fabricar otro
+administrador: para eso hay que entrar en la máquina. La cuenta tiene que
+existir ya (darse de alta y verificar el correo); estar en la lista no la crea.
+
+Con `ADMIN_EMAILS` vacío no administra nadie, y como las invitaciones salen del
+panel, tampoco puede registrarse nadie. El servicio lo avisa al arrancar.
+
+Desde `/admin`:
+
+- **Invitaciones.** Cada enlace vale para **un alta y una sola**, la use quien la
+  use y con el correo que sea. Se guarda cifrada: el enlace se enseña una vez, al
+  crearla, y si se pierde se crea otra. Caduca a los días que se le pongan.
+- **Usuarios.** Bloquear a alguien lo echa de sus sesiones abiertas al momento.
+  Borrar se lleva la cuenta **y todas sus salas**: una sala sin dueño no la puede
+  cerrar ni administrar nadie.
+- A un administrador no se le bloquea ni se le borra desde el panel. Su rol sale
+  del fichero, y el panel diría una cosa mientras la máquina hace otra.
+
+Quien no administra recibe un **404** en todo `/admin`, no un 403: un «no eres
+administrador» confirma que hay un panel ahí detrás al que apuntar.
 
 ## El correo
 

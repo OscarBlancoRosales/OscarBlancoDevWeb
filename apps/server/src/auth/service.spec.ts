@@ -3,6 +3,7 @@ import { AppError } from '../errors';
 import { openDatabase } from '../db/index';
 import { createAuthRepository } from './repository';
 import { AuthService } from './service';
+import { invitacionDePrueba } from './testing';
 import type { Db } from '../db/index';
 import type { Mail, Mailer } from './mailer';
 
@@ -31,6 +32,12 @@ describe('AuthService', () => {
   let db: Db;
   let correo: ReturnType<typeof buzon>;
   let ahora: number;
+
+  /** Un alta con su invitación: sin ella el servicio ni mira el correo. */
+  const alta = (): typeof ALTA & { invitacion: string } => ({
+    ...ALTA,
+    invitacion: invitacionDePrueba(db, ahora),
+  });
   let auth: AuthService;
 
   beforeEach(() => {
@@ -47,7 +54,7 @@ describe('AuthService', () => {
   });
 
   async function altaVerificada(): Promise<void> {
-    await auth.register(ALTA);
+    await auth.register(alta());
     auth.verifyEmail(tokenDe(correo.enviados[0]));
   }
 
@@ -61,7 +68,7 @@ describe('AuthService', () => {
    */
   describe('cómo se presenta en los correos', () => {
     it('el asunto y el cuerpo llevan el dominio, nunca el nombre del repositorio', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
       const [verificacion] = correo.enviados;
 
       expect(verificacion.subject).toContain('OBRWeb');
@@ -69,9 +76,9 @@ describe('AuthService', () => {
     });
 
     it('tampoco en el aviso a quien ya tenía cuenta', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
       correo.enviados.length = 0;
-      await auth.register(ALTA);
+      await auth.register(alta());
       const [aviso] = correo.enviados;
 
       expect(aviso.text).toContain('OBRWeb');
@@ -81,7 +88,7 @@ describe('AuthService', () => {
 
   describe('registro', () => {
     it('manda el correo de verificación', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
 
       expect(correo.enviados).toHaveLength(1);
       expect(correo.enviados[0]?.to).toBe('oscar@example.com');
@@ -89,11 +96,11 @@ describe('AuthService', () => {
     });
 
     it('no delata que un correo ya tiene cuenta', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
 
       // No lanza: contestar distinto convertiría el alta en un comprobador de
       // cuentas registradas.
-      await expect(auth.register({ ...ALTA, email: 'OSCAR@EXAMPLE.COM' })).resolves.toBeUndefined();
+      await expect(auth.register({ ...alta(), email: 'OSCAR@EXAMPLE.COM' })).resolves.toBeUndefined();
 
       // Y no se ha creado una segunda cuenta con el mismo correo.
       const cuentas = db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number };
@@ -101,8 +108,8 @@ describe('AuthService', () => {
     });
 
     it('avisa al dueño de la cuenta del intento, que es quien debe enterarse', async () => {
-      await auth.register(ALTA);
-      await auth.register({ ...ALTA, email: 'OSCAR@EXAMPLE.COM' });
+      await auth.register(alta());
+      await auth.register({ ...alta(), email: 'OSCAR@EXAMPLE.COM' });
 
       expect(correo.enviados).toHaveLength(2);
       expect(correo.enviados[1]?.subject).toContain('intentado registrarse');
@@ -114,7 +121,7 @@ describe('AuthService', () => {
     });
 
     it('la cuenta nace sin verificar y no deja entrar', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
 
       await expect(auth.login(ALTA, CLIENTE)).rejects.toMatchObject({
         code: 'cuenta-sin-verificar',
@@ -122,7 +129,7 @@ describe('AuthService', () => {
     });
 
     it('no guarda la contraseña, sino su hash de Argon2', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
 
       const fila = db.prepare('SELECT password_hash FROM users').get() as { password_hash: string };
       expect(fila.password_hash).not.toContain(ALTA.password);
@@ -139,7 +146,7 @@ describe('AuthService', () => {
     });
 
     it('el token no sirve dos veces', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
       const token = tokenDe(correo.enviados[0]);
       auth.verifyEmail(token);
 
@@ -147,7 +154,7 @@ describe('AuthService', () => {
     });
 
     it('el token caduca a las 24 horas', async () => {
-      await auth.register(ALTA);
+      await auth.register(alta());
       const token = tokenDe(correo.enviados[0]);
       ahora += 25 * 60 * 60 * 1000;
 
@@ -292,6 +299,11 @@ describe('AuthService', () => {
 
 describe('una cuenta bloqueada sigue bloqueada', () => {
   let db: Db;
+
+  const alta = (): typeof ALTA & { invitacion: string } => ({
+    ...ALTA,
+    invitacion: invitacionDePrueba(db),
+  });
   let correo: ReturnType<typeof buzon>;
   let auth: AuthService;
 
@@ -304,7 +316,7 @@ describe('una cuenta bloqueada sigue bloqueada', () => {
       publicWebUrl: 'https://oscarblancorosales.com',
       refreshTtlDays: 30,
     });
-    await auth.register(ALTA);
+    await auth.register(alta());
     auth.verifyEmail(tokenDe(correo.enviados[0]));
     db.prepare("UPDATE users SET status = 'blocked'").run();
   });
@@ -335,7 +347,7 @@ describe('una cuenta bloqueada sigue bloqueada', () => {
 
   it('no se desbloquea con un enlace de verificación viejo', async () => {
     db.prepare("UPDATE users SET status = 'pending'").run();
-    await auth.register({ ...ALTA, email: 'otro@example.com', displayName: 'Otro' });
+    await auth.register({ ...alta(), email: 'otro@example.com', displayName: 'Otro' });
     db.prepare("UPDATE users SET status = 'blocked' WHERE email = 'oscar@example.com'").run();
 
     await auth.requestPasswordReset(ALTA.email);
@@ -355,7 +367,7 @@ describe('el tiempo de respuesta no cuenta si la cuenta existe', () => {
       publicWebUrl: 'https://oscarblancorosales.com',
       refreshTtlDays: 30,
     });
-    await auth.register(ALTA);
+    await auth.register({ ...ALTA, invitacion: invitacionDePrueba(db) });
     db.prepare("UPDATE users SET status = 'active'").run();
 
     const medir = async (email: string): Promise<number> => {

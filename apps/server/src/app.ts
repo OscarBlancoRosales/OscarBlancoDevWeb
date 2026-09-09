@@ -12,6 +12,7 @@ import type { Mailer } from './auth/mailer';
 import { registerErrorHandler } from './errors';
 import { registerAuthGuard } from './auth/guard';
 import { authRoutes } from './auth/routes';
+import { adminRoutes } from './auth/admin-routes';
 import { AuthService } from './auth/service';
 import { createAuthRepository } from './auth/repository';
 import { createConsoleMailer, createSmtpMailer } from './auth/mailer';
@@ -66,14 +67,8 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   });
 
   registerErrorHandler(app);
-  registerAuthGuard(app, config.JWT_SECRET);
 
-  const service = new AuthService({
-    repository: createAuthRepository(db),
-    mailer: mailerFor(config, app.log.info.bind(app.log)),
-    publicWebUrl: config.PUBLIC_WEB_URL,
-    refreshTtlDays: config.REFRESH_TOKEN_TTL_DAYS,
-  });
+  const repository = createAuthRepository(db);
 
   const rooms = new RoomService({
     repository: createRoomRepository(db),
@@ -81,10 +76,36 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   });
   app.addHook('onClose', () => { rooms.cerrar(); });
 
+  const service = new AuthService({
+    repository,
+    // Borrar una cuenta se lleva sus salas: si no, quedarían partidas sin dueño
+    // que nadie puede administrar ni cerrar.
+    alBorrarUsuario: (userId) => { rooms.borrarLasDe(userId); },
+    mailer: mailerFor(config, app.log.info.bind(app.log)),
+    publicWebUrl: config.PUBLIC_WEB_URL,
+    refreshTtlDays: config.REFRESH_TOKEN_TTL_DAYS,
+  });
+
+  // Los administradores se fijan al arrancar, a partir de la configuración de
+  // la máquina. Ninguna ruta puede ascender a nadie.
+  const administradores = config.ADMIN_EMAILS.split(',')
+    .map((email) => email.trim())
+    .filter((email) => email !== '');
+  service.fijarAdministradores(administradores);
+  if (administradores.length === 0 && config.NODE_ENV === 'production') {
+    app.log.info(
+      'AVISO: ADMIN_EMAILS está vacío. Nadie puede administrar ni crear invitaciones, ' +
+        'y como el alta es por invitación, nadie puede registrarse.',
+    );
+  }
+
+  registerAuthGuard(app, config.JWT_SECRET, (userId) => repository.findUserById(userId)?.role === 'admin');
+
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
 
   await app.register(healthRoutes(db));
   await app.register(authRoutes({ service, config }));
+  await app.register(adminRoutes(service));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
   await app.register(kvRoutes(db, config.JWT_SECRET));

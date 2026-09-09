@@ -7,6 +7,7 @@ import type { RoomInfo, SeatGrant, SeatInfo } from '@devweb/shared/contracts/roo
 import type { Db } from '../db/index';
 import { createRoomRepository } from './repository';
 import { RoomService } from './service';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -25,7 +26,11 @@ describe('los asientos de una mesa', () => {
   let sala: SeatGrant;
 
   async function acceder(alta: typeof DUENYO): Promise<string> {
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: alta });
+    await app.inject({
+      method: 'POST',
+      url: '/auth/registro',
+      payload: { ...alta, invitacion: invitacionDePrueba(db) },
+    });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',

@@ -8,6 +8,7 @@ import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
 import { createRoomRepository } from './repository';
 import { RoomService } from './service';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -28,7 +29,7 @@ describe('una sala de RISK', () => {
     db = openDatabase(':memory:');
     app = await buildApp({ config, db });
 
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: ALTA });
+    await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, invitacion: invitacionDePrueba(db) } });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',

@@ -5,6 +5,7 @@ import { openDatabase } from '../db/index';
 import { REFRESH_COOKIE } from './routes';
 import type { FastifyInstance } from 'fastify';
 import type { Db } from '../db/index';
+import { invitacionDePrueba } from './testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -18,6 +19,12 @@ const ALTA = { email: 'oscar@example.com', password: 'contraseña-larga-1', disp
 describe('rutas de autenticación', () => {
   let app: FastifyInstance;
   let db: Db;
+
+  /** El alta es por invitación; los tests de forma no van de eso. */
+  const conInvitacion = <T,>(alta: T): T & { invitacion: string } => ({
+    ...alta,
+    invitacion: invitacionDePrueba(db),
+  });
 
   beforeEach(async () => {
     db = openDatabase(':memory:');
@@ -52,27 +59,27 @@ describe('rutas de autenticación', () => {
 
   describe('registro', () => {
     it('crea la cuenta y devuelve 201', async () => {
-      const response = await post('/auth/registro', ALTA);
+      const response = await post('/auth/registro', conInvitacion(ALTA));
 
       expect(response.statusCode).toBe(201);
       expect(response.json()).toEqual({ ok: true });
     });
 
     it('rechaza una contraseña corta antes de llegar al servicio', async () => {
-      const response = await post('/auth/registro', { ...ALTA, password: 'corta' });
+      const response = await post('/auth/registro', { ...conInvitacion(ALTA), password: 'corta' });
 
       expect(response.statusCode).toBe(400);
       expect(response.json()).toMatchObject({ code: 'peticion-invalida' });
     });
 
     it('rechaza lo que no es un correo', async () => {
-      const response = await post('/auth/registro', { ...ALTA, email: 'esto-no-es-un-correo' });
+      const response = await post('/auth/registro', { ...conInvitacion(ALTA), email: 'esto-no-es-un-correo' });
 
       expect(response.statusCode).toBe(400);
     });
 
     it('no deja colar campos de más', async () => {
-      const response = await post('/auth/registro', { ...ALTA, status: 'active' });
+      const response = await post('/auth/registro', { ...conInvitacion(ALTA), status: 'active' });
 
       expect(response.statusCode).toBe(400);
     });
@@ -80,7 +87,7 @@ describe('rutas de autenticación', () => {
 
   describe('acceso', () => {
     beforeEach(async () => {
-      await post('/auth/registro', ALTA);
+      await post('/auth/registro', conInvitacion(ALTA));
     });
 
     it('sin verificar no entra', async () => {
@@ -135,7 +142,7 @@ describe('rutas de autenticación', () => {
 
   describe('quién soy', () => {
     beforeEach(async () => {
-      await post('/auth/registro', ALTA);
+      await post('/auth/registro', conInvitacion(ALTA));
       activar();
     });
 
@@ -168,6 +175,7 @@ describe('rutas de autenticación', () => {
       expect(response.statusCode).toBe(200);
       expect(response.json()).toEqual({
         id: expect.any(String) as string,
+        role: 'user',
         email: ALTA.email,
         displayName: 'Óscar',
         status: 'active',
@@ -178,7 +186,7 @@ describe('rutas de autenticación', () => {
 
   describe('refresco y salida', () => {
     beforeEach(async () => {
-      await post('/auth/registro', ALTA);
+      await post('/auth/registro', conInvitacion(ALTA));
       activar();
     });
 
@@ -211,7 +219,7 @@ describe('rutas de autenticación', () => {
 
   describe('límite de intentos', () => {
     it('corta el diccionario en el acceso', async () => {
-      await post('/auth/registro', ALTA);
+      await post('/auth/registro', conInvitacion(ALTA));
       activar();
 
       const codigos: number[] = [];

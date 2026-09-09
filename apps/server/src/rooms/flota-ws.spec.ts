@@ -7,6 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import type { FlotaView } from '@devweb/shared/games/flota/tipos';
 import type { SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
+import { invitacionDePrueba } from '../auth/testing';
 
 const config = loadConfig({
   NODE_ENV: 'test',
@@ -95,7 +96,7 @@ describe('una partida de flota contra el bot', () => {
     const direccion = app.server.address();
     const puerto = typeof direccion === 'string' ? 0 : (direccion?.port ?? 0);
 
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: ALTA });
+    await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, invitacion: invitacionDePrueba(db) } });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',

@@ -9,6 +9,7 @@ declare module 'fastify' {
   }
   interface FastifyInstance {
     requireUser: onRequestHookHandler;
+    requireAdmin: onRequestHookHandler;
   }
 }
 
@@ -19,13 +20,40 @@ declare module 'fastify' {
  * vistazo (`onRequest: app.requireUser`) y para que no haya dos formas de
  * comprobar lo mismo repartidas por el código.
  */
-export function registerAuthGuard(app: FastifyInstance, secret: string): void {
+export function registerAuthGuard(
+  app: FastifyInstance,
+  secret: string,
+  esAdmin: (userId: string) => boolean,
+): void {
   app.decorateRequest('userId', '');
 
   app.decorate('requireUser', function requireUser(request, _reply, done) {
     const userId = userIdFrom(request, secret);
     if (!userId) {
       done(new AppError('no-autenticado', 'Hace falta iniciar sesión.'));
+      return;
+    }
+    request.userId = userId;
+    done();
+  } satisfies onRequestHookHandler);
+
+  /**
+   * Además de tener sesión, mandar.
+   *
+   * El rol se consulta en la base en CADA petición, no se lee del token: si se
+   * leyera del token, quitarle el rol a alguien no surtiría efecto hasta que su
+   * token caducara, y durante ese rato seguiría administrando.
+   */
+  app.decorate('requireAdmin', function requireAdmin(request, _reply, done) {
+    const userId = userIdFrom(request, secret);
+    if (!userId) {
+      done(new AppError('no-autenticado', 'Hace falta iniciar sesión.'));
+      return;
+    }
+    if (!esAdmin(userId)) {
+      // El mismo error que si la ruta no existiera para quien no manda: decir
+      // "no eres administrador" confirma que hay un panel al que apuntar.
+      done(new AppError('no-encontrado', 'No existe.'));
       return;
     }
     request.userId = userId;

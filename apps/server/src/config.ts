@@ -41,6 +41,16 @@ const ConfigSchema = Type.Object({
    * dice el guion escrito, que está pensado para valer por sí solo. Lo que no
    * puede pasar es que el servidor no arranque por esto.
    */
+  /**
+   * Quién administra, separado por comas. Vacío significa que nadie.
+   *
+   * Va aquí y no en una tabla que se toque desde el panel: el rol lo decide
+   * quien tiene acceso a la máquina, no quien consigue una sesión. Se aplica
+   * tal cual en cada arranque, así que quitar un correo de esta línea le quita
+   * el rol de verdad.
+   */
+  ADMIN_EMAILS: Type.String({ default: '' }),
+
   AI_KEY: Type.String({ default: '' }),
   AI_PROVIDER: Type.String({ default: 'openrouter' }),
   AI_MODEL: Type.String({ default: '' }),

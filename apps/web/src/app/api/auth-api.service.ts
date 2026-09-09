@@ -55,11 +55,16 @@ export class AuthApiService {
     return this.usuarioSubject.value;
   }
 
-  async registrar(email: string, password: string, displayName: string): Promise<void> {
+  async registrar(
+    email: string,
+    password: string,
+    displayName: string,
+    invitacion: string,
+  ): Promise<void> {
     await this.api.request<OkResponse>({
       method: 'POST',
       path: '/auth/registro',
-      body: { email, password, displayName },
+      body: { email, password, displayName, invitacion },
     });
   }
 

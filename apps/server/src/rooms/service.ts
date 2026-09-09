@@ -145,6 +145,22 @@ export class RoomService {
     this.repository.deleteRoom(roomId);
   }
 
+  /**
+   * Se lleva por delante todas las salas de alguien.
+   *
+   * Se usa al borrar una cuenta. La clave foránea de `rooms` deja el dueño en
+   * nulo en vez de borrar, y eso dejaría salas que nadie puede administrar ni
+   * cerrar; borrarlas aquí, además, descarga de memoria las que estén vivas.
+   */
+  borrarLasDe(ownerId: string): number {
+    const salas = this.repository.listRoomsByOwner(ownerId);
+    for (const sala of salas) {
+      this.olvidar(sala.id);
+      this.repository.deleteRoom(sala.id);
+    }
+    return salas.length;
+  }
+
   /** Devuelve el asiento al que corresponde un pase, o `null` si no vale. */
   asientoDe(roomId: string, seatToken: string): string | null {
     return this.repository.findSeatByToken(roomId, hashToken(seatToken))?.seatId ?? null;
