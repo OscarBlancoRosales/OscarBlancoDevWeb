@@ -13,8 +13,13 @@ import type { SeatId } from '@devweb/shared/games/module';
 /** Más largo que esto no es una frase de presentador: es un discurso. */
 const LARGO_MAXIMO = 320;
 
-/** Lo que se espera al modelo antes de darlo por perdido. */
-const PACIENCIA_MS = 6000;
+/**
+ * Lo que se espera al modelo antes de darlo por perdido.
+ *
+ * Doce segundos y no seis: los modelos gratuitos tienen cola. Mientras tanto
+ * la mesa ya está leyendo la frase escrita, así que esperar no cuesta nada.
+ */
+const PACIENCIA_MS = 12_000;
 
 type Llamada = typeof chatWithFallback;
 
@@ -39,6 +44,8 @@ export class PresentadorDeSala implements Narrador {
     private readonly modelo: Llamada = chatWithFallback,
     /** Quiénes de la mesa no tienen a nadie detrás, para poder decirlo. */
     private readonly bots: () => ReadonlySet<SeatId> = () => new Set(),
+    /** Dónde se apunta que el modelo ha fallado. Sin esto no hay diagnóstico. */
+    private readonly avisar: (motivo: string) => void = () => undefined,
   ) {}
 
   trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void {
@@ -140,10 +147,12 @@ export class PresentadorDeSala implements Narrador {
         this.modelo(this.ajustes, mensajes, { maxTokens: 120 }),
         seAgota(),
       ]);
-      return aceptable(respuesta.text) ? respuesta.text.trim() : null;
-    } catch {
-      // Sin red, sin cuota o con la clave mal: se queda el guion, y nadie en la
-      // mesa se entera de que ha pasado nada.
+      if (aceptable(respuesta.text)) return respuesta.text.trim();
+      this.avisar(`el modelo contestó algo que no se puede enseñar (${respuesta.text.length} letras)`);
+      return null;
+    } catch (fallo) {
+      // La mesa no se entera, pero quien mantiene el servidor sí.
+      this.avisar(fallo instanceof Error ? fallo.message : 'el modelo falló sin decir por qué');
       return null;
     }
   }
@@ -175,6 +184,7 @@ export function ajustesDeIa(config: {
   AI_KEY: string;
   AI_PROVIDER: string;
   AI_MODEL: string;
+  AI_FREE_ONLY?: boolean;
 }): AiSettings | null {
   if (!config.AI_KEY) return null;
   return {
@@ -182,6 +192,8 @@ export function ajustesDeIa(config: {
     provider: proveedor(config.AI_PROVIDER),
     apiKey: config.AI_KEY,
     model: config.AI_MODEL,
+    // Sin esto, un modelo de pago puesto a mano se descartaba en silencio.
+    freeOnly: config.AI_FREE_ONLY !== false,
   };
 }
 

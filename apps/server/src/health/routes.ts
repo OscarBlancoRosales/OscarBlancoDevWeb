@@ -1,11 +1,26 @@
 import { Type } from '@sinclair/typebox';
 import type { FastifyPluginCallbackTypebox } from '@fastify/type-provider-typebox';
 import type { Db } from '../db/index';
+import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 
 const HealthResponse = Type.Object({
   status: Type.Union([Type.Literal('ok'), Type.Literal('degradado')]),
   database: Type.Boolean(),
   uptimeSeconds: Type.Number(),
+  /**
+   * Si el presentador y el crupier pueden hablar con un modelo.
+   *
+   * No es un adorno: sin esto, «la clave está puesta pero no improvisa» es
+   * imposible de diagnosticar desde fuera, porque el juego funciona igual con
+   * el guion escrito y no se queja de nada. Dice si hay clave y con qué
+   * modelo, nunca la clave.
+   */
+  ia: Type.Object({
+    configurada: Type.Boolean(),
+    proveedor: Type.String(),
+    modelo: Type.String(),
+    soloGratis: Type.Boolean(),
+  }),
 });
 
 /**
@@ -15,7 +30,7 @@ const HealthResponse = Type.Object({
  * exactamente cuando más falta hace la verdad: el día que el disco esté lleno y
  * SQLite no pueda escribir, el proceso sigue en pie y el servicio no funciona.
  */
-export function healthRoutes(db: Db): FastifyPluginCallbackTypebox {
+export function healthRoutes(db: Db, ia?: AiSettings | null): FastifyPluginCallbackTypebox {
   return (app, _options, done) => {
     app.get(
       '/health',
@@ -26,6 +41,12 @@ export function healthRoutes(db: Db): FastifyPluginCallbackTypebox {
           status: database ? ('ok' as const) : ('degradado' as const),
           database,
           uptimeSeconds: Math.round(process.uptime()),
+          ia: {
+            configurada: !!ia?.enabled,
+            proveedor: ia?.provider ?? '',
+            modelo: ia?.model ?? '(los gratuitos por defecto)',
+            soloGratis: ia?.freeOnly !== false,
+          },
         });
       },
     );

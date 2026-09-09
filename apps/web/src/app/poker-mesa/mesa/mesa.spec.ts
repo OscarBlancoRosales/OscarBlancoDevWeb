@@ -5,7 +5,7 @@ import { signal } from '@angular/core';
 import { MesaPoker, guardarPaseDeMesa } from './mesa';
 import { MesaService } from '../mesa.service';
 import type { SeatInfo } from '@devweb/shared/contracts/rooms';
-import type { ScrumView } from '@devweb/shared/games/scrum';
+import type { ScrumView, ScrumVote } from '@devweb/shared/games/scrum';
 
 /**
  * La mesa de planning poker.
@@ -52,7 +52,7 @@ function salaFalsa() {
       ({ yo: 'turing', bea: 'hopper', eva: 'linus' })[seatId] ?? 'anon',
     reconectar: () => undefined,
     desconectar: () => undefined,
-    votar: () => undefined,
+    votar: (_voto: ScrumVote) => undefined,
     retirarVoto: () => undefined,
     revelar: () => undefined,
     nuevaRonda: () => undefined,
@@ -94,6 +94,15 @@ describe('la mesa de poker', () => {
 
   function dom(): HTMLElement {
     return fixture.nativeElement as HTMLElement;
+  }
+
+  /** La ficha de ese valor, tal y como la pulsaría alguien. */
+  function ficha(valor: string): HTMLButtonElement {
+    const encontrada = Array.from(dom().querySelectorAll('.ficha')).find(
+      (una) => una.textContent?.trim() === valor,
+    );
+    if (!encontrada) throw new Error(`no hay ficha de ${valor}`);
+    return encontrada as HTMLButtonElement;
   }
 
   describe('quién está sentado', () => {
@@ -267,25 +276,94 @@ describe('la mesa de poker', () => {
     });
   });
 
-  describe('lo que se puede hacer', () => {
-    it('la baraja está mientras no se destape', () => {
+  describe('votar con fichas', () => {
+    it('las fichas están mientras no se destape', () => {
       pinta({});
-      expect(dom().querySelectorAll('.naipe').length).toBeGreaterThan(5);
+      expect(dom().querySelectorAll('.ficha').length).toBeGreaterThan(4);
     });
 
-    it('y desaparece al destapar, que ya no se vota', () => {
+    it('y desaparecen al destapar, que ya no se vota', () => {
       pinta({ revelado: true, hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
-      expect(dom().querySelectorAll('.naipe')).toHaveLength(0);
+      expect(dom().querySelectorAll('.ficha')).toHaveLength(0);
     });
 
-    it('la carta que has echado se queda marcada', () => {
+    /**
+     * Se apilan, no se sustituyen: un siete es cinco y dos. Con una escala
+     * cerrada habría que redondear a lo que hubiera en la baraja.
+     */
+    it('cada ficha se suma a lo que ya llevas', () => {
+      const echados: number[] = [];
+      sala.votar = (voto: ScrumVote) => {
+        if (voto.tipo === 'numero') echados.push(voto.valor);
+      };
+
+      pinta({});
+      ficha('5').click();
       pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
-      const elegida = dom().querySelector('.naipe.elegida');
-      expect(elegida?.textContent?.trim()).toBe('5');
+      ficha('2').click();
+
+      expect(echados).toEqual([5, 7]);
+    });
+
+    it('lo apostado se ve, y se puede retirar', () => {
+      const texto = pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 13 } } });
+      expect(dom().querySelector('.monton-valor')?.textContent?.trim()).toBe('13');
+      expect(texto).toContain('Retirar');
+    });
+
+    it('sin votar todavía, el montón está a cero y no ofrece retirar', () => {
+      const texto = pinta({});
+      expect(dom().querySelector('.monton-valor')?.textContent?.trim()).toBe('0');
+      expect(texto).not.toContain('Retirar');
     });
 
     it('se dice cuántos faltan por votar', () => {
       expect(pinta({ hanVotado: ['yo'] })).toContain('Faltan 2');
+    });
+  });
+
+  describe('cómo ha votado la mesa', () => {
+    /**
+     * Una media de ocho puede ser todos en ocho o media mesa en tres y media
+     * en trece, y esas dos reuniones no se parecen en nada.
+     */
+    it('se enseña el reparto de votos al destapar', () => {
+      pinta({
+        revelado: true,
+        hanVotado: ['yo', 'bea', 'eva'],
+        votos: {
+          yo: { tipo: 'numero', valor: 5 },
+          bea: { tipo: 'numero', valor: 5 },
+          eva: { tipo: 'numero', valor: 13 },
+        },
+      });
+
+      const filas = Array.from(dom().querySelectorAll('.reparto .fila')).map((fila) => [
+        fila.querySelector('.valor')?.textContent?.trim(),
+        fila.querySelector('.cuantos')?.textContent?.trim(),
+      ]);
+      expect(filas).toEqual([
+        ['5', '2'],
+        ['13', '1'],
+      ]);
+    });
+
+    /** Medir contra el más votado pinta todas las barras llenas y engaña. */
+    it('las barras van sobre el total de la mesa, no sobre el más votado', () => {
+      pinta({
+        revelado: true,
+        hanVotado: ['yo', 'bea'],
+        votos: { yo: { tipo: 'numero', valor: 3 }, bea: { tipo: 'numero', valor: 8 } },
+      });
+      const anchos = Array.from(dom().querySelectorAll<HTMLElement>('.reparto .barra i')).map(
+        (barra) => barra.style.width,
+      );
+      expect(anchos).toEqual(['50%', '50%']);
+    });
+
+    it('sin destapar no se enseña nada', () => {
+      pinta({ hanVotado: ['yo'] });
+      expect(dom().querySelector('.reparto')).toBeNull();
     });
   });
 });

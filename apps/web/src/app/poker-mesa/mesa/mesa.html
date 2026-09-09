@@ -50,11 +50,17 @@
 
         <!-- En el centro: lo que se estima y cómo va la cosa -->
         <div class="centro">
-          @if (v.asunto) {
-            <p class="asunto">{{ v.asunto }}</p>
-          } @else {
-            <p class="asunto sin-nombre">Sin asunto puesto</p>
-          }
+          <!-- El asunto se pone aquí mismo: buscarlo en otra pantalla es lo
+               que hace que las salas acaben llamándose «Sin asunto puesto». -->
+          <input
+            class="asunto"
+            type="text"
+            maxlength="200"
+            [value]="v.asunto"
+            placeholder="¿Qué estamos estimando?"
+            (keydown.enter)="ponerAsunto($event)"
+            (blur)="ponerAsunto($event)"
+          />
 
           @if (v.revelado && estadistica.votantes > 0) {
             <div class="numeros">
@@ -92,6 +98,19 @@
         }
       </aside>
 
+      @if (reparto.length > 0) {
+        <section class="reparto">
+          <h2>Cómo ha votado la mesa</h2>
+          @for (fila of reparto; track fila.valor) {
+            <div class="fila">
+              <span class="valor">{{ fila.valor }}</span>
+              <span class="barra"><i [style.width.%]="fila.porciento"></i></span>
+              <span class="cuantos">{{ fila.cuantos }}</span>
+            </div>
+          }
+        </section>
+      }
+
       @if (bandos; as partida) {
         <p class="bandos">
           La mesa está partida: unos ven {{ partida.bajos.join(', ') }} y otros
@@ -102,51 +121,68 @@
       <!-- Tus cartas -->
       <section class="mano">
         @if (!v.revelado) {
-          <div class="baraja">
-            @for (carta of cartas; track carta) {
-              <button
-                type="button"
-                class="naipe"
-                [class.elegida]="tuVoto === carta"
-                (click)="votar(carta)"
-              >
-                {{ carta }}
-              </button>
-            }
+          <!-- Las fichas se suman: un siete es cinco y dos -->
+          <div class="apuesta">
+            <div class="fichas">
+              @for (ficha of fichas; track ficha) {
+                <button
+                  type="button"
+                  class="ficha"
+                  [class]="'v' + ficha"
+                  (click)="echarFicha(ficha)"
+                  [attr.aria-label]="'Sumar ' + ficha"
+                >
+                  <span>{{ ficha }}</span>
+                </button>
+              }
+            </div>
+
+            <div class="monton" [class.puesto]="tuVoto !== null || pediste">
+              <span class="monton-etiqueta">Tu voto</span>
+              <strong class="monton-valor">
+                @if (pediste === 'cafe') {
+                  ☕
+                } @else if (pediste === 'porro') {
+                  🚬
+                } @else {
+                  {{ apostado }}
+                }
+              </strong>
+              @if (tuVoto !== null || pediste) {
+                <button type="button" class="quitar" (click)="retirar()">Retirar</button>
+              }
+            </div>
+          </div>
+
+          <div class="suelto">
             <button
               type="button"
-              class="naipe especial"
+              class="secundario especial"
               [class.elegida]="pediste === 'cafe'"
               title="Necesito un descanso"
               (click)="pedirCafe()"
             >
-              ☕
+              ☕ Café
             </button>
             <button
               type="button"
-              class="naipe especial"
+              class="secundario especial"
               [class.elegida]="pediste === 'porro'"
               title="Esto es demasiado grande para estimarlo hoy"
               (click)="pedirPorro()"
             >
-              🚬
+              🚬 Ni con un palo
             </button>
-          </div>
-
-          <div class="suelto">
             <input
               type="number"
               min="0"
               [(ngModel)]="numeroSuelto"
-              placeholder="Otro número"
+              placeholder="Número exacto"
               (keydown.enter)="votarSuelto()"
             />
             <button type="button" class="secundario" [disabled]="numeroSuelto === null" (click)="votarSuelto()">
               Va
             </button>
-            @if (tuVoto !== null || pediste) {
-              <button type="button" class="secundario" (click)="retirar()">Retirar mi carta</button>
-            }
           </div>
         }
 

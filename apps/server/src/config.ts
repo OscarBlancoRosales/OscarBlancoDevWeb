@@ -44,6 +44,15 @@ const ConfigSchema = Type.Object({
   AI_KEY: Type.String({ default: '' }),
   AI_PROVIDER: Type.String({ default: 'openrouter' }),
   AI_MODEL: Type.String({ default: '' }),
+  /**
+   * Si solo se llama a modelos gratuitos. Encendido por defecto.
+   *
+   * Con esto encendido, un `AI_MODEL` de pago se descarta **en silencio** y el
+   * juego se queda con el guion escrito sin decir por qué: es el fallo más
+   * difícil de diagnosticar que tiene esto. Ponerlo a `false` es aceptar que
+   * cada partida factura.
+   */
+  AI_FREE_ONLY: Type.Boolean({ default: true }),
 });
 
 export type Config = Static<typeof ConfigSchema> & { readonly corsOrigins: readonly string[] };
