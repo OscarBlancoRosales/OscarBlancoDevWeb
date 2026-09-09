@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import type { AbstractControl } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthApiService } from '../api/auth-api.service';
+import { I18nService } from '../services/i18n.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 
 /** A dónde se va tras iniciar sesión si nadie pide otra cosa. */
@@ -64,7 +65,8 @@ export class Auth implements OnInit {
     private fb: FormBuilder,
     private router: Router,
     private route: ActivatedRoute,
-    private auth: AuthApiService
+    private auth: AuthApiService,
+    public i18n: I18nService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],

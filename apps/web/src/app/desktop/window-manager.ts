@@ -188,6 +188,11 @@ export function refit(state: DesktopState, width: number, height: number): Deskt
   return { ...state, area, windows };
 }
 
+/** Le cambia el nombre a una ventana, por ejemplo al cambiar de idioma. */
+export function rename(state: DesktopState, id: string, title: string): DesktopState {
+  return patch(state, id, () => ({ title }));
+}
+
 /** La que está delante del todo. Las minimizadas no cuentan. */
 export function activeWindow(state: DesktopState): WindowState | null {
   const visibles = state.windows.filter((w) => !w.minimized);

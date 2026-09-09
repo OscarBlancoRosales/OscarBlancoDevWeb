@@ -4,6 +4,7 @@ import type { AbstractControl } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthApiService } from '../../api/auth-api.service';
 import { PanelCuenta } from '../panel-cuenta/panel-cuenta';
+import { I18nService } from '../../services/i18n.service';
 
 /** Lo que exige el servidor. Repetirlo aquí es para avisar antes de enviar. */
 export const MINIMO_CONTRASENA = 12;
@@ -35,6 +36,7 @@ export class Registro {
   constructor(
     private fb: FormBuilder,
     private auth: AuthApiService,
+    public i18n: I18nService,
   ) {
     this.formulario = this.fb.group({
       displayName: ['', [Validators.required, Validators.maxLength(40)]],

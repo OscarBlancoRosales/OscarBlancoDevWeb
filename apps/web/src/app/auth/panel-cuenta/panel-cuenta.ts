@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { TerminalLayout } from '../../shared/terminal-layout/terminal-layout';
+import { I18nService } from '../../services/i18n.service';
 
 /**
  * El marco común de las pantallas de cuenta.
@@ -16,6 +17,8 @@ import { TerminalLayout } from '../../shared/terminal-layout/terminal-layout';
   styleUrl: '../auth.css',
 })
 export class PanelCuenta {
+  constructor(public i18n: I18nService) {}
+
   @Input({ required: true }) titulo = '';
   @Input() subtitulo = '';
 

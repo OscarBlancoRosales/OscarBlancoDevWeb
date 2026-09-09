@@ -1,34 +1,31 @@
 <app-panel-cuenta
-  titulo="Contraseña olvidada"
-  subtitulo="Te mandamos un enlace para ponerla de nuevo"
+  [titulo]="i18n.t('cuenta.forgotTitle')"
+  [subtitulo]="i18n.t('cuenta.forgotSub')"
   [error]="error()"
 >
   @if (hecho()) {
     <!-- Mismo motivo que en el alta: decir si el correo existe convertiría
          esta pantalla en un listado de quién tiene cuenta. -->
-    <p class="aviso">
-      Si ese correo tiene cuenta, le hemos mandado un enlace para cambiar la
-      contraseña. Caduca en una hora.
-    </p>
-    <p class="pie"><a routerLink="/auth">Volver a entrar</a></p>
+    <p class="aviso">{{ i18n.t('cuenta.forgotDone') }}</p>
+    <p class="pie"><a routerLink="/auth">{{ i18n.t('cuenta.backToLogin') }}</a></p>
   } @else {
     <form (ngSubmit)="pedir()" [formGroup]="formulario">
       <div class="form-group">
-        <label for="email">Correo</label>
+        <label for="email">{{ i18n.t('cuenta.email') }}</label>
         <input
           id="email"
           type="email"
           formControlName="email"
-          placeholder="tu@correo.com"
+          [placeholder]="i18n.t('cuenta.emailPh')"
           [class.input-error]="email?.invalid && email?.touched"
         />
         @if (email?.invalid && email?.touched) {
           <div class="error">
             @if (email?.errors?.['required']) {
-              <span>Hace falta un correo.</span>
+              <span>{{ i18n.t('cuenta.emailRequired') }}</span>
             }
             @if (email?.errors?.['email']) {
-              <span>Ese correo no tiene buena pinta.</span>
+              <span>{{ i18n.t('cuenta.emailBad') }}</span>
             }
           </div>
         }
@@ -39,10 +36,10 @@
         class="btn btn-primary btn-full"
         [disabled]="formulario.invalid || enviando()"
       >
-        {{ enviando() ? 'Enviando…' : 'Mandar el enlace' }}
+        {{ enviando() ? i18n.t('cuenta.sending') : i18n.t('cuenta.sendLink') }}
       </button>
     </form>
 
-    <p class="pie"><a routerLink="/auth">Ya me acuerdo, entrar</a></p>
+    <p class="pie"><a routerLink="/auth">{{ i18n.t('cuenta.rememberNow') }}</a></p>
   }
 </app-panel-cuenta>

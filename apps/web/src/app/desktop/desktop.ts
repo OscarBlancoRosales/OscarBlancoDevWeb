@@ -29,6 +29,7 @@ import {
   newDesktop,
   open,
   refit,
+  rename,
   resize,
   restore,
   toggleMaximize,
@@ -90,7 +91,15 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
    */
   routeWin: string | null = null;
 
+  /**
+   * La clave de i18n del título de cada ventana, no el título ya traducido:
+   * si guardáramos el texto, cambiar de idioma dejaría «Códigos QR» escrito
+   * en la barra de tareas de una web que ya está en inglés.
+   */
+  private titleKeys: Record<string, string | undefined> = {};
+
   private navegacion?: Subscription;
+  private idioma?: Subscription;
 
   @ViewChild('area') private area?: ElementRef<HTMLElement>;
 
@@ -115,6 +124,18 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
       .subscribe(() => {
         this.syncRouteWindow();
       });
+    this.idioma = this.i18n.langChange$.subscribe(() => {
+      this.retitle();
+    });
+  }
+
+  /** Vuelve a traducir el nombre de todo lo que hay abierto. */
+  private retitle(): void {
+    for (const w of this.state.windows) {
+      const clave = this.titleKeys[w.id];
+      if (clave) this.state = rename(this.state, w.id, this.i18n.t(clave));
+    }
+    this.cdr.detectChanges();
   }
 
   /**
@@ -128,6 +149,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.navegacion?.unsubscribe();
+    this.idioma?.unsubscribe();
     // Al salir del escritorio las herramientas vuelven a traer su propia
     // ventana: si no, una ruta suelta se quedaría sin barra de título.
     this.shell.embedded.set(false);
@@ -155,13 +177,17 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
+    // El título sale del icono si la sección tiene uno; si no, de la clave
+    // que traiga la ruta, para que también cambie al cambiar de idioma.
     const item = DESKTOP_ITEMS.find((i) => i.id === id);
-    const titulo =
-      typeof datos['title'] === 'string'
+    const suya = datos['titleKey'];
+    const clave = item ? item.labelKey : typeof suya === 'string' ? suya : undefined;
+    this.titleKeys[id] = clave;
+    const titulo = clave
+      ? this.i18n.t(clave)
+      : typeof datos['title'] === 'string'
         ? datos['title']
-        : item
-          ? this.i18n.t(item.labelKey)
-          : id;
+        : id;
 
     this.state = open(this.state, id, titulo);
     this.maximizeIfNeeded(id);
@@ -193,6 +219,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
 
   async launch(item: DesktopItem): Promise<void> {
     const titulo = this.i18n.t(item.labelKey);
+    this.titleKeys[item.id] = item.labelKey;
 
     // Si esa ventana ya la lleva la dirección, se trae al frente y ya está:
     // montarle otro contenido dejaría dos cosas en la misma ventana.

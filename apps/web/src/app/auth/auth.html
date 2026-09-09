@@ -1,41 +1,41 @@
-<app-terminal-layout title="Auth — Scrum Poker">
+<app-terminal-layout [title]="i18n.t('cuenta.panel') + ' — ' + i18n.t('cuenta.login')">
   <div class="tool-content">
     <div class="tool-card">
-      <h2 class="tool-title">&gt; Login</h2>
-      <p class="tool-subtitle">Acceso a Sala Scrum Poker</p>
+      <h2 class="tool-title">&gt; {{ i18n.t('cuenta.login') }}</h2>
+      <p class="tool-subtitle">{{ i18n.t('cuenta.loginSub') }}</p>
       <form (ngSubmit)="login()" [formGroup]="loginForm">
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">{{ i18n.t('cuenta.email') }}</label>
           <input
             id="email"
             type="email"
             formControlName="email"
-            placeholder="admin@oscarblanco.dev"
+            [placeholder]="i18n.t('cuenta.emailPh')"
             [class.input-error]="email?.invalid && email?.touched"
           />
           @if (email?.invalid && email?.touched) {
             <div class="error">
               @if (email?.errors?.['required']) {
-                <span>El email es requerido</span>
+                <span>{{ i18n.t('cuenta.emailRequired') }}</span>
               }
               @if (email?.errors?.['email']) {
-                <span>Email inválido</span>
+                <span>{{ i18n.t('cuenta.emailBad') }}</span>
               }
             </div>
           }
         </div>
 
         <div class="form-group">
-          <label for="password">Contraseña</label>
+          <label for="password">{{ i18n.t('cuenta.password') }}</label>
           <input
             id="password"
             type="password"
             formControlName="password"
-            placeholder="Tu contraseña"
+            [placeholder]="i18n.t('cuenta.passwordPh')"
             [class.input-error]="password?.invalid && password?.touched"
           />
           @if (password?.invalid && password?.touched) {
-            <div class="error">La contraseña es requerida</div>
+            <div class="error">{{ i18n.t('cuenta.passwordRequired') }}</div>
           }
         </div>
 
@@ -44,7 +44,7 @@
           class="btn btn-primary btn-full"
           [disabled]="loginForm.invalid || isLoading()"
         >
-          {{ isLoading() ? 'Accediendo...' : 'Entrar' }}
+          {{ isLoading() ? i18n.t('cuenta.entering') : i18n.t('cuenta.login') }}
         </button>
       </form>
 
@@ -53,9 +53,10 @@
       }
 
       <p class="pie">
-        ¿No tienes cuenta? <a routerLink="/auth/registro">Créate una</a>.
+        {{ i18n.t('cuenta.noAccount') }}
+        <a routerLink="/auth/registro">{{ i18n.t('cuenta.createOne') }}</a>.
         <br />
-        <a routerLink="/auth/olvide">He olvidado la contraseña</a>
+        <a routerLink="/auth/olvide">{{ i18n.t('cuenta.forgot') }}</a>
       </p>
     </div>
   </div>

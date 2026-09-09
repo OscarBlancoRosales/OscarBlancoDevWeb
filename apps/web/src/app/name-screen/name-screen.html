@@ -1,48 +1,54 @@
-<app-terminal-layout title="Scrum Poker — Join">
+<app-terminal-layout [title]="i18n.t(isInvited ? 'join.title' : 'join.createTitle')">
   <div class="tool-content">
     <div class="tool-card">
-      <h2 class="tool-title">&gt; Join Room</h2>
-      <p class="tool-subtitle">Ingresa tu nombre para unirte a la sala</p>
-      
+      <h2 class="tool-title">&gt; {{ i18n.t(isInvited ? 'join.title' : 'join.createTitle') }}</h2>
+      <p class="tool-subtitle">{{ i18n.t(isInvited ? 'join.sub' : 'join.createSub') }}</p>
+
       <form (ngSubmit)="joinRoom()" [formGroup]="nameForm">
         <div class="form-group">
-          <label for="playerName">Tu nombre</label>
-          <input 
+          <label for="playerName">{{ i18n.t('join.yourName') }}</label>
+          <input
             id="playerName"
-            type="text" 
+            type="text"
             formControlName="playerName"
-            placeholder="Ej: Juan, María, etc."
+            [placeholder]="i18n.t('join.namePlaceholder')"
             [class.input-error]="playerName?.invalid && playerName?.touched"
             maxlength="20"
           >
-          <div class="error" *ngIf="playerName?.invalid && playerName?.touched">
-            El nombre es requerido (mínimo 2 caracteres)
-          </div>
+          @if (playerName?.invalid && playerName?.touched) {
+            <div class="error">{{ i18n.t('join.nameRequired') }}</div>
+          }
         </div>
-        
+
         <button type="submit" class="btn btn-primary btn-full" [disabled]="nameForm.invalid || isLoading">
-          {{ isLoading ? 'Uniéndose...' : 'Unirse a la sala' }}
+          @if (isLoading) {
+            {{ i18n.t('join.joining') }}
+          } @else {
+            {{ i18n.t(isInvited ? 'join.join' : 'join.create') }}
+          }
         </button>
       </form>
-      
-      <div class="room-info" *ngIf="roomId">
-        <p><strong>Sala:</strong> {{ roomId }}</p>
-        <p><strong>Código de invitación:</strong></p>
-        <div class="invite-code">
-          <code>{{ inviteCode }}</code>
-          <button (click)="copyInviteLink()" class="btn-copy" title="Copiar enlace">
-            📋
-          </button>
-        </div>
-      </div>
-      
-      <div class="error-message" *ngIf="error">
-        {{ error }}
-      </div>
 
-      <div class="success-message" *ngIf="showSuccess">
-        ✓ Nombre guardado. Redirigiendo a la sala...
-      </div>
+      @if (roomId) {
+        <div class="room-info">
+          <p><strong>{{ i18n.t('join.room') }}:</strong> {{ roomId }}</p>
+          <p><strong>{{ i18n.t('join.link') }}:</strong></p>
+          <div class="invite-code">
+            <code>{{ inviteCode }}</code>
+            <button (click)="copyInviteLink()" class="btn-copy" [title]="i18n.t('join.copy')">
+              {{ copied ? '✓' : '📋' }}
+            </button>
+          </div>
+        </div>
+      }
+
+      @if (error) {
+        <div class="error-message">{{ error }}</div>
+      }
+
+      @if (showSuccess) {
+        <div class="success-message">✓ {{ i18n.t('join.saved') }}</div>
+      }
     </div>
   </div>
 </app-terminal-layout>

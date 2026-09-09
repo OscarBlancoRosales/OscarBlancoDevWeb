@@ -35,6 +35,22 @@ import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
 const SECCIONES: Routes = [
   { path: 'scrum-poker', component: ScrumPoker, data: { win: 'poker' } },
   { path: 'name-screen', component: NameScreen, data: { win: 'poker' } },
+  // Las de cuenta también: crear una sala pide sesión, y salir al identificarse
+  // dejaba a medias justo el camino que acabábamos de arreglar. A las tres
+  // últimas se llega desde el correo, y ahí ver la casa detrás ayuda todavía
+  // más: quien verifica su cuenta no sabe aún qué hay al otro lado.
+  //
+  // Esas tres direcciones las escribe el servidor al mandar el correo: si
+  // cambian aquí, hay que cambiarlas también en apps/server/src/auth/service.ts.
+  { path: 'auth', component: Auth, data: { win: 'cuenta', titleKey: 'desk.account' } },
+  { path: 'auth/registro', component: Registro, data: { win: 'cuenta', titleKey: 'desk.account' } },
+  { path: 'auth/verificar', component: Verificar, data: { win: 'cuenta', titleKey: 'desk.account' } },
+  { path: 'auth/olvide', component: Olvide, data: { win: 'cuenta', titleKey: 'desk.account' } },
+  {
+    path: 'auth/nueva-contrasena',
+    component: NuevaContrasena,
+    data: { win: 'cuenta', titleKey: 'desk.account' },
+  },
   { path: 'dni-generator', component: DniGenerator, data: { win: 'dni' } },
   { path: 'qr-generator', component: QrGenerator, data: { win: 'qr' } },
   { path: 'decoder', component: Decoder, data: { win: 'base64' } },
@@ -105,13 +121,5 @@ export const routes: Routes = [
     ],
   },
   { path: 'terminal', component: Console },
-  { path: 'auth', component: Auth },
-  { path: 'auth/registro', component: Registro },
-  // A estas dos llegan los enlaces del correo, con el código en la dirección.
-  // Las rutas las escribe el servidor al mandar el correo: si cambian aquí,
-  // hay que cambiarlas también en apps/server/src/auth/service.ts.
-  { path: 'auth/verificar', component: Verificar },
-  { path: 'auth/olvide', component: Olvide },
-  { path: 'auth/nueva-contrasena', component: NuevaContrasena },
   { path: '**', redirectTo: '' },
 ];

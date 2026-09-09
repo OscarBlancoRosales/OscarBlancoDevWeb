@@ -2,6 +2,7 @@ import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthApiService } from '../../api/auth-api.service';
 import { PanelCuenta } from '../panel-cuenta/panel-cuenta';
+import { I18nService } from '../../services/i18n.service';
 
 type Estado = 'comprobando' | 'activada' | 'fallo';
 
@@ -30,6 +31,7 @@ export class Verificar implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private auth: AuthApiService,
+    public i18n: I18nService,
   ) {}
 
   ngOnInit(): void {
