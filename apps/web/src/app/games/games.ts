@@ -67,20 +67,21 @@ export class Games {
     },
     {
       id: 'trivial',
-      name: 'Trivial de dev',
-      tagline: 'Preguntas que duelen en la retro',
+      name: 'El Concurso',
+      tagline: 'Un programa de tele para programadores',
       description:
-        'Un concurso con presentador: test, estimaciones y pillar el fallo en un trozo de ' +
-        'código. Programación, historia de la informática y cultura de oficina.',
+        'Seis secciones con presentador: test, el primero que pulse, ráfaga de verdadero o ' +
+        'falso, pillar el fallo, estimación a ojo y la bomba, que va pasando de mano en mano.',
       icon: '🧠',
       players: '2 – 8 jugadores',
       duration: '15 – 30 min',
       route: '/juegos/trivial',
       status: 'listo',
       highlights: [
-        'Tres clases de prueba, no solo preguntas',
+        'Seis secciones con mecánica propia, no solo preguntas',
+        'La bomba va pasando y estalla en manos de quien la tenga',
         'Las respuestas se quedan en el servidor',
-        'Presentador con mucha labia y tres rivales de mesa',
+        'Presentador que se entera de todo y lo canta',
       ],
     },
   ];

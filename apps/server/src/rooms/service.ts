@@ -305,7 +305,18 @@ export class RoomService {
    */
   private narradorPara(game: GameId, roomId: string): PresentadorDeSala | null {
     if (game !== 'trivial') return null;
-    return new PresentadorDeSala(this.ia, () => nombresDe(this.repository.listSeats(roomId)));
+    return new PresentadorDeSala(
+      this.ia,
+      () => nombresDe(this.repository.listSeats(roomId)),
+      undefined,
+      () =>
+        new Set(
+          this.repository
+            .listSeats(roomId)
+            .filter((asiento) => asiento.isBot)
+            .map((asiento) => asiento.seatId),
+        ),
+    );
   }
 
   /**

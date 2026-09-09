@@ -148,8 +148,14 @@ describe('el presentador de la sala', () => {
       expect(dicho).toHaveLength(1);
     });
 
-    /** Los datos los pone la partida; el modelo solo pone el tono. */
-    it('al modelo se le manda la frase ya hecha, no los datos crudos', () => {
+    /**
+     * Los datos los pone la partida; el modelo solo pone el tono.
+     *
+     * Al modelo se le manda el encargo del momento con el marcador entero
+     * dentro. Antes se le mandaba solo «reescribe esta frase», y así no podía
+     * presentar a nadie ni repasar una clasificación: no la tenía.
+     */
+    it('al modelo se le manda el encargo del momento con la mesa dentro', () => {
       const { actor } = actorFalso();
       const { antes, ahora } = empezada();
       const modelo = vi.fn().mockResolvedValue({ text: 'Hola.', model: 'x' });
@@ -158,7 +164,46 @@ describe('el presentador de la sala', () => {
 
       const mensajes = modelo.mock.calls[0][1] as { role: string; content: string }[];
       expect(mensajes[0].role).toBe('system');
-      expect(mensajes[1].content).toContain('Óscar');
+      // El personaje va en el sistema; el encargo y los datos, en el usuario.
+      expect(mensajes[0].content).toContain('Óscar');
+      expect(mensajes[1].content).toContain('DATOS REALES');
+      expect(mensajes[1].content).toContain('Ana');
+      expect(mensajes[1].content).toContain('Bea');
+    });
+
+    /** Sin saber quién es máquina, no puede meterse con el bot. */
+    it('y se le dice quién de la mesa es un bot', () => {
+      const { actor } = actorFalso();
+      const { antes, ahora } = empezada();
+      const modelo = vi.fn().mockResolvedValue({ text: 'Hola.', model: 'x' });
+
+      new PresentadorDeSala(
+        CON_CLAVE,
+        NOMBRES,
+        modelo,
+        () => new Set(['bea']),
+      ).trasJugada(actor, antes, ahora);
+
+      const mensajes = modelo.mock.calls[0][1] as { role: string; content: string }[];
+      expect(mensajes[1].content).toContain('Bea: 0 puntos (es un bot)');
+    });
+
+    it('el encargo cambia con el momento, no es siempre el mismo', () => {
+      const modelo = vi.fn().mockResolvedValue({ text: 'Hola.', model: 'x' });
+      const presentador = new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo);
+
+      const { antes, ahora } = empezada();
+      presentador.trasJugada(actorFalso().actor, antes, ahora);
+
+      let acabada = ahora;
+      acabada = trivialModule.apply(acabada, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+      acabada = trivialModule.apply(acabada, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+      presentador.trasJugada(actorFalso().actor, ahora, acabada);
+
+      const encargos = modelo.mock.calls.map(
+        (llamada) => (llamada[1] as { content: string }[])[1].content,
+      );
+      expect(encargos[0]).not.toBe(encargos[1]);
     });
   });
 });

@@ -4,7 +4,7 @@
 
 .lobby {
   padding: 20px 22px 32px;
-  color: #ccc;
+  color: var(--text);
   max-width: 720px;
   margin: 0 auto;
 }
@@ -12,11 +12,11 @@
 .cabecera {
   padding-bottom: 16px;
   margin-bottom: 22px;
-  border-bottom: 1px solid #232323;
+  border-bottom: 1px solid var(--border);
 }
 
 .cabecera h1 {
-  color: #0f0;
+  color: var(--accent);
   font-size: 24px;
   margin: 0 0 8px;
   letter-spacing: 0.5px;
@@ -24,13 +24,13 @@
 }
 
 .prompt {
-  color: #0a0;
+  color: rgba(var(--accent-rgb), 0.55);
   margin-right: 6px;
 }
 
 .subtitulo {
   margin: 0;
-  color: #888;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -39,13 +39,13 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  border: 1px solid #232323;
-  background: #0b0b0b;
+  border: 1px solid var(--border);
+  background: var(--bg);
   padding: 20px;
 }
 
 .panel h2 {
-  color: #0f0;
+  color: var(--accent);
   font-size: 15px;
   margin: 0;
   letter-spacing: 0.5px;
@@ -55,15 +55,15 @@ label {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  color: #888;
+  color: var(--muted);
   font-size: 12px;
   letter-spacing: 0.5px;
 }
 
 input[type='text'] {
-  background: #0f0f0f;
-  border: 1px solid #2a2a2a;
-  color: #ccc;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
   padding: 9px 11px;
   font-family: inherit;
   font-size: 14px;
@@ -71,11 +71,11 @@ input[type='text'] {
 
 input[type='text']:focus {
   outline: none;
-  border-color: #0a0;
+  border-color: rgba(var(--accent-rgb), 0.55);
 }
 
 .rivales {
-  border: 1px solid #232323;
+  border: 1px solid var(--border);
   padding: 12px;
   margin: 0;
   display: flex;
@@ -84,7 +84,7 @@ input[type='text']:focus {
 }
 
 .rivales legend {
-  color: #888;
+  color: var(--muted);
   font-size: 12px;
   letter-spacing: 0.5px;
   padding: 0 6px;
@@ -101,29 +101,29 @@ input[type='text']:focus {
 }
 
 .rival.elegido {
-  border-color: #0a0;
-  background: #0d160d;
+  border-color: rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.10);
 }
 
 .rival input {
   grid-row: span 2;
-  accent-color: #0f0;
+  accent-color: var(--accent);
 }
 
 .rival .nombre {
-  color: #cfc;
+  color: var(--text);
   font-size: 14px;
 }
 
 .rival .descripcion {
-  color: #777;
+  color: var(--muted);
   font-size: 12px;
 }
 
 .accion {
-  border: 1px solid #0a0;
-  background: #0d160d;
-  color: #0f0;
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.10);
+  color: var(--accent);
   padding: 11px 16px;
   font-family: inherit;
   font-size: 14px;
@@ -134,7 +134,7 @@ input[type='text']:focus {
 }
 
 .accion:hover:not(:disabled) {
-  background: #123012;
+  background: rgba(var(--accent-rgb), 0.18);
 }
 
 .accion:disabled {
@@ -143,9 +143,9 @@ input[type='text']:focus {
 }
 
 .aviso {
-  border: 1px solid #6a2020;
-  background: #1a0b0b;
-  color: #f88;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  background: color-mix(in srgb, var(--error) 10%, var(--bg-soft));
+  color: var(--error);
   padding: 10px 12px;
   font-size: 13px;
   margin: 0 0 16px;
@@ -153,7 +153,7 @@ input[type='text']:focus {
 
 .explicacion {
   margin: 0;
-  color: #888;
+  color: var(--muted);
   font-size: 13px;
   line-height: 1.6;
 }

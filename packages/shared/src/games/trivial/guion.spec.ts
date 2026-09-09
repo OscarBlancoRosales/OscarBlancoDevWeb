@@ -61,15 +61,6 @@ describe('el guion', () => {
   });
 });
 
-describe('el prompt para la IA', () => {
-  it('lleva el personaje dentro, no solo la frase', async () => {
-    const { instruccionesDelPresentador } = await import('./guion');
-    const prompt = instruccionesDelPresentador();
-    expect(prompt).toContain('Óscar');
-    expect(prompt.length).toBeGreaterThan(100);
-  });
-});
-
 /** Que el tipo de momento y la lista no se separen. */
 describe('MOMENTOS', () => {
   it('no repite ninguno', () => {

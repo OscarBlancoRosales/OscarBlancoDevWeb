@@ -1,9 +1,11 @@
 import { chatWithFallback } from '@devweb/shared/engine/ai/ai-client';
-import { frasePara, instruccionesDelPresentador } from '@devweb/shared/games/trivial/guion';
+import { frasePara } from '@devweb/shared/games/trivial/guion';
+import { encargoPara, instruccionesDelPresentador } from '@devweb/shared/games/trivial/prompts';
 import { comentarioDe } from '@devweb/shared/games/trivial/momentos';
 import { rngFor } from '@devweb/shared/engine/rng';
 import type { AiSettings, ChatMessage } from '@devweb/shared/engine/ai/ai-client';
 import type { Comentario } from '@devweb/shared/games/trivial/momentos';
+import type { ContextoDelPresentador, EnLaMesa } from '@devweb/shared/games/trivial/prompts';
 import type { TrivialState } from '@devweb/shared/games/trivial/tipos';
 import type { Narrador, RoomActor } from '../../rooms/actor';
 import type { SeatId } from '@devweb/shared/games/module';
@@ -35,6 +37,8 @@ export class PresentadorDeSala implements Narrador {
     private readonly ajustes: AiSettings | null,
     private readonly nombres: () => Readonly<Record<SeatId, string>>,
     private readonly modelo: Llamada = chatWithFallback,
+    /** Quiénes de la mesa no tienen a nadie detrás, para poder decirlo. */
+    private readonly bots: () => ReadonlySet<SeatId> = () => new Set(),
   ) {}
 
   trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void {
@@ -53,8 +57,9 @@ export class PresentadorDeSala implements Narrador {
       frase: guionada,
     });
 
-    // Y la versión con tono, cuando llegue. Si no llega, se queda la de arriba.
-    void this.florear(guionada).then((florida) => {
+    // Y la versión del modelo, cuando llegue. Si no llega, se queda la de arriba.
+    const contexto = this.contexto(comentario, actual, guionada);
+    void this.florear(contexto).then((florida) => {
       if (!florida) return;
       actor.aplicarDelSistema(this.locutor(actual), {
         tipo: 'presenta',
@@ -88,12 +93,46 @@ export class PresentadorDeSala implements Narrador {
     return state.orden[0] ?? 'sala';
   }
 
-  private async florear(guionada: string): Promise<string | null> {
+  /**
+   * Todo lo que el presentador necesita saber para hablar de esto.
+   *
+   * El marcador va entero y ordenado, no solo el protagonista: sin la mesa
+   * delante, un «repasamos la clasificación» se lo tiene que inventar, y ahí
+   * es donde un presentador se cae.
+   */
+  private contexto(
+    comentario: Comentario,
+    state: TrivialState,
+    guionada: string,
+  ): ContextoDelPresentador {
+    const nombres = this.nombres();
+    const bots = this.bots();
+    const jugadores: EnLaMesa[] = state.orden
+      .map((seat) => ({
+        nombre: nombres[seat] ?? 'alguien',
+        puntos: state.puntos[seat] ?? 0,
+        esBot: bots.has(seat),
+      }))
+      .sort((uno, otro) => otro.puntos - uno.puntos);
+
+    return {
+      momento: comentario.momento,
+      jugadores,
+      protagonista: comentario.quien ? (nombres[comentario.quien] ?? 'alguien') : null,
+      cifra: comentario.puntos,
+      ronda: state.actual + 1,
+      rondas: state.rondas.length,
+      seccion: nombreDeLaSeccion(state),
+      guion: guionada,
+    };
+  }
+
+  private async florear(contexto: ContextoDelPresentador): Promise<string | null> {
     if (!this.ajustes?.enabled) return null;
 
     const mensajes: ChatMessage[] = [
       { role: 'system', content: instruccionesDelPresentador() },
-      { role: 'user', content: `Dilo tú, con tus palabras y sin cambiar los datos: ${guionada}` },
+      { role: 'user', content: encargoPara(contexto) },
     ];
 
     try {
@@ -108,6 +147,21 @@ export class PresentadorDeSala implements Narrador {
       return null;
     }
   }
+}
+
+/** Cómo se llama en pantalla la prueba en marcha, para poder nombrarla. */
+const NOMBRES_DE_SECCION: Readonly<Record<string, string>> = {
+  test: 'Test',
+  estimacion: 'A ojo',
+  fallo: 'Encuentra el fallo',
+  pulsa: 'El primero que pulse',
+  rafaga: 'Ráfaga',
+  bomba: 'La bomba',
+};
+
+function nombreDeLaSeccion(state: TrivialState): string | null {
+  const tipo = state.rondas.at(state.actual)?.pregunta.tipo;
+  return tipo ? (NOMBRES_DE_SECCION[tipo] ?? null) : null;
 }
 
 /**

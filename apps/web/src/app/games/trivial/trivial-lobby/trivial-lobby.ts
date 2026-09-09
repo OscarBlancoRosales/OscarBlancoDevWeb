@@ -31,7 +31,7 @@ const RIVALES: readonly OpcionDeRival[] = [
 ];
 
 /**
- * Puerta de entrada al Trivial de dev.
+ * Puerta de entrada a El Concurso.
  *
  * Igual que el resto de los juegos: quien tiene cuenta abre la mesa y elige
  * contra quién, y quien llega por un enlace solo pone su nombre.
