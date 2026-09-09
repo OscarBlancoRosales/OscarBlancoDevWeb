@@ -2,6 +2,7 @@ import { Injectable, NgZone, Optional, signal } from '@angular/core';
 import { RoomSocket } from '../../api/room-socket';
 import { RoomsApiService } from '../../api/rooms-api.service';
 import type { Signal } from '@angular/core';
+import { personajePorDefecto, repartirCaras } from '@devweb/shared/games/trivial/reparto';
 import type { SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { NivelBot, TrivialView } from '@devweb/shared/games/trivial/tipos';
 import type { PaseDeSala } from '../pase-guardado';
@@ -67,11 +68,13 @@ export class TrivialRoomService {
     nombreSala: string,
     nombreJugador: string,
     nivelBot: NivelBot | null,
+    personaje: string | null = null,
   ): Promise<PaseDeSala> {
     const grant = await this.rooms.crear({
       game: 'trivial',
       name: nombreSala,
       displayName: nombreJugador,
+      ...(personaje && { meta: { personaje } }),
       ...(nivelBot !== null && {
         config: { nivelBot },
         bots: [NOMBRE_DEL_BOT[nivelBot]],
@@ -82,8 +85,12 @@ export class TrivialRoomService {
     return { roomId: grant.room.id, seatId: grant.seatId, seatToken: grant.seatToken };
   }
 
-  async unirse(roomId: string, nombreJugador: string): Promise<PaseDeSala> {
-    const grant = await this.rooms.unirse(roomId, nombreJugador);
+  async unirse(
+    roomId: string,
+    nombreJugador: string,
+    personaje: string | null = null,
+  ): Promise<PaseDeSala> {
+    const grant = await this.rooms.unirse(roomId, nombreJugador, personaje);
     this.conectar(roomId, grant.seatId, grant.seatToken);
     return { roomId, seatId: grant.seatId, seatToken: grant.seatToken };
   }
@@ -113,6 +120,23 @@ export class TrivialRoomService {
   }
 
   /** El nombre de un asiento, para no enseñar identificadores a nadie. */
+  /**
+   * El personaje de ese asiento: el que eligió, o uno libre.
+   *
+   * Se reparte mirando la mesa entera y no asiento a asiento, porque dos
+   * jugadores con la misma cara se confunden a la primera -y en la bomba, que
+   * va por turnos, es peor: no se sabe quién la tiene.
+   */
+  personajeDe(seatId: string): string {
+    const caras = repartirCaras(
+      this.asientos.map((uno) => ({
+        id: uno.id,
+        personaje: typeof uno.meta?.['personaje'] === 'string' ? uno.meta['personaje'] : undefined,
+      })),
+    );
+    return caras[seatId] ?? personajePorDefecto(seatId).id;
+  }
+
   nombreDe(seatId: string): string {
     return this.asientos.find((asiento) => asiento.id === seatId)?.displayName ?? 'Alguien';
   }

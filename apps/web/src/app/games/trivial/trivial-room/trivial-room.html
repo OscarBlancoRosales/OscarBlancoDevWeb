@@ -5,13 +5,22 @@
     }
 
     @if (vista(); as v) {
-      <!-- El presentador. Lo dice el servidor, así que la mesa lee lo mismo -->
-      @if (dice) {
-        <blockquote class="presentador">
-          <span class="quien">EL PRESENTADOR</span>
-          <p>{{ dice }}</p>
-        </blockquote>
-      }
+      <!-- El presentador. Lo que dice y la cara que pone los manda el
+           servidor, así que los cinco de la mesa ven y leen lo mismo. -->
+      <div class="plato" [class.callado]="!dice">
+        <img
+          class="host"
+          [src]="caraDelPresentador"
+          alt="El presentador del concurso"
+          decoding="async"
+        />
+        @if (dice) {
+          <blockquote class="bocadillo" [attr.data-turno]="turnoDePalabra">
+            <span class="quien">EL PRESENTADOR</span>
+            <p>{{ dice }}</p>
+          </blockquote>
+        }
+      </div>
 
       @if (v.fase === 'presentacion') {
         <section class="fase">
@@ -61,6 +70,14 @@
                   <i></i>
                 }
               </span>
+              @if (v.turno) {
+                <img
+                  class="avatar grande"
+                  [src]="fotoDe(v.turno)"
+                  [alt]="quienTieneLaBomba"
+                  loading="lazy"
+                />
+              }
               <p class="quien-la-tiene">
                 @if (v.tuTurno) {
                   <strong>¡La tienes tú!</strong> Contesta y pásala.
@@ -125,6 +142,12 @@
               <ul class="resultados">
                 @for (resultado of v.resultados; track resultado.seatId) {
                   <li>
+                    <img
+                      class="avatar"
+                      [src]="fotoDe(resultado.seatId)"
+                      [alt]="nombreDe(resultado.seatId)"
+                      loading="lazy"
+                    />
                     <span class="nombre">{{ nombreDe(resultado.seatId) }}</span>
                     <span
                       class="ganados"
@@ -151,6 +174,7 @@
         <ol class="clasificacion">
           @for (puesto of clasificacion; track puesto.seatId) {
             <li [class.tu]="puesto.eresTu">
+              <img class="avatar" [src]="puesto.foto" [alt]="puesto.nombre" loading="lazy" />
               <span class="nombre">{{ puesto.nombre }}</span>
               <span class="puntos">{{ puesto.puntos }}</span>
             </li>

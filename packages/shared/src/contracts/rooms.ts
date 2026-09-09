@@ -23,6 +23,8 @@ export const CreateRoomRequest = Type.Object(
     game: GameId,
     name: Type.String({ minLength: 1, maxLength: 80 }),
     displayName: DisplayName,
+    /** Lo que el juego necesite del asiento de quien abre la mesa. */
+    meta: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
     config: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
     /**
      * Los rivales que no son personas, por su nombre.
@@ -36,7 +38,20 @@ export const CreateRoomRequest = Type.Object(
   SIN_EXTRAS,
 );
 
-export const JoinRoomRequest = Type.Object({ displayName: DisplayName }, SIN_EXTRAS);
+/**
+ * Sentarse a la mesa: el nombre y, si el juego los tiene, lo suyo.
+ *
+ * El personaje del concurso va aquí y no en una llamada aparte porque se elige
+ * en la misma pantalla que el nombre: dos peticiones para sentarse abren la
+ * puerta a quedarte sentado sin personaje si la segunda falla.
+ */
+export const JoinRoomRequest = Type.Object(
+  {
+    displayName: DisplayName,
+    meta: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  },
+  SIN_EXTRAS,
+);
 
 export const SeatInfo = Type.Object({
   id: Type.String(),

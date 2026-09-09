@@ -157,3 +157,89 @@ input[type='text']:focus {
   font-size: 13px;
   line-height: 1.6;
 }
+
+/* ===== ELEGIR PERSONAJE =====
+   La rejilla del reparto. Se elige aquí, en la misma pantalla que el nombre:
+   una pantalla aparte para esto es una pantalla más antes de jugar. */
+.reparto {
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin: 0;
+}
+
+.reparto legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.caras {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.cara {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.13s, background 0.13s, color 0.13s;
+}
+
+.cara img {
+  width: 100%;
+  aspect-ratio: 1;
+  /* Recortado por el pecho: de cuerpo entero, en 84px no se les ve la cara */
+  object-fit: cover;
+  object-position: 50% 14%;
+  filter: grayscale(0.7) opacity(0.65);
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.cara:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.cara:hover img {
+  filter: none;
+}
+
+/* El elegido se ve a todo color; los demás, apagados. */
+.cara.elegido {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.10);
+}
+
+.cara.elegido img {
+  filter: none;
+  transform: scale(1.04);
+}
+
+.pinta {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cara,
+  .cara img {
+    transition: none;
+  }
+
+  .cara.elegido img {
+    transform: none;
+  }
+}

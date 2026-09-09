@@ -7,6 +7,8 @@ import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout'
 import { AuthApiService } from '../../../api/auth-api.service';
 import { TrivialRoomService } from '../trivial-room.service';
 import { guardarPase } from '../../pase-guardado';
+import { REPARTO, fotoDelPersonaje, personajePorId } from '@devweb/shared/games/trivial/reparto';
+import type { Personaje } from '@devweb/shared/games/trivial/reparto';
 import type { NivelBot } from '@devweb/shared/games/trivial/tipos';
 
 interface OpcionDeRival {
@@ -51,9 +53,13 @@ export class TrivialLobby implements OnInit, OnDestroy {
   readonly error = signal('');
   readonly invitacion = signal('');
 
+  readonly reparto = REPARTO;
+
   nombreSala = 'Concurso de la retro';
   nombreJugador = '';
   rival: NivelBot | 'persona' = 'apanado';
+  /** El personaje con el que te sientas. Empieza elegido para no dar pereza. */
+  personaje: string = REPARTO[0].id;
 
   private suscripcion?: Subscription;
 
@@ -88,6 +94,7 @@ export class TrivialLobby implements OnInit, OnDestroy {
         this.nombreSala.trim() || 'Concurso de la retro',
         this.nombreJugador.trim() || 'Anfitrión',
         this.rival === 'persona' ? null : this.rival,
+        this.personaje,
       );
       guardarPase(pase);
       await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });
@@ -96,6 +103,14 @@ export class TrivialLobby implements OnInit, OnDestroy {
     } finally {
       this.trabajando.set(false);
     }
+  }
+
+  fotoDe(id: string): string {
+    return fotoDelPersonaje(id);
+  }
+
+  get elegido(): Personaje | null {
+    return personajePorId(this.personaje);
   }
 
   async unirse(): Promise<void> {
@@ -107,6 +122,7 @@ export class TrivialLobby implements OnInit, OnDestroy {
       const pase = await this.sala.unirse(
         this.invitacion(),
         this.nombreJugador.trim() || 'Concursante',
+        this.personaje,
       );
       guardarPase(pase);
       await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });

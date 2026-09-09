@@ -34,11 +34,12 @@ export class RoomsApiService {
   }
 
   /** Unirse NO exige sesión: quien llega por un enlace juega como invitado. */
-  unirse(roomId: string, displayName: string): Promise<SeatGrant> {
+  /** `personaje` es del concurso: se elige en la misma pantalla que el nombre. */
+  unirse(roomId: string, displayName: string, personaje?: string | null): Promise<SeatGrant> {
     return this.api.request<SeatGrant>({
       method: 'POST',
       path: `/salas/${encodeURIComponent(roomId)}/unirse`,
-      body: { displayName },
+      body: { displayName, ...(personaje && { meta: { personaje } }) },
     });
   }
 

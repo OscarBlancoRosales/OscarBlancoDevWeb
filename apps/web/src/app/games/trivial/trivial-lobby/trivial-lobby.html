@@ -20,6 +20,28 @@
           Tu nombre
           <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Concursante" />
         </label>
+
+        <fieldset class="reparto">
+          <legend>Tu personaje</legend>
+          <div class="caras">
+            @for (uno of reparto; track uno.id) {
+              <button
+                type="button"
+                class="cara"
+                [class.elegido]="personaje === uno.id"
+                [title]="uno.pinta"
+                [attr.aria-pressed]="personaje === uno.id"
+                (click)="personaje = uno.id"
+              >
+                <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
+                <span class="cara-nombre">{{ uno.nombre }}</span>
+              </button>
+            }
+          </div>
+          @if (elegido; as quien) {
+            <p class="pinta">{{ quien.pinta }}</p>
+          }
+        </fieldset>
         <button type="button" class="accion" [disabled]="trabajando()" (click)="unirse()">
           {{ trabajando() ? 'Entrando…' : 'Entrar al concurso' }}
         </button>
@@ -37,6 +59,28 @@
           Tu nombre
           <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Anfitrión" />
         </label>
+
+        <fieldset class="reparto">
+          <legend>Tu personaje</legend>
+          <div class="caras">
+            @for (uno of reparto; track uno.id) {
+              <button
+                type="button"
+                class="cara"
+                [class.elegido]="personaje === uno.id"
+                [title]="uno.pinta"
+                [attr.aria-pressed]="personaje === uno.id"
+                (click)="personaje = uno.id"
+              >
+                <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
+                <span class="cara-nombre">{{ uno.nombre }}</span>
+              </button>
+            }
+          </div>
+          @if (elegido; as quien) {
+            <p class="pinta">{{ quien.pinta }}</p>
+          }
+        </fieldset>
 
         <fieldset class="rivales">
           <legend>Contra quién</legend>

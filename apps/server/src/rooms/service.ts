@@ -62,6 +62,8 @@ export class RoomService {
     name: string;
     displayName: string;
     ownerId: string;
+    /** Lo que el juego necesite del asiento de quien abre la mesa. */
+    meta?: Record<string, unknown>;
     config?: Record<string, unknown>;
     bots?: readonly string[];
   }): SeatGrant {
@@ -89,7 +91,9 @@ export class RoomService {
     };
     this.repository.insertRoom(room);
 
-    const grant = this.sentar(room, input.displayName, input.ownerId);
+    const grant = this.sentar(room, input.displayName, input.ownerId, {
+      ...(input.meta && { meta: input.meta }),
+    });
     for (const nombre of bots) this.sentar(room, nombre, null, { isBot: true });
 
     // El pase que sale de aquí es el de la persona: los asientos de los bots se
@@ -105,7 +109,12 @@ export class RoomService {
    * asiento y un pase para ese asiento, y con eso juega. El pase no vale para
    * ninguna otra sala.
    */
-  unirse(roomId: string, displayName: string, userId: string | null): SeatGrant {
+  unirse(
+    roomId: string,
+    displayName: string,
+    userId: string | null,
+    meta?: Readonly<Record<string, unknown>>,
+  ): SeatGrant {
     const room = this.buscar(roomId);
 
     if (this.repository.listSeats(roomId).length >= this.maxSeats) {
@@ -115,7 +124,7 @@ export class RoomService {
       throw new AppError('sin-permiso', 'Esta partida ya ha terminado.');
     }
 
-    return this.sentar(room, displayName, userId);
+    return this.sentar(room, displayName, userId, { ...(meta && { meta }) });
   }
 
   info(roomId: string): RoomInfo {

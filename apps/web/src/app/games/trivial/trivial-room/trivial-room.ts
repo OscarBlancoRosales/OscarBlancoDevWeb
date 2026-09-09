@@ -4,6 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { TrivialRoomService } from '../trivial-room.service';
+import {
+  fotoDelPersonaje,
+  fotoDelPresentador,
+  gestoDe,
+  personajePorId,
+} from '@devweb/shared/games/trivial/reparto';
 import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
 import type { TipoPrueba, TrivialView } from '@devweb/shared/games/trivial/tipos';
@@ -12,6 +18,8 @@ import type { TipoPrueba, TrivialView } from '@devweb/shared/games/trivial/tipos
 export interface PuestoEnLaMesa {
   readonly seatId: string;
   readonly nombre: string;
+  /** La cara de su personaje, para que el marcador tenga caras. */
+  readonly foto: string;
   readonly puntos: number;
   readonly eresTu: boolean;
 }
@@ -129,6 +137,7 @@ export class TrivialRoom implements OnInit, OnDestroy {
       .map(([seatId, puntos]) => ({
         seatId,
         nombre: this.sala.nombreDe(seatId),
+        foto: this.fotoDe(seatId),
         puntos,
         eresTu: seatId === this.sala.miAsiento,
       }))
@@ -154,6 +163,30 @@ export class TrivialRoom implements OnInit, OnDestroy {
   /** Lo que está diciendo el presentador. Viene del servidor, igual para todos. */
   get dice(): string {
     return this.vista()?.dice ?? '';
+  }
+
+  /**
+   * La cara que pone ahora mismo.
+   *
+   * Sale del momento del programa, que lo manda el servidor: así los cinco de
+   * la mesa le ven la misma cara que la frase que están leyendo.
+   */
+  get caraDelPresentador(): string {
+    return fotoDelPresentador(gestoDe(this.vista()?.momento ?? ''));
+  }
+
+  /** Para que el bocadillo se reinicie -y se note- cada vez que cambia. */
+  get turnoDePalabra(): string {
+    const vista = this.vista();
+    return `${vista?.momento ?? ''}:${vista?.dice.length ?? 0}`;
+  }
+
+  fotoDe(seatId: string): string {
+    return fotoDelPersonaje(this.sala.personajeDe(seatId));
+  }
+
+  personajeDe(seatId: string): string {
+    return personajePorId(this.sala.personajeDe(seatId))?.nombre ?? '';
   }
 
   /** En qué sección del programa estamos. */

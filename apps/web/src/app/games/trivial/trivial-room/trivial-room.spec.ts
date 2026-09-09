@@ -46,6 +46,7 @@ function salaFalsa() {
     error: signal<string | null>(null),
     miAsiento: 'yo',
     nombreDe: (seatId: string) => (seatId === 'yo' ? 'Óscar' : 'Bea'),
+    personajeDe: (seatId: string) => (seatId === 'yo' ? 'bolt' : 'viper'),
     reconectar: () => undefined,
     desconectar: () => undefined,
     empezar: () => undefined,
@@ -99,6 +100,61 @@ describe('la mesa del concurso', () => {
     it('y si no dice nada, no se pinta el cartel', () => {
       pinta({ dice: '' });
       expect((fixture.nativeElement as HTMLElement).querySelector('.presentador')).toBeNull();
+    });
+  });
+
+  describe('el plató', () => {
+    /** La cara la manda el servidor con la frase: la mesa ve lo mismo. */
+    it('el presentador pone la cara del momento', () => {
+      pinta({ momento: 'explota', dice: '¡BOOM!' });
+      const host = (fixture.nativeElement as HTMLElement).querySelector('img.host');
+      expect(host?.getAttribute('src')).toBe('/assets/trivial/host/wrong.png');
+    });
+
+    it('y otra distinta cuando la noticia es buena', () => {
+      pinta({ momento: 'aciertaAlguien', dice: '¡Correcto!' });
+      const host = (fixture.nativeElement as HTMLElement).querySelector('img.host');
+      expect(host?.getAttribute('src')).toBe('/assets/trivial/host/yes.png');
+    });
+
+    it('antes de que diga nada, está pero callado', () => {
+      pinta({ dice: '', momento: '' });
+      const plato = (fixture.nativeElement as HTMLElement).querySelector('.plato');
+      expect(plato?.classList.contains('callado')).toBe(true);
+      expect((fixture.nativeElement as HTMLElement).querySelector('.bocadillo')).toBeNull();
+    });
+
+    it('lo que dice sale en un bocadillo', () => {
+      pinta({ dice: 'Buenas noches, criaturas.', momento: 'bienvenida' });
+      const bocadillo = (fixture.nativeElement as HTMLElement).querySelector('.bocadillo');
+      expect(bocadillo?.textContent).toContain('Buenas noches, criaturas.');
+    });
+  });
+
+  describe('las caras de la mesa', () => {
+    it('el marcador lleva el personaje de cada uno', () => {
+      pinta({});
+      const caras = Array.from(
+        (fixture.nativeElement as HTMLElement).querySelectorAll('.clasificacion .avatar'),
+      ).map((una) => una.getAttribute('src'));
+      expect(caras).toEqual(['/assets/trivial/cast/bolt.png', '/assets/trivial/cast/viper.png']);
+    });
+
+    it('y los resultados de la ronda, también', () => {
+      pinta({
+        cerrada: true,
+        explicacion: 'Pues eso.',
+        resultados: [{ seatId: 'otra', valor: 1, ganados: 100 }],
+      });
+      const cara = (fixture.nativeElement as HTMLElement).querySelector('.resultados .avatar');
+      expect(cara?.getAttribute('src')).toBe('/assets/trivial/cast/viper.png');
+    });
+
+    /** Saber de quién es la bomba de un vistazo, sin leer el nombre. */
+    it('con la bomba se ve la cara de quien la tiene', () => {
+      pinta({ tipo: 'bomba', turno: 'otra', tuTurno: false, mecha: 3 });
+      const cara = (fixture.nativeElement as HTMLElement).querySelector('.bomba .avatar');
+      expect(cara?.getAttribute('src')).toBe('/assets/trivial/cast/viper.png');
     });
   });
 
