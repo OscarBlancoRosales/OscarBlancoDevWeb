@@ -64,7 +64,10 @@ describe('abrir ventanas', () => {
 
   it('la cascada no se sale del escritorio por muchas que abras', () => {
     let d = escritorio();
-    for (let i = 0; i < 12; i++) d = open(d, 'v' + i, 'v' + i);
+    for (let i = 0; i < 12; i++) {
+      const id = `v${i}`;
+      d = open(d, id, id);
+    }
     for (const w of d.windows) {
       expect(w.x, w.id).toBeGreaterThanOrEqual(0);
       expect(w.y, w.id).toBeGreaterThanOrEqual(0);
@@ -84,9 +87,8 @@ describe('el foco', () => {
     let d = open(escritorio(), 'qr', 'qr');
     d = open(d, 'color', 'color');
     d = focus(d, 'qr');
-    const qr = d.windows.find((w) => w.id === 'qr')!;
-    const color = d.windows.find((w) => w.id === 'color')!;
-    expect(qr.z).toBeGreaterThan(color.z);
+    const z = (id: string) => d.windows.find((w) => w.id === id)?.z ?? -1;
+    expect(z('qr')).toBeGreaterThan(z('color'));
   });
 
   it('enfocar algo que no existe no rompe nada', () => {

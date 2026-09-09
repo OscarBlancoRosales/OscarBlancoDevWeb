@@ -9,7 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { I18nService } from '../../services/i18n.service';
-import { Theme, ThemeService } from '../../services/theme.service';
+import { ThemeService } from '../../services/theme.service';
 import { DesktopItem, startMenuItems } from '../desktop-items';
 import { WindowState } from '../window-manager';
 
@@ -49,7 +49,9 @@ export class Taskbar implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.tick();
-    this.timer = setInterval(() => this.tick(), 1000);
+    this.timer = setInterval(() => {
+      this.tick();
+    }, 1000);
   }
 
   ngOnDestroy(): void {
@@ -81,7 +83,7 @@ export class Taskbar implements OnInit, OnDestroy {
   nextTheme(): void {
     const lista = this.themes.listed();
     const i = lista.indexOf(this.themes.current);
-    this.themes.set(lista[(i + 1) % lista.length] as Theme);
+    this.themes.set(lista[(i + 1) % lista.length]);
     this.cdr.detectChanges();
   }
 

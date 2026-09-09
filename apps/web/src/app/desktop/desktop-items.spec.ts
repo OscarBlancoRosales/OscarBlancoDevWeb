@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESKTOP_ITEMS, itemRoute, startMenuItems } from './desktop-items';
+import { DESKTOP_ITEMS, DesktopItem, itemRoute, startMenuItems } from './desktop-items';
 import { findCommand, navCommands } from '../console/commands';
 
 /**
@@ -32,8 +32,9 @@ describe('los iconos del escritorio', () => {
   });
 
   it('y ese algo es un comando de verdad', () => {
-    for (const item of DESKTOP_ITEMS.filter((i) => i.kind === 'terminal' && i.run)) {
-      const primero = item.run!.split(' ')[0];
+    for (const item of DESKTOP_ITEMS) {
+      if (!item.run) continue;
+      const primero = item.run.split(' ')[0];
       expect(findCommand(primero), item.run).toBeDefined();
     }
   });
@@ -56,19 +57,23 @@ describe('los iconos del escritorio', () => {
 });
 
 describe('a dónde lleva cada icono', () => {
+  /** El icono con ese id, o revienta el test diciendo cuál falta. */
+  function icono(id: string): DesktopItem {
+    const encontrado = DESKTOP_ITEMS.find((i) => i.id === id);
+    if (!encontrado) throw new Error(`falta el icono «${id}»`);
+    return encontrado;
+  }
+
   it('los de sección llevan a la ruta de su comando', () => {
-    const qr = DESKTOP_ITEMS.find((i) => i.command === 'qr')!;
-    expect(itemRoute(qr)).toBe('/qr-generator');
+    expect(itemRoute(icono('qr'))).toBe('/qr-generator');
   });
 
   it('el icono de la terminal lleva a la terminal', () => {
-    const term = DESKTOP_ITEMS.find((i) => i.id === 'terminal')!;
-    expect(itemRoute(term)).toBe('/terminal');
+    expect(itemRoute(icono('terminal'))).toBe('/terminal');
   });
 
   it('los que solo lanzan un comando se atienden en la terminal', () => {
-    const sobreMi = DESKTOP_ITEMS.find((i) => i.id === 'sobre-mi')!;
-    expect(itemRoute(sobreMi)).toBe('/terminal');
+    expect(itemRoute(icono('sobre-mi'))).toBe('/terminal');
   });
 });
 

@@ -33,7 +33,7 @@ import {
 } from './window-manager';
 
 /** Lo que se carga dentro de cada ventana, solo cuando hace falta. */
-const CONTENT: Record<string, () => Promise<Type<unknown>>> = {
+const CONTENT: Record<string, (() => Promise<Type<unknown>>) | undefined> = {
   terminal: () => import('../console/console').then((m) => m.Console),
   'sobre-mi': () => import('../console/console').then((m) => m.Console),
   proyectos: () => import('../console/console').then((m) => m.Console),
@@ -72,10 +72,10 @@ const MOBILE_MAX = 768;
 })
 export class Desktop implements OnInit, OnDestroy {
   state: DesktopState = newDesktop(1200, 800);
-  /** El componente ya cargado de cada ventana. */
-  loaded: Record<string, Type<unknown>> = {};
+  /** El componente ya cargado de cada ventana; vacío hasta que se abre. */
+  loaded: Record<string, Type<unknown> | undefined> = {};
   /** El comando que la terminal de esa ventana debe ejecutar al abrirse. */
-  runs: Record<string, string> = {};
+  runs: Record<string, string | undefined> = {};
 
   readonly items = DESKTOP_ITEMS;
   mobile = false;
@@ -117,15 +117,16 @@ export class Desktop implements OnInit, OnDestroy {
 
   private measure(): void {
     const caja = this.area?.nativeElement;
-    const ancho = caja?.clientWidth || window.innerWidth;
-    const alto = caja?.clientHeight || window.innerHeight - 44;
+    const ancho = caja?.clientWidth ?? window.innerWidth;
+    const alto = caja?.clientHeight ?? window.innerHeight - 44;
     this.mobile = window.innerWidth <= MOBILE_MAX;
     this.state = { ...this.state, area: { width: ancho, height: alto } };
     // Recolocar lo abierto dentro del área nueva, o al girar el móvil se
     // quedarían ventanas fuera de la pantalla y sin forma de recuperarlas.
     for (const w of this.state.windows) {
-      this.state = resize(this.state, w.id, this.mobile ? ancho : w.width, this.mobile ? alto : w.height);
-      if (this.mobile && !w.maximized) this.state = toggleMaximize(this.state, w.id);
+      const destino = this.mobile ? { width: ancho, height: alto } : { width: w.width, height: w.height };
+      this.state = resize(this.state, w.id, destino.width, destino.height);
+      if (this.mobile) this.maximizeIfNeeded(w.id);
     }
     this.cdr.detectChanges();
   }
@@ -147,12 +148,15 @@ export class Desktop implements OnInit, OnDestroy {
       ...(item.height ? { height: item.height } : {}),
     });
     // En el móvil una ventana suelta no se puede ni agarrar: siempre entera.
-    if (this.mobile) {
-      const w = this.state.windows.find((v) => v.id === item.id);
-      if (w && !w.maximized) this.state = toggleMaximize(this.state, item.id);
-    }
+    if (this.mobile) this.maximizeIfNeeded(item.id);
     this.syncUrl();
     this.cdr.detectChanges();
+  }
+
+  /** La deja a pantalla completa, si no lo estaba ya. */
+  private maximizeIfNeeded(id: string): void {
+    const w = this.state.windows.find((v) => v.id === id);
+    if (w && !w.maximized) this.state = toggleMaximize(this.state, id);
   }
 
   closeWindow(id: string): void {
@@ -231,7 +235,7 @@ export class Desktop implements OnInit, OnDestroy {
    */
   private syncUrl(): void {
     const abiertas = this.state.windows.map((w) => w.id);
-    this.router.navigate([], {
+    void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { abre: abiertas.length ? abiertas.join(',') : null },
       queryParamsHandling: 'merge',
