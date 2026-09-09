@@ -184,7 +184,7 @@ describe('ImpostorRoomService', () => {
 
   it('unirse lleva la cara en el saco del asiento', async () => {
     await service.unirse('sala-1', 'Bea', 'doge');
-    expect(rooms.unirse).toHaveBeenCalledWith('sala-1', 'Bea', { cara: 'doge' });
+    expect(rooms.unirse).toHaveBeenCalledWith('sala-1', 'Bea', null, { cara: 'doge' });
   });
 
   it('el estado que llega es el que se pinta', async () => {

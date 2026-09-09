@@ -26,6 +26,12 @@ describe('registro de comandos', () => {
     '**', // comodín de redirección
     'name-screen', // pantalla intermedia del flujo de Scrum Poker
     'scrum-poker', // se entra por /auth, que sí tiene comando
+    // Las tres del planning poker cuelgan de esa misma puerta: se elige
+    // versión en /scrum-poker y desde ahí se entra. Aparecen aquí porque el
+    // test dejó de mirar solo el primer nivel, no porque sean nuevas.
+    'scrum-poker/entrar',
+    'scrum-poker/mesa',
+    'scrum-poker/clasico',
     'juegos/risk', // el lobby se abre desde /juegos
     'juegos/risk/mesa', // necesita una sala ya creada
     'juegos/flota', // el lobby se abre desde /juegos

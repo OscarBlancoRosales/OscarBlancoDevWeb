@@ -141,7 +141,7 @@ export class ImpostorRoomService {
     nombreJugador: string,
     cara: string | null = null,
   ): Promise<PaseDeSala> {
-    const grant = await this.rooms.unirse(roomId, nombreJugador, cara ? { cara } : null);
+    const grant = await this.rooms.unirse(roomId, nombreJugador, null, cara ? { cara } : {});
     this.conectar(roomId, grant.seatId, grant.seatToken);
     return { roomId, seatId: grant.seatId, seatToken: grant.seatToken };
   }

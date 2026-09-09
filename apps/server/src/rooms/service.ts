@@ -5,6 +5,7 @@ import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
 import { VozDeLaSala } from '../games/impostor/voz';
+import { DealerDeMesa } from '../games/poker/dealer';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import { moduleFor } from './registry';
 import type {
@@ -319,6 +320,19 @@ export class RoomService {
     // es quien reparte la palabra. Ver `VozDeLaSala`.
     if (game === 'impostor') {
       return new VozDeLaSala(() => nombresDe(this.repository.listSeats(roomId)));
+    }
+    if (game === 'scrum') {
+      // Solo la mesa de poker tiene crupier. La versión clásica se queda como
+      // estaba: quien la abre no quiere a nadie metiéndole prisa.
+      if (this.repository.findRoom(roomId)?.config['version'] !== 'mesa') return null;
+      return new DealerDeMesa(this.ia, {
+        nombres: () => nombresDe(this.repository.listSeats(roomId)),
+        humanos: () =>
+          this.repository
+            .listSeats(roomId)
+            .filter((asiento) => !asiento.isBot)
+            .map((asiento) => asiento.seatId),
+      });
     }
     if (game !== 'trivial') return null;
     return new PresentadorDeSala(

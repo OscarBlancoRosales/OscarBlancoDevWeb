@@ -33,7 +33,25 @@ import { ThrowdownTimer } from './throwdown-timer/throwdown-timer';
  * es la misma ventana cambiando de contenido.
  */
 const SECCIONES: Routes = [
-  { path: 'scrum-poker', component: ScrumPoker, data: { win: 'poker' } },
+  // El planning poker tiene dos versiones. `/scrum-poker` es ahora la puerta
+  // donde se elige; la mesa clásica sigue donde estaba para no romper los
+  // enlaces de invitación que ya andan por ahí.
+  {
+    path: 'scrum-poker',
+    loadComponent: () => import('./poker-mesa/elegir/elegir').then((m) => m.ElegirPoker),
+    data: { win: 'poker' },
+  },
+  {
+    path: 'scrum-poker/entrar',
+    loadComponent: () => import('./poker-mesa/entrar/entrar').then((m) => m.EntrarEnLaMesa),
+    data: { win: 'poker' },
+  },
+  {
+    path: 'scrum-poker/mesa',
+    loadComponent: () => import('./poker-mesa/mesa/mesa').then((m) => m.MesaPoker),
+    data: { win: 'poker' },
+  },
+  { path: 'scrum-poker/clasico', component: ScrumPoker, data: { win: 'poker' } },
   { path: 'name-screen', component: NameScreen, data: { win: 'poker' } },
   // Las de cuenta también: crear una sala pide sesión, y salir al identificarse
   // dejaba a medias justo el camino que acabábamos de arreglar. A las tres

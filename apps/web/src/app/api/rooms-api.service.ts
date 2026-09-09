@@ -16,13 +16,7 @@ export class RoomsApiService {
     game: GameId;
     name: string;
     displayName: string;
-    /**
-     * Lo que el juego necesite del asiento de quien abre la mesa.
-     *
-     * Va aquí y no en una llamada aparte porque se elige en la misma pantalla:
-     * el personaje del concurso, la cara del Impostor. Sin esto, quien abría la
-     * sala se sentaba sin lo suyo y solo lo tenían los invitados.
-     */
+    /** Lo que el juego necesite del asiento de quien abre: su cara, su color. */
     meta?: Record<string, unknown>;
     config?: Record<string, unknown>;
     /** Los rivales que no son personas. Se sientan al crear la sala o nunca. */
@@ -35,7 +29,6 @@ export class RoomsApiService {
         game: input.game,
         name: input.name,
         displayName: input.displayName,
-        ...(input.meta !== undefined && { meta: input.meta }),
         ...(input.config !== undefined && { config: input.config }),
         ...(input.bots !== undefined && { bots: input.bots }),
       },
@@ -43,20 +36,25 @@ export class RoomsApiService {
   }
 
   /**
-   * Unirse NO exige sesión: quien llega por un enlace juega como invitado.
+   * Se sienta en una sala. NO exige sesión: quien llega por un enlace juega
+   * como invitado.
    *
-   * `meta` es lo que cada juego necesita del asiento y se elige en la misma
-   * pantalla que el nombre: el personaje del concurso, la cara del Impostor.
+   * `personaje` es del concurso y `meta` es para lo que necesite cada juego -el
+   * avatar de la mesa de poker-. Va en la misma petición que el nombre porque
+   * se elige en la misma pantalla: en dos llamadas, si la segunda falla te
+   * quedas sentado sin cara.
    */
   unirse(
     roomId: string,
     displayName: string,
-    meta?: Record<string, unknown> | null,
+    personaje?: string | null,
+    meta?: Record<string, unknown>,
   ): Promise<SeatGrant> {
+    const suyo = { ...(personaje && { personaje }), ...meta };
     return this.api.request<SeatGrant>({
       method: 'POST',
       path: `/salas/${encodeURIComponent(roomId)}/unirse`,
-      body: { displayName, ...(meta && { meta }) },
+      body: { displayName, ...(Object.keys(suyo).length > 0 && { meta: suyo }) },
     });
   }
 

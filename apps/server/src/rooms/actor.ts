@@ -42,6 +42,8 @@ export interface RoomActorOptions {
  */
 export interface Narrador {
   trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void;
+  /** Suelta lo que tenga pendiente. Lo llama la sala al descargarse. */
+  parar?(): void;
 }
 
 /** Si esa acción es de las que solo pone el servidor. */
@@ -475,6 +477,17 @@ export class RoomActor {
     };
   }
 
+  /**
+   * El estado del juego ahora mismo.
+   *
+   * Lo necesita quien vigila la sala con un reloj -el crupier del planning
+   * poker mete prisa cuando nadie vota-, porque ahí no hay jugada de la que
+   * partir: justamente lo que hay que mirar es que no ha pasado nada.
+   */
+  estadoDelJuego(): unknown {
+    return this.state;
+  }
+
   messageFor(seatId: SeatId): ServerMessage {
     return {
       tipo: 'estado',
@@ -487,6 +500,9 @@ export class RoomActor {
 
   /** Guarda la foto pendiente antes de descargar la sala de memoria. */
   flush(): void {
+    // Quien vigila con reloj se va con la sala: un temporizador suelto sobre
+    // una sala descargada seguiría hablándole a nadie.
+    this.narrador?.parar?.();
     if (this.state === null) return;
     this.repository.saveSnapshot(
       this.roomId,
