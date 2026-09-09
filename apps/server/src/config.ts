@@ -33,6 +33,17 @@ const ConfigSchema = Type.Object({
 
   SMTP_URL: Type.String({ default: '' }),
   MAIL_FROM: Type.String({ default: 'no-reply@localhost' }),
+
+  /**
+   * La clave con la que habla el presentador del concurso.
+   *
+   * Vacía es un modo de funcionamiento, no un fallo: sin clave el presentador
+   * dice el guion escrito, que está pensado para valer por sí solo. Lo que no
+   * puede pasar es que el servidor no arranque por esto.
+   */
+  AI_KEY: Type.String({ default: '' }),
+  AI_PROVIDER: Type.String({ default: 'openrouter' }),
+  AI_MODEL: Type.String({ default: '' }),
 });
 
 export type Config = Static<typeof ConfigSchema> & { readonly corsOrigins: readonly string[] };

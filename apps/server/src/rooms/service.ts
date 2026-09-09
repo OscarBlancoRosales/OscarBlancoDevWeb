@@ -3,6 +3,8 @@ import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
+import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
+import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import { moduleFor } from './registry';
 import type {
   GameId,
@@ -25,6 +27,8 @@ export interface RoomServiceOptions {
   readonly repository: RoomRepository;
   readonly maxSeats?: number;
   readonly now?: () => number;
+  /** Con qué modelo habla el presentador del concurso. Sin esto, solo guion. */
+  readonly ia?: AiSettings | null;
 }
 
 /**
@@ -44,10 +48,13 @@ export class RoomService {
   /** Salas cuya última foto no se pudo guardar al apagar. Solo para diagnóstico. */
   readonly fallosAlCerrar: string[] = [];
 
+  private readonly ia: AiSettings | null;
+
   constructor(options: RoomServiceOptions) {
     this.repository = options.repository;
     this.maxSeats = options.maxSeats ?? 16;
     this.now = options.now ?? Date.now;
+    this.ia = options.ia ?? null;
   }
 
   crear(input: {
@@ -283,9 +290,22 @@ export class RoomService {
       status: room.status,
       ownerId: room.ownerId,
       now: this.now,
+      narrador: this.narradorPara(room.game, roomId),
     });
     this.actores.set(roomId, actor);
     return actor;
+  }
+
+  /**
+   * El presentador, para las salas que lo tienen.
+   *
+   * Los nombres se leen de la base en cada frase y no se copian al crear el
+   * actor: en una sala se entra y se sale, y un presentador que llame a la
+   * gente por el nombre de quien había al abrir la mesa da más pena que gracia.
+   */
+  private narradorPara(game: GameId, roomId: string): PresentadorDeSala | null {
+    if (game !== 'trivial') return null;
+    return new PresentadorDeSala(this.ia, () => nombresDe(this.repository.listSeats(roomId)));
   }
 
   /**

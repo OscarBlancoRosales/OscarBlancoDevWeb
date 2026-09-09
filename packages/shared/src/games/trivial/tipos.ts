@@ -7,7 +7,15 @@ const SIN_EXTRAS = { additionalProperties: false } as const;
 /** Cuántas opciones tiene una prueba de las que se eligen. */
 export const OPCIONES = 4;
 
-export type TipoPrueba = 'test' | 'estimacion' | 'fallo';
+/**
+ * Las pruebas del programa.
+ *
+ * `test`, `estimacion` y `fallo` son «todos contestan a la vez». `pulsa` es la
+ * misma pregunta pero solo cuenta quien se lanza antes. `rafaga` encadena
+ * afirmaciones y premia la racha. `bomba` va por turnos: contesta quien la
+ * tiene, y los demás miran.
+ */
+export type TipoPrueba = 'test' | 'estimacion' | 'fallo' | 'pulsa' | 'rafaga' | 'bomba';
 export type Fase = 'presentacion' | 'ronda' | 'resultado' | 'fin';
 export type NivelBot = 'pardillo' | 'apanado' | 'sabelotodo';
 
@@ -68,6 +76,35 @@ export interface TrivialState {
   readonly jugadas: number;
   readonly semilla: number;
   readonly nivelBot: NivelBot;
+
+  /** Aciertos seguidos de cada uno en la ráfaga. Se rompe al fallar. */
+  readonly racha: Readonly<Record<SeatId, number>>;
+
+  /** Quién tiene la bomba ahora mismo. Fuera de esa prueba, `null`. */
+  readonly turno: SeatId | null;
+  /**
+   * Respuestas que le quedan a la bomba antes de estallar.
+   *
+   * Baja con cada acierto y no se reparte por turnos: la gracia es que nadie
+   * sabe si le va a tocar a él, que es lo que hace que se conteste con prisa.
+   */
+  readonly mecha: number;
+
+  /** Lo último que dijo el presentador, para que la mesa lo lea a la vez. */
+  readonly dice: string;
+  /** El momento del programa al que corresponde esa frase. */
+  readonly momento: string;
+}
+
+/**
+ * La ronda que hay en esa posición, si la hay.
+ *
+ * `rondas[i]` se tipa como si siempre hubiera algo, y no es verdad: pasada la
+ * última no hay nada. Este acceso lo dice, y así el `?.` de quien lo use es
+ * necesario en vez de sobrar.
+ */
+export function rondaEn(state: TrivialState, i: number): Ronda | undefined {
+  return state.rondas.at(i);
 }
 
 export const TrivialAction = Type.Union([
@@ -77,6 +114,16 @@ export const TrivialAction = Type.Union([
     SIN_EXTRAS,
   ),
   Type.Object({ tipo: Type.Literal('siguiente') }, SIN_EXTRAS),
+  // La dice el servidor, no una persona: es la voz del presentador entrando
+  // en la partida para que todos la lean a la vez.
+  Type.Object(
+    {
+      tipo: Type.Literal('presenta'),
+      momento: Type.String({ minLength: 1, maxLength: 40 }),
+      frase: Type.String({ minLength: 1, maxLength: 400 }),
+    },
+    SIN_EXTRAS,
+  ),
 ]);
 
 export type TrivialAction = Static<typeof TrivialAction>;
@@ -112,4 +159,17 @@ export interface TrivialView {
   readonly correcta: number | null;
   readonly explicacion: string | null;
   readonly resultados: readonly ResultadoDeRonda[] | null;
+
+  /** Quién tiene la bomba, y cuánto le queda. Fuera de la bomba, `null` y 0. */
+  readonly turno: SeatId | null;
+  readonly mecha: number;
+  /** Si te toca a ti contestar. En las demás pruebas contestan todos. */
+  readonly tuTurno: boolean;
+
+  /** Aciertos seguidos en la ráfaga, para pintar el multiplicador. */
+  readonly racha: number;
+
+  /** Lo que está diciendo el presentador, y en qué momento del programa. */
+  readonly dice: string;
+  readonly momento: string;
 }

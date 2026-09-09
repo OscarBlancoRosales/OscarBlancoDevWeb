@@ -48,6 +48,16 @@ export interface GameModule<TState, TAction> {
   readonly empiezaAlJugar?: boolean;
 
   /**
+   * Acciones que solo puede mandar el servidor, nunca un cliente.
+   *
+   * La voz del presentador entra en la partida como una acción más -así llega
+   * a toda la mesa por el mismo canal y sobrevive a recargar la página-, y eso
+   * la haría falsificable: cualquiera podría poner al presentador a decir lo
+   * que quisiera a los demás. Lo que se declare aquí se rechaza en la puerta.
+   */
+  readonly accionesDeSistema?: readonly string[];
+
+  /**
    * El estado inicial. `config` es lo que se guardó al crear la sala: para
    * RISK, el mapa y la semilla; para el planning poker, nada.
    */

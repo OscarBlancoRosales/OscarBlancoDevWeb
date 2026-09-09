@@ -5,11 +5,11 @@
     }
 
     @if (vista(); as v) {
-      <!-- El presentador, que es media gracia del concurso -->
-      @if (frase()) {
+      <!-- El presentador. Lo dice el servidor, así que la mesa lee lo mismo -->
+      @if (dice) {
         <blockquote class="presentador">
           <span class="quien">EL PRESENTADOR</span>
-          <p>{{ frase() }}</p>
+          <p>{{ dice }}</p>
         </blockquote>
       }
 
@@ -43,9 +43,38 @@
       } @else {
         <section class="fase">
           <header class="titular">
+            @if (seccion; as parte) {
+              <div class="rotulo" [class.peligro]="esBomba">
+                <span class="parte">{{ parte.nombre }}</span>
+                <span class="pista">{{ parte.pista }}</span>
+              </div>
+            }
             <h1><span class="prompt">&gt;</span> Ronda {{ v.ronda }} de {{ v.rondas }}</h1>
-            <p class="pie">{{ v.enunciado }}</p>
+            <p class="enunciado">{{ v.enunciado }}</p>
           </header>
+
+          <!-- La bomba: de quién es y cuánto le queda -->
+          @if (esBomba && !v.cerrada) {
+            <div class="bomba" [class.tuya]="v.tuTurno">
+              <span class="mecha" aria-hidden="true">
+                @for (paso of [].constructor(mecha); track $index) {
+                  <i></i>
+                }
+              </span>
+              <p class="quien-la-tiene">
+                @if (v.tuTurno) {
+                  <strong>¡La tienes tú!</strong> Contesta y pásala.
+                } @else {
+                  La tiene <strong>{{ quienTieneLaBomba }}</strong>. Tú mira.
+                }
+              </p>
+            </div>
+          }
+
+          <!-- La racha de la ráfaga, que es lo que multiplica -->
+          @if (esRafaga && racha > 0) {
+            <p class="racha">Llevas <strong>{{ racha }}</strong> seguidas. Multiplicador activo.</p>
+          }
 
           @if (v.codigo) {
             <pre class="codigo"><code>{{ v.codigo }}</code></pre>
@@ -58,13 +87,13 @@
                 <input
                   type="number"
                   [(ngModel)]="estimacion"
-                  [disabled]="yaContestaste || v.cerrada"
+                  [disabled]="!puedesContestar"
                 />
               </label>
               <button
                 type="button"
                 class="principal"
-                [disabled]="estimacion === null || yaContestaste || v.cerrada"
+                [disabled]="estimacion === null || !puedesContestar"
                 (click)="responderEstimacion()"
               >
                 Va
@@ -79,7 +108,7 @@
                     class="opcion"
                     [class.buena]="v.cerrada && esLaBuena($index)"
                     [class.tuya]="esLaTuya($index)"
-                    [disabled]="yaContestaste || v.cerrada"
+                    [disabled]="!puedesContestar"
                     (click)="responder($index)"
                   >
                     <span class="letra">{{ letras[$index] }}</span>
@@ -97,8 +126,12 @@
                 @for (resultado of v.resultados; track resultado.seatId) {
                   <li>
                     <span class="nombre">{{ nombreDe(resultado.seatId) }}</span>
-                    <span class="ganados" [class.cero]="resultado.ganados === 0">
-                      +{{ resultado.ganados }}
+                    <span
+                      class="ganados"
+                      [class.cero]="resultado.ganados === 0"
+                      [class.resta]="resultado.ganados < 0"
+                    >
+                      {{ resultado.ganados > 0 ? '+' : '' }}{{ resultado.ganados }}
                     </span>
                   </li>
                 }
@@ -107,7 +140,7 @@
                 {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
               </button>
             </div>
-          } @else if (esperandoAlResto) {
+          } @else if (esperandoAlResto && !esBomba) {
             <p class="pie">Contestado. Esperando al resto…</p>
           }
         </section>

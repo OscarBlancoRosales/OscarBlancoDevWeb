@@ -13,6 +13,25 @@ export const BONUS_POR_ORDEN = [50, 35, 20, 5] as const;
 /** De propina por clavar una estimación, que tiene mérito. */
 export const PROPINA_EXACTA = 20;
 
+/**
+ * Lo que se lleva quien se lanza el primero y acierta, y lo que le cuesta
+ * lanzarse y fallar.
+ *
+ * El premio es mayor que el de una pregunta normal y el castigo es real: sin
+ * riesgo, «el primero que pulse» es una pregunta de siempre con otro nombre y
+ * todo el mundo pulsa a ciegas.
+ */
+export const PUNTOS_PULSA = 150;
+export const CASTIGO_PULSA = 50;
+
+/** Cada acierto seguido de la ráfaga, y el tope al que llega el multiplicador. */
+export const PUNTOS_RAFAGA = 40;
+export const RACHA_MAXIMA = 5;
+
+/** Acertar con la bomba en la mano, y lo que cuesta que te estalle. */
+export const PUNTOS_BOMBA = 60;
+export const CASTIGO_BOMBA = 120;
+
 export function aciertaCon(pregunta: Pregunta, valor: number): boolean {
   return valor === pregunta.correcta;
 }
@@ -20,20 +39,41 @@ export function aciertaCon(pregunta: Pregunta, valor: number): boolean {
 /**
  * Lo que se lleva un asiento por su respuesta en esta ronda.
  *
- * Nunca es negativo. Restar por fallar enseña a no contestar, y un concurso en
- * el que nadie arriesga se muere solo.
+ * En las pruebas de siempre nunca es negativo: restar por fallar enseña a no
+ * contestar, y un concurso en el que nadie arriesga se muere solo. Solo restan
+ * las dos pruebas que van de arriesgar -«el primero que pulse» y la bomba-, y
+ * ahí el castigo es justamente lo que las hace valer la pena.
  */
 export function puntosDe(
   pregunta: Pregunta,
   respuestas: Readonly<Record<SeatId, Respuesta>>,
   seat: SeatId,
+  racha = 0,
 ): number {
   const suya = respuestaDe(respuestas, seat);
   if (!suya) return 0;
 
   if (pregunta.tipo === 'estimacion') return puntosPorCercania(pregunta, suya.valor);
-  if (!aciertaCon(pregunta, suya.valor)) return 0;
 
+  const acierta = aciertaCon(pregunta, suya.valor);
+
+  if (pregunta.tipo === 'pulsa') {
+    // Solo cobra el primero que acierta; los demás llegan tarde aunque acierten.
+    if (!acierta) return -CASTIGO_PULSA;
+    return aciertosAntesDe(pregunta, respuestas, suya) === 0 ? PUNTOS_PULSA : 0;
+  }
+
+  if (pregunta.tipo === 'rafaga') {
+    // El multiplicador es la racha que traías, no la que dejas: acertar la
+    // primera vale uno, y la quinta seguida vale cinco.
+    return acierta ? PUNTOS_RAFAGA * Math.min(racha + 1, RACHA_MAXIMA) : 0;
+  }
+
+  if (pregunta.tipo === 'bomba') {
+    return acierta ? PUNTOS_BOMBA : -CASTIGO_BOMBA;
+  }
+
+  if (!acierta) return 0;
   return PUNTOS_ACIERTO + (BONUS_POR_ORDEN[aciertosAntesDe(pregunta, respuestas, suya)] ?? 0);
 }
 
@@ -54,9 +94,13 @@ export function respuestaDe(
 export function repartoDe(
   pregunta: Pregunta,
   respuestas: Readonly<Record<SeatId, Respuesta>>,
+  rachas: Readonly<Record<SeatId, number>> = {},
 ): Record<SeatId, number> {
   return Object.fromEntries(
-    Object.keys(respuestas).map((seat) => [seat, puntosDe(pregunta, respuestas, seat)]),
+    Object.keys(respuestas).map((seat) => [
+      seat,
+      puntosDe(pregunta, respuestas, seat, rachas[seat] ?? 0),
+    ]),
   );
 }
 

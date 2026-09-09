@@ -18,6 +18,7 @@ import { createConsoleMailer, createSmtpMailer } from './auth/mailer';
 import { createRoomRepository } from './rooms/repository';
 import { RoomService } from './rooms/service';
 import { roomRoutes } from './rooms/routes';
+import { ajustesDeIa } from './games/trivial/presentador';
 import { roomSocket } from './rooms/ws';
 import { kvRoutes } from './kv/routes';
 import { healthRoutes } from './health/routes';
@@ -74,7 +75,10 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
     refreshTtlDays: config.REFRESH_TOKEN_TTL_DAYS,
   });
 
-  const rooms = new RoomService({ repository: createRoomRepository(db) });
+  const rooms = new RoomService({
+    repository: createRoomRepository(db),
+    ia: ajustesDeIa(config),
+  });
   app.addHook('onClose', () => { rooms.cerrar(); });
 
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });

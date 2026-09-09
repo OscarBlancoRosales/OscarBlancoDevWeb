@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../app';
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
-import { PREGUNTAS_POR_PARTIDA } from '../games/trivial/banco';
+import { RONDAS_POR_PROGRAMA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
 import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
@@ -135,7 +135,7 @@ describe('salas', () => {
         .prepare('SELECT config_json FROM rooms WHERE id = ?')
         .get(grant.room.id) as { config_json: string };
       const config = JSON.parse(fila.config_json) as { preguntas?: unknown[] };
-      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+      expect(config.preguntas).toHaveLength(RONDAS_POR_PROGRAMA);
     });
 
     it('las preguntas del trivial no las elige quien crea la sala', async () => {
@@ -157,7 +157,7 @@ describe('salas', () => {
         .prepare('SELECT config_json FROM rooms WHERE id = ?')
         .get(grant.room.id) as { config_json: string };
       const config = JSON.parse(fila.config_json) as { preguntas?: { id: string }[] };
-      expect(config.preguntas).toHaveLength(PREGUNTAS_POR_PARTIDA);
+      expect(config.preguntas).toHaveLength(RONDAS_POR_PROGRAMA);
       expect(config.preguntas?.some((p) => p.id === 'mia')).toBe(false);
     });
 

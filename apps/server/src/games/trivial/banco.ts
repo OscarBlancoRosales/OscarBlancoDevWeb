@@ -1,8 +1,27 @@
 import { createRng, shuffle } from '@devweb/shared/engine/rng';
-import type { Pregunta } from '@devweb/shared/games/trivial/tipos';
+import { BOMBA, PULSA, RAFAGA } from './pruebas';
+import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
-/** Cuántas rondas tiene una partida. */
-export const PREGUNTAS_POR_PARTIDA = 10;
+
+/**
+ * La escaleta del programa: qué sección va después de cuál, y cuánto dura.
+ *
+ * El orden no es decorativo, es el guion de un programa de televisión: se
+ * abre con lo fácil para que entre todo el mundo, se sube con las de reflejos,
+ * se afloja con las de pensar y se cierra con la bomba, que es donde se dan
+ * los vuelcos. Cambiar este array cambia el programa entero.
+ */
+export const ESCALETA: readonly { tipo: TipoPrueba; cuantas: number }[] = [
+  { tipo: 'test', cuantas: 3 },
+  { tipo: 'pulsa', cuantas: 2 },
+  { tipo: 'rafaga', cuantas: 5 },
+  { tipo: 'fallo', cuantas: 2 },
+  { tipo: 'estimacion', cuantas: 2 },
+  { tipo: 'bomba', cuantas: 6 },
+];
+
+/** Cuántas rondas tiene un programa. Sale de la escaleta, no al revés. */
+export const RONDAS_POR_PROGRAMA = ESCALETA.reduce((total, uno) => total + uno.cuantas, 0);
 
 /**
  * Las preguntas, con sus respuestas.
@@ -376,12 +395,33 @@ export const BANCO: readonly Pregunta[] = [
   },
 ];
 
+/** Todo lo que hay para repartir, junto: el banco de siempre y las pruebas. */
+function todas(): readonly Pregunta[] {
+  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA];
+}
+
 /**
- * Las preguntas de una partida, barajadas.
+ * Las preguntas de una partida, en el orden del programa.
  *
- * Sale de la semilla de la sala, así que dos partidas distintas no traen la
- * misma tanda y una misma partida se reconstruye igual desde su log.
+ * Cada sección se baraja por su lado y se corta a lo que pida la escaleta, así
+ * que dos partidas traen preguntas distintas pero el mismo programa: la misma
+ * apertura, la misma subida y la misma bomba al final. Un programa que cambia
+ * de forma cada noche no es un programa, es una tanda de preguntas.
+ *
+ * Sale de la semilla de la sala, así que una partida se reconstruye igual
+ * desde su log.
  */
-export function repartir(semilla: number, cuantas = PREGUNTAS_POR_PARTIDA): Pregunta[] {
-  return shuffle(BANCO, createRng(semilla)).slice(0, Math.min(cuantas, BANCO.length));
+export function repartir(semilla: number): Pregunta[] {
+  const disponibles = todas();
+  const escaleta: Pregunta[] = [];
+
+  for (const [i, seccion] of ESCALETA.entries()) {
+    const suyas = disponibles.filter((una) => una.tipo === seccion.tipo);
+    // Una semilla por sección: si todas barajaran con la misma, dos secciones
+    // del mismo tamaño saldrían siempre en el mismo orden relativo.
+    const barajadas = shuffle(suyas, createRng(semilla + i * 1000));
+    escaleta.push(...barajadas.slice(0, Math.min(seccion.cuantas, barajadas.length)));
+  }
+
+  return escaleta;
 }

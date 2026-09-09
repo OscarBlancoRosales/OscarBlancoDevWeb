@@ -1,5 +1,5 @@
-import { OPCIONES, TrivialAction } from './tipos';
-import { repartoDe, respuestaDe } from './reglas';
+import { OPCIONES, TrivialAction, rondaEn } from './tipos';
+import { aciertaCon, repartoDe, respuestaDe } from './reglas';
 import { respuestaDelBot } from './bot';
 import { rngFor } from '../../engine/rng';
 import type {
@@ -14,6 +14,7 @@ import type { GameModule, RuleError, SeatId } from '../module';
 
 const NIVELES: readonly NivelBot[] = ['pardillo', 'apanado', 'sabelotodo'];
 
+
 const TERMINADA: RuleError = {
   code: 'partida-terminada',
   message: 'El concurso ya ha acabado.',
@@ -22,6 +23,9 @@ const TERMINADA: RuleError = {
 export const trivialModule: GameModule<TrivialState, TrivialAction> = {
   id: 'trivial',
   actionSchema: TrivialAction,
+  // La voz del presentador la pone el servidor. Si la pudiera mandar un
+  // cliente, cualquiera hablaría por su boca al resto de la mesa.
+  accionesDeSistema: ['presenta'],
 
   /**
    * Las preguntas llegan por la configuración de la sala, no de un banco que
@@ -40,6 +44,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       jugadas: 0,
       semilla: typeof config['semilla'] === 'number' ? config['semilla'] : 1,
       nivelBot: esNivel(config['nivelBot']) ? config['nivelBot'] : 'apanado',
+      racha: {},
+      turno: null,
+      mecha: 0,
+      dice: '',
+      momento: '',
     };
   },
 
@@ -69,6 +78,10 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         if (respuestaDe(ronda.respuestas, by)) {
           return { code: 'ya-respondida', message: 'Ya has contestado.' };
         }
+        // Con la bomba contesta quien la tiene. Los demás miran, que de eso va.
+        if (ronda.pregunta.tipo === 'bomba' && state.turno !== by) {
+          return { code: 'no-es-tu-turno', message: 'La bomba no la tienes tú.' };
+        }
         return valorPosible(ronda.pregunta, action.valor);
       }
 
@@ -85,6 +98,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         }
         return null;
       }
+
+      // La dice el servidor por boca del presentador. No la valida nadie más
+      // porque nadie más la manda: al cliente no se le ofrece esta acción.
+      case 'presenta':
+        return null;
     }
   },
 
@@ -114,10 +132,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
           },
         };
 
-        const faltan = state.orden.filter((seat) => !(seat in conRespuesta.respuestas));
-        return faltan.length === 0
-          ? { ...cerrar(state, conRespuesta), jugadas }
-          : { ...conRondaActual(state, conRespuesta), jugadas };
+        return { ...cerrarSiProcede(state, conRespuesta, action.valor), jugadas };
       }
 
       case 'siguiente': {
@@ -125,10 +140,19 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         const cerrada = ronda && !ronda.cerrada ? cerrar(state, ronda) : state;
         const siguiente = cerrada.actual + 1;
 
-        return siguiente >= cerrada.rondas.length
-          ? { ...cerrada, jugadas, fase: 'fin' }
-          : { ...cerrada, jugadas, actual: siguiente, fase: 'ronda' };
+        if (siguiente >= cerrada.rondas.length) {
+          return { ...cerrada, jugadas, fase: 'fin', turno: null };
+        }
+        return {
+          ...conBomba(cerrada, siguiente),
+          jugadas,
+          actual: siguiente,
+          fase: 'ronda',
+        };
       }
+
+      case 'presenta':
+        return { ...state, jugadas, dice: action.frase, momento: action.momento };
     }
   },
 
@@ -159,7 +183,13 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       puntos: state.puntos,
       correcta: cerrada && pregunta ? pregunta.correcta : null,
       explicacion: cerrada && pregunta ? pregunta.explicacion : null,
-      resultados: cerrada && ronda ? resultadosDe(ronda) : null,
+      resultados: cerrada && ronda ? resultadosDe(state, ronda) : null,
+      turno: state.turno,
+      mecha: state.mecha,
+      tuTurno: pregunta?.tipo === 'bomba' ? state.turno === forSeat : !cerrada,
+      racha: state.racha[forSeat] ?? 0,
+      dice: state.dice,
+      momento: state.momento,
     } satisfies TrivialView;
   },
 
@@ -180,7 +210,8 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
 
     const ronda = rondaActual(state);
     if (!ronda || ronda.cerrada || respuestaDe(ronda.respuestas, seat)) return null;
-
+    // Un bot tampoco puede quitarle la bomba a nadie.
+    if (ronda.pregunta.tipo === 'bomba' && state.turno !== seat) return null;
     return { tipo: 'responder', valor: respuestaDelBot(ronda.pregunta, state.nivelBot, rng) };
   },
 
@@ -206,13 +237,30 @@ function conRondaActual(state: TrivialState, ronda: Ronda): TrivialState {
 }
 
 /**
+ * Si esa respuesta cierra la ronda, o si todavía falta gente.
+ *
+ * Cada prueba se cierra a su manera, y de eso vive el programa: la bomba se
+ * cierra en cuanto contesta quien la tiene, «el primero que pulse» en cuanto
+ * alguien acierta, y las de siempre cuando han contestado todos.
+ */
+function cerrarSiProcede(state: TrivialState, ronda: Ronda, valor: number): TrivialState {
+  const tipo = ronda.pregunta.tipo;
+
+  if (tipo === 'bomba') return cerrar(state, ronda);
+  if (tipo === 'pulsa' && aciertaCon(ronda.pregunta, valor)) return cerrar(state, ronda);
+
+  const faltan = state.orden.filter((seat) => !(seat in ronda.respuestas));
+  return faltan.length === 0 ? cerrar(state, ronda) : conRondaActual(state, ronda);
+}
+
+/**
  * Cierra la ronda y reparte lo ganado.
  *
  * El reparto se hace una sola vez, aquí, y no al pintar: si se calculara en la
  * vista, el marcador cambiaría según quién mira.
  */
 function cerrar(state: TrivialState, ronda: Ronda): TrivialState {
-  const ganados = repartoDe(ronda.pregunta, ronda.respuestas);
+  const ganados = repartoDe(ronda.pregunta, ronda.respuestas, state.racha);
   const puntos = { ...state.puntos };
   for (const [seat, suma] of Object.entries(ganados)) {
     puntos[seat] = (puntos[seat] ?? 0) + suma;
@@ -221,12 +269,80 @@ function cerrar(state: TrivialState, ronda: Ronda): TrivialState {
   return {
     ...conRondaActual(state, { ...ronda, cerrada: true }),
     puntos,
+    racha: rachasTras(state, ronda),
+    mecha: mechaTras(state, ronda),
     fase: 'resultado',
   };
 }
 
-function resultadosDe(ronda: Ronda): ResultadoDeRonda[] {
-  const ganados = repartoDe(ronda.pregunta, ronda.respuestas);
+/**
+ * Cómo quedan las rachas de la ráfaga.
+ *
+ * Fuera de la ráfaga se ponen a cero todas: encadenar aciertos de secciones
+ * distintas no es una racha, es haber jugado un rato.
+ */
+function rachasTras(state: TrivialState, ronda: Ronda): Record<SeatId, number> {
+  if (ronda.pregunta.tipo !== 'rafaga') return {};
+
+  const rachas: Record<SeatId, number> = { ...state.racha };
+  for (const seat of state.orden) {
+    const suya = respuestaDe(ronda.respuestas, seat);
+    rachas[seat] =
+      suya && aciertaCon(ronda.pregunta, suya.valor) ? (state.racha[seat] ?? 0) + 1 : 0;
+  }
+  return rachas;
+}
+
+/**
+ * Lo que le queda a la mecha después de esta ronda.
+ *
+ * Solo baja con los aciertos: fallar hace estallar la bomba en el acto, así
+ * que ahí lo que queda de mecha ya da igual.
+ */
+function mechaTras(state: TrivialState, ronda: Ronda): number {
+  if (ronda.pregunta.tipo !== 'bomba') return 0;
+  const suya = state.turno ? respuestaDe(ronda.respuestas, state.turno) : undefined;
+  const acierta = suya ? aciertaCon(ronda.pregunta, suya.valor) : false;
+  return acierta ? Math.max(0, state.mecha - 1) : 0;
+}
+
+/**
+ * Prepara el turno de la bomba al entrar en una ronda.
+ *
+ * La mecha se enciende al empezar la sección y va cruzando rondas; dentro de
+ * ella, la bomba pasa al siguiente. Si se agotó, se vuelve a encender: la
+ * sección sigue hasta que se acaban sus preguntas.
+ */
+function conBomba(state: TrivialState, siguiente: number): TrivialState {
+  const entra = rondaEn(state, siguiente)?.pregunta;
+  if (entra?.tipo !== 'bomba') return { ...state, turno: null, mecha: 0 };
+
+  const venia = rondaEn(state, state.actual)?.pregunta.tipo === 'bomba';
+  const mecha = venia && state.mecha > 0 ? state.mecha : mechaInicial(state.orden.length);
+  const turno = venia ? siguienteDe(state.orden, state.turno) : (state.orden[0] ?? null);
+
+  return { ...state, turno, mecha };
+}
+
+/**
+ * Cuánto aguanta la bomba antes de estallar.
+ *
+ * Más que jugadores, para que dé al menos una vuelta entera y nadie pueda
+ * contar de quién será la última: si durase exactamente una vuelta, la mesa
+ * sabría desde el principio a quién le toca comérsela.
+ */
+export function mechaInicial(jugadores: number): number {
+  return Math.max(2, jugadores) + 2;
+}
+
+function siguienteDe(orden: readonly SeatId[], actual: SeatId | null): SeatId | null {
+  if (orden.length === 0) return null;
+  const donde = actual ? orden.indexOf(actual) : -1;
+  return orden[(donde + 1) % orden.length] ?? null;
+}
+
+function resultadosDe(state: TrivialState, ronda: Ronda): ResultadoDeRonda[] {
+  const ganados = repartoDe(ronda.pregunta, ronda.respuestas, state.racha);
   return Object.entries(ronda.respuestas).map(([seatId, respuesta]) => ({
     seatId,
     valor: respuesta.valor,
@@ -243,7 +359,9 @@ function resultadosDe(ronda: Ronda): ResultadoDeRonda[] {
  */
 function valorPosible(pregunta: Pregunta, valor: number): RuleError | null {
   if (pregunta.tipo === 'estimacion') return null;
-  return valor >= 0 && valor < OPCIONES
+  // Contra las opciones que tenga, no contra cuatro: la ráfaga es de dos.
+  const cuantas = pregunta.opciones.length || OPCIONES;
+  return valor >= 0 && valor < cuantas
     ? null
     : { code: 'opcion-inexistente', message: 'Esa opción no existe.' };
 }

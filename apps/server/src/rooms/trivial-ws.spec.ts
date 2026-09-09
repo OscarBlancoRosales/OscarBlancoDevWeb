@@ -3,7 +3,7 @@ import { WebSocket } from 'ws';
 import { buildApp } from '../app';
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
-import { PREGUNTAS_POR_PARTIDA } from '../games/trivial/banco';
+import { RONDAS_POR_PROGRAMA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
 import type { TrivialView } from '@devweb/shared/games/trivial/tipos';
 import type { SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
@@ -60,6 +60,31 @@ class Cliente {
     for (;;) {
       const encontrada = this.vistas.findLast(condicion);
       if (encontrada) return encontrada;
+      if (Date.now() > plazo) throw new Error(`No llegó: ${motivo}`);
+      await new Promise<void>((resolve) => setTimeout(resolve, 20));
+    }
+  }
+
+  /** Cómo está la partida ahora mismo, no cómo estuvo alguna vez. */
+  get ultima(): TrivialView | undefined {
+    return this.vistas.at(-1);
+  }
+
+  /**
+   * Espera a que la partida **esté** así, mirando solo la última vista.
+   *
+   * Recorrer un programa entero buscando en el histórico no avanza nunca: la
+   * vista de una ronda cerrada hace diez rondas sigue cumpliendo «está
+   * cerrada», y el bucle se queda dando vueltas sobre ella. Y buscar «la
+   * última que cumpla» tampoco vale: en «el primero que pulse» el bot cierra
+   * la ronda en el mismo suspiro en que se abre, así que la última abierta ya
+   * no es lo que hay.
+   */
+  async hasta(condicion: (vista: TrivialView) => boolean, motivo: string): Promise<TrivialView> {
+    const plazo = Date.now() + 3000;
+    for (;;) {
+      const ahora = this.ultima;
+      if (ahora && condicion(ahora)) return ahora;
       if (Date.now() > plazo) throw new Error(`No llegó: ${motivo}`);
       await new Promise<void>((resolve) => setTimeout(resolve, 20));
     }
@@ -122,7 +147,83 @@ describe('un concurso de trivial contra el bot', () => {
 
     const vista = await cliente.vistaCuando((v) => v.fase === 'ronda', 'la primera pregunta');
     expect(vista.enunciado.length).toBeGreaterThan(0);
-    expect(vista.rondas).toBe(PREGUNTAS_POR_PARTIDA);
+    expect(vista.rondas).toBe(RONDAS_POR_PROGRAMA);
+    cliente.cerrar();
+  });
+
+  /**
+   * El programa entero, de la bienvenida a la despedida.
+   *
+   * Es la prueba que dice si esto es un concurso o una tanda de preguntas:
+   * pasa por las seis secciones, la bomba cambia de manos, el presentador
+   * habla y el marcador acaba con un ganador.
+   */
+  it('se juega un programa entero, con sus secciones y su presentador', async () => {
+    const cliente = await Cliente.conectar(url, sala.seatToken);
+    cliente.enviar({ tipo: 'empezar' });
+    let vista = await cliente.vistaCuando((v) => v.fase === 'ronda', 'la primera pregunta');
+
+    const secciones = new Set<string>();
+    const dichas = new Set<string>();
+    const momentos = new Set<string>();
+
+    // Una vuelta por ronda: contestar si te toca, esperar a que cierre y pasar.
+    for (let vuelta = 0; vuelta < 60 && vista.fase !== 'fin'; vuelta++) {
+      if (vista.tipo) secciones.add(vista.tipo);
+      if (vista.dice) dichas.add(vista.dice);
+      if (vista.momento) momentos.add(vista.momento);
+
+      if (!vista.cerrada && vista.tuTurno && vista.tuRespuesta === null) {
+        cliente.enviar({ tipo: 'responder', valor: vista.tipo === 'estimacion' ? 2000 : 0 });
+      }
+
+      vista = await cliente.hasta((v) => v.cerrada || v.fase === 'fin', 'el cierre de la ronda');
+      if (vista.dice) dichas.add(vista.dice);
+      if (vista.momento) momentos.add(vista.momento);
+      if (vista.fase === 'fin') break;
+
+      // Por ronda distinta y no por «ya no está cerrada»: contra un bot rápido,
+      // la siguiente puede abrirse y cerrarse antes de que nos llegue nada.
+      const iba = vista.ronda;
+      cliente.enviar({ tipo: 'siguiente' });
+      vista = await cliente.hasta((v) => v.ronda !== iba || v.fase === 'fin', 'la ronda siguiente');
+    }
+
+    expect(vista.fase, 'el programa tiene que acabar').toBe('fin');
+    // Las seis pruebas, que es de lo que va el programa.
+    expect(secciones).toEqual(
+      new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba']),
+    );
+    // Y el presentador, que ha ido diciendo cosas distintas por el camino.
+    expect(dichas.size).toBeGreaterThan(3);
+    expect(momentos.has('bienvenida')).toBe(true);
+    expect(momentos.size).toBeGreaterThan(3);
+    cliente.cerrar();
+  });
+
+  it('en la bomba solo contesta quien la tiene', async () => {
+    const cliente = await Cliente.conectar(url, sala.seatToken);
+    cliente.enviar({ tipo: 'empezar' });
+    let vista = await cliente.vistaCuando((v) => v.fase === 'ronda', 'la primera pregunta');
+
+    // Adelante hasta la sección de la bomba, que cierra el programa.
+    for (let vuelta = 0; vuelta < 60 && vista.tipo !== 'bomba'; vuelta++) {
+      if (!vista.cerrada && vista.tuTurno && vista.tuRespuesta === null) {
+        cliente.enviar({ tipo: 'responder', valor: 0 });
+      }
+      vista = await cliente.hasta((v) => v.cerrada || v.fase === 'fin', 'el cierre de la ronda');
+      if (vista.fase === 'fin') break;
+
+      const iba = vista.ronda;
+      cliente.enviar({ tipo: 'siguiente' });
+      vista = await cliente.hasta((v) => v.ronda !== iba || v.fase === 'fin', 'la ronda siguiente');
+    }
+
+    expect(vista.tipo, 'hay que llegar a la bomba').toBe('bomba');
+    // La bomba tiene dueño en cuanto se enciende la sección; la mecha se mira
+    // con la ronda viva, porque al cerrarse ya se ha gastado o ha estallado.
+    expect(vista.turno, 'la bomba es de alguien').not.toBeNull();
+    if (!vista.cerrada) expect(vista.mecha, 'y con mecha encendida').toBeGreaterThan(0);
     cliente.cerrar();
   });
 
