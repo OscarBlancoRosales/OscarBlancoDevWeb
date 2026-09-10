@@ -3,6 +3,7 @@ import { WebSocket } from 'ws';
 import { buildApp } from '../app';
 import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
+import { invitacionDePrueba } from '../auth/testing';
 import type { FastifyInstance } from 'fastify';
 import type { ImpostorView } from '@devweb/shared/games/impostor/tipos';
 import type { SeatGrant, ServerMessage } from '@devweb/shared/contracts/rooms';
@@ -76,7 +77,11 @@ describe('una ronda del impostor contra dos bots', () => {
   let sala: SeatGrant;
 
   async function abrir(config: Record<string, unknown>): Promise<void> {
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: ALTA });
+    await app.inject({
+      method: 'POST',
+      url: '/auth/registro',
+      payload: { ...ALTA, invitacion: invitacionDePrueba(db) },
+    });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',

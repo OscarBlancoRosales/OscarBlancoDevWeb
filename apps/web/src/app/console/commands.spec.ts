@@ -46,6 +46,9 @@ describe('registro de comandos', () => {
     // ellas solo serviría para enseñar una pantalla rota.
     'auth/verificar',
     'auth/nueva-contrasena',
+    // El panel no se anuncia: para quien no administra contesta un 404, y un
+    // comando en la consola sería justo el cartel que ese 404 evita poner.
+    'admin',
   ]);
 
   /**
