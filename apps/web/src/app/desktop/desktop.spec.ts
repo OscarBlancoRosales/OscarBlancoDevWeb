@@ -443,3 +443,91 @@ describe('el panel de quien administra', () => {
     expect(iconos()).not.toContain('Administración');
   });
 });
+
+/**
+ * Abrir algo tiene que abrirlo.
+ *
+ * El icono y el contenido que carga viven en dos listas distintas —el catálogo
+ * y el mapa de `CONTENT`— y nada obligaba a que cuadraran. Añadir un icono y
+ * olvidar su contenido dejaba un botón que al pulsarlo no hacía nada: ni
+ * ventana, ni error, ni pista. Le pasó al panel de administración.
+ */
+describe('abrir desde el escritorio y desde el menú', () => {
+  let fixture: ComponentFixture<Desktop>;
+  let desktop: Desktop;
+  let quien: BehaviorSubject<PublicUser | null>;
+
+  const JEFE: PublicUser = {
+    id: 'u1',
+    email: 'jefe@ejemplo.com',
+    displayName: 'Óscar',
+    status: 'active',
+    role: 'admin',
+  };
+
+  beforeEach(async () => {
+    localStorage.clear();
+    quien = new BehaviorSubject<PublicUser | null>(JEFE);
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Desktop],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthApiService,
+          useValue: { settledUser$: quien.asObservable(), salir: () => Promise.resolve() },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Desktop);
+    desktop = fixture.componentInstance;
+    TestBed.inject(I18nService).setLang('es');
+    fixture.detectChanges();
+  });
+
+  const ventana = (id: string) => desktop.state.windows.find((w) => w.id === id);
+
+  it('todos los iconos del escritorio saben qué abrir', async () => {
+    for (const item of DESKTOP_ITEMS) {
+      await desktop.launch(item);
+      expect(ventana(item.id), `«${item.id}» no abrió ninguna ventana`).toBeTruthy();
+    }
+  });
+
+  it('lo que se abre se ve: ni minimizado ni detrás de otra cosa', async () => {
+    for (const item of DESKTOP_ITEMS) {
+      await desktop.launch(item);
+      expect(ventana(item.id)?.minimized, item.id).toBe(false);
+      expect(desktop.active?.id, `«${item.id}» no quedó al frente`).toBe(item.id);
+    }
+  });
+
+  /** Volver a pulsar lo que tienes minimizado es pedir que vuelva, no nada. */
+  it('y si estaba minimizado, vuelve', async () => {
+    const juegos = DESKTOP_ITEMS.find((i) => i.id === 'juegos');
+    if (!juegos) throw new Error('sin icono de juegos');
+
+    await desktop.launch(juegos);
+    desktop.minimizeWindow('juegos');
+    expect(ventana('juegos')?.minimized).toBe(true);
+
+    await desktop.launch(juegos);
+    expect(ventana('juegos')?.minimized).toBe(false);
+    expect(desktop.active?.id).toBe('juegos');
+  });
+
+  /**
+   * Desde el menú se pide una cosa concreta y se quiere ver, no colocarla:
+   * abre a pantalla completa. Los iconos del fondo siguen abriendo en ventana,
+   * que es de lo que va un escritorio.
+   */
+  it('desde el menú de inicio abre a pantalla completa', async () => {
+    const qr = DESKTOP_ITEMS.find((i) => i.id === 'qr');
+    if (!qr) throw new Error('sin icono de qr');
+
+    await desktop.launchFromMenu(qr);
+
+    expect(ventana('qr')?.maximized).toBe(true);
+    expect(ventana('qr')?.minimized).toBe(false);
+  });
+});

@@ -57,6 +57,7 @@ const CONTENT: Record<string, (() => Promise<Type<unknown>>) | undefined> = {
     import('../timestamp-converter/timestamp-converter').then((m) => m.TimestampConverter),
   uuid: () => import('../uuid-generator/uuid-generator').then((m) => m.UuidGenerator),
   iconos: () => import('../icon-generator/icon-generator').then((m) => m.IconGenerator),
+  admin: () => import('../admin/admin').then((m) => m.Admin),
 };
 
 /** Por debajo de esto no hay sitio para ventanas sueltas: se usan a pantalla completa. */
@@ -265,7 +266,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
     // Si esa ventana ya la lleva la dirección, se trae al frente y ya está:
     // montarle otro contenido dejaría dos cosas en la misma ventana.
     if (item.id === this.routeWin) {
-      this.state = restore(this.state, item.id);
+      this.state = focus(restore(this.state, item.id), item.id);
       this.cdr.detectChanges();
       return;
     }
@@ -284,6 +285,19 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
     // En el móvil una ventana suelta no se puede ni agarrar: siempre entera.
     if (this.mobile) this.maximizeIfNeeded(item.id);
     this.syncUrl();
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Abrir desde el menú de inicio: a pantalla completa.
+   *
+   * En el menú se busca una cosa concreta y se quiere ver, no colocarla en el
+   * tablero. Los iconos del fondo siguen abriendo en ventana, que es de lo que
+   * va un escritorio.
+   */
+  async launchFromMenu(item: DesktopItem): Promise<void> {
+    await this.launch(item);
+    this.maximizeIfNeeded(item.id);
     this.cdr.detectChanges();
   }
 
