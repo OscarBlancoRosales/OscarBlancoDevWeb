@@ -141,7 +141,7 @@ export function sanitizePlan(
       .map((item) => item.trim())
       .filter((item) => validIds.has(item))
       .filter((item) => {
-        const isOwn = state.territories[item]?.ownerId === playerId;
+        const isOwn = state.territories[item].ownerId === playerId;
         return wantOwn ? isOwn : !isOwn;
       })
       .slice(0, 3);
@@ -163,6 +163,13 @@ export function sanitizePlan(
   };
 }
 
+/** El texto que trae un JSON del modelo, si es que trae alguno. */
+function mensajeDelModelo(parsed: unknown): string {
+  if (!parsed || typeof parsed !== 'object') return '';
+  const mensaje = (parsed as { mensaje?: unknown }).mensaje;
+  return typeof mensaje === 'string' ? mensaje.trim() : '';
+}
+
 /** Plan puramente local: siempre disponible, sin red y sin coste. */
 export function localPlan(
   state: GameState,
@@ -172,7 +179,7 @@ export function localPlan(
 ): AiTurnPlan {
   const attacks = rankedAttacks(state, map, playerId, playerById(state, playerId)?.botProfile);
   const threats = threatMap(state, map, playerId);
-  const best = attacks[0];
+  const best = attacks.at(0);
   const priority: AiTurnPlan['priority'] = !best
     ? 'consolidar'
     : best.odds >= 0.65
@@ -217,12 +224,12 @@ export async function requestTurnPlan(
       maxTokens: 700,
       ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
-    const parsed = extractJson<RawPlan>(text);
+    const parsed = extractJson(text);
     const clean = sanitizePlan(parsed, map, state, playerId);
     if (!clean) return localPlan(state, map, playerId, 'respuesta del modelo no interpretable');
     return { ...clean, source: 'llm' };
   } catch (error) {
-    return localPlan(state, map, playerId, (error as Error)?.message ?? 'error del modelo');
+    return localPlan(state, map, playerId, error instanceof Error ? error.message : 'error del modelo');
   }
 }
 
@@ -252,8 +259,7 @@ export async function requestChronicle(
       maxTokens: 600,
       ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
-    const parsed = extractJson<{ mensaje?: unknown }>(text);
-    const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
+    const message = mensajeDelModelo(extractJson(text));
     if (message.length < 20) return { message: fallback, source: 'local' };
     return { message: message.slice(0, 560), source: 'llm' };
   } catch {
@@ -282,8 +288,7 @@ export async function requestAdvice(
       maxTokens: 600,
       ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
-    const parsed = extractJson<{ mensaje?: unknown }>(text);
-    const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
+    const message = mensajeDelModelo(extractJson(text));
     if (!message) return { message: local, source: 'local' };
     return { message: message.slice(0, 400), source: 'llm' };
   } catch {
@@ -304,9 +309,9 @@ export function localReply(state: GameState, map: GameMap, botId: PlayerId): str
   if (!bot) return 'Ahora no.';
 
   const traits = traitsOf(bot.botProfile);
-  const lider = standings(state)[0];
-  const amenaza = threatMap(state, map, botId)[0];
-  const mejor = rankedAttacks(state, map, botId, bot.botProfile ?? 'oportunista')[0];
+  const lider = standings(state).at(0);
+  const amenaza = threatMap(state, map, botId).at(0);
+  const mejor = rankedAttacks(state, map, botId, bot.botProfile ?? 'oportunista').at(0);
 
   const partes: string[] = [];
   if (lider && lider.playerId !== botId) {
@@ -361,8 +366,7 @@ export async function requestReply(
       maxTokens: 300,
       ...(options.fetchImpl && { fetchImpl: options.fetchImpl }),
     });
-    const parsed = extractJson<{ mensaje?: unknown }>(text);
-    const message = typeof parsed?.mensaje === 'string' ? parsed.mensaje.trim() : '';
+    const message = mensajeDelModelo(extractJson(text));
     if (!message) return { message: local, source: 'local' };
     return { message: message.slice(0, 300), source: 'llm' };
   } catch {

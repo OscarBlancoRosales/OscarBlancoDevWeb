@@ -189,7 +189,7 @@ export function addBonus(a: number[], b: number[]): number[] {
  * dos clientes reproduciendo el log llegan al mismo sitio.
  */
 export function capNet(net: number[]): number[] {
-  const out = new Array(net.length).fill(0);
+  const out = new Array<number>(net.length).fill(0);
   for (const sign of [1, -1]) {
     let bestIndex = -1;
     let bestValue = 0;

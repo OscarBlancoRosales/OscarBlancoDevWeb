@@ -1,4 +1,4 @@
-import type { GameMap, GameState, PlayerId, TerritoryId } from './types';
+import type { GameMap, GameState, PlayerId, PlayerState, TerritoryId } from './types';
 import { hasUnit } from './units';
 
 /** Número de ejércitos iniciales según cuántos jueguen (regla clásica). */
@@ -19,7 +19,7 @@ export function armiesOf(state: GameState, playerId: PlayerId): number {
 export function continentsOf(state: GameState, map: GameMap, playerId: PlayerId): string[] {
   return map.continents
     .filter((continent) =>
-      continent.territoryIds.every((id) => state.territories[id]?.ownerId === playerId),
+      continent.territoryIds.every((id) => state.territories[id].ownerId === playerId),
     )
     .map((continent) => continent.id);
 }
@@ -47,10 +47,10 @@ export function reinforcementBreakdown(
 ): { base: number; continents: { id: string; name: string; bonus: number }[]; total: number } {
   const owned = territoriesOf(state, playerId).length;
   const base = owned === 0 ? 0 : Math.max(3, Math.floor(owned / 3));
-  const continents = continentsOf(state, map, playerId).map((id) => {
-    const continent = map.continents.find((c) => c.id === id)!;
-    return { id, name: continent.name, bonus: continent.bonus };
-  });
+  const completos = new Set(continentsOf(state, map, playerId));
+  const continents = map.continents
+    .filter((continent) => completos.has(continent.id))
+    .map(({ id, name, bonus }) => ({ id, name, bonus }));
   const total = owned === 0 ? 0 : base + continents.reduce((sum, c) => sum + c.bonus, 0);
   return { base, continents, total };
 }
@@ -63,9 +63,9 @@ export function canAttack(
   to: TerritoryId,
   playerId: PlayerId,
 ): boolean {
+  if (!(from in state.territories) || !(to in state.territories)) return false;
   const origin = state.territories[from];
   const target = state.territories[to];
-  if (!origin || !target) return false;
   if (origin.ownerId !== playerId) return false;
   if (target.ownerId === playerId) return false;
   if (areAllies(state, playerId, target.ownerId)) return false;
@@ -125,16 +125,16 @@ export function areConnected(
   playerId: PlayerId,
 ): boolean {
   if (from === to) return false;
-  if (state.territories[from]?.ownerId !== playerId) return false;
-  if (state.territories[to]?.ownerId !== playerId) return false;
+  if (!(from in state.territories) || !(to in state.territories)) return false;
+  if (state.territories[from].ownerId !== playerId) return false;
+  if (state.territories[to].ownerId !== playerId) return false;
 
   const visited = new Set<TerritoryId>([from]);
   const queue: TerritoryId[] = [from];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
+  for (let current = queue.shift(); current !== undefined; current = queue.shift()) {
     for (const neighbour of adjacencyOf(map, current)) {
       if (visited.has(neighbour)) continue;
-      if (state.territories[neighbour]?.ownerId !== playerId) continue;
+      if (state.territories[neighbour].ownerId !== playerId) continue;
       if (neighbour === to) return true;
       visited.add(neighbour);
       queue.push(neighbour);
@@ -161,8 +161,8 @@ export function areAllies(
 
 /** ¿Es enemigo de verdad? (ni tuyo ni de tu bando) */
 export function isEnemy(state: GameState, playerId: PlayerId, id: TerritoryId): boolean {
-  const owner = state.territories[id]?.ownerId;
-  if (owner === undefined) return false;
+  if (!(id in state.territories)) return false;
+  const owner = state.territories[id].ownerId;
   if (owner === playerId) return false;
   return !areAllies(state, playerId, owner);
 }
@@ -215,7 +215,7 @@ export function interiorTerritories(
 }
 
 /** Jugadores que aún siguen en la partida. */
-export function activePlayers(state: GameState) {
+export function activePlayers(state: GameState): PlayerState[] {
   return state.players.filter((p) => !p.eliminated);
 }
 
@@ -224,8 +224,7 @@ export function isMapConnected(map: GameMap): boolean {
   if (map.territories.length === 0) return false;
   const visited = new Set<TerritoryId>([map.territories[0].id]);
   const queue = [map.territories[0].id];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
+  for (let current = queue.shift(); current !== undefined; current = queue.shift()) {
     for (const neighbour of adjacencyOf(map, current)) {
       if (!visited.has(neighbour)) {
         visited.add(neighbour);

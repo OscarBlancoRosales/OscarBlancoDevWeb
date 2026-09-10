@@ -79,9 +79,9 @@ export function renderMap(map: GameMap): RenderedMap {
       if (seen.has(key)) continue;
       seen.add(key);
       if (!isSeaRoute(map, territory.id, other)) continue;
-      const a = byId[territory.id]?.label;
-      const b = byId[other]?.label;
-      if (!a || !b) continue;
+      if (!(other in byId)) continue;
+      const a = byId[territory.id].label;
+      const b = byId[other].label;
       routes.push({ from: territory.id, to: other, path: arcBetween(a, b) });
     }
   }

@@ -84,7 +84,7 @@ describe('preparación del dibujo del tablero', () => {
       for (const territory of WORLD_MAP.territories) {
         for (const other of territory.adjacent) {
           const visible =
-            (touching[territory.id]?.includes(other) ?? false) ||
+            (territory.id in touching && touching[territory.id].includes(other)) ||
             declared.has(routeKey(territory.id, other));
           expect(visible, `${territory.name} -> ${other} no se ve por ningún lado`).toBe(true);
         }
@@ -186,8 +186,8 @@ function parsePath(path: string): MultiPolygon {
     const points = chunk
       .replace(/Z/g, '')
       .split('L')
-      .map((pair) => pair.trim().split(/\s+/).map(Number) as Point2)
-      .filter((point) => point.length === 2 && point.every(Number.isFinite));
+      .map((pair) => pair.trim().split(/\s+/).map(Number))
+      .filter((point): point is Point2 => point.length === 2 && point.every(Number.isFinite));
     if (points.length >= 3) rings.push([...points, points[0]]);
   }
   return rings.map((ring) => [ring]);

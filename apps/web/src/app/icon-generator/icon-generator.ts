@@ -5,6 +5,39 @@ import { I18nService } from '../services/i18n.service';
 import JSZip from 'jszip';
 import Pica from 'pica';
 
+/**
+ * Un lienzo sin contexto 2D es un navegador sin canvas, y aquí no hay plan B.
+ *
+ * Lo que había era `getContext('2d')!`: la misma decisión, pero callada y
+ * repetida seis veces. Si algún día pasa, esto lo dice en vez de reventar con
+ * «cannot read property drawImage of null» cincuenta líneas más abajo.
+ */
+function contexto2d(lienzo: HTMLCanvasElement): CanvasRenderingContext2D {
+  const ctx = lienzo.getContext('2d');
+  if (!ctx) throw new Error('Este navegador no sabe dibujar en un canvas.');
+  return ctx;
+}
+
+/** JSZip devuelve null si el nombre no vale. Con nombres fijos no pasa. */
+function carpeta(zip: JSZip, nombre: string): JSZip {
+  const creada = zip.folder(nombre);
+  if (!creada) throw new Error(`No se ha podido crear la carpeta ${nombre} en el zip.`);
+  return creada;
+}
+
+/** Lo que se le enseña a una persona cuando la generación se cae. */
+function mensajeDe(fallo: unknown): string {
+  return fallo instanceof Error ? fallo.message : String(fallo);
+}
+
+/** Una entrada del Contents.json que Xcode espera dentro del appiconset. */
+interface ContentsImage {
+  filename: string;
+  idiom: string;
+  scale: string;
+  size: string;
+}
+
 interface IconSize {
   name: string;
   width: number;
@@ -133,7 +166,7 @@ export class IconGenerator {
     event.preventDefault();
     event.stopPropagation();
     this.dragging = false;
-    if (event.dataTransfer?.files?.length) {
+    if (event.dataTransfer?.files.length) {
       const fakeEvent = { target: { files: event.dataTransfer.files } } as unknown as Event;
       this.onFileSelected(fakeEvent);
     }
@@ -152,7 +185,7 @@ export class IconGenerator {
     const srcCanvas = document.createElement('canvas');
     srcCanvas.width = this.sourceImage.naturalWidth;
     srcCanvas.height = this.sourceImage.naturalHeight;
-    const srcCtx = srcCanvas.getContext('2d')!;
+    const srcCtx = contexto2d(srcCanvas);
     srcCtx.drawImage(this.sourceImage, 0, 0);
 
     // Target canvas
@@ -170,12 +203,12 @@ export class IconGenerator {
 
     // Apply round mask if needed
     if (round) {
-      const ctx = destCanvas.getContext('2d')!;
+      const ctx = contexto2d(destCanvas);
       const imageData = ctx.getImageData(0, 0, width, height);
       const roundCanvas = document.createElement('canvas');
       roundCanvas.width = width;
       roundCanvas.height = height;
-      const roundCtx = roundCanvas.getContext('2d')!;
+      const roundCtx = contexto2d(roundCanvas);
       roundCtx.beginPath();
       roundCtx.arc(width / 2, height / 2, width / 2, 0, Math.PI * 2);
       roundCtx.closePath();
@@ -188,7 +221,7 @@ export class IconGenerator {
   }
 
   private buildContentsJson(): string {
-    const images: any[] = [];
+    const images: ContentsImage[] = [];
 
     // Map base sizes to their properties
     const sizeMap: { base: number; idioms: { idiom: string; scales: number[] }[] }[] = [
@@ -266,8 +299,8 @@ export class IconGenerator {
 
     try {
       const zip = new JSZip();
-      const iosFolder = zip.folder('ios')!.folder('AppIcon.appiconset')!;
-      const androidFolder = zip.folder('android')!;
+      const iosFolder = carpeta(carpeta(zip, 'ios'), 'AppIcon.appiconset');
+      const androidFolder = carpeta(zip, 'android');
 
       const totalIcons = this.iosIcons.length + this.androidIcons.length;
       let done = 0;
@@ -296,7 +329,7 @@ export class IconGenerator {
         const filename = icon.name + '.png';
 
         if (icon.folder) {
-          const folder = androidFolder.folder(icon.folder)!;
+          const folder = carpeta(androidFolder, icon.folder);
           this.progressText = `Android: ${icon.folder}/${filename} (${icon.width}x${icon.height})`;
           const blob = await this.resizeImage(icon.width, icon.height, isRound);
           folder.file(filename, blob);
@@ -327,8 +360,8 @@ export class IconGenerator {
 
       this.progressText = 'Descarga completada';
       this.progress = 100;
-    } catch (err: any) {
-      this.errorMessage = 'Error al generar: ' + (err.message || err);
+    } catch (fallo: unknown) {
+      this.errorMessage = `Error al generar: ${mensajeDe(fallo)}`;
     } finally {
       this.generating = false;
       this.cdr.detectChanges();
@@ -345,7 +378,7 @@ export class IconGenerator {
 
     try {
       const zip = new JSZip();
-      const iosFolder = zip.folder('AppIcon.appiconset')!;
+      const iosFolder = carpeta(zip, 'AppIcon.appiconset');
       const iosGenerated = new Set<string>();
       let done = 0;
 
@@ -376,8 +409,8 @@ export class IconGenerator {
 
       this.progressText = 'Descarga completada';
       this.progress = 100;
-    } catch (err: any) {
-      this.errorMessage = 'Error: ' + (err.message || err);
+    } catch (fallo: unknown) {
+      this.errorMessage = `Error: ${mensajeDe(fallo)}`;
     } finally {
       this.generating = false;
       this.cdr.detectChanges();
@@ -401,7 +434,7 @@ export class IconGenerator {
         const filename = icon.name + '.png';
 
         if (icon.folder) {
-          const folder = zip.folder(icon.folder)!;
+          const folder = carpeta(zip, icon.folder);
           this.progressText = `${icon.folder}/${filename} (${icon.width}x${icon.height})`;
           const blob = await this.resizeImage(icon.width, icon.height, isRound);
           folder.file(filename, blob);
@@ -428,8 +461,8 @@ export class IconGenerator {
 
       this.progressText = 'Descarga completada';
       this.progress = 100;
-    } catch (err: any) {
-      this.errorMessage = 'Error: ' + (err.message || err);
+    } catch (fallo: unknown) {
+      this.errorMessage = `Error: ${mensajeDe(fallo)}`;
     } finally {
       this.generating = false;
       this.cdr.detectChanges();
@@ -450,7 +483,7 @@ export class IconGenerator {
     for (const f of folders) {
       const icons = this.androidIcons.filter(i => i.folder === f);
       if (icons.length) {
-        items.push(`${f}: ${icons.map(i => i.width + 'px').join(', ')}`);
+        items.push(`${f}: ${icons.map((i) => `${i.width}px`).join(', ')}`);
       }
     }
     const store = this.androidIcons.find(i => !i.folder);

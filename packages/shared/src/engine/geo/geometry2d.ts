@@ -110,8 +110,8 @@ export function simplifyLine(points: readonly Point2[], tolerance: number): Poin
 
   // Pila explícita en vez de recursión: hay tramos con miles de puntos.
   const stack: [number, number][] = [[0, points.length - 1]];
-  while (stack.length > 0) {
-    const [first, last] = stack.pop()!;
+  for (let tramo = stack.pop(); tramo !== undefined; tramo = stack.pop()) {
+    const [first, last] = tramo;
     let maxDistance = 0;
     let index = -1;
     for (let i = first + 1; i < last; i++) {

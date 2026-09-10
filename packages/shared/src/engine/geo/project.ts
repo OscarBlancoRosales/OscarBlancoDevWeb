@@ -91,7 +91,7 @@ export function insetFeatures(
 ): Record<string, MultiPolygon> {
   const group: Record<string, MultiPolygon> = {};
   for (const id of ids) {
-    if (features[id]) group[id] = features[id];
+    if (id in features) group[id] = features[id];
   }
   if (Object.keys(group).length === 0) return features;
 

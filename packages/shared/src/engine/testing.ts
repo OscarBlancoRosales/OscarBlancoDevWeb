@@ -79,7 +79,7 @@ export function setBoard(
   state: GameState,
   board: Record<TerritoryId, [PlayerId | null, number]>,
 ): GameState {
-  const next: GameState = JSON.parse(JSON.stringify(state));
+  const next = JSON.parse(JSON.stringify(state)) as GameState;
   for (const [territoryId, [ownerId, armies]] of Object.entries(board)) {
     next.territories[territoryId] = { ownerId, armies };
   }
@@ -93,13 +93,13 @@ export function forceTurn(
   phase: GameState['phase'],
   reserve = 0,
 ): GameState {
-  const next: GameState = JSON.parse(JSON.stringify(state));
+  const next = JSON.parse(JSON.stringify(state)) as GameState;
   next.currentPlayerIndex = next.turnOrder.indexOf(playerId);
   next.phase = phase;
   next.pendingOccupation = null;
   next.fortifiedThisTurn = false;
-  const player = next.players.find((p) => p.id === playerId)!;
-  player.reserve = reserve;
+  const player = next.players.find((p) => p.id === playerId);
+  if (player) player.reserve = reserve;
   return next;
 }
 

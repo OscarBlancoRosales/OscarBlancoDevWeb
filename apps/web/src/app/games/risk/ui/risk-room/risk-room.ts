@@ -165,11 +165,11 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
     this.seatId = localStorage.getItem('risk_seat_id') ?? '';
 
     if (!this.roomId) {
-      this.router.navigate(['/juegos/risk']);
+      void this.router.navigate(['/juegos/risk']);
       return;
     }
     if (!this.seatId) {
-      this.router.navigate(['/juegos/risk'], { queryParams: { room: this.roomId } });
+      void this.router.navigate(['/juegos/risk'], { queryParams: { room: this.roomId } });
       return;
     }
 
@@ -350,13 +350,10 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   get scoreboard(): { player: PlayerState; territories: number; armies: number }[] {
     if (!this.state) return [];
     const state = this.state;
-    return standings(state)
-      .map((entry) => ({
-        player: playerById(state, entry.playerId)!,
-        territories: entry.territories,
-        armies: entry.armies,
-      }))
-      .filter((entry) => !!entry.player);
+    return standings(state).flatMap((entry) => {
+      const player = playerById(state, entry.playerId);
+      return player ? [{ player, territories: entry.territories, armies: entry.armies }] : [];
+    });
   }
   /**
    * A qué territorio se pegan los controles de la jugada.
@@ -486,14 +483,16 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
     if (!this.state || !this.map || !this.selectedFrom || !this.me) return [];
     const state = this.state;
     const map = this.map;
+    const desde = this.selectedFrom;
+    const yo = this.me.id;
     if (state.phase === 'attack') {
-      return attackTargets(state, map, this.selectedFrom, this.me.id).filter(
-        () => state.territories[this.selectedFrom!].armies >= 2,
+      return attackTargets(state, map, desde, yo).filter(
+        () => state.territories[desde].armies >= 2,
       );
     }
     if (state.phase === 'fortify') {
-      return territoriesOf(state, this.me.id).filter(
-        (id) => id !== this.selectedFrom && areConnected(state, map, this.selectedFrom!, id, this.me!.id),
+      return territoriesOf(state, yo).filter(
+        (id) => id !== desde && areConnected(state, map, desde, id, yo),
       );
     }
     return [];
@@ -566,8 +565,8 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
       this.clearSelection();
       return;
     }
-    if (this.selectedFrom && !this.state.territories[this.selectedFrom]) this.selectedFrom = null;
-    if (this.selectedTo && !this.state.territories[this.selectedTo]) this.selectedTo = null;
+    if (this.selectedFrom && !(this.selectedFrom in this.state.territories)) this.selectedFrom = null;
+    if (this.selectedTo && !(this.selectedTo in this.state.territories)) this.selectedTo = null;
     // Tras colocar (o deshacer) la reserva cambia: el deslizador tiene que
     // seguirla o se queda enseñando una cantidad que ya no se puede poner.
     if (this.state.phase === 'reinforce') {
@@ -619,7 +618,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   }
 
   /** Ficha del terreno de un territorio, para enseñarla junto a la selección. */
-  terrainOf(id: TerritoryId | null) {
+  terrainOf(id: TerritoryId | null): (typeof TERRAIN_META)[keyof typeof TERRAIN_META] | null {
     if (!this.state?.config.advancedTerrain || !this.map || !id) return null;
     const terrain = this.map.territories.find((t) => t.id === id)?.terrain;
     return terrain ? TERRAIN_META[terrain] : null;
@@ -648,7 +647,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
     return !!this.map?.scenario;
   }
 
-  get narratorVoices() {
+  get narratorVoices(): typeof TTS_VOICES {
     return TTS_VOICES;
   }
 
@@ -692,8 +691,10 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
       if (this.missions.length > 0) this.missions = [];
       return;
     }
-    this.missions = this.state.players.map((player) => {
-      const progress = missionProgress(this.state!, this.map!, player.id);
+    const state = this.state;
+    const map = this.map;
+    this.missions = state.players.map((player) => {
+      const progress = missionProgress(state, map, player.id);
       return {
         playerId: player.id,
         name: player.name,
@@ -726,8 +727,9 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   canUpgrade(kind: (typeof UNIT_KINDS)[number]): boolean {
     if (!this.advancedUnits || !this.state || !this.selectedFrom || !this.me) return false;
     if (this.state.phase !== 'reinforce') return false;
+    if (!(this.selectedFrom in this.state.territories)) return false;
     const territory = this.state.territories[this.selectedFrom];
-    if (!territory || territory.ownerId !== this.seatId) return false;
+    if (territory.ownerId !== this.seatId) return false;
     if (infantryOf(territory) < 1) return false;
     // Repetir la misma tropa en el mismo sitio no aporta nada: no se acumulan.
     if (hasUnit(territory, kind)) return false;
@@ -1064,7 +1066,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
       });
     } catch (error) {
       this.errorMessage = `No se ha podido empezar la partida: ${
-        (error as Error)?.message ?? 'error desconocido'
+        error instanceof Error ? error.message : 'error desconocido'
       }`;
       this.cdr.markForCheck();
     }
@@ -1089,7 +1091,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   }
 
   copyInvite(): void {
-    navigator.clipboard?.writeText(this.inviteLink);
+    void navigator.clipboard.writeText(this.inviteLink);
     this.copied = true;
     setTimeout(() => {
       this.copied = false;
@@ -1099,7 +1101,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
 
   leave(): void {
     void this.rooms.updateSeat(this.roomId, this.seatId, { connected: false });
-    this.router.navigate(['/juegos/risk']);
+    void this.router.navigate(['/juegos/risk']);
   }
 
   // ===== CHAT =====
@@ -1244,7 +1246,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
     if (!thread || thread === CANAL_GENERAL || thread === HILO_ESTRATEGA) return false;
     if (this.seats.find((seat) => seat.id === thread)?.kind !== 'bot') return false;
     const lines = this.threadLines;
-    return lines.length > 0 && !!lines[lines.length - 1]?.mine;
+    return lines.at(-1)?.mine ?? false;
   }
 
   // ===== COMANDANTES =====
@@ -1281,8 +1283,11 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
         reparto.set(seat.id, botPortrait(seat.botProfile));
         continue;
       }
-      const elegido = commanderById(seat.avatar);
-      const cara = elegido ?? libres[siguiente++ % Math.max(1, libres.length)] ?? COMMANDERS[0];
+      // Si ya no quedan caras libres se repite la primera: son seis y la mesa
+      // admite más, así que el caso llega solo con mesas llenas.
+      const cara =
+        commanderById(seat.avatar) ??
+        (libres.length === 0 ? COMMANDERS[0] : libres[siguiente++ % libres.length]);
       reparto.set(seat.id, cara.portrait);
     }
     return reparto;
@@ -1350,8 +1355,8 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
 
   // ===== CONFIGURACIÓN DE IA =====
 
-  get modelOptions() {
-    return FREE_MODELS[this.aiSettings.provider] ?? [];
+  get modelOptions(): (typeof FREE_MODELS)[keyof typeof FREE_MODELS] {
+    return FREE_MODELS[this.aiSettings.provider];
   }
 
   onProviderChange(): void {
@@ -1360,7 +1365,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   }
 
   setBotDelay(ms: number): void {
-    this.botDelay = Number(ms);
+    this.botDelay = ms;
     this.game.setBotDelay(this.botDelay);
   }
 
@@ -1369,7 +1374,8 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
     this.game.updateAiSettings(this.aiSettings);
   }
 
-  trackChat = (_: number, entry: ChatEntry) => entry.key;
-  trackSeat = (_: number, seat: RoomSeat) => seat.id;
-  trackEvent = (_: number, event: { at: number; text: string }) => `${event.at}-${event.text}`;
+  trackChat = (_: number, entry: ChatEntry): string => entry.key;
+  trackSeat = (_: number, seat: RoomSeat): string => seat.id;
+  trackEvent = (_: number, event: { at: number; text: string }): string =>
+    `${event.at}-${event.text}`;
 }

@@ -65,7 +65,8 @@ class MaxHeap {
   pop(): Cell | undefined {
     if (this.items.length === 0) return undefined;
     const top = this.items[0];
-    const last = this.items.pop()!;
+    const last = this.items[this.items.length - 1];
+    this.items.length -= 1;
     if (this.items.length > 0) {
       this.items[0] = last;
       let i = 0;
@@ -113,7 +114,7 @@ function centroidOf(polygon: Polygon, bounds: Bounds2): Cell {
  * `precision` está en las mismas unidades que las coordenadas.
  */
 export function poleOfInaccessibility(polygon: Polygon, precision = 1): Point2 {
-  const outer = polygon[0];
+  const outer = polygon.at(0);
   if (!outer || outer.length < 3) return [0, 0];
 
   const bounds = boundsOfPoints(outer);
@@ -138,8 +139,7 @@ export function poleOfInaccessibility(polygon: Polygon, precision = 1): Point2 {
 
   // Tope defensivo: sin él, una precisión absurda podría no terminar nunca.
   let guard = 0;
-  while (heap.size > 0 && guard++ < 200000) {
-    const cell = heap.pop()!;
+  for (let cell = heap.pop(); cell !== undefined && guard++ < 200000; cell = heap.pop()) {
     if (cell.distance > best.distance) best = cell;
     // Si ni en el mejor de los casos mejora, no merece la pena partirla.
     if (cell.potential - best.distance <= precision) continue;

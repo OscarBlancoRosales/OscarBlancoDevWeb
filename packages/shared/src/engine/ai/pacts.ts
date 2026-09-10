@@ -80,7 +80,7 @@ export function considerPact(
     return { territories: mentioned, accepted: true, reason: 'no pensaba ir por ahí' };
   }
 
-  const mejor = attacks[0];
+  const mejor = attacks.at(0);
   if (mejor && alcanzables.includes(mejor.to)) {
     return { territories: alcanzables, accepted: false, reason: 'es justo por donde iba' };
   }

@@ -132,7 +132,7 @@ function symmetrize(input: Record<string, string[]>): Record<string, string[]> {
   for (const id of Object.keys(input)) out[id] = new Set(input[id]);
   for (const [id, neighbours] of Object.entries(input)) {
     for (const other of neighbours) {
-      if (!out[other]) out[other] = new Set();
+      if (!(other in out)) out[other] = new Set();
       out[other].add(id);
     }
   }

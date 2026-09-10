@@ -196,14 +196,29 @@ function bodyFor(settings: AiSettings, messages: ChatMessage[], maxTokens: numbe
   });
 }
 
+/**
+ * Baja por una respuesta JSON sin fiarse de su forma.
+ *
+ * Lo que hay al otro lado es de un tercero: si un día cambia la envoltura, aquí
+ * sale `undefined` y se lanza un error con nombre, en vez de reventar a mitad
+ * de la cadena de puntos.
+ */
+function bajar(valor: unknown, ...ruta: (string | number)[]): unknown {
+  let actual = valor;
+  for (const paso of ruta) {
+    if (actual === null || typeof actual !== 'object') return undefined;
+    actual = (actual as Record<string | number, unknown>)[paso];
+  }
+  return actual;
+}
+
 function extractText(settings: AiSettings, payload: unknown): string {
-  const data = payload as Record<string, any>;
   if (settings.provider === 'gemini') {
-    const text = data?.['candidates']?.[0]?.content?.parts?.[0]?.text;
+    const text = bajar(payload, 'candidates', 0, 'content', 'parts', 0, 'text');
     if (typeof text === 'string') return text;
     throw new AiError('bad-response', 'Respuesta de Gemini sin texto');
   }
-  const text = data?.['choices']?.[0]?.message?.content;
+  const text = bajar(payload, 'choices', 0, 'message', 'content');
   if (typeof text === 'string') return text;
   throw new AiError('bad-response', 'Respuesta sin contenido');
 }
@@ -230,8 +245,8 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
 
 /** ¿Merece la pena reintentar con otro modelo? */
 export function isRetryable(error: unknown): boolean {
-  const code = (error as AiError)?.code;
-  return code === 'rate-limited' || code === 'unavailable';
+  if (!(error instanceof AiError)) return false;
+  return error.code === 'rate-limited' || error.code === 'unavailable';
 }
 
 /**
@@ -245,7 +260,7 @@ export async function chatWithFallback(
   messages: ChatMessage[],
   options: { maxTokens?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<{ text: string; model: string }> {
-  const chain = [settings.model, ...(FALLBACK_CHAIN[settings.provider] ?? [])].filter(
+  const chain = [settings.model, ...FALLBACK_CHAIN[settings.provider]].filter(
     (model, index, all) => model && all.indexOf(model) === index,
   );
 
@@ -273,7 +288,7 @@ export async function chatWithFallback(
 export function isFreeModel(provider: AiProvider, model: string): boolean {
   const id = model.trim();
   if (!id) return false;
-  if (FREE_MODELS[provider]?.some((option) => option.id === id)) return true;
+  if (FREE_MODELS[provider].some((option) => option.id === id)) return true;
   if (provider === 'openrouter') return id.endsWith(':free');
   if (provider === 'openai-compatible') return true;
   return false;
@@ -327,10 +342,10 @@ export async function chat(
     return extractText(settings, await response.json());
   } catch (error) {
     if (error instanceof AiError) throw error;
-    if ((error as Error)?.name === 'AbortError') {
+    if (error instanceof Error && error.name === 'AbortError') {
       throw new AiError('timeout', 'El modelo ha tardado demasiado');
     }
-    throw new AiError('network', (error as Error)?.message ?? 'Error de red');
+    throw new AiError('network', error instanceof Error ? error.message : 'Error de red');
   } finally {
     clearTimeout(timeout);
   }
@@ -340,7 +355,7 @@ export async function chat(
  * Extrae el primer objeto JSON de una respuesta, tolerando que el modelo lo
  * envuelva en texto o en un bloque de código.
  */
-export function extractJson<T = unknown>(text: string): T | null {
+export function extractJson(text: string): unknown {
   if (!text) return null;
   const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(text);
   const candidates = [fenced?.[1], text];
@@ -352,7 +367,7 @@ export function extractJson<T = unknown>(text: string): T | null {
     if (start === -1 || end <= start) continue;
     const slice = candidate.slice(start, end + 1);
     try {
-      return JSON.parse(slice) as T;
+      return JSON.parse(slice);
     } catch {
       // Sigue probando con el siguiente candidato.
     }
@@ -392,18 +407,19 @@ let bundledCache: BundledKeys | null = null;
 /** Lee la clave de la casa, si el despliegue trae una. Se pide una sola vez. */
 const BUNDLED_PROVIDERS = ['openrouter', 'groq', 'gemini'] as const;
 
-export async function fetchBundledKeys(
-  fetchImpl: typeof fetch | undefined = globalThis.fetch,
-): Promise<BundledKeys> {
+export async function fetchBundledKeys(fetchImpl?: typeof fetch): Promise<BundledKeys> {
   if (bundledCache) return bundledCache;
-  if (!fetchImpl) return (bundledCache = {});
+  // El tipo de `globalThis.fetch` promete que siempre está. En un test sin DOM
+  // y en un Node viejo no lo está, y aquí se nota como un cuelgue raro.
+  const pedir = fetchImpl ?? (globalThis as { fetch?: typeof fetch }).fetch;
+  if (!pedir) return (bundledCache = {});
   try {
-    const response = await fetchImpl('ai-key.json', { cache: 'no-store' });
+    const response = await pedir('ai-key.json', { cache: 'no-store' });
     if (!response.ok) return (bundledCache = {});
-    const parsed = (await response.json()) as BundledKeys | null;
+    const parsed: unknown = await response.json();
     const keys: BundledKeys = {};
     for (const provider of BUNDLED_PROVIDERS) {
-      const value = parsed?.[provider];
+      const value = bajar(parsed, provider);
       if (typeof value === 'string') keys[provider] = value.trim();
     }
     bundledCache = keys;

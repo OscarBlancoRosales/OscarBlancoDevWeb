@@ -187,7 +187,7 @@ describe.each(RISK_MAPS.map((map) => [map.name, map] as const))('mapa: %s', (_na
     for (const territory of map.territories) {
       for (const other of territory.adjacent) {
         const key = territory.id < other ? `${territory.id}|${other}` : `${other}|${territory.id}`;
-        const touching = land[territory.id]?.includes(other) ?? false;
+        const touching = territory.id in land && land[territory.id].includes(other);
         expect(
           touching || routes.has(key),
           `${territory.name} y ${map.territories.find((t) => t.id === other)?.name} ni se tocan ni tienen ruta marítima`,
@@ -407,8 +407,8 @@ function parsePath(path: string): MultiPolygon {
     const points = chunk
       .replace(/Z/g, '')
       .split('L')
-      .map((pair) => pair.trim().split(/\s+/).map(Number) as Point2)
-      .filter((point) => point.length === 2 && point.every(Number.isFinite));
+      .map((pair) => pair.trim().split(/\s+/).map(Number))
+      .filter((point): point is Point2 => point.length === 2 && point.every(Number.isFinite));
     if (points.length >= 3) {
       rings.push([...points, points[0]]);
     }

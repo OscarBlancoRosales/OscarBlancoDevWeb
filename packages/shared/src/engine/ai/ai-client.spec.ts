@@ -33,6 +33,12 @@ function fakeStorage(): Storage {
   };
 }
 
+/** Lo que se le manda a Gemini, en la parte que estas pruebas miran. */
+interface GeminiBody {
+  systemInstruction?: { parts: { text: string }[] };
+  contents?: unknown[];
+}
+
 function settings(overrides: Partial<AiSettings> = {}): AiSettings {
   return { ...DEFAULT_AI_SETTINGS, enabled: true, apiKey: 'test-key', ...overrides };
 }
@@ -201,9 +207,9 @@ describe('cliente de modelos de lenguaje', () => {
     });
 
     it('el cuerpo de Gemini separa la instrucción de sistema', async () => {
-      let body: any = {};
+      let body: GeminiBody = {};
       const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
-        body = JSON.parse(init.body as string);
+        body = JSON.parse(init.body as string) as GeminiBody;
         return jsonResponse({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] });
       });
       await chat(
@@ -214,7 +220,7 @@ describe('cliente de modelos de lenguaje', () => {
         ],
         { fetchImpl: fetchImpl as unknown as typeof fetch },
       );
-      expect(body.systemInstruction.parts[0].text).toBe('eres un general');
+      expect(body.systemInstruction?.parts[0]?.text).toBe('eres un general');
       expect(body.contents).toHaveLength(1);
     });
   });

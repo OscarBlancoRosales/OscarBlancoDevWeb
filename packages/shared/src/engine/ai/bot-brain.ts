@@ -166,7 +166,7 @@ export function threatMap(
       const enemies = adjacencyOf(map, id).filter((other) => isEnemy(state, playerId, other));
       const armies = state.territories[id].armies;
       const enemyArmies = enemies.reduce(
-        (sum, other) => sum + (state.territories[other]?.armies ?? 0),
+        (sum, other) => sum + state.territories[other].armies,
         0,
       );
       return {
@@ -203,7 +203,7 @@ function threatWeight(
   const armies = state.territories[id].armies;
   let total = 0;
   for (const other of enemies) {
-    const enemyArmies = state.territories[other]?.armies ?? 0;
+    const enemyArmies = state.territories[other].armies;
     if (enemyArmies <= 0) continue;
     if (!state.config.advancedTerrain) {
       total += enemyArmies;
@@ -240,7 +240,7 @@ export function continentProgress(
   return map.continents
     .map((continent) => {
       const missing = continent.territoryIds.filter(
-        (id) => state.territories[id]?.ownerId !== playerId,
+        (id) => state.territories[id].ownerId !== playerId,
       );
       const owned = continent.territoryIds.length - missing.length;
       return {
@@ -343,7 +343,7 @@ export function rankedAttacks(
     // exactamente los mismos objetivos que el jugador.
     for (const to of attackTargets(state, map, from, playerId)) {
       const target = state.territories[to];
-      if (!target || target.ownerId === playerId) continue;
+      if (target.ownerId === playerId) continue;
 
       // Las mismas reglas que aplicará el combate, terreno incluido: la IA no
       // debe calcular con otras o atacaría montañas creyéndolas llanuras.
@@ -463,10 +463,9 @@ export function troopToBuild(
       options.push({ territoryId: id, unit, score: score + traits.aggression * 0.1 });
     }
   }
-  if (options.length === 0) return null;
-
   options.sort((a, b) => b.score - a.score || (a.territoryId < b.territoryId ? -1 : 1));
-  const best = options[0];
+  const best = options.at(0);
+  if (!best) return null;
   return { type: 'upgrade', playerId, territoryId: best.territoryId, unit: best.unit };
 }
 
@@ -675,7 +674,7 @@ export function occupyAmount(
 ): number {
   const available = state.territories[from].armies - 1;
   const originStillBorders = adjacencyOf(map, from).some(
-    (id) => id !== to && state.territories[id]?.ownerId !== playerId,
+    (id) => id !== to && state.territories[id].ownerId !== playerId,
   );
   // Si la retaguardia queda a salvo, se lleva todo; si no, deja guarnición.
   const desired = originStillBorders ? Math.ceil(available / 2) : available;
@@ -772,7 +771,7 @@ export function decideAction(
       return { type: 'end-phase', playerId };
     }
     const options = rankedAttacks(state, map, playerId, profile, bias);
-    const best = options[0];
+    const best = options.at(0);
     // El cupo de ataques existe para que un bot no se desangre en ataques
     // regulares, no para frenarle cuando tiene la partida ganada en ese frente.
     // Sin esta excepción se veía un empate perpetuo: medido en el mundo a dos
@@ -790,16 +789,13 @@ export function decideAction(
     return { type: 'end-phase', playerId };
   }
 
-  if (state.phase === 'fortify') {
-    if (!state.fortifiedThisTurn) {
-      const plan = fortifyPlan(state, map, playerId);
-      if (plan) {
-        return { type: 'fortify', playerId, from: plan.from, to: plan.to, armies: plan.armies };
-      }
+  // Solo queda `fortify`: las demás fases han salido ya por su rama.
+  if (!state.fortifiedThisTurn) {
+    const plan = fortifyPlan(state, map, playerId);
+    if (plan) {
+      return { type: 'fortify', playerId, from: plan.from, to: plan.to, armies: plan.armies };
     }
-    return { type: 'end-phase', playerId };
   }
-
   return { type: 'end-phase', playerId };
 }
 
@@ -811,12 +807,13 @@ function decideSetup(state: GameState, map: GameMap, playerId: PlayerId): GameAc
       .map((territory) => {
         const continent = progress.find((c) => c.id === territory.continentId);
         const neighboursOwned = adjacencyOf(map, territory.id).filter(
-          (id) => state.territories[id]?.ownerId === playerId,
+          (id) => state.territories[id].ownerId === playerId,
         ).length;
         const smallContinentBonus = continent ? (continent.bonus / continent.total) * 2 : 0;
         return { id: territory.id, score: neighboursOwned + smallContinentBonus };
       })
-      .sort((a, b) => b.score - a.score)[0];
+      .sort((a, b) => b.score - a.score)
+      .at(0);
     return { type: 'claim', playerId, territoryId: best?.id ?? free[0].id };
   }
 
@@ -851,9 +848,9 @@ export function botCommentary(
   const progress = continentProgress(state, map, playerId);
   const bestContinent = progress.find((c) => c.missing.length > 0 && c.ratio >= 0.5);
   const attacks = rankedAttacks(state, map, playerId, profile);
-  const best = attacks[0];
+  const best = attacks.at(0);
   const threats = threatMap(state, map, playerId);
-  const worst = threats[0];
+  const worst = threats.at(0);
 
   const parts: string[] = [opener];
 
@@ -892,7 +889,7 @@ export function advisorTip(state: GameState, map: GameMap, playerId: PlayerId): 
   const attacks = rankedAttacks(state, map, playerId, 'oportunista');
   const threats = threatMap(state, map, playerId);
   const board = standings(state);
-  const leader = board[0];
+  const leader = board.at(0);
   const parts: string[] = [];
 
   if (state.phase === 'reinforce') {
@@ -949,7 +946,7 @@ export function advisorTip(state: GameState, map: GameMap, playerId: PlayerId): 
     parts.push(`${leaderName} va primero con ${leader.territories} territorios: vigílalo.`);
   }
 
-  const danger = threats[0];
+  const danger = threats.at(0);
   if (danger && danger.pressure > 4) {
     const name = map.territories.find((t) => t.id === danger.id)?.name;
     parts.push(`Tu punto débil es ${name} (${danger.armies} contra ${danger.enemyArmies}).`);

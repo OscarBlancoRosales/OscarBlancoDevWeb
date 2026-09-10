@@ -61,8 +61,8 @@ function normalizeRing(ring: Ring, grid: number): Ring | null {
   const out: Point2[] = [];
   for (const [x, y] of ring) {
     const point: Point2 = [quantize(x, grid), quantize(y, grid)];
-    const previous = out[out.length - 1];
-    if (previous && previous[0] === point[0] && previous[1] === point[1]) continue;
+    const previous = out.at(-1);
+    if (previous?.[0] === point[0] && previous[1] === point[1]) continue;
     out.push(point);
   }
   // Cerramos el anillo y evitamos que el cierre duplique el primer punto.
@@ -363,8 +363,9 @@ export function mergeFeatures(topology: Topology, ids: readonly string[]): Multi
   for (const ref of boundary) {
     const points = arcPoints(topology, ref);
     const key = endpointKey(points[0]);
-    if (!byStart.has(key)) byStart.set(key, []);
-    byStart.get(key)!.push(ref);
+    const desdeAhi = byStart.get(key) ?? [];
+    desdeAhi.push(ref);
+    byStart.set(key, desdeAhi);
   }
 
   const used = new Set<ArcRef>();
@@ -422,7 +423,7 @@ export function mergeAdjacency(
   const merged: Record<string, Set<string>> = {};
   for (const source of sources) {
     for (const [id, neighbours] of Object.entries(source)) {
-      if (!merged[id]) merged[id] = new Set();
+      if (!(id in merged)) merged[id] = new Set();
       for (const other of neighbours) merged[id].add(other);
     }
   }

@@ -137,9 +137,10 @@ export function createGame(options: CreateGameOptions): GameState {
   // facciones se reparten alternando bandos: con dos jugadores sale uno contra
   // uno, con cuatro dos contra dos. El orden de la mesa ya viene barajado, así
   // que no hace falta más azar.
-  if (map.scenario) {
-    const byside = map.scenario.sides.map((side) =>
-      map.scenario!.factions.filter((faction) => faction.side === side.id),
+  const scenario = map.scenario;
+  if (scenario) {
+    const byside = scenario.sides.map((side) =>
+      scenario.factions.filter((faction) => faction.side === side.id),
     );
     players.forEach((player, index) => {
       const group = byside[index % byside.length];
@@ -181,7 +182,7 @@ export function createGame(options: CreateGameOptions): GameState {
   });
 
   if (map.scenario) {
-    deployScenario(state, map, startingArmies, rng);
+    deployScenario(state, map, map.scenario, startingArmies, rng);
     beginTurn(state, map, /* first */ true);
   } else if (config.autoClaim) {
     autoDistribute(state, map, startingArmies, rng);
@@ -232,10 +233,10 @@ export function createGame(options: CreateGameOptions): GameState {
 function deployScenario(
   state: GameState,
   map: GameMap,
+  scenario: NonNullable<GameMap['scenario']>,
   startingArmies: number,
   rng: ReturnType<typeof createRng>,
 ): void {
-  const scenario = map.scenario!;
 
   const bySide = new Map<string, PlayerId[]>();
   for (const playerId of state.turnOrder) {
@@ -554,8 +555,10 @@ function applyClaim(
   if (state.phase !== 'setup-claim' && state.phase !== 'setup-deploy') {
     throw new RuleError('wrong-phase', 'Ya no estamos en el reparto inicial');
   }
+  if (!(territoryId in state.territories)) {
+    throw new RuleError('unknown-territory', 'Territorio desconocido');
+  }
   const territory = state.territories[territoryId];
-  if (!territory) throw new RuleError('unknown-territory', 'Territorio desconocido');
 
   const unclaimed = Object.values(state.territories).some((t) => t.ownerId === null);
 
@@ -624,8 +627,10 @@ function applyDeploy(
   if (armies > player.reserve) {
     throw new RuleError('not-enough-reserve', `Solo te quedan ${player.reserve} ejércitos`);
   }
+  if (!(territoryId in state.territories)) {
+    throw new RuleError('unknown-territory', 'Territorio desconocido');
+  }
   const territory = state.territories[territoryId];
-  if (!territory) throw new RuleError('unknown-territory', 'Territorio desconocido');
   if (territory.ownerId !== playerId) {
     throw new RuleError('not-your-territory', 'Ese territorio no es tuyo');
   }
@@ -670,7 +675,7 @@ function applyTrade(state: GameState, playerId: PlayerId, cardIds: [string, stri
   // Bonificación clásica: +2 en un territorio propio que aparezca en las cartas.
   let bonusTerritory: TerritoryId | null = null;
   for (const card of trio) {
-    if (card.territoryId && state.territories[card.territoryId]?.ownerId === playerId) {
+    if (card.territoryId && state.territories[card.territoryId].ownerId === playerId) {
       bonusTerritory = card.territoryId;
       break;
     }
@@ -843,9 +848,11 @@ function applyFortify(
   if (fortifiesDone(state) >= fortifyLimit(state, playerId)) {
     throw new RuleError('already-fortified', 'Ya has agotado las reagrupaciones del turno');
   }
+  if (!(from in state.territories) || !(to in state.territories)) {
+    throw new RuleError('unknown-territory', 'Territorio desconocido');
+  }
   const origin = state.territories[from];
   const target = state.territories[to];
-  if (!origin || !target) throw new RuleError('unknown-territory', 'Territorio desconocido');
   if (origin.ownerId !== playerId || target.ownerId !== playerId) {
     throw new RuleError('not-your-territory', 'Ambos territorios deben ser tuyos');
   }
@@ -897,8 +904,8 @@ function applyUndoDeploy(state: GameState, playerId: PlayerId, all: boolean, map
   const undone = all ? placed.slice() : [placed[placed.length - 1]];
   let total = 0;
   for (const entry of undone) {
+    if (!(entry.territoryId in state.territories)) continue;
     const territory = state.territories[entry.territoryId];
-    if (!territory) continue;
     territory.armies -= entry.armies;
     trimUnits(territory);
     player.reserve += entry.armies;
@@ -967,11 +974,13 @@ function applyUpgrade(
   if (state.phase !== 'reinforce') {
     throw new RuleError('wrong-phase', 'Las tropas se preparan al recibir refuerzos');
   }
+  if (!(unit in UNIT_META)) throw new RuleError('unknown-unit', 'Esa tropa no existe');
   const meta = UNIT_META[unit];
-  if (!meta) throw new RuleError('unknown-unit', 'Esa tropa no existe');
 
+  if (!(territoryId in state.territories)) {
+    throw new RuleError('unknown-territory', 'Territorio desconocido');
+  }
   const territory = state.territories[territoryId];
-  if (!territory) throw new RuleError('unknown-territory', 'Territorio desconocido');
   if (territory.ownerId !== playerId) {
     throw new RuleError('not-your-territory', 'Ese territorio no es tuyo');
   }
@@ -1149,6 +1158,7 @@ export function enemyNeighbours(
   map: GameMap,
   territoryId: TerritoryId,
 ): TerritoryId[] {
-  const owner = state.territories[territoryId]?.ownerId;
-  return adjacencyOf(map, territoryId).filter((id) => state.territories[id]?.ownerId !== owner);
+  if (!(territoryId in state.territories)) return [];
+  const owner = state.territories[territoryId].ownerId;
+  return adjacencyOf(map, territoryId).filter((id) => state.territories[id].ownerId !== owner);
 }

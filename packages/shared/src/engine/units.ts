@@ -209,6 +209,9 @@ export function trimUnits(territory: TerritoryState): void {
     const removed = Math.min(have, excess);
     const left = have - removed;
     if (left > 0) territory.units[kind] = left;
+    // Se quita la clave en vez de dejarla a cero: el estado viaja en cada
+    // mensaje de la sala y un cero por tropa y territorio se nota.
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     else delete territory.units[kind];
     excess -= removed;
   }

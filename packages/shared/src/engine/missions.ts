@@ -96,8 +96,9 @@ function buildPool(state: GameState, map: GameMap): Mission[] {
   //    alcanzable, y obliga a jugar en una dirección concreta.
   const pairs = continentPairs(map);
   for (const [a, b] of pairs) {
-    const first = continents.find((c) => c.id === a)!;
-    const second = continents.find((c) => c.id === b)!;
+    const first = continents.find((c) => c.id === a);
+    const second = continents.find((c) => c.id === b);
+    if (!first || !second) continue;
     pool.push({
       kind: 'continents',
       continentIds: [a, b],

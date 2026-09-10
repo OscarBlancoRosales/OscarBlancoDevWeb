@@ -53,7 +53,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   minVote = 0;
   maxVote = 0;
   voteRange = 0;
-  clusters: { value: number; players: string[] }[] = [];
+  clusters: { value: number; players: string[]; range: string }[] = [];
   consensusStatus: 'consensus' | 'light-dispersion' | 'disagreement' = 'consensus';
   
   /** Lo que se le enseña a la persona si no se pudo entrar. */
@@ -84,18 +84,18 @@ export class ScrumPoker implements OnInit, OnDestroy {
       localStorage.removeItem('is_room_creator');
       localStorage.setItem('current_room_id', roomIdParam);
       // Siempre redirigir a name-screen para que elija su nombre
-      this.router.navigate(['/name-screen'], { queryParams: { room: roomIdParam } });
+      void this.router.navigate(['/name-screen'], { queryParams: { room: roomIdParam } });
       return;
     }
     
-    this.roomId = localStorage.getItem('current_room_id') || '';
-    this.playerId = localStorage.getItem('seat_id') || '';
-    this.currentPlayerName = localStorage.getItem('player_name') || '';
+    this.roomId = localStorage.getItem('current_room_id') ?? '';
+    this.playerId = localStorage.getItem('seat_id') ?? '';
+    this.currentPlayerName = localStorage.getItem('player_name') ?? '';
     this.isRoomCreator = localStorage.getItem('is_room_creator') === 'true';
 
     // Sin nombre o sin sala no hay nada que pintar: a la pantalla de acceso.
     if (!this.currentPlayerName || !this.roomId) {
-      this.router.navigate(['/auth']);
+      void this.router.navigate(['/auth']);
       return;
     }
 
@@ -162,22 +162,18 @@ export class ScrumPoker implements OnInit, OnDestroy {
   }
 
   private handleRoomUpdate(data: RoomData): void {
-    if (data.players) {
-      this.players = Object.values(data.players).map(player => ({
-        ...player,
-        isCurrentPlayer: player.id === this.playerId
-      }));
-    } else {
-      this.players = [];
-    }
-    
-    this.showVotes = data.showVotes || false;
-    
+    this.players = Object.values(data.players).map(player => ({
+      ...player,
+      isCurrentPlayer: player.id === this.playerId
+    }));
+
+    this.showVotes = data.showVotes;
+
     // Sincronizar el estado propio con lo que dice el servidor
     const currentPlayer = this.players.find(p => p.id === this.playerId);
     if (currentPlayer) {
       this.hasVoted = currentPlayer.hasVoted;
-      this.voteBreakdown = currentPlayer.voteBreakdown || { numbers: 0, coffee: 0, joint: 0 };
+      this.voteBreakdown = currentPlayer.voteBreakdown;
     }
     
     this.calculateResults();
@@ -268,7 +264,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
     }
 
     const validVotes = this.players
-      .filter(p => p.hasVoted && p.voteBreakdown && p.voteBreakdown.numbers > 0)
+      .filter(p => p.hasVoted && p.voteBreakdown.numbers > 0)
       .map(p => p.voteBreakdown.numbers);
 
     this.validVoters = validVotes.length;
@@ -305,15 +301,14 @@ export class ScrumPoker implements OnInit, OnDestroy {
     const voteMap = new Map<string, number>();
 
     this.players.forEach(player => {
-      if (player.hasVoted && player.voteBreakdown) {
-        if (player.voteBreakdown.coffee > 0) {
-          voteMap.set('☕', (voteMap.get('☕') || 0) + 1);
-        } else if (player.voteBreakdown.joint > 0) {
-          voteMap.set('🚬', (voteMap.get('🚬') || 0) + 1);
-        } else {
-          const key = player.voteBreakdown.numbers.toString();
-          voteMap.set(key, (voteMap.get(key) || 0) + 1);
-        }
+      if (!player.hasVoted) return;
+      if (player.voteBreakdown.coffee > 0) {
+        voteMap.set('☕', (voteMap.get('☕') ?? 0) + 1);
+      } else if (player.voteBreakdown.joint > 0) {
+        voteMap.set('🚬', (voteMap.get('🚬') ?? 0) + 1);
+      } else {
+        const key = player.voteBreakdown.numbers.toString();
+        voteMap.set(key, (voteMap.get(key) ?? 0) + 1);
       }
     });
 
@@ -341,22 +336,20 @@ export class ScrumPoker implements OnInit, OnDestroy {
   }
 
   getVoteDisplay(player: Player): string {
-    if (!player.voteBreakdown) return '—';
     if (player.voteBreakdown.coffee > 0) return '☕';
     if (player.voteBreakdown.joint > 0) return '🚬';
     return player.voteBreakdown.numbers.toString();
   }
 
   isSpecialVote(player: Player): boolean {
-    return player.voteBreakdown ? 
-      (player.voteBreakdown.coffee > 0 || player.voteBreakdown.joint > 0) : false;
+    return player.voteBreakdown.coffee > 0 || player.voteBreakdown.joint > 0;
   }
 
   // ===== PRO ANALYSIS SYSTEM =====
   
   // Z-score based deviation per player
   getPlayerZScore(player: Player): number {
-    if (!player.hasVoted || !player.voteBreakdown || this.standardDeviation === 0) return 0;
+    if (!player.hasVoted || this.standardDeviation === 0) return 0;
     if (this.isSpecialVote(player)) return 0;
     
     const playerVote = player.voteBreakdown.numbers;
@@ -364,7 +357,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
   }
 
   getPlayerDeviationLevel(player: Player): 'none' | 'light' | 'high' {
-    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return 'none';
+    if (!this.showVotes || !player.hasVoted) return 'none';
     if (this.isSpecialVote(player)) return 'none';
     if (this.standardDeviation === 0) return 'none';
     
@@ -388,13 +381,13 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   // Check if player has min or max vote
   isMinVote(player: Player): boolean {
-    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
+    if (!this.showVotes || !player.hasVoted) return false;
     if (this.isSpecialVote(player)) return false;
     return player.voteBreakdown.numbers === this.minVote && this.voteRange > 2;
   }
 
   isMaxVote(player: Player): boolean {
-    if (!this.showVotes || !player.hasVoted || !player.voteBreakdown) return false;
+    if (!this.showVotes || !player.hasVoted) return false;
     if (this.isSpecialVote(player)) return false;
     return player.voteBreakdown.numbers === this.maxVote && this.voteRange > 2;
   }
@@ -417,9 +410,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   // Detect voting clusters by proximity (groups votes within threshold)
   private detectClusters(): void {
-    const validPlayers = this.players.filter(p => 
-      p.hasVoted && p.voteBreakdown && !this.isSpecialVote(p)
-    );
+    const validPlayers = this.players.filter(p => p.hasVoted && !this.isSpecialVote(p));
     
     if (validPlayers.length < 2) {
       this.clusters = [];
@@ -482,7 +473,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   getLowVoteRange(): string {
     if (!this.showVotes || this.clusters.length < 2) return '';
-    return (this.clusters[0] as any).range || String(this.clusters[0].value);
+    return this.clusters[0].range;
   }
 
   // Get high voters group info
@@ -493,7 +484,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
   getHighVoteRange(): string {
     if (!this.showVotes || this.clusters.length < 2) return '';
-    return (this.clusters[this.clusters.length - 1] as any).range || String(this.clusters[this.clusters.length - 1].value);
+    return this.clusters[this.clusters.length - 1].range;
   }
 
   // Legacy method for backward compatibility
