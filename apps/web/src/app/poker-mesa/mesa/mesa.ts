@@ -200,6 +200,11 @@ export class MesaPoker implements OnInit, OnDestroy {
     return this.sala.mesa().filter((uno) => !vista.hanVotado.includes(uno.id)).length;
   }
 
+  /** Una ficha por voto puesto, para que el bote crezca según entra la gente. */
+  get hanPuesto(): readonly unknown[] {
+    return this.vista()?.hanVotado ?? [];
+  }
+
   get todosHanVotado(): boolean {
     return this.faltan === 0 && this.sala.mesa().length > 0;
   }

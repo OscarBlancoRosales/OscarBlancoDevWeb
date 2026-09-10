@@ -250,7 +250,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   private printBoot(): void {
     const lines: OutLine[] = [
       { kind: 'kv', label: 'user', raw: 'Oscar Blanco Rosales' },
-      { kind: 'kv', label: 'stack', raw: 'C# · Angular · Flutter · Firebase' },
+      { kind: 'kv', label: 'stack', raw: 'C# · Angular · Flutter · Node' },
       { kind: 'kv', label: 'host', raw: 'oscarblancorosales.com' },
       {
         kind: 'ok',
@@ -715,7 +715,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       labelKey: 'console.databases',
       raw: 'SQL Server, PostgreSQL, MongoDB, MySQL',
     });
-    this.output.push({ kind: 'kv', label: 'Cloud', raw: 'Firebase, Azure' });
+    this.output.push({ kind: 'kv', label: 'Cloud', raw: 'VPS propio, Azure' });
     this.output.push({ kind: 'kv', label: 'DevOps', raw: 'Docker, Kubernetes, CI/CD' });
   }
 

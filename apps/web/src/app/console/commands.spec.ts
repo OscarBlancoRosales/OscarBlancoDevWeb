@@ -87,6 +87,33 @@ describe('registro de comandos', () => {
   });
 });
 
+/**
+ * A dónde llevan las entradas del menú.
+ *
+ * El planning poker llevaba a `/auth`, así que pulsar «Scrum Poker» -en el
+ * icono del escritorio, en el buscador de la barra o escribiéndolo en la
+ * terminal- te plantaba un formulario de acceso: ni se jugaba, ni se veía que
+ * hay dos versiones.
+ */
+describe('a dónde lleva cada sección', () => {
+  it('el planning poker lleva a elegir versión, no a la pantalla de cuenta', () => {
+    expect(findCommand('poker')?.route).toBe('/scrum-poker');
+  });
+
+  it('y sus alias también', () => {
+    for (const alias of ['scrum', 'scrum-poker', 'planning', 'estimacion']) {
+      expect(findCommand(alias)?.route, alias).toBe('/scrum-poker');
+    }
+  });
+
+  /** Una sección que lleva a la pantalla de acceso es una sección perdida. */
+  it('ninguna sección del menú lleva a la pantalla de cuenta', () => {
+    for (const comando of navCommands()) {
+      expect(comando.route, comando.id).not.toBe('/auth');
+    }
+  });
+});
+
 describe('lo que no se anuncia', () => {
   it('el cronometro de Tomelloso no sale en el menu', () => {
     expect(navCommands().map((c) => c.id)).not.toContain('throwdown');

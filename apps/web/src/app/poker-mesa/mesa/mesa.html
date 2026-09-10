@@ -21,29 +21,33 @@
               <p class="bocadillo">{{ quien.bocadillo }}</p>
             }
 
-            <div class="jugador">
-              <img
-                class="avatar"
-                [src]="quien.foto"
-                [alt]="nombreDelAvatar(quien.seatId)"
-                loading="lazy"
-              />
-              <span class="nombre">{{ quien.nombre }}</span>
-            </div>
+            <!-- El puesto: su chapa y su carta, en horizontal. En una pastilla
+                 con fondo propio porque un nombre blanco sobre verde claro no
+                 se lee, y la carta debajo caía dentro del tapete. -->
+            <div class="puesto">
+              <div class="jugador">
+                <img
+                  class="avatar"
+                  [src]="quien.foto"
+                  [alt]="nombreDelAvatar(quien.seatId)"
+                  loading="lazy"
+                />
+                <span class="nombre">{{ quien.nombre }}</span>
+              </div>
 
-            <!-- Su carta: boca abajo hasta que se destapa -->
-            <div
-              class="carta"
-              [class.tapada]="quien.tapada"
-              [class.vacia]="!quien.haVotado"
-              [class.grave]="esGrave(quien.desvio)"
-              [class.leve]="esLeve(quien.desvio)"
-            >
-              @if (quien.tapada && quien.haVotado) {
-                <span class="dorso">?</span>
-              } @else {
-                <span class="valor">{{ quien.carta }}</span>
-              }
+              <div
+                class="carta"
+                [class.tapada]="quien.tapada"
+                [class.vacia]="!quien.haVotado"
+                [class.grave]="esGrave(quien.desvio)"
+                [class.leve]="esLeve(quien.desvio)"
+              >
+                @if (quien.tapada && quien.haVotado) {
+                  <span class="dorso"></span>
+                } @else if (quien.haVotado) {
+                  <span class="valor">{{ quien.carta }}</span>
+                }
+              </div>
             </div>
           </div>
         }
@@ -79,13 +83,21 @@
             </div>
             <p class="acuerdo" [class]="estadistica.acuerdo">{{ estadistica.acuerdo }}</p>
           } @else {
-            <p class="esperando">
-              @if (todosHanVotado) {
-                Todos han votado. A destapar.
-              } @else {
-                Faltan {{ faltan }} por votar
-              }
-            </p>
+            <!-- El bote: una ficha por voto puesto, para ver crecer la mesa -->
+            <div class="bote" [class.listo]="todosHanVotado">
+              <span class="bote-fichas" aria-hidden="true">
+                @for (puesta of hanPuesto; track $index) {
+                  <i></i>
+                }
+              </span>
+              <p class="esperando">
+                @if (todosHanVotado) {
+                  Todos han puesto. A destapar.
+                } @else {
+                  Faltan {{ faltan }} por votar
+                }
+              </p>
+            </div>
           }
         </div>
       </div>

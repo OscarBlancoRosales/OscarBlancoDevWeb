@@ -3,7 +3,7 @@ import { PlayerSeed, applyAction, createGame } from '@devweb/shared/engine/engin
 import { LoggedActionEntry, RoomMeta, RoomSeat, RoomSnapshot, RosterEntry } from './risk-room.service';
 
 /**
- * Reconstrucción del estado a partir de lo que hay en Firebase.
+ * Reconstrucción del estado a partir de lo que manda el servidor.
  *
  * Es una función pura: mismo snapshot y mismo log => mismo estado en todos los
  * clientes. Aquí vive el contrato del lockstep, y por eso está separada del

@@ -81,7 +81,7 @@ export class RiskGameService implements OnDestroy {
   readonly state$: Observable<GameState | null> = this.stateSubject.asObservable();
   readonly derived$: Observable<DerivedGame | null> = this.derivedSubject.asObservable();
   readonly hostSeatId$: Observable<string | null> = this.hostSubject.asObservable();
-  /** Consejos del estratega: son personales, no se escriben en Firebase. */
+  /** Consejos del estratega: son personales, no se guardan en la sala. */
   readonly advice$: Observable<ChatEntry[]> = this.adviceSubject.asObservable();
   /** Nombre del bot que está "pensando", para animar la interfaz. */
   readonly thinking$: Observable<string | null> = this.thinkingSubject.asObservable();

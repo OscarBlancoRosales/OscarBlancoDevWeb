@@ -95,10 +95,11 @@ export class RiskLobby implements OnInit, OnDestroy {
     // La sesión de VERDAD, no una bandera del navegador.
     //
     // El resto del sitio mira `localStorage.auth_token`, que es un texto que
-    // cualquiera puede poner a mano desde la consola. Aquí se pregunta a
-    // Firebase, que es quien manda: la base solo acepta crear salas con una
-    // sesión real, así que fiarse de la bandera solo servía para enseñar un
-    // botón que luego iba a fallar. Además la sesión caduca y la bandera no.
+    // cualquiera puede poner a mano desde la consola. Aquí se pregunta al
+    // servicio de sesión, que es quien manda: el servidor solo acepta crear
+    // salas con una sesión real, así que fiarse de la bandera solo servía para
+    // enseñar un botón que luego iba a fallar. Además la sesión caduca y la
+    // bandera no.
     this.subscription = this.auth.user$.subscribe((user) => {
       this.isAdmin = !!user;
       if (!this.roomName && user) this.roomName = `Partida de ${this.ownerName()}`;

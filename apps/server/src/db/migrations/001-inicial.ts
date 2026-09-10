@@ -91,7 +91,7 @@ CREATE TABLE room_snapshots (
   at         INTEGER NOT NULL
 ) STRICT;
 
--- Lo que hoy cuelga de \`throwdown-timer/configs\` en Firebase, y lo que venga
+-- Lo que colgaba de \`throwdown-timer/configs\` en Firebase, y lo que venga
 -- con esa misma forma: una clave, un dueño y un JSON.
 CREATE TABLE kv (
   namespace  TEXT NOT NULL,

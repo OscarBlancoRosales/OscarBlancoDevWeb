@@ -31,7 +31,7 @@ interface Fila {
 /**
  * Un almacén de clave y valor con dueño.
  *
- * Es lo que hoy cuelga de `throwdown-timer/configs` en Firebase, donde las
+ * Es lo que colgaba de `throwdown-timer/configs` en Firebase, donde las
  * reglas dicen `.write: true` y por tanto cualquiera puede reescribir la
  * configuración de cualquiera. Aquí escribir exige cuenta y solo el dueño puede
  * sobrescribir lo suyo; leer sigue siendo público, porque las configuraciones se

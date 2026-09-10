@@ -7,30 +7,31 @@
    ========================================================================= */
 
 :host {
-  --tapete: #1b5e3a;
-  --tapete-hondo: #0f3a24;
-  --tapete-borde: #7a5c2e;
+  --tapete: #1d6b41;
+  --tapete-hondo: #0d3220;
+  --madera: #6b4a24;
+  --madera-clara: #a2794a;
 }
 
 /* Todo cabe en una pantalla sin scroll: la mesa arriba con el crupier al
-   lado, tus cartas debajo y la charla al pie. Si la mesa creciera sin tope se
-   comería el sitio de las cartas, que es con lo que de verdad se juega. */
+   lado, tus fichas debajo y la charla al pie. Si la mesa creciera sin tope se
+   comería el sitio de las fichas, que es con lo que de verdad se juega. */
 .salon {
   display: grid;
   /* El crupier tiene ancho fijo: si compartiera el reparto con la mesa, cada
      vez que dijera algo largo le robaría sitio al tapete y todo se movería. */
-  grid-template-columns: minmax(0, 1fr) 190px;
+  grid-template-columns: minmax(0, 1fr) 200px;
   grid-template-areas:
     'tapete crupier'
     'reparto reparto'
     'bandos bandos'
     'mano mano'
     'charla charla';
-  gap: 18px 24px;
+  gap: 18px 26px;
   /* Hueco arriba para las cabezas y los bocadillos de quien se sienta al
      fondo: sobresalen del tapete a propósito, como en una mesa de verdad. */
-  padding: 70px 10px 8px;
-  max-width: 1180px;
+  padding: 74px 12px 8px;
+  max-width: 1240px;
   margin: 0 auto;
 }
 
@@ -40,8 +41,8 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 9;
-  max-height: 52vh;
-  min-height: 320px;
+  max-height: 50vh;
+  min-height: 330px;
   justify-self: center;
 }
 
@@ -56,13 +57,31 @@
   position: absolute;
   inset: 12% 8% 8%;
   border-radius: 50%;
-  border: 10px solid var(--tapete-borde);
+  /* La madera con veta: dos bordes y un degradado en lugar de una línea
+     plana, que es lo que hacía que pareciera un óvalo pintado. */
+  border: 14px solid transparent;
   background:
-    radial-gradient(60% 55% at 50% 42%, color-mix(in srgb, var(--tapete) 88%, #fff 12%), transparent 70%),
-    radial-gradient(120% 100% at 50% 40%, var(--tapete), var(--tapete-hondo));
+    /* El fieltro, con la luz de la lámpara cayendo en el centro */
+    radial-gradient(58% 52% at 50% 40%, color-mix(in srgb, var(--tapete) 82%, #fff 18%), transparent 72%)
+      padding-box,
+    radial-gradient(130% 110% at 50% 38%, var(--tapete), var(--tapete-hondo)) padding-box,
+    /* Y el cerco, con su veta */
+    linear-gradient(150deg, var(--madera-clara), var(--madera) 40%, #4a3116 75%, var(--madera-clara))
+      border-box;
   box-shadow:
-    inset 0 0 60px rgba(0, 0, 0, 0.55),
-    0 14px 40px rgba(0, 0, 0, 0.5);
+    inset 0 0 70px rgba(0, 0, 0, 0.6),
+    inset 0 3px 0 rgba(255, 255, 255, 0.07),
+    0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+/* La costura del fieltro, un centímetro por dentro del cerco */
+.fieltro::after {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.13);
+  pointer-events: none;
 }
 
 /* Cada sitio se coloca por porcentaje, que es lo que reparte el motor */
@@ -72,44 +91,68 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  width: 92px;
+  gap: 6px;
+  z-index: 2;
+}
+
+/**
+ * El puesto de cada uno: su chapa y su carta, en horizontal.
+ *
+ * En una pastilla con fondo propio y no suelto sobre el fieltro: un nombre
+ * blanco sobre verde claro no se lee, y la carta debajo del avatar caía
+ * dentro del tapete y chocaba con lo que hubiera en el centro.
+ */
+.puesto {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px 5px 5px;
+  border-radius: 999px;
+  background: rgba(10, 12, 10, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+
+/* Quien ya ha votado se enciende: se ve de un vistazo a quién se espera */
+.sitio.ha-votado .puesto {
+  border-color: rgba(var(--accent-rgb), 0.55);
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.5),
+    0 0 16px rgba(var(--accent-rgb), 0.28);
+}
+
+.sitio.tu .puesto {
+  border-color: var(--bright);
 }
 
 .jugador {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 7px;
 }
 
 .avatar {
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   object-fit: cover;
   object-position: 50% 12%;
   background: var(--bg);
-  border: 2px solid var(--border);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
-  transition: border-color 0.18s;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
 }
 
-/* Quien ya ha votado se enciende: se ve de un vistazo a quién se espera */
 .sitio.ha-votado .avatar {
   border-color: var(--accent);
-  box-shadow: 0 0 14px var(--glow);
-}
-
-.sitio.tu .avatar {
-  border-color: var(--bright);
 }
 
 .nombre {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--bright);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
-  max-width: 90px;
+  max-width: 92px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -120,64 +163,78 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 38px;
-  height: 54px;
+  width: 34px;
+  height: 48px;
+  flex-shrink: 0;
   border-radius: 5px;
-  border: 1px solid var(--border);
-  background: var(--bg-soft);
-  color: var(--bright);
-  font-size: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #f4f1e8;
+  color: #1a1a1a;
+  font-size: 17px;
   font-weight: 700;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.55);
+  animation: destapa 0.28s ease-out;
 }
 
-/* Boca abajo: el dorso rayado, como una carta de verdad */
+/* Boca abajo: el dorso rojo con su rejilla, como una baraja de verdad */
 .carta.tapada {
   background:
-    repeating-linear-gradient(
-      45deg,
-      rgba(var(--accent-rgb), 0.25) 0 4px,
-      transparent 4px 8px
-    ),
-    var(--bg-soft);
-  color: rgba(var(--accent-rgb), 0.7);
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.14) 0 3px, transparent 3px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.14) 0 3px, transparent 3px 6px),
+    linear-gradient(160deg, #9c2b2b, #6d1b1b);
+  border-color: rgba(255, 255, 255, 0.3);
+  animation: none;
 }
 
 /* Sin votar todavía: hueco, para que se note que falta */
 .carta.vacia {
   border-style: dashed;
-  background: transparent;
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
   box-shadow: none;
-  opacity: 0.4;
+  animation: none;
 }
 
 /* Al destapar, quien se ha salido del corro se ve enseguida */
 .carta.leve {
+  background: #ffe9b8;
   border-color: var(--warn);
-  color: var(--warn);
+  color: #6a4a00;
 }
 
 .carta.grave {
+  background: #ffd7d7;
   border-color: var(--error);
-  color: var(--error);
-  box-shadow: 0 0 14px color-mix(in srgb, var(--error) 45%, transparent);
+  color: #7a1414;
+  box-shadow:
+    0 3px 8px rgba(0, 0, 0, 0.55),
+    0 0 16px color-mix(in srgb, var(--error) 55%, transparent);
+}
+
+/* La carta gira al destaparse; sin esto todas aparecen de golpe y no se ve
+   que ha pasado algo. */
+@keyframes destapa {
+  from {
+    transform: rotateY(90deg) scale(0.9);
+    opacity: 0.4;
+  }
 }
 
 /* ===== LOS BOCADILLOS =====
-   Se salen del ancho del sitio a propósito: un bocadillo de noventa píxeles
-   parte cualquier frase en seis líneas y no hay quien lo lea. */
+   Se salen del ancho del sitio a propósito: un bocadillo estrecho parte
+   cualquier frase en seis líneas y no hay quien lo lea. */
 .bocadillo {
   position: relative;
   margin: 0;
-  padding: 6px 10px;
+  padding: 7px 11px;
   width: max-content;
-  max-width: 190px;
+  max-width: 200px;
   background: var(--bright);
   color: #111;
-  border-radius: 10px;
-  font-size: 11px;
-  line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  border-radius: 11px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.55);
   animation: sale 0.18s ease-out;
 }
 
@@ -201,15 +258,14 @@
 }
 
 /* ===== EL CENTRO DE LA MESA ===== */
-/* Un poco por debajo del centro geométrico: arriba está la carta de quien se
-   sienta al fondo, y si el marcador subiera se pisarían. */
 .centro {
   position: absolute;
   left: 50%;
-  top: 58%;
+  top: 54%;
   transform: translate(-50%, -50%);
-  width: min(290px, 46%);
+  width: min(300px, 48%);
   text-align: center;
+  z-index: 1;
 }
 
 /* Se escribe encima del tapete, sin caja ni marco: parece el rótulo de la
@@ -217,22 +273,22 @@
 .asunto {
   display: block;
   width: 100%;
-  margin: 0 0 10px;
-  padding: 3px 6px;
+  margin: 0 0 12px;
+  padding: 4px 8px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 5px;
   font: inherit;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   text-align: center;
   color: #fff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
 }
 
 .asunto::placeholder {
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .asunto:hover {
@@ -241,35 +297,67 @@
 
 .asunto:focus {
   outline: none;
-  border-color: rgba(255, 255, 255, 0.6);
-  background: rgba(0, 0, 0, 0.25);
+  border-color: rgba(255, 255, 255, 0.55);
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* El bote: una ficha por voto puesto, para ver crecer la mesa */
+.bote {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bote-fichas {
+  display: inline-flex;
+  gap: 4px;
+  min-height: 18px;
+}
+
+.bote-fichas i {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(160deg, #e8e2d4, #b9b0a0);
+  border: 2px dashed rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+  animation: cae 0.25s ease-out;
+}
+
+@keyframes cae {
+  from {
+    transform: translateY(-14px) scale(0.6);
+    opacity: 0;
+  }
 }
 
 .numeros {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 12px;
+  gap: 6px 16px;
 }
 
 .numero {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.72);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .numero strong {
   display: block;
-  font-size: 17px;
+  font-size: 20px;
   color: #fff;
 }
 
 .acuerdo {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   font-size: 11px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
 }
 
 .acuerdo.total,
@@ -288,8 +376,12 @@
 .esperando {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
+}
+
+.bote.listo .esperando {
+  color: #9fe89f;
 }
 
 /* ===== EL CRUPIER ===== */
@@ -298,7 +390,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
   align-self: end;
 }
@@ -306,17 +398,17 @@
 .dealer {
   width: 100%;
   height: auto;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.65));
 }
 
 .crupier.callado .dealer {
-  filter: grayscale(0.45) opacity(0.8) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+  filter: grayscale(0.45) opacity(0.78) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
 }
 
 .dice {
   position: relative;
   margin: 0;
-  padding: 11px 13px;
+  padding: 12px 14px;
   background: color-mix(in srgb, var(--accent) 12%, var(--bg-soft));
   border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
   border-radius: 12px;
@@ -341,7 +433,7 @@
 .bandos {
   grid-area: bandos;
   margin: 0;
-  padding: 9px 12px;
+  padding: 10px 13px;
   border-left: 3px solid var(--warn);
   background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
   color: var(--text);
@@ -353,13 +445,8 @@
   grid-area: mano;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-
-.baraja {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
+  align-items: center;
+  gap: 12px;
 }
 
 /* ===== LAS FICHAS =====
@@ -368,35 +455,39 @@
 .apuesta {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .fichas {
   display: flex;
-  gap: 9px;
+  gap: 10px;
 }
 
 .ficha {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
-  border: 3px dashed rgba(255, 255, 255, 0.45);
-  background: var(--ficha, #444);
+  border: 3px dashed rgba(255, 255, 255, 0.5);
+  background:
+    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.28), transparent 55%),
+    var(--ficha, #444);
   color: #fff;
   font: inherit;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   box-shadow:
-    inset 0 0 0 4px rgba(0, 0, 0, 0.18),
-    0 4px 10px rgba(0, 0, 0, 0.5);
+    inset 0 0 0 5px rgba(0, 0, 0, 0.2),
+    0 5px 12px rgba(0, 0, 0, 0.55);
   transition: transform 0.12s;
 }
 
 .ficha:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
 }
 
 .ficha:active {
@@ -405,7 +496,7 @@
 
 /* Cada valor con su color, como en un casino de verdad */
 .ficha.v1 {
-  --ficha: #7a7a7a;
+  --ficha: #8a8a8a;
 }
 .ficha.v2 {
   --ficha: #2f6fb5;
@@ -427,12 +518,12 @@
 .monton {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 2px;
-  padding: 8px 16px;
+  padding: 8px 20px;
   border: 1px dashed var(--border);
-  border-radius: 8px;
-  min-width: 110px;
+  border-radius: 10px;
+  min-width: 120px;
 }
 
 .monton.puesto {
@@ -449,7 +540,7 @@
 }
 
 .monton-valor {
-  font-size: 30px;
+  font-size: 32px;
   line-height: 1.1;
   color: var(--bright);
 }
@@ -473,6 +564,65 @@
   color: var(--error);
 }
 
+.suelto,
+.mandos,
+.decir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+input[type='number'],
+input[type='text'] {
+  padding: 9px 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+input[type='number'] {
+  width: 130px;
+}
+
+.asunto-nuevo {
+  flex: 1;
+  min-width: 200px;
+  max-width: 420px;
+}
+
+button.principal,
+button.secundario {
+  padding: 9px 15px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button.principal {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+button.principal:hover,
+button.secundario:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .secundario.especial.elegida {
   border-color: var(--accent);
   color: var(--accent);
@@ -487,6 +637,9 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  max-width: 620px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .reparto h2 {
@@ -525,69 +678,13 @@
   height: 100%;
   background: var(--accent);
   border-radius: 5px;
+  transition: width 0.35s ease-out;
 }
 
 .reparto .cuantos {
   width: 26px;
   font-size: 12px;
   color: var(--muted);
-}
-
-.suelto,
-.mandos,
-.decir {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-input[type='number'],
-input[type='text'] {
-  padding: 8px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-}
-
-input[type='number'] {
-  width: 130px;
-}
-
-.asunto-nuevo {
-  flex: 1;
-  min-width: 180px;
-}
-
-button.principal,
-button.secundario {
-  padding: 9px 14px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-button.principal {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.12);
-  color: var(--accent);
-}
-
-button.principal:hover,
-button.secundario:hover:not(:disabled) {
-  background: var(--accent-soft);
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
 }
 
 /* ===== LA CHARLA ===== */
@@ -597,14 +694,17 @@ button:disabled {
   flex-direction: column;
   gap: 8px;
   border-top: 1px solid var(--border);
-  padding-top: 12px;
+  padding-top: 14px;
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .dichos {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  max-height: 110px;
+  max-height: 96px;
   overflow-y: auto;
 }
 
@@ -620,7 +720,7 @@ button:disabled {
 
 .decir input {
   flex: 1;
-  min-width: 160px;
+  min-width: 200px;
 }
 
 .aviso {
@@ -644,6 +744,7 @@ button:disabled {
       'bandos'
       'mano'
       'charla';
+    padding-top: 60px;
   }
 
   .crupier {
@@ -667,29 +768,42 @@ button:disabled {
     border-left: 0;
   }
 
-  .sitio {
-    width: 74px;
+  .avatar {
+    width: 34px;
+    height: 34px;
   }
 
-  .avatar {
-    width: 42px;
-    height: 42px;
+  .nombre {
+    max-width: 64px;
+    font-size: 11px;
   }
 
   .carta {
-    width: 32px;
-    height: 46px;
+    width: 28px;
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .ficha {
+    width: 48px;
+    height: 48px;
     font-size: 14px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bocadillo,
-  .dice {
+  .dice,
+  .carta,
+  .bote-fichas i {
     animation: none;
   }
 
-  .naipe:hover {
+  .ficha:hover {
     transform: none;
+  }
+
+  .reparto .barra i {
+    transition: none;
   }
 }

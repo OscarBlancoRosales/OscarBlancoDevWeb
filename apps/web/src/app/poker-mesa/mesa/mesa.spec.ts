@@ -142,12 +142,19 @@ describe('la mesa de poker', () => {
     it('las de los demás están boca abajo hasta que se destapan', () => {
       pinta({ hanVotado: ['yo', 'bea'], votos: { yo: { tipo: 'numero', valor: 5 } } });
 
-      const enElTapete = Array.from(dom().querySelectorAll('.sitio .carta')).map(
-        (carta) => carta.textContent.trim(),
-      );
-      expect(dom().querySelectorAll('.carta.tapada').length).toBeGreaterThan(0);
-      // El dorso, la tuya y el hueco de quien no ha votado. Ningún voto ajeno.
-      expect(enElTapete).toEqual(['5', '?', '']);
+      const enElTapete = Array.from(dom().querySelectorAll('.sitio .carta')).map((carta) => ({
+        dice: carta.textContent.trim(),
+        tapada: carta.classList.contains('tapada'),
+        vacia: carta.classList.contains('vacia'),
+      }));
+
+      // La tuya, el dorso de quien ya votó y el hueco de quien falta. El dorso
+      // no enseña ni un número: es un patrón, no una interrogación.
+      expect(enElTapete).toEqual([
+        { dice: '5', tapada: false, vacia: false },
+        { dice: '', tapada: true, vacia: false },
+        { dice: '', tapada: true, vacia: true },
+      ]);
     });
 
     it('la tuya la ves siempre, que es la que has echado', () => {

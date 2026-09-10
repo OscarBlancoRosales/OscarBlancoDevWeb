@@ -39,6 +39,10 @@ export default tseslint.config(
       '**/.angular/**',
       '**/out-tsc/**',
       '**/.claude/**',
+      // Cachés y borradores locales: no son del proyecto, no están en ningún
+      // tsconfig y git ya los ignora. Sin esto el lint falla en la máquina de
+      // quien tenga ahí un experimento a medias, y en el CI no.
+      '**/.cache/**',
       'tools/**/*.mjs',
     ],
   },
