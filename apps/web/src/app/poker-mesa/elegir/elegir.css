@@ -1,0 +1,114 @@
+/* El menú que separa las dos versiones del planning poker. */
+
+.eleccion {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 4px;
+}
+
+.cabecera h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.prompt {
+  opacity: 0.7;
+}
+
+.subtitulo {
+  margin: 0 0 24px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 62ch;
+}
+
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Cada versión es una tarjeta entera pulsable, no un enlace escondido */
+.opcion {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  text-align: left;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+
+.opcion:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.06);
+}
+
+.etiqueta {
+  align-self: flex-start;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.opcion.nueva .etiqueta {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.opcion h2 {
+  margin: 0;
+  font-size: 17px;
+  color: var(--bright);
+}
+
+.opcion p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.opcion ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.entrar {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 13px;
+  color: var(--accent);
+}
+
+.pie {
+  margin: 20px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opcion,
+  .opcion:hover {
+    transition: none;
+    transform: none;
+  }
+}

@@ -41,6 +41,17 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 - Modo local sin cuenta ni red: partida contra la IA guardada en el navegador
 - Documentacion completa en [docs/risk.md](docs/risk.md)
 
+#### Juegos — El Impostor
+- Todos reciben la misma palabra menos uno: se dice una pista por turno, se discute y se vota
+- Tres modos: clásico, «la última palabra» —al impostor pillado le queda un disparo: si acierta, gana él— e infiltrado, que le da una palabra parecida y no le dice que lo es
+- Diez temas y ciento veinte palabras, cada una con su parecida
+- Veinticuatro memes elegibles: la cara viaja con el asiento, así que la mesa entera te ve igual
+- Tiempo de debate con reloj del servidor entre las pistas y la votación, o hasta que el anfitrión corte
+- Chat de mesa: acusarse en voz alta es la mitad del juego
+- Salas con invitación por enlace y bots para rellenar huecos
+- La palabra y quién miente no salen del servidor mientras se juega
+- Documentación completa en [docs/impostor.md](docs/impostor.md)
+
 #### Scrum Poker
 - Planning poker en tiempo real contra el backend propio
 - Crea salas, invita jugadores por enlace, vota y revela resultados
@@ -122,6 +133,17 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 - Optional LLM support with free tiers (OpenRouter, Groq, Google AI Studio or local Ollama); without a key the local AI plays just as well
 - Offline mode with no account and no network: play the AI with the game stored in your browser
 - Full write-up in [docs/risk.md](docs/risk.md)
+
+#### Games — The Impostor
+- Everyone gets the same word except one: a clue each per turn, then talk it over, then vote
+- Three modes: classic, "the last word" —the caught impostor gets one shot at the word, and wins if they guess it— and infiltrator, which hands them a similar word and never tells them they are the impostor
+- Ten topics, one hundred and twenty words, each paired with a near-miss
+- Twenty-four meme faces to pick from: your face travels with your seat, so the whole table sees the same one
+- A timed debate between clues and voting, on the server's clock, or until the host calls it
+- Table chat: accusing people out loud is half the game
+- Invite-link rooms plus bots to fill empty seats
+- The word and who is lying never leave the server while the round is on
+- Full write-up in [docs/impostor.md](docs/impostor.md)
 
 #### Scrum Poker
 - Real-time planning poker against our own backend

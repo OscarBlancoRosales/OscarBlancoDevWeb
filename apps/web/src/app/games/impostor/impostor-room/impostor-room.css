@@ -1,0 +1,521 @@
+/* La mesa. Misma piel que el resto: todo cuelga de las variables del tema. */
+* {
+  box-sizing: border-box;
+}
+
+.mesa-pantalla {
+  padding: 16px 18px 28px;
+  color: var(--text);
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cabecera h1 {
+  color: var(--accent);
+  font-size: 21px;
+  margin: 0 0 6px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 22px var(--glow);
+}
+
+.prompt {
+  color: rgba(var(--accent-rgb), 0.55);
+  margin-right: 6px;
+}
+
+.reglas-linea {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.etiqueta {
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  padding: 2px 7px;
+  letter-spacing: 0.5px;
+}
+
+.botones-cabecera {
+  display: flex;
+  gap: 8px;
+}
+
+.chico {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.chico:hover {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+
+/* La voz de la sala: lo que dice llega igual a todos, así que se pinta
+   grande y en el sitio donde se mira. */
+.voz {
+  margin: 0 0 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.07);
+  color: var(--bright);
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.columnas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.tablero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* ===== TU CARTA ===== */
+.carta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+  padding: 16px;
+  text-align: center;
+}
+
+.carta.impostor {
+  border-color: var(--error);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+}
+
+.carta-titulo {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.palabra {
+  font-size: 26px;
+  color: var(--bright);
+  letter-spacing: 1px;
+}
+
+.carta.impostor .palabra {
+  color: var(--error);
+}
+
+.palabra.oculta {
+  color: var(--muted);
+  letter-spacing: 6px;
+}
+
+.carta-pie {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 46ch;
+}
+
+/* ===== ESPERA Y TURNO ===== */
+.panel-espera,
+.debate,
+.disparo,
+.final {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  text-align: center;
+}
+
+.panel-espera h2,
+.debate h2,
+.disparo h2,
+.final h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 15px;
+  letter-spacing: 0.5px;
+}
+
+.final.ganaste h2 {
+  color: var(--ok);
+}
+
+.palabra-final {
+  margin: 0;
+  font-size: 16px;
+  color: var(--text);
+}
+
+.palabra-final strong {
+  color: var(--bright);
+  letter-spacing: 1px;
+}
+
+.turno {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.explicacion {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.cargando {
+  text-align: center;
+  padding: 40px 0;
+}
+
+/* La cuenta atrás del debate: grande, porque es lo que mete prisa. */
+.cuenta {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 2px;
+  color: var(--bright);
+  font-variant-numeric: tabular-nums;
+}
+
+.cuenta.apurando {
+  color: var(--error);
+}
+
+/* ===== LA MESA ===== */
+.puestos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.puesto {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text);
+  font: inherit;
+  padding: 10px 8px;
+  text-align: center;
+  cursor: default;
+  position: relative;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.puesto.votable {
+  cursor: pointer;
+}
+
+.puesto.votable:hover {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.puesto.tu {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.puesto.toca {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--glow);
+}
+
+.puesto.votado {
+  border-color: var(--warn);
+}
+
+.puesto.fuera {
+  opacity: 0.55;
+}
+
+.puesto.mentia {
+  border-color: var(--error);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
+}
+
+.retrato {
+  position: relative;
+  width: 68px;
+  height: 68px;
+}
+
+.retrato img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.marca-votos,
+.marca-listo {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}
+
+.marca-votos {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.nombre {
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+.bot {
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  padding: 0 4px;
+  margin-left: 4px;
+}
+
+.puntos {
+  font-size: 11px;
+  color: var(--ok);
+}
+
+.pistas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+
+.pista {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--bright);
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.chapa {
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--error);
+  border: 1px solid var(--error);
+  padding: 1px 5px;
+}
+
+/* ===== ESCRIBIR ===== */
+.escribir {
+  display: flex;
+  gap: 8px;
+}
+
+.escribir input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.escribir input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+
+.accion {
+  border: 1px solid rgba(var(--accent-rgb), 0.55);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent);
+  padding: 9px 16px;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+
+.accion:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.18);
+}
+
+.accion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ===== EL DISPARO ===== */
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.opcion {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  padding: 11px 8px;
+  cursor: pointer;
+}
+
+.opcion:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* ===== CHAT ===== */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  padding: 12px;
+  max-height: 620px;
+}
+
+.chat h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+.lineas {
+  flex: 1;
+  min-height: 160px;
+  max-height: 460px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.chat-vacio {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.linea {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+}
+
+.cara-chat {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  flex: none;
+}
+
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.autor {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.linea.mia .autor {
+  color: var(--accent);
+}
+
+.linea.de-la-sala .autor {
+  color: var(--warn);
+}
+
+.texto {
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.linea.de-la-sala .texto {
+  color: var(--bright);
+}
+
+.aviso.reconectando {
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
+  color: var(--warn);
+}
+
+.aviso {
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  background: color-mix(in srgb, var(--error) 10%, var(--bg-soft));
+  color: var(--error);
+  padding: 9px 12px;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+/* En pantalla estrecha el chat baja: la mesa es lo que hay que ver. */
+@media (max-width: 860px) {
+  .columnas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat {
+    max-height: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .puesto {
+    transition: none;
+  }
+}

@@ -103,7 +103,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
 
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
 
-  await app.register(healthRoutes(db));
+  await app.register(healthRoutes(db, ajustesDeIa(config)));
   await app.register(authRoutes({ service, config }));
   await app.register(adminRoutes(service));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));

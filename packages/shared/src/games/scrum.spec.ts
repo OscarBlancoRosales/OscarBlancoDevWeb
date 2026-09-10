@@ -9,7 +9,7 @@ const LUIS: Seat = { id: 'luis', displayName: 'Luis', isBot: false, connected: t
 const MESA = [ANA, LUIS];
 
 function conVotos(votos: ScrumState['votos'], revelado = false): ScrumState {
-  return { asunto: 'La historia', revelado, votos, ronda: 1 };
+  return { asunto: 'La historia', revelado, votos, ronda: 1, dice: '', momento: '' };
 }
 
 function vista(state: ScrumState, seat: string): ScrumView {

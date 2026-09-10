@@ -1,0 +1,212 @@
+/* La puerta de la mesa: nombre, cara y a sentarse. */
+
+.puerta {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 4px;
+}
+
+.cabecera h1 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: var(--accent);
+}
+
+.prompt {
+  opacity: 0.7;
+}
+
+.subtitulo {
+  margin: 0 0 20px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  padding: 18px;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.campo input {
+  padding: 9px 11px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.caras {
+  border: 1px solid var(--border);
+  padding: 12px;
+  margin: 0;
+}
+
+.caras legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.grupo {
+  margin: 4px 0 8px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.grupo + .rejilla {
+  margin-bottom: 14px;
+}
+
+.rejilla {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+}
+
+.cara {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: border-color 0.13s, background 0.13s, color 0.13s;
+}
+
+/* Los que no eliges se quedan apagados, y el tuyo a todo color */
+.cara img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  object-position: 50% 14%;
+  border-radius: 50%;
+  background: var(--bg);
+  filter: grayscale(0.75) opacity(0.6);
+  transition: filter 0.15s, transform 0.15s;
+}
+
+.cara:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.cara:hover img {
+  filter: none;
+}
+
+/* Los que ya tiene alguien: se ven, pero no se pueden coger */
+.cara.cogida {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.cara.cogida img {
+  filter: grayscale(1) opacity(0.5);
+}
+
+.cara.cogida:hover {
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.cara.cogida:hover img {
+  filter: grayscale(1) opacity(0.5);
+}
+
+.cara.elegida {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.cara.elegida img {
+  filter: none;
+  transform: scale(1.05);
+}
+
+.accion {
+  padding: 11px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.accion:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.accion:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.volver {
+  align-self: flex-start;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.volver:hover {
+  color: var(--accent);
+}
+
+.pie {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.aviso {
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  background: color-mix(in srgb, var(--error) 10%, var(--bg-soft));
+  color: var(--error);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cara,
+  .cara img {
+    transition: none;
+  }
+
+  .cara.elegida img {
+    transform: none;
+  }
+}

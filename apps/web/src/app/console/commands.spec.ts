@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { routes } from '../app.routes';
+import type { Routes } from '@angular/router';
 import {
   COMMANDS,
   completions,
@@ -25,12 +26,20 @@ describe('registro de comandos', () => {
     '**', // comodín de redirección
     'name-screen', // pantalla intermedia del flujo de Scrum Poker
     'scrum-poker', // se entra por /auth, que sí tiene comando
+    // Las tres del planning poker cuelgan de esa misma puerta: se elige
+    // versión en /scrum-poker y desde ahí se entra. Aparecen aquí porque el
+    // test dejó de mirar solo el primer nivel, no porque sean nuevas.
+    'scrum-poker/entrar',
+    'scrum-poker/mesa',
+    'scrum-poker/clasico',
     'juegos/risk', // el lobby se abre desde /juegos
     'juegos/risk/mesa', // necesita una sala ya creada
     'juegos/flota', // el lobby se abre desde /juegos
     'juegos/flota/mesa', // necesita una sala ya creada
     'juegos/trivial', // el lobby se abre desde /juegos
     'juegos/trivial/mesa', // necesita una sala ya creada
+    'juegos/impostor', // el lobby se abre desde /juegos
+    'juegos/impostor/mesa', // necesita una sala ya creada
     'auth/olvide', // se llega desde el login, no se busca a propósito
     // Estas dos son el destino de los enlaces del correo: sin el código que
     // llevan en la dirección no hacen nada, así que un comando que lleve a
@@ -39,10 +48,18 @@ describe('registro de comandos', () => {
     'auth/nueva-contrasena',
   ]);
 
+  /**
+   * Las secciones cuelgan del escritorio, así que no están en el primer nivel
+   * de `routes`: mirar solo ahí dejaba fuera del test a todas menos la consola.
+   * El agujero se vio al entrar el Impostor, que se coló sin que nadie avisara.
+   */
+  function todasLasRutas(desde: Routes): string[] {
+    return desde.flatMap((ruta) => [ruta.path ?? '', ...todasLasRutas(ruta.children ?? [])]);
+  }
+
   it('toda ruta navegable tiene un comando que lleva a ella', () => {
     const destinos = new Set(COMMANDS.map((c) => c.route).filter(Boolean));
-    const huerfanas = routes
-      .map((r) => r.path ?? '')
+    const huerfanas = todasLasRutas(routes)
       .filter((path) => !SIN_COMANDO.has(path))
       .filter((path) => !destinos.has('/' + path));
     expect(huerfanas, 'rutas sin comando en la consola').toEqual([]);

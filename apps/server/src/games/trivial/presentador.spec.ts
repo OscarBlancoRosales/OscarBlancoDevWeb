@@ -123,6 +123,23 @@ describe('el presentador de la sala', () => {
       expect(dicho[1].accion.momento).toBe('bienvenida');
     });
 
+    /** Sin esto, «la clave está puesta y no habla» no se puede diagnosticar. */
+    it('cuando el modelo falla, se avisa a quien mantiene el servidor', async () => {
+      const { actor } = actorFalso();
+      const { antes, ahora } = empezada();
+      const modelo = vi.fn().mockRejectedValue(new Error('401 clave inválida'));
+      const avisos: string[] = [];
+
+      new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo, undefined, (motivo) => {
+        avisos.push(motivo);
+      }).trasJugada(actor, antes, ahora);
+
+      await vi.waitFor(() => {
+        expect(avisos).toHaveLength(1);
+      });
+      expect(avisos[0]).toContain('401');
+    });
+
     it('si el modelo falla se queda lo escrito y nadie se entera', async () => {
       const { actor, dicho } = actorFalso();
       const { antes, ahora } = empezada();
@@ -215,7 +232,31 @@ describe('la clave del presentador', () => {
 
   it('con clave se monta el ajuste', () => {
     const ajustes = ajustesDeIa({ AI_KEY: 'k', AI_PROVIDER: 'groq', AI_MODEL: 'm' });
-    expect(ajustes).toEqual({ enabled: true, provider: 'groq', apiKey: 'k', model: 'm' });
+    expect(ajustes).toEqual({
+      enabled: true,
+      provider: 'groq',
+      apiKey: 'k',
+      model: 'm',
+      freeOnly: true,
+    });
+  });
+
+  /**
+   * Con `freeOnly` encendido, un modelo de pago se descarta sin decir nada y
+   * el juego se queda con el guion: es el fallo más difícil de diagnosticar
+   * que tiene esto, porque desde fuera parece que la clave no sirve.
+   */
+  it('se puede permitir un modelo de pago, y hay que pedirlo a propósito', () => {
+    const gratis = ajustesDeIa({ AI_KEY: 'k', AI_PROVIDER: 'openrouter', AI_MODEL: 'm' });
+    expect(gratis?.freeOnly).toBe(true);
+
+    const pagando = ajustesDeIa({
+      AI_KEY: 'k',
+      AI_PROVIDER: 'openrouter',
+      AI_MODEL: 'm',
+      AI_FREE_ONLY: false,
+    });
+    expect(pagando?.freeOnly).toBe(false);
   });
 
   /** Un proveedor mal escrito no puede tumbar el arranque del servidor. */

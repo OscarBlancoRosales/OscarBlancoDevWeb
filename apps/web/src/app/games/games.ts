@@ -3,6 +3,10 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { RISK_MAPS } from '@devweb/shared/engine/maps/map-registry';
+import { TEMAS } from '@devweb/shared/games/impostor/temas';
+
+/** Cuántas palabras hay en el banco del Impostor, para no decir un número a ojo. */
+const PALABRAS = TEMAS.reduce((suma, tema) => suma + tema.terminos.length, 0);
 
 interface GameCard {
   id: string;
@@ -82,6 +86,25 @@ export class Games {
         'La bomba va pasando y estalla en manos de quien la tenga',
         'Las respuestas se quedan en el servidor',
         'Presentador que se entera de todo y lo canta',
+      ],
+    },
+    {
+      id: 'impostor',
+      name: 'Impostor',
+      tagline: 'Todos tienen la palabra. Todos menos uno.',
+      description:
+        'Deducción social en cuatro minutos: una pista por turno, sin pasarse de listo, y a votar. ' +
+        'La palabra vive en el servidor, así que quien no la tiene no la tiene ni mirando el código.',
+      icon: '🎭',
+      players: '3 – 12 jugadores',
+      duration: '5 – 20 min',
+      route: '/juegos/impostor',
+      status: 'listo',
+      highlights: [
+        'Tres modos: clásico, la última palabra e infiltrado',
+        `${TEMAS.length + 1} temas y ${PALABRAS} palabras con su parecida`,
+        'Chat de mesa: acusarse en voz alta es medio juego',
+        'Bots para rellenar la mesa cuando no sois suficientes',
       ],
     },
   ];

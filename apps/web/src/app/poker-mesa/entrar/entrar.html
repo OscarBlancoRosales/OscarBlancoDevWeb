@@ -1,0 +1,91 @@
+<app-terminal-layout title="Scrum Poker — Mesa">
+  <div class="puerta">
+    <header class="cabecera">
+      <h1><span class="prompt">&gt;</span> A la mesa</h1>
+      <p class="subtitulo">
+        El mismo planning poker de siempre —los mismos votos, las mismas
+        desviaciones— pero sentados a una mesa, con chat y con un crupier que
+        opina de todo. Elige tu cara antes de sentarte.
+      </p>
+    </header>
+
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    <section class="panel">
+      <label class="campo">
+        Tu nombre
+        <input
+          type="text"
+          [(ngModel)]="nombreJugador"
+          maxlength="40"
+          [placeholder]="invitacion() ? 'Invitado' : 'Anfitrión'"
+        />
+      </label>
+
+      <fieldset class="caras">
+        <legend>Tu cara en la mesa</legend>
+
+        <p class="grupo">Leyendas</p>
+        <div class="rejilla">
+          @for (uno of leyendas; track uno.id) {
+            <button
+              type="button"
+              class="cara"
+              [class.elegida]="avatar === uno.id"
+              [class.cogida]="estaCogido(uno.id)"
+              [disabled]="estaCogido(uno.id)"
+              [attr.aria-pressed]="avatar === uno.id"
+              [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
+              (click)="avatar = uno.id"
+            >
+              <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
+              <span>{{ uno.nombre }}</span>
+            </button>
+          }
+        </div>
+
+        <p class="grupo">Iconos</p>
+        <div class="rejilla">
+          @for (uno of iconos; track uno.id) {
+            <button
+              type="button"
+              class="cara"
+              [class.elegida]="avatar === uno.id"
+              [class.cogida]="estaCogido(uno.id)"
+              [disabled]="estaCogido(uno.id)"
+              [attr.aria-pressed]="avatar === uno.id"
+              [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
+              (click)="avatar = uno.id"
+            >
+              <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
+              <span>{{ uno.nombre }}</span>
+            </button>
+          }
+        </div>
+      </fieldset>
+
+      @if (invitacion()) {
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="unirse()">
+          {{ trabajando() ? 'Sentándote…' : 'Sentarme a la mesa' }}
+        </button>
+      } @else if (conSesion()) {
+        <label class="campo">
+          Nombre de la mesa
+          <input type="text" [(ngModel)]="nombreSala" maxlength="80" />
+        </label>
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="crear()">
+          {{ trabajando() ? 'Abriendo…' : 'Abrir la mesa' }}
+        </button>
+      } @else if (sesionResuelta()) {
+        <p class="pie">
+          Para abrir una mesa hace falta cuenta, porque alguien tiene que ser su
+          dueño. Para sentarte en una a la que te inviten, no.
+        </p>
+      }
+
+      <button type="button" class="volver" (click)="volver()">Volver a elegir versión</button>
+    </section>
+  </div>
+</app-terminal-layout>

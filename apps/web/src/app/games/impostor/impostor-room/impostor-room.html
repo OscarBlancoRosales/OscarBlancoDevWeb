@@ -1,0 +1,280 @@
+<app-terminal-layout title="Impostor">
+  <div class="mesa-pantalla">
+    @if (vista(); as v) {
+      <header class="cabecera">
+        <div class="titulo">
+          <h1><span class="prompt">&gt;</span> Impostor</h1>
+          <p class="reglas-linea">
+            <span class="etiqueta">{{ modo }}</span>
+            <span class="etiqueta">Tema: {{ v.tema }}</span>
+            @if (v.fase === 'pistas') {
+              <span class="etiqueta">Vuelta {{ v.vuelta }} de {{ v.vueltas }}</span>
+            }
+            @if (v.rondasJugadas > 0) {
+              <span class="etiqueta">Ronda {{ v.rondasJugadas + 1 }}</span>
+            }
+          </p>
+        </div>
+        <div class="botones-cabecera">
+          <button type="button" class="chico" (click)="copiarEnlace()">
+            {{ enlaceCopiado() ? 'Enlace copiado' : 'Invitar' }}
+          </button>
+          <button type="button" class="chico" (click)="volver()">Salir</button>
+        </div>
+      </header>
+
+      @if (error()) {
+        <p class="aviso">{{ error() }}</p>
+      }
+      <!--
+        Sin conexión no se juega, y hay que decirlo: una jugada mandada con el
+        socket cerrado se pierde en silencio, y en pantalla eso parece que el
+        juego está roto.
+      -->
+      @if (!conectado()) {
+        <p class="aviso reconectando">Sin conexión con la sala. Reintentando…</p>
+      }
+
+      @if (dice) {
+        <p class="voz" [attr.data-turno]="turnoDePalabra">{{ dice }}</p>
+      }
+
+      <div class="columnas">
+        <section class="tablero">
+          <!-- ===== TU CARTA ===== -->
+          @if (v.fase !== 'sala' && v.fase !== 'repartiendo') {
+          <div class="carta" [class.impostor]="eresImpostor" [class.tapada]="!palabraALaVista()">
+            <span class="carta-titulo">Tu palabra</span>
+            @if (palabraALaVista()) {
+              @if (tuPalabra) {
+                <strong class="palabra">{{ tuPalabra }}</strong>
+                @if (eresImpostor) {
+                  <span class="carta-pie">…o eso te han dicho.</span>
+                }
+              } @else {
+                <strong class="palabra">Eres el impostor</strong>
+                <span class="carta-pie">
+                  No tienes palabra. Escucha, deduce y di algo que valga para todo.
+                </span>
+              }
+            } @else {
+              <strong class="palabra oculta">· · · · ·</strong>
+              <span class="carta-pie">Tapada. Nadie mira por encima de tu hombro.</span>
+            }
+            <button type="button" class="chico" (click)="palabraALaVista.set(!palabraALaVista())">
+              {{ palabraALaVista() ? 'Tapar' : 'Ver' }}
+            </button>
+          </div>
+          }
+
+          <!-- ===== ESPERANDO A LA MESA ===== -->
+          @if (esperando) {
+            <div class="panel-espera">
+              <h2>Esperando a la mesa</h2>
+              <p class="explicacion">
+                Cuando digáis todos que estáis listos, la sala reparte la palabra.
+                @if (faltanJugadores > 0) {
+                  Faltan {{ faltanJugadores }} para poder empezar: comparte el enlace.
+                }
+              </p>
+              <button
+                type="button"
+                class="accion"
+                [disabled]="yaEstoyListo || faltanJugadores > 0 || !conectado()"
+                (click)="listo()"
+              >
+                @if (!conectado()) {
+                  Conectando…
+                } @else {
+                  {{ yaEstoyListo ? 'Listo. Faltan los demás.' : 'Estoy listo' }}
+                }
+              </button>
+            </div>
+          }
+
+          <!-- ===== A QUIÉN LE TOCA ===== -->
+          @if (v.fase === 'pistas') {
+            <p class="turno">
+              @if (v.tuTurno) {
+                Te toca. Una palabra, y que no te delate.
+              } @else if (quienHabla; as quien) {
+                Habla {{ quien.nombre }}…
+              }
+            </p>
+          }
+
+          <!-- ===== EL DEBATE ===== -->
+          @if (v.fase === 'debate') {
+            <div class="debate">
+              <h2>Hablad</h2>
+              @if (debateConReloj) {
+                <p class="cuenta" [class.apurando]="quedanSegundos <= 10">{{ cuentaAtras }}</p>
+              }
+              <p class="explicacion">
+                Preguntad, defendeos y mirad quién se pone nervioso. Se vota cuando
+                {{ debateConReloj ? 'se acabe el tiempo' : 'lo diga el anfitrión' }}.
+              </p>
+              @if (anfitrion) {
+                <button type="button" class="accion" (click)="alVoto()">A votar ya</button>
+              }
+            </div>
+          }
+
+          @if (v.fase === 'votacion') {
+            <p class="turno">
+              @if (v.tuVoto) {
+                Ya has votado. Faltan {{ v.orden.length - v.hanVotado.length }}.
+              } @else {
+                A votar: toca la cara de quien creas que miente.
+              }
+            </p>
+          }
+
+          <!-- ===== LA MESA ===== -->
+          <div class="puestos">
+            @for (puesto of mesa(); track puesto.seatId) {
+              <button
+                type="button"
+                class="puesto"
+                [class.tu]="puesto.eresTu"
+                [class.toca]="puesto.leToca"
+                [class.fuera]="puesto.expulsado"
+                [class.mentia]="v.fase === 'fin' && puesto.eraImpostor"
+                [class.votable]="puedesVotar && !puesto.eresTu"
+                [class.votado]="v.tuVoto === puesto.seatId"
+                [disabled]="!puedesVotar || puesto.eresTu"
+                (click)="votar(puesto.seatId)"
+              >
+                <span class="retrato">
+                  <img [src]="puesto.foto" [alt]="puesto.mote" loading="lazy" />
+                  @if (puesto.votos > 0) {
+                    <span class="marca-votos">{{ puesto.votos }}</span>
+                  }
+                  @if (v.fase === 'votacion' && puesto.haVotado) {
+                    <span class="marca-listo" title="Ya ha votado">✓</span>
+                  }
+                  @if (esperando && puesto.listo) {
+                    <span class="marca-listo" title="Listo">✓</span>
+                  }
+                </span>
+                <span class="nombre">
+                  {{ puesto.nombre }}
+                  @if (puesto.esBot) {
+                    <span class="bot">bot</span>
+                  }
+                </span>
+                @if (puesto.puntos > 0) {
+                  <span class="puntos">{{ puesto.puntos }}</span>
+                }
+                <span class="pistas">
+                  @for (dicha of puesto.pistas; track $index) {
+                    <span class="pista">{{ dicha }}</span>
+                  }
+                </span>
+                @if (v.fase === 'fin' && puesto.eraImpostor) {
+                  <span class="chapa">impostor</span>
+                }
+              </button>
+            }
+          </div>
+
+          <!-- ===== DECIR TU PISTA ===== -->
+          @if (puedesHablar) {
+            <div class="escribir">
+              <input
+                type="text"
+                [ngModel]="pista()"
+                (ngModelChange)="pista.set($event)"
+                maxlength="40"
+                placeholder="Una palabra…"
+                (keydown.enter)="decirPista()"
+              />
+              <button type="button" class="accion" (click)="decirPista()">Decirla</button>
+            </div>
+          }
+
+          <!-- ===== LA ÚLTIMA PALABRA ===== -->
+          @if (v.fase === 'ultima-palabra') {
+            <div class="disparo">
+              @if (v.tuDisparo) {
+                <h2>Te han pillado. Te queda una: ¿cuál era la palabra?</h2>
+                <div class="opciones">
+                  @for (opcion of v.opciones; track opcion) {
+                    <button type="button" class="opcion" (click)="adivinar($index)">
+                      {{ opcion }}
+                    </button>
+                  }
+                </div>
+              } @else {
+                <h2>Le habéis pillado. Ahora tiene que decir la palabra.</h2>
+                <p class="explicacion">Si acierta, la ronda es suya. Aguantad la respiración.</p>
+              }
+            </div>
+          }
+
+          <!-- ===== FINAL DE RONDA ===== -->
+          @if (v.fase === 'fin') {
+            <div class="final" [class.ganaste]="ganasteTu">
+              <h2>{{ desenlace }}</h2>
+              @if (v.palabra) {
+                <p class="palabra-final">
+                  La palabra era <strong>{{ v.palabra }}</strong>
+                </p>
+              }
+              @if (v.intento >= 0 && v.opciones[v.intento]; as dicha) {
+                <p class="explicacion">Disparó a «{{ dicha }}».</p>
+              }
+              @if (anfitrion) {
+                <button type="button" class="accion" (click)="otraRonda()">Otra ronda</button>
+              } @else {
+                <p class="explicacion">Esperando a que el anfitrión reparta otra.</p>
+              }
+            </div>
+          }
+        </section>
+
+        <!-- ===== CHAT ===== -->
+        <section class="chat">
+          <h2>La mesa</h2>
+          <div class="lineas">
+            @if (chat().length === 0) {
+              <p class="chat-vacio">
+                Aquí se discute. Acusar en voz alta es la mitad del juego.
+              </p>
+            }
+            @for (entrada of chat(); track entrada.seq) {
+              <div
+                class="linea"
+                [class.mia]="esMio(entrada)"
+                [class.de-la-sala]="entrada.kind === 'system'"
+              >
+                @if (fotoDelAutor(entrada); as foto) {
+                  <img class="cara-chat" [src]="foto" [alt]="autorDe(entrada)" loading="lazy" />
+                }
+                <span class="cuerpo">
+                  <span class="autor">{{ autorDe(entrada) }}</span>
+                  <span class="texto">{{ entrada.text }}</span>
+                </span>
+              </div>
+            }
+          </div>
+          <div class="escribir">
+            <input
+              type="text"
+              [ngModel]="mensaje()"
+              (ngModelChange)="mensaje.set($event)"
+              maxlength="400"
+              placeholder="Di algo…"
+              (keydown.enter)="enviarMensaje()"
+            />
+            <button type="button" class="chico" (click)="enviarMensaje()" aria-label="Enviar">
+              ➤
+            </button>
+          </div>
+        </section>
+      </div>
+    } @else {
+      <p class="explicacion cargando">Entrando en la mesa…</p>
+    }
+  </div>
+</app-terminal-layout>

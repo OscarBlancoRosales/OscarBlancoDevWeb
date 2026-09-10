@@ -4,6 +4,8 @@ import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
+import { VozDeLaSala } from '../games/impostor/voz';
+import { DealerDeMesa } from '../games/poker/dealer';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import { moduleFor } from './registry';
 import type {
@@ -13,6 +15,7 @@ import type {
   SeatGrant,
   SeatInfo,
 } from '@devweb/shared/contracts/rooms';
+import type { Narrador } from './actor';
 import type { RoomRepository, RoomRow } from './repository';
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -29,6 +32,8 @@ export interface RoomServiceOptions {
   readonly now?: () => number;
   /** Con qué modelo habla el presentador del concurso. Sin esto, solo guion. */
   readonly ia?: AiSettings | null;
+  /** Dónde se apuntan los problemas que no rompen nada pero hay que saber. */
+  readonly avisar?: (mensaje: string) => void;
 }
 
 /**
@@ -49,12 +54,18 @@ export class RoomService {
   readonly fallosAlCerrar: string[] = [];
 
   private readonly ia: AiSettings | null;
+  private readonly avisar: (mensaje: string) => void;
 
   constructor(options: RoomServiceOptions) {
     this.repository = options.repository;
     this.maxSeats = options.maxSeats ?? 16;
     this.now = options.now ?? Date.now;
     this.ia = options.ia ?? null;
+    this.avisar =
+      options.avisar ??
+      ((mensaje) => {
+        console.warn(mensaje);
+      });
   }
 
   crear(input: {
@@ -328,7 +339,32 @@ export class RoomService {
    * actor: en una sala se entra y se sale, y un presentador que llame a la
    * gente por el nombre de quien había al abrir la mesa da más pena que gracia.
    */
-  private narradorPara(game: GameId, roomId: string): PresentadorDeSala | null {
+  private narradorPara(game: GameId, roomId: string): Narrador | null {
+    // El Impostor no tiene presentador: tiene una sala que habla, y que además
+    // es quien reparte la palabra. Ver `VozDeLaSala`.
+    if (game === 'impostor') {
+      return new VozDeLaSala(() => nombresDe(this.repository.listSeats(roomId)));
+    }
+    if (game === 'scrum') {
+      // Solo la mesa de poker tiene crupier. La versión clásica se queda como
+      // estaba: quien la abre no quiere a nadie metiéndole prisa.
+      if (this.repository.findRoom(roomId)?.config['version'] !== 'mesa') return null;
+      return new DealerDeMesa(
+        this.ia,
+        {
+          nombres: () => nombresDe(this.repository.listSeats(roomId)),
+          humanos: () =>
+            this.repository
+              .listSeats(roomId)
+              .filter((asiento) => !asiento.isBot)
+              .map((asiento) => asiento.seatId),
+        },
+        undefined,
+        (motivo) => {
+          this.avisar(`El crupier no pudo hablar con el modelo: ${motivo}`);
+        },
+      );
+    }
     if (game !== 'trivial') return null;
     return new PresentadorDeSala(
       this.ia,
@@ -341,6 +377,9 @@ export class RoomService {
             .filter((asiento) => asiento.isBot)
             .map((asiento) => asiento.seatId),
         ),
+      (motivo) => {
+        this.avisar(`El presentador no pudo hablar con el modelo: ${motivo}`);
+      },
     );
   }
 

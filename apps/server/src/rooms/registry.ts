@@ -1,4 +1,5 @@
 import { flotaModule } from '@devweb/shared/games/flota/index';
+import { impostorModule } from '@devweb/shared/games/impostor/index';
 import { riskModule } from '@devweb/shared/games/risk';
 import { trivialModule } from '@devweb/shared/games/trivial/index';
 import { scrumModule } from '@devweb/shared/games/scrum';
@@ -16,6 +17,7 @@ const JUEGOS = {
   risk: riskModule as GameModule<unknown, unknown>,
   flota: flotaModule as GameModule<unknown, unknown>,
   trivial: trivialModule as GameModule<unknown, unknown>,
+  impostor: impostorModule as GameModule<unknown, unknown>,
 } satisfies Partial<Record<GameId, GameModule<unknown, unknown>>>;
 
 export type JuegoDisponible = keyof typeof JUEGOS;

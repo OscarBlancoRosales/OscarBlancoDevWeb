@@ -30,6 +30,16 @@ export const ScrumAction = Type.Union([
   Type.Object({ tipo: Type.Literal('retirar-voto') }, { additionalProperties: false }),
   Type.Object({ tipo: Type.Literal('revelar') }, { additionalProperties: false }),
   Type.Object({ tipo: Type.Literal('nueva-ronda'), asunto: Type.Optional(Type.String({ maxLength: 200 })) }, { additionalProperties: false }),
+  // La pone el servidor por boca del dealer: entra en la partida como una
+  // jugada más para que toda la mesa lea lo mismo a la vez.
+  Type.Object(
+    {
+      tipo: Type.Literal('dice'),
+      momento: Type.String({ minLength: 1, maxLength: 40 }),
+      frase: Type.String({ minLength: 1, maxLength: 400 }),
+    },
+    { additionalProperties: false },
+  ),
 ]);
 
 export type ScrumVote = Static<typeof ScrumVote>;
@@ -40,6 +50,10 @@ export interface ScrumState {
   readonly revelado: boolean;
   readonly votos: Readonly<Record<SeatId, ScrumVote>>;
   readonly ronda: number;
+  /** Lo último que dijo el dealer, para que la mesa lo lea a la vez. */
+  readonly dice: string;
+  /** El momento al que corresponde esa frase, que decide la cara que pone. */
+  readonly momento: string;
 }
 
 /** Lo que sale hacia un asiento concreto. */
@@ -52,6 +66,9 @@ export interface ScrumView {
   /** Los votos: los de todos si está revelado, y si no, solo el tuyo. */
   readonly votos: Readonly<Record<SeatId, ScrumVote>>;
   readonly resumen: ScrumResumen | null;
+  /** Lo que está diciendo el dealer, y de qué. La v1 no lo pinta; la v2 sí. */
+  readonly dice: string;
+  readonly momento: string;
 }
 
 export interface ScrumResumen {
@@ -67,9 +84,12 @@ const NO_VOTA: RuleError = { code: 'ronda-revelada', message: 'La ronda ya está
 export const scrumModule: GameModule<ScrumState, ScrumAction> = {
   id: 'scrum',
   actionSchema: ScrumAction,
+  // La voz del dealer la pone el servidor. Si la pudiera mandar un cliente,
+  // cualquiera hablaría por su boca al resto de la mesa.
+  accionesDeSistema: ['dice'],
 
   createState() {
-    return { asunto: '', revelado: false, votos: {}, ronda: 1 };
+    return { asunto: '', revelado: false, votos: {}, ronda: 1, dice: '', momento: '' };
   },
 
   validate(state, action, _by, seats) {
@@ -93,6 +113,10 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
 
       case 'nueva-ronda':
         return sinAsientosHumanos(seats);
+
+      // La pone el servidor, y nadie más puede mandarla.
+      case 'dice':
+        return null;
     }
   },
 
@@ -109,11 +133,15 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
 
       case 'nueva-ronda':
         return {
+          ...state,
           asunto: action.asunto ?? '',
           revelado: false,
           votos: {},
           ronda: state.ronda + 1,
         };
+
+      case 'dice':
+        return { ...state, dice: action.frase, momento: action.momento };
     }
   },
 
@@ -132,6 +160,8 @@ export const scrumModule: GameModule<ScrumState, ScrumAction> = {
       hanVotado: Object.keys(state.votos),
       votos: state.revelado ? state.votos : propio ? { [forSeat]: propio } : {},
       resumen: state.revelado ? resumir(state.votos) : null,
+      dice: state.dice,
+      momento: state.momento,
     } satisfies ScrumView;
   },
 

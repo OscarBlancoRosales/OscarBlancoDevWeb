@@ -1,0 +1,234 @@
+<app-terminal-layout title="Scrum Poker — Mesa">
+  <div class="salon">
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    @if (vista(); as v) {
+      <!-- El tapete, con la gente sentada alrededor -->
+      <div class="tapete">
+        <div class="fieltro"></div>
+
+        @for (quien of sentados; track quien.seatId) {
+          <div
+            class="sitio"
+            [style.left.%]="quien.x"
+            [style.top.%]="quien.y"
+            [class.tu]="quien.eresTu"
+            [class.ha-votado]="quien.haVotado"
+          >
+            @if (quien.bocadillo) {
+              <p class="bocadillo">{{ quien.bocadillo }}</p>
+            }
+
+            <div class="jugador">
+              <img
+                class="avatar"
+                [src]="quien.foto"
+                [alt]="nombreDelAvatar(quien.seatId)"
+                loading="lazy"
+              />
+              <span class="nombre">{{ quien.nombre }}</span>
+            </div>
+
+            <!-- Su carta: boca abajo hasta que se destapa -->
+            <div
+              class="carta"
+              [class.tapada]="quien.tapada"
+              [class.vacia]="!quien.haVotado"
+              [class.grave]="esGrave(quien.desvio)"
+              [class.leve]="esLeve(quien.desvio)"
+            >
+              @if (quien.tapada && quien.haVotado) {
+                <span class="dorso">?</span>
+              } @else {
+                <span class="valor">{{ quien.carta }}</span>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- En el centro: lo que se estima y cómo va la cosa -->
+        <div class="centro">
+          <!-- El asunto se pone aquí mismo: buscarlo en otra pantalla es lo
+               que hace que las salas acaben llamándose «Sin asunto puesto». -->
+          <input
+            class="asunto"
+            type="text"
+            maxlength="200"
+            [value]="v.asunto"
+            placeholder="¿Qué estamos estimando?"
+            (keydown.enter)="ponerAsunto($event)"
+            (blur)="ponerAsunto($event)"
+          />
+
+          @if (v.revelado && estadistica.votantes > 0) {
+            <div class="numeros">
+              <span class="numero"
+                ><strong>{{ estadistica.media }}</strong> media</span
+              >
+              <span class="numero"
+                ><strong>{{ estadistica.mediana }}</strong> mediana</span
+              >
+              <span class="numero"
+                ><strong>{{ estadistica.minimo }}–{{ estadistica.maximo }}</strong> rango</span
+              >
+              <span class="numero"
+                ><strong>{{ estadistica.desviacion }}</strong> σ</span
+              >
+            </div>
+            <p class="acuerdo" [class]="estadistica.acuerdo">{{ estadistica.acuerdo }}</p>
+          } @else {
+            <p class="esperando">
+              @if (todosHanVotado) {
+                Todos han votado. A destapar.
+              } @else {
+                Faltan {{ faltan }} por votar
+              }
+            </p>
+          }
+        </div>
+      </div>
+
+      <!-- El crupier, a un lado, diciendo lo que le parece -->
+      <aside class="crupier" [class.callado]="!diceElDealer">
+        <img class="dealer" [src]="caraDelDealer" alt="El crupier de la mesa" decoding="async" />
+        @if (diceElDealer) {
+          <blockquote class="dice">{{ diceElDealer }}</blockquote>
+        }
+      </aside>
+
+      @if (reparto.length > 0) {
+        <section class="reparto">
+          <h2>Cómo ha votado la mesa</h2>
+          @for (fila of reparto; track fila.valor) {
+            <div class="fila">
+              <span class="valor">{{ fila.valor }}</span>
+              <span class="barra"><i [style.width.%]="fila.porciento"></i></span>
+              <span class="cuantos">{{ fila.cuantos }}</span>
+            </div>
+          }
+        </section>
+      }
+
+      @if (bandos; as partida) {
+        <p class="bandos">
+          La mesa está partida: unos ven {{ partida.bajos.join(', ') }} y otros
+          {{ partida.altos.join(', ') }}. Habladlo antes de volver a votar.
+        </p>
+      }
+
+      <!-- Tus cartas -->
+      <section class="mano">
+        @if (!v.revelado) {
+          <!-- Las fichas se suman: un siete es cinco y dos -->
+          <div class="apuesta">
+            <div class="fichas">
+              @for (ficha of fichas; track ficha) {
+                <button
+                  type="button"
+                  class="ficha"
+                  [class]="'v' + ficha"
+                  (click)="echarFicha(ficha)"
+                  [attr.aria-label]="'Sumar ' + ficha"
+                >
+                  <span>{{ ficha }}</span>
+                </button>
+              }
+            </div>
+
+            <div class="monton" [class.puesto]="tuVoto !== null || pediste">
+              <span class="monton-etiqueta">Tu voto</span>
+              <strong class="monton-valor">
+                @if (pediste === 'cafe') {
+                  ☕
+                } @else if (pediste === 'porro') {
+                  🚬
+                } @else {
+                  {{ apostado }}
+                }
+              </strong>
+              @if (tuVoto !== null || pediste) {
+                <button type="button" class="quitar" (click)="retirar()">Retirar</button>
+              }
+            </div>
+          </div>
+
+          <div class="suelto">
+            <button
+              type="button"
+              class="secundario especial"
+              [class.elegida]="pediste === 'cafe'"
+              title="Necesito un descanso"
+              (click)="pedirCafe()"
+            >
+              ☕ Café
+            </button>
+            <button
+              type="button"
+              class="secundario especial"
+              [class.elegida]="pediste === 'porro'"
+              title="Esto es demasiado grande para estimarlo hoy"
+              (click)="pedirPorro()"
+            >
+              🚬 Ni con un palo
+            </button>
+            <input
+              type="number"
+              min="0"
+              [(ngModel)]="numeroSuelto"
+              placeholder="Número exacto"
+              (keydown.enter)="votarSuelto()"
+            />
+            <button type="button" class="secundario" [disabled]="numeroSuelto === null" (click)="votarSuelto()">
+              Va
+            </button>
+          </div>
+        }
+
+        <div class="mandos">
+          @if (!v.revelado) {
+            <button type="button" class="principal" (click)="revelar()">Destapar las cartas</button>
+          } @else {
+            <input
+              type="text"
+              class="asunto-nuevo"
+              [(ngModel)]="asuntoNuevo"
+              maxlength="200"
+              placeholder="¿Qué se estima ahora?"
+              (keydown.enter)="otraRonda()"
+            />
+            <button type="button" class="principal" (click)="otraRonda()">Otra ronda</button>
+          }
+          <button type="button" class="secundario" (click)="copiarEnlace()">
+            {{ enlaceCopiado() ? 'Enlace copiado' : 'Invitar a la mesa' }}
+          </button>
+          <button type="button" class="secundario" (click)="volver()">Salir</button>
+        </div>
+      </section>
+
+      <!-- El chat: se dice aquí y sale en bocadillo encima de tu cabeza -->
+      <section class="charla">
+        <div class="dichos">
+          @for (dicho of conversacion; track dicho.seatId + dicho.texto) {
+            <p><strong>{{ dicho.nombre }}:</strong> {{ dicho.texto }}</p>
+          }
+        </div>
+        <div class="decir">
+          <input
+            type="text"
+            [(ngModel)]="mensaje"
+            maxlength="200"
+            placeholder="Di algo a la mesa…"
+            (keydown.enter)="hablar()"
+          />
+          <button type="button" class="secundario" [disabled]="!mensaje.trim()" (click)="hablar()">
+            Decir
+          </button>
+        </div>
+      </section>
+    } @else {
+      <p class="esperando">Sentándote a la mesa…</p>
+    }
+  </div>
+</app-terminal-layout>

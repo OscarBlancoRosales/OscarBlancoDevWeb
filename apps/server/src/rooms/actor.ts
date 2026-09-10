@@ -42,6 +42,8 @@ export interface RoomActorOptions {
  */
 export interface Narrador {
   trasJugada(actor: RoomActor, antes: unknown, ahora: unknown): void;
+  /** Suelta lo que tenga pendiente. Lo llama la sala al descargarse. */
+  parar?(): void;
 }
 
 /** Si esa acción es de las que solo pone el servidor. */
@@ -387,11 +389,23 @@ export class RoomActor {
       return;
     }
 
+    // Una acción del servidor que no cambia nada no se escribe. El reloj del
+    // debate lo cierra un temporizador, y ese temporizador puede saltar cuando
+    // la mesa ya ha cortado el debate a mano: apuntarlo igual metería un hueco
+    // en el registro por cada ronda.
+    if (siguiente === this.state) return;
+
     this.state = siguiente;
     this.seq += 1;
     const at = this.now();
     this.repository.appendEvent(this.roomId, { seq: this.seq, seatId, action: accion, at });
     this.broadcast();
+    // Una acción del servidor puede dejar el turno en un asiento sin nadie
+    // detrás: el reparto del Impostor abre la ronda, y el primero en hablar
+    // puede ser un bot. Sin esto, la mesa se queda esperando a quien no va a
+    // mover. En los juegos cuyas acciones de sistema no cambian el turno esto
+    // no encuentra nada que hacer y no cuesta nada.
+    this.dejarJugarALosBots();
   }
 
   /**
@@ -463,6 +477,17 @@ export class RoomActor {
     };
   }
 
+  /**
+   * El estado del juego ahora mismo.
+   *
+   * Lo necesita quien vigila la sala con un reloj -el crupier del planning
+   * poker mete prisa cuando nadie vota-, porque ahí no hay jugada de la que
+   * partir: justamente lo que hay que mirar es que no ha pasado nada.
+   */
+  estadoDelJuego(): unknown {
+    return this.state;
+  }
+
   messageFor(seatId: SeatId): ServerMessage {
     return {
       tipo: 'estado',
@@ -475,6 +500,9 @@ export class RoomActor {
 
   /** Guarda la foto pendiente antes de descargar la sala de memoria. */
   flush(): void {
+    // Quien vigila con reloj se va con la sala: un temporizador suelto sobre
+    // una sala descargada seguiría hablándole a nadie.
+    this.narrador?.parar?.();
     if (this.state === null) return;
     this.repository.saveSnapshot(
       this.roomId,

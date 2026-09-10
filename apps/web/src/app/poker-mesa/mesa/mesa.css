@@ -1,0 +1,695 @@
+/* =========================================================================
+   La mesa de planning poker.
+
+   Todo sale del tema del sitio menos el tapete, que es verde de casino en
+   cualquier tema: una mesa de poker marrón no es una mesa de poker. Aun así
+   se mezcla con el fondo del tema para que no cante.
+   ========================================================================= */
+
+:host {
+  --tapete: #1b5e3a;
+  --tapete-hondo: #0f3a24;
+  --tapete-borde: #7a5c2e;
+}
+
+/* Todo cabe en una pantalla sin scroll: la mesa arriba con el crupier al
+   lado, tus cartas debajo y la charla al pie. Si la mesa creciera sin tope se
+   comería el sitio de las cartas, que es con lo que de verdad se juega. */
+.salon {
+  display: grid;
+  /* El crupier tiene ancho fijo: si compartiera el reparto con la mesa, cada
+     vez que dijera algo largo le robaría sitio al tapete y todo se movería. */
+  grid-template-columns: minmax(0, 1fr) 190px;
+  grid-template-areas:
+    'tapete crupier'
+    'reparto reparto'
+    'bandos bandos'
+    'mano mano'
+    'charla charla';
+  gap: 18px 24px;
+  /* Hueco arriba para las cabezas y los bocadillos de quien se sienta al
+     fondo: sobresalen del tapete a propósito, como en una mesa de verdad. */
+  padding: 70px 10px 8px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+/* ===== EL TAPETE ===== */
+.tapete {
+  grid-area: tapete;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 52vh;
+  min-height: 320px;
+  justify-self: center;
+}
+
+/**
+ * El óvalo del fieltro, con su cerco de madera y su luz cenital.
+ *
+ * Los recortes no son decorativos: dibujan **la misma elipse** por la que el
+ * motor reparte los sitios -centro en (50%, 52%), radios 42% y 40%-, así que
+ * cada uno se sienta justo en el borde y no flotando dentro del tapete.
+ */
+.fieltro {
+  position: absolute;
+  inset: 12% 8% 8%;
+  border-radius: 50%;
+  border: 10px solid var(--tapete-borde);
+  background:
+    radial-gradient(60% 55% at 50% 42%, color-mix(in srgb, var(--tapete) 88%, #fff 12%), transparent 70%),
+    radial-gradient(120% 100% at 50% 40%, var(--tapete), var(--tapete-hondo));
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.55),
+    0 14px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Cada sitio se coloca por porcentaje, que es lo que reparte el motor */
+.sitio {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  width: 92px;
+}
+
+.jugador {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 12%;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.5);
+  transition: border-color 0.18s;
+}
+
+/* Quien ya ha votado se enciende: se ve de un vistazo a quién se espera */
+.sitio.ha-votado .avatar {
+  border-color: var(--accent);
+  box-shadow: 0 0 14px var(--glow);
+}
+
+.sitio.tu .avatar {
+  border-color: var(--bright);
+}
+
+.nombre {
+  font-size: 11px;
+  color: var(--bright);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ===== LAS CARTAS ===== */
+.carta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 54px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--bright);
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Boca abajo: el dorso rayado, como una carta de verdad */
+.carta.tapada {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(var(--accent-rgb), 0.25) 0 4px,
+      transparent 4px 8px
+    ),
+    var(--bg-soft);
+  color: rgba(var(--accent-rgb), 0.7);
+}
+
+/* Sin votar todavía: hueco, para que se note que falta */
+.carta.vacia {
+  border-style: dashed;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.4;
+}
+
+/* Al destapar, quien se ha salido del corro se ve enseguida */
+.carta.leve {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.carta.grave {
+  border-color: var(--error);
+  color: var(--error);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--error) 45%, transparent);
+}
+
+/* ===== LOS BOCADILLOS =====
+   Se salen del ancho del sitio a propósito: un bocadillo de noventa píxeles
+   parte cualquier frase en seis líneas y no hay quien lo lea. */
+.bocadillo {
+  position: relative;
+  margin: 0;
+  padding: 6px 10px;
+  width: max-content;
+  max-width: 190px;
+  background: var(--bright);
+  color: #111;
+  border-radius: 10px;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  animation: sale 0.18s ease-out;
+}
+
+/* El pico, apuntando hacia abajo a quien habla */
+.bocadillo::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: var(--bright);
+  border-bottom: 0;
+}
+
+@keyframes sale {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.96);
+  }
+}
+
+/* ===== EL CENTRO DE LA MESA ===== */
+/* Un poco por debajo del centro geométrico: arriba está la carta de quien se
+   sienta al fondo, y si el marcador subiera se pisarían. */
+.centro {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  transform: translate(-50%, -50%);
+  width: min(290px, 46%);
+  text-align: center;
+}
+
+/* Se escribe encima del tapete, sin caja ni marco: parece el rótulo de la
+   mesa hasta que lo pulsas. */
+.asunto {
+  display: block;
+  width: 100%;
+  margin: 0 0 10px;
+  padding: 3px 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.asunto::placeholder {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.asunto:hover {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.asunto:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.numeros {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+}
+
+.numero {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.numero strong {
+  display: block;
+  font-size: 17px;
+  color: #fff;
+}
+
+.acuerdo {
+  margin: 8px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.acuerdo.total,
+.acuerdo.consenso {
+  color: #8fe58f;
+}
+
+.acuerdo.dispersion {
+  color: #ffd166;
+}
+
+.acuerdo.desacuerdo {
+  color: #ff8f8f;
+}
+
+.esperando {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+/* ===== EL CRUPIER ===== */
+.crupier {
+  grid-area: crupier;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  align-self: end;
+}
+
+.dealer {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.6));
+}
+
+.crupier.callado .dealer {
+  filter: grayscale(0.45) opacity(0.8) drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+}
+
+.dice {
+  position: relative;
+  margin: 0;
+  padding: 11px 13px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-soft));
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 12px;
+  color: var(--bright);
+  font-size: 12.5px;
+  line-height: 1.55;
+  animation: sale 0.2s ease-out;
+}
+
+/* Aquí el pico va arriba: el crupier está encima de lo que dice */
+.dice::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  transform: translateX(-50%);
+  border: 9px solid transparent;
+  border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-top: 0;
+}
+
+.bandos {
+  grid-area: bandos;
+  margin: 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+/* ===== TU MANO ===== */
+.mano {
+  grid-area: mano;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.baraja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+/* ===== LAS FICHAS =====
+   Se suman: pulsas y se apilan hasta componer el número que quieres. Una
+   escala cerrada obliga a redondear a lo que haya en la baraja. */
+.apuesta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.fichas {
+  display: flex;
+  gap: 9px;
+}
+
+.ficha {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px dashed rgba(255, 255, 255, 0.45);
+  background: var(--ficha, #444);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow:
+    inset 0 0 0 4px rgba(0, 0, 0, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.12s;
+}
+
+.ficha:hover {
+  transform: translateY(-4px);
+}
+
+.ficha:active {
+  transform: translateY(-1px);
+}
+
+/* Cada valor con su color, como en un casino de verdad */
+.ficha.v1 {
+  --ficha: #7a7a7a;
+}
+.ficha.v2 {
+  --ficha: #2f6fb5;
+}
+.ficha.v3 {
+  --ficha: #2f8f5b;
+}
+.ficha.v5 {
+  --ficha: #b53f3f;
+}
+.ficha.v10 {
+  --ficha: #6b4bb5;
+}
+.ficha.v20 {
+  --ficha: #b58b2f;
+}
+
+/* El montón: lo que llevas apostado, bien grande */
+.monton {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 8px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  min-width: 110px;
+}
+
+.monton.puesto {
+  border-style: solid;
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
+.monton-etiqueta {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.monton-valor {
+  font-size: 30px;
+  line-height: 1.1;
+  color: var(--bright);
+}
+
+.monton.puesto .monton-valor {
+  color: var(--accent);
+}
+
+.quitar {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.quitar:hover {
+  color: var(--error);
+}
+
+.secundario.especial.elegida {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+}
+
+/* ===== CÓMO HA VOTADO LA MESA =====
+   Una media de ocho puede ser todos en ocho o media mesa en tres y media en
+   trece, y esas dos reuniones no se parecen en nada. */
+.reparto {
+  grid-area: reparto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.reparto h2 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.reparto .fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.reparto .valor {
+  width: 42px;
+  text-align: right;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--bright);
+}
+
+.reparto .barra {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-soft);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.reparto .barra i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 5px;
+}
+
+.reparto .cuantos {
+  width: 26px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.suelto,
+.mandos,
+.decir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+input[type='number'],
+input[type='text'] {
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+input[type='number'] {
+  width: 130px;
+}
+
+.asunto-nuevo {
+  flex: 1;
+  min-width: 180px;
+}
+
+button.principal,
+button.secundario {
+  padding: 9px 14px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+button.principal {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.12);
+  color: var(--accent);
+}
+
+button.principal:hover,
+button.secundario:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ===== LA CHARLA ===== */
+.charla {
+  grid-area: charla;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.dichos {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 110px;
+  overflow-y: auto;
+}
+
+.dichos p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
+.dichos strong {
+  color: var(--accent);
+}
+
+.decir input {
+  flex: 1;
+  min-width: 160px;
+}
+
+.aviso {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
+  color: var(--warn);
+  font-size: 13px;
+}
+
+/* ===== PANTALLAS ESTRECHAS =====
+   El crupier baja debajo de la mesa: a lo ancho no cabe con dignidad. */
+@media (max-width: 900px) {
+  .salon {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'tapete'
+      'crupier'
+      'reparto'
+      'bandos'
+      'mano'
+      'charla';
+  }
+
+  .crupier {
+    flex-direction: row;
+    align-items: flex-end;
+    width: auto;
+  }
+
+  .dealer {
+    width: 110px;
+    flex-shrink: 0;
+  }
+
+  .dice::after {
+    left: -8px;
+    top: auto;
+    bottom: 18px;
+    transform: none;
+    border: 9px solid transparent;
+    border-right-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-left: 0;
+  }
+
+  .sitio {
+    width: 74px;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .carta {
+    width: 32px;
+    height: 46px;
+    font-size: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bocadillo,
+  .dice {
+    animation: none;
+  }
+
+  .naipe:hover {
+    transform: none;
+  }
+}

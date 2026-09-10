@@ -1,0 +1,182 @@
+<app-terminal-layout title="Impostor">
+  <div class="lobby">
+    <header class="cabecera">
+      <h1><span class="prompt">&gt;</span> Impostor</h1>
+      <p class="subtitulo">
+        Todos reciben la misma palabra. Todos menos uno. Se dice una pista por turno, sin pasarse
+        de listo, y al final se vota. La palabra vive en el servidor: quien no la tiene, no la
+        tiene ni con las herramientas de desarrollo abiertas.
+      </p>
+    </header>
+
+    @if (error()) {
+      <p class="aviso">{{ error() }}</p>
+    }
+
+    @if (invitacion()) {
+      <section class="panel">
+        <h2>Te han invitado a la mesa</h2>
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Invitado" />
+        </label>
+
+        <ng-container [ngTemplateOutlet]="elegirCara"></ng-container>
+
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="unirse()">
+          {{ trabajando() ? 'Entrando…' : 'Sentarse a la mesa' }}
+        </button>
+      </section>
+    } @else if (conSesion()) {
+      <section class="panel">
+        <h2>Nueva mesa</h2>
+
+        <label>
+          Nombre de la mesa
+          <input type="text" [(ngModel)]="nombreSala" maxlength="80" />
+        </label>
+
+        <label>
+          Tu nombre
+          <input type="text" [(ngModel)]="nombreJugador" maxlength="40" placeholder="Anfitrión" />
+        </label>
+
+        <ng-container [ngTemplateOutlet]="elegirCara"></ng-container>
+
+        <fieldset class="bloque">
+          <legend>De qué va la palabra</legend>
+          <div class="temas">
+            <button
+              type="button"
+              class="tema"
+              [class.elegido]="tema === mezcla"
+              [attr.aria-pressed]="tema === mezcla"
+              (click)="tema = mezcla"
+            >
+              <span class="tema-nombre">Mezcla</span>
+              <span class="tema-pinta">Todo junto y que salga lo que salga</span>
+            </button>
+            @for (uno of temas; track uno.id) {
+              <button
+                type="button"
+                class="tema"
+                [class.elegido]="tema === uno.id"
+                [attr.aria-pressed]="tema === uno.id"
+                (click)="tema = uno.id"
+              >
+                <span class="tema-nombre">{{ uno.nombre }}</span>
+                <span class="tema-pinta">{{ uno.pinta }}</span>
+              </button>
+            }
+          </div>
+        </fieldset>
+
+        <fieldset class="bloque modos">
+          <legend>Cómo se juega</legend>
+          @for (opcion of modos; track opcion.id) {
+            <label class="modo" [class.elegido]="modo === opcion.id">
+              <input type="radio" name="modo" [value]="opcion.id" [(ngModel)]="modo" />
+              <span class="nombre">{{ opcion.nombre }}</span>
+              <span class="descripcion">{{ opcion.descripcion }}</span>
+            </label>
+          }
+        </fieldset>
+
+        <fieldset class="bloque reglas">
+          <legend>Reglas de la casa</legend>
+
+          <label class="regla">
+            <span class="etiqueta">Vueltas de pistas</span>
+            <select [(ngModel)]="vueltas">
+              <option [ngValue]="1">Una: una palabra cada uno</option>
+              <option [ngValue]="2">Dos: se habla dos veces</option>
+            </select>
+          </label>
+
+          <label class="regla">
+            <span class="etiqueta">Tiempo para discutir</span>
+            <select [(ngModel)]="segundosDebate">
+              <option [ngValue]="45">45 segundos</option>
+              <option [ngValue]="90">Minuto y medio</option>
+              <option [ngValue]="180">Tres minutos</option>
+              <option [ngValue]="0">Sin reloj: corta el anfitrión</option>
+            </select>
+          </label>
+
+          <label class="regla">
+            <span class="etiqueta">Bots en la mesa</span>
+            <select [(ngModel)]="bots">
+              <option [ngValue]="0">Ninguno, viene gente</option>
+              <option [ngValue]="2">Dos</option>
+              <option [ngValue]="3">Tres</option>
+              <option [ngValue]="5">Cinco</option>
+              <option [ngValue]="7">Siete</option>
+            </select>
+          </label>
+
+          <label class="regla" [class.apagada]="!cabenDos">
+            <span class="etiqueta">Impostores</span>
+            <select [(ngModel)]="impostores" [disabled]="!cabenDos">
+              <option [ngValue]="1">Uno</option>
+              <option [ngValue]="2">Dos</option>
+            </select>
+          </label>
+
+          @if (!cabenDos) {
+            <p class="nota">
+              Dos impostores piden seis en la mesa: con menos, media mesa miente y las pistas dejan
+              de significar nada.
+            </p>
+          }
+          @if (bots === 0) {
+            <p class="nota">
+              Sin bots hacen falta al menos tres personas. Comparte el enlace desde la mesa.
+            </p>
+          }
+        </fieldset>
+
+        <button type="button" class="accion" [disabled]="trabajando()" (click)="crear()">
+          {{ trabajando() ? 'Abriendo…' : 'Abrir la mesa' }}
+        </button>
+      </section>
+    } @else if (sesionResuelta()) {
+      <section class="panel">
+        <h2>Hace falta una cuenta para abrir una mesa</h2>
+        <p class="explicacion">
+          Solo para crearla: una sala sin dueño es una sala que nadie puede cerrar. Para jugar en
+          una mesa ajena basta con el enlace.
+        </p>
+        <a class="accion" routerLink="/auth">Entrar</a>
+      </section>
+    }
+  </div>
+</app-terminal-layout>
+
+<!--
+  Elegir cara. Es el mismo trozo para quien abre la mesa y para quien llega
+  invitado: se elige en la misma pantalla que el nombre, porque una pantalla
+  aparte para esto es una pantalla más antes de jugar.
+-->
+<ng-template #elegirCara>
+  <fieldset class="bloque">
+    <legend>Tu cara</legend>
+    <div class="caras">
+      @for (una of elenco; track una.id) {
+        <button
+          type="button"
+          class="cara"
+          [class.elegido]="cara === una.id"
+          [title]="una.pinta"
+          [attr.aria-pressed]="cara === una.id"
+          (click)="cara = una.id"
+        >
+          <img [src]="fotoDe(una.id)" [alt]="una.nombre" loading="lazy" />
+          <span class="cara-nombre">{{ una.nombre }}</span>
+        </button>
+      }
+    </div>
+    @if (elegida; as quien) {
+      <p class="pinta">{{ quien.pinta }}</p>
+    }
+  </fieldset>
+</ng-template>
