@@ -19,7 +19,7 @@
 - Capas en el servidor: `route → service → repository`, sin saltos.
 - Comentarios que justifican **por qué**, nunca narran **qué**. Ficheros por debajo de ~300 líneas.
 - Tests: Vitest, primero el que falla. Sin red, sin reloj real, sin base de datos en los unitarios. El azar entra por semilla.
-- `npm run lint` con el tope de avisos que diga `package.json` (el trinquete solo baja): el código nuevo no añade ni un aviso.
+- `npm run lint` limpio: cero errores y cero avisos, que es el listón desde que se saldó la deuda del código heredado.
 - Mensajes de commit en español, en una línea, contando el porqué del cambio (mira `git log`).
 
 **Comandos:**
