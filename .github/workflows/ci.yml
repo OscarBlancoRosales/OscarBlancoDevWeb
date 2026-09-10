@@ -27,6 +27,16 @@ jobs:
       - name: Tests
         run: npm test
 
+      # La web se publica compilada en modo producción, y ahí el compilador de
+      # Angular mira las plantillas contra los tipos de verdad. Sin esto, un
+      # `{{ modelo.campo }}` que no existe pasaba CI entero y solo reventaba en
+      # el despliegue, con la rama ya en main.
+      - name: La web compila para producción
+        run: npm run build -w @devweb/web
+
+      - name: Y el servidor empaqueta
+        run: npm run build -w @devweb/server
+
       # Las herramientas de mapas son deterministas: si su salida cambia sin que
       # nadie haya tocado la cartografía, algo se ha roto por el camino.
       - name: Los mapas generados siguen siendo los mismos
