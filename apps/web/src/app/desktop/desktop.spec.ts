@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../app.routes';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Desktop } from './desktop';
 import { DESKTOP_ITEMS, DesktopItem, GROUPS, gruposPara, itemsOf } from './desktop-items';
 import { ShellModeService } from './shell-mode.service';
@@ -48,6 +48,35 @@ describe('el escritorio', () => {
   it('se pintan todos los iconos que le tocan a quien mira', () => {
     const publicos = DESKTOP_ITEMS.filter((i) => !i.soloAdmin);
     expect(dom().querySelectorAll('.icon').length).toBe(publicos.length);
+  });
+
+  /** El botón de un icono, buscado por lo que se lee debajo. */
+  function iconoDe(id: string): HTMLButtonElement {
+    const etiqueta = desktop.label(item(id));
+    const boton = Array.from(dom().querySelectorAll<HTMLButtonElement>('.icon')).find(
+      (b) => b.querySelector('.icon-label')?.textContent.trim() === etiqueta,
+    );
+    if (!boton) throw new Error(`no se ve ningún icono que ponga «${etiqueta}»`);
+    return boton;
+  }
+
+  it('un clic abre el icono: aquí no hay nada que seleccionar antes', async () => {
+    // El doble clic es de los escritorios de verdad. En una web se siente roto:
+    // pulsas y no pasa nada.
+    iconoDe('uuid').click();
+    // El contenido de la ventana se carga a demanda, así que abrir no es
+    // inmediato: se espera a que aparezca en vez de suponer un tiempo.
+    await vi.waitFor(() => {
+      expect(desktop.state.windows.map((w) => w.id)).toEqual(['uuid']);
+    });
+  });
+
+  it('y quien lo pulse dos veces por costumbre no acaba con dos ventanas', async () => {
+    iconoDe('uuid').click();
+    iconoDe('uuid').click();
+    await vi.waitFor(() => {
+      expect(desktop.state.windows.length).toBe(1);
+    });
   });
 
   it('la barra de tareas está siempre, para poder volver de cualquier sitio', () => {
