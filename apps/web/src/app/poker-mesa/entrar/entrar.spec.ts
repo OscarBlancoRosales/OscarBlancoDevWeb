@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { of } from 'rxjs';
 import { EntrarEnLaMesa } from './entrar';
 import { MesaService } from '../mesa.service';
@@ -58,6 +58,10 @@ async function montar(seats: SeatInfo[], invitacion = 'sala-1') {
       },
     ],
   }).compileComponents();
+
+  // Sin sesión y sin invitación la puerta manda al login, y aquí no hay rutas
+  // que valgan: se corta la navegación para no llenar la salida de ruido.
+  vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
   const fixture: ComponentFixture<EntrarEnLaMesa> = TestBed.createComponent(EntrarEnLaMesa);
   fixture.detectChanges();
@@ -137,6 +141,7 @@ describe('cuando no hay mesa que mirar', () => {
       ],
     }).compileComponents();
 
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = TestBed.createComponent(EntrarEnLaMesa);
     fixture.detectChanges();
     await Promise.resolve();
@@ -144,5 +149,77 @@ describe('cuando no hay mesa que mirar', () => {
 
     const cogidas = (fixture.nativeElement as HTMLElement).querySelectorAll('.cara[disabled]');
     expect(cogidas).toHaveLength(0);
+  });
+});
+
+/**
+ * Abrir una mesa exige cuenta —alguien tiene que ser su dueño—, igual que en la
+ * versión clásica. Lo que no puede pasar es que quien no la tenga se quede
+ * mirando una pantalla sin nada que pulsar, que es lo que hacía antes.
+ */
+describe('la cuenta hace falta para abrir, no para sentarse', () => {
+  async function puerta(usuario: unknown, invitacion: string) {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EntrarEnLaMesa],
+      providers: [
+        provideRouter([]),
+        { provide: MesaService, useValue: {} },
+        { provide: AuthApiService, useValue: { settledUser$: of(usuario) } },
+        { provide: RoomsApiService, useValue: { info: () => Promise.resolve(sala([])) } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            snapshot: { queryParamMap: convertToParamMap(invitacion ? { sala: invitacion } : {}) },
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const router = TestBed.inject(Router);
+    const ido = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+    const fixture: ComponentFixture<EntrarEnLaMesa> = TestBed.createComponent(EntrarEnLaMesa);
+    fixture.detectChanges();
+    await Promise.resolve();
+    fixture.detectChanges();
+    return { fixture, ido };
+  }
+
+  function botones(fixture: ComponentFixture<EntrarEnLaMesa>): string[] {
+    return Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button.accion'),
+    ).map((b) => b.textContent.trim());
+  }
+
+  it('sin sesión y sin invitación, lleva al login y vuelve aquí', async () => {
+    const { ido } = await puerta(null, '');
+    expect(ido).toHaveBeenCalledWith(['/auth'], {
+      queryParams: { next: '/scrum-poker/entrar' },
+    });
+  });
+
+  it('pero con invitación no se pide cuenta: para eso te invitan', async () => {
+    const { fixture, ido } = await puerta(null, 'sala-1');
+    expect(ido).not.toHaveBeenCalled();
+    expect(botones(fixture)).toEqual(['Sentarme a la mesa']);
+  });
+
+  it('con sesión, el botón de abrir la mesa está a la vista', async () => {
+    const { fixture } = await puerta({ id: 'u1' }, '');
+    expect(botones(fixture)).toEqual(['Abrir la mesa']);
+  });
+
+  /** Si la sesión se cae estando aquí, tiene que quedar por dónde volver. */
+  it('y si no hay sesión, siempre hay un botón para identificarse', async () => {
+    const { fixture, ido } = await puerta(null, '');
+    ido.mockClear();
+    const boton = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll('button'),
+    ).find((b) => b.textContent.includes('Entrar con mi cuenta'));
+    expect(boton).toBeTruthy();
+    boton?.click();
+    expect(ido).toHaveBeenCalledWith(['/auth'], {
+      queryParams: { next: '/scrum-poker/entrar' },
+    });
   });
 });
