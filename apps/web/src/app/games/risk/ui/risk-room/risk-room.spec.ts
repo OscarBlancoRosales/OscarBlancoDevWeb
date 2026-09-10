@@ -234,7 +234,7 @@ describe('RiskRoom (la mesa)', () => {
 
   describe('empezar la partida cuando algo falla', () => {
     it('la alineación que se manda no lleva ningún undefined', async () => {
-      // Firebase lanza excepción con cualquier undefined, y un asiento humano no
+      // Un `undefined` no sobrevive al viaje por JSON, y un asiento humano no
       // tiene `botProfile`. Era lo que hacía que empezar online no hiciera nada.
       await component.fillWithBots();
       await wait();
@@ -757,7 +757,7 @@ describe('RiskRoom (la mesa)', () => {
 
     describe('colocar a toques', () => {
       it('varios toques mandan UNA sola acción', async () => {
-        // Un toque por acción serían tantas escrituras en Firebase como toques,
+        // Un toque por acción serían tantas escrituras en el servidor como toques,
         // y otras tantas líneas de registro: online iría a trompicones y el
         // historial quedaría ilegible.
         const game = TestBed.inject(RiskGameService);

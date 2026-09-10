@@ -2,7 +2,7 @@
  * Cliente de modelos de lenguaje para la IA del juego.
  *
  * Todo ocurre en el navegador: no hay backend. La clave de API la escribe el
- * usuario y se guarda SOLO en su localStorage; nunca viaja a Firebase ni se
+ * usuario y se guarda SOLO en su localStorage; nunca viaja al servidor ni se
  * comparte con el resto de la sala. Si no hay clave, el juego funciona igual
  * con el cerebro heurístico local, que es gratis y no necesita red.
  */

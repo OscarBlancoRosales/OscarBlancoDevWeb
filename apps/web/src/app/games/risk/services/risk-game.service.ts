@@ -33,7 +33,7 @@ import { DerivedGame, deriveGame, electHostSeatId, shouldSnapshot } from './risk
 /**
  * Cerebro de la mesa en el cliente.
  *
- * Une las tres piezas: el motor puro, la sala de Firebase y la IA. Además se
+ * Une las tres piezas: el motor puro, la sala del servidor y la IA. Además se
  * encarga del papel de *anfitrión*: el cliente elegido mueve los bots y guarda
  * los puntos de control. El resto solo miran y juegan lo suyo, con lo que nunca
  * hay dos clientes moviendo el mismo bot.

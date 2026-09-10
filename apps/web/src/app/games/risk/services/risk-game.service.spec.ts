@@ -48,7 +48,7 @@ function meta(config: Partial<GameConfig> = {}): RoomMeta {
 }
 
 /**
- * Una sala de Firebase de mentira: el registro de acciones ES la partida, igual
+ * Una sala remota de mentira: el registro de acciones ES la partida, igual
  * que en la de verdad. Trae dos averías a mano para provocar los cuelgues.
  */
 class SalaFalsa {

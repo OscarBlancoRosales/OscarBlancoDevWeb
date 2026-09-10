@@ -138,7 +138,7 @@ export interface PlayerState {
   kind: PlayerKind;
   /** Perfil de personalidad de la IA (solo bots). */
   botProfile?: BotProfile;
-  /** uid de Firebase (admins) o token local (invitados) para reservar el asiento. */
+  /** Id de la cuenta (admins) o token local (invitados) para reservar el asiento. */
   seatToken?: string;
   cards: Card[];
   eliminated: boolean;
@@ -415,7 +415,7 @@ export type GameAction =
   | UpgradeAction
   | UndoDeployAction;
 
-/** Entrada del log persistido en Firebase. */
+/** Entrada del log persistido en la sala. */
 export interface LoggedAction {
   /** Índice global, garantiza el orden en lockstep. */
   index: number;

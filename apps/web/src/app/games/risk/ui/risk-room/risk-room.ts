@@ -790,7 +790,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
    * Cuánto se espera desde el último toque antes de mandar la colocación.
    *
    * Los toques se acumulan y salen en una sola acción. Uno por toque serían
-   * tantas escrituras en Firebase como toques, y otras tantas líneas de
+   * tantas escrituras en el servidor como toques, y otras tantas líneas de
    * registro: online iría a trompicones y el historial quedaría ilegible.
    */
   readonly DEPLOY_FLUSH_MS = 350;

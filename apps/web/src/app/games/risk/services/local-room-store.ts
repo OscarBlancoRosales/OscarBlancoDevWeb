@@ -6,7 +6,7 @@ import { ChatEntry, LoggedActionEntry, RoomMeta, RoomSeat, RoomSnapshot } from '
  * Sala local, guardada en el propio navegador.
  *
  * Sirve para dos cosas muy concretas:
- *  - jugar contra los bots sin depender de Firebase (y sin cuenta);
+ *  - jugar contra los bots sin depender del servidor (y sin cuenta);
  *  - poder desplegar en GitHub Pages algo jugable aunque la base de datos no
  *    esté configurada.
  *

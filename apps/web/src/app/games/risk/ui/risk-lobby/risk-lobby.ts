@@ -205,7 +205,7 @@ export class RiskLobby implements OnInit, OnDestroy {
   /**
    * Crea la sala, se sienta como anfitrión y entra a la mesa.
    * `local` crea una partida que vive solo en este navegador: no necesita
-   * cuenta, ni red, ni que Firebase esté configurado.
+   * cuenta, ni red, ni que el servidor esté levantado.
    */
   async createRoom(local = false): Promise<void> {
     if (this.busy) return;
