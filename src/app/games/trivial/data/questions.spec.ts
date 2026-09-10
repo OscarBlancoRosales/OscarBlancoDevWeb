@@ -64,6 +64,15 @@ describe('banco de preguntas del trivial', () => {
     }
   });
 
+  it('las tandas seccionales etiquetan el hecho, no el hueco de ronda', () => {
+    const mix = TRIVIAL_QUESTIONS.filter((question) => question.id.includes('-secmix-'));
+    expect(mix.length).toBeGreaterThan(0);
+    for (const question of mix) {
+      expect(question.stem, question.id).toMatch(/^term:/);
+      expect(question.stem, question.id).not.toMatch(/secmix/);
+    }
+  });
+
   it('un mismo hecho no se pregunta en dos modos distintos', () => {
     const seen = new Map<string, string>();
     for (const question of TRIVIAL_QUESTIONS) {
