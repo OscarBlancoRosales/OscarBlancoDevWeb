@@ -78,7 +78,7 @@ export class CommandPalette {
     }
     if (event.key === 'Enter') {
       event.preventDefault();
-      const primero = this.results[0];
+      const primero = this.results.at(0);
       if (primero) this.choose(primero.id);
     }
   }

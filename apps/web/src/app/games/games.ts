@@ -90,6 +90,6 @@ export class Games {
 
   open(game: GameCard): void {
     if (!game.route) return;
-    this.router.navigate([game.route]);
+    void this.router.navigate([game.route]);
   }
 }

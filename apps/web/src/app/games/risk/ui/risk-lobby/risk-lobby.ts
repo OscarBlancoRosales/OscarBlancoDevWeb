@@ -86,7 +86,12 @@ export class RiskLobby implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  async ngOnInit(): Promise<void> {
+  ngOnInit(): void {
+    void this.arrancar();
+  }
+
+  /** Aparte de `ngOnInit` para poder esperarlo: el ciclo de Angular no espera. */
+  async arrancar(): Promise<void> {
     // La sesión de VERDAD, no una bandera del navegador.
     //
     // El resto del sitio mira `localStorage.auth_token`, que es un texto que
@@ -125,7 +130,7 @@ export class RiskLobby implements OnInit, OnDestroy {
   }
 
   /** El escenario del mapa elegido, si lo tiene. */
-  get scenario() {
+  get scenario(): GameMap['scenario'] | null {
     return this.selectedMap.scenario ?? null;
   }
 
@@ -174,7 +179,7 @@ export class RiskLobby implements OnInit, OnDestroy {
 
   /** Lleva a iniciar sesión y vuelve aquí después. */
   goToLoginForRoom(): void {
-    this.router.navigate(['/auth'], { queryParams: { next: '/juegos/risk' } });
+    void this.router.navigate(['/auth'], { queryParams: { next: '/juegos/risk' } });
   }
 
   async loadSavedRooms(): Promise<void> {
@@ -336,11 +341,11 @@ export class RiskLobby implements OnInit, OnDestroy {
   }
 
   goToGames(): void {
-    this.router.navigate(['/juegos']);
+    void this.router.navigate(['/juegos']);
   }
 
   goToLogin(): void {
-    this.router.navigate(['/auth'], { queryParams: { next: '/juegos/risk' } });
+    void this.router.navigate(['/auth'], { queryParams: { next: '/juegos/risk' } });
   }
 
   statusLabel(meta: RoomMeta): string {

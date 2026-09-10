@@ -195,7 +195,9 @@ export class ColorPicker {
       this.copied = true;
       setTimeout(() => { this.copied = false; this.cdr.detectChanges(); }, 1500);
       this.cdr.detectChanges();
-    } catch {}
+    } catch {
+      // Sin permiso de portapapeles no se puede hacer nada más.
+    }
   }
 
   randomColor(): void {

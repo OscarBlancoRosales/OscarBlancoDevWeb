@@ -180,7 +180,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
     // El título sale del icono si la sección tiene uno; si no, de la clave
     // que traiga la ruta, para que también cambie al cambiar de idioma.
     const item = DESKTOP_ITEMS.find((i) => i.id === id);
-    const suya = datos['titleKey'];
+    const suya: unknown = datos['titleKey'];
     const clave = item ? item.labelKey : typeof suya === 'string' ? suya : undefined;
     this.titleKeys[id] = clave;
     const titulo = clave

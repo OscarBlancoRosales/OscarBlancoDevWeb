@@ -65,7 +65,7 @@ export class LoremGenerator implements OnInit {
   }
 
   generate(): void {
-    const count = Math.max(1, Math.min(100, Number(this.amount) || 1));
+    const count = Math.max(1, Math.min(100, this.amount || 1));
 
     let trozos: string[];
     switch (this.type) {

@@ -59,7 +59,7 @@ describe('NameScreen (crear sala de Scrum Poker)', () => {
   describe('el idioma', () => {
     function texto(fixture: ComponentFixture<NameScreen>): string {
       fixture.detectChanges();
-      return (fixture.nativeElement as HTMLElement).textContent ?? '';
+      return (fixture.nativeElement as HTMLElement).textContent;
     }
 
     it('en español se lee en español', async () => {

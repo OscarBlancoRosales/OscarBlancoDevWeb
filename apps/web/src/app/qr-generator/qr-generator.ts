@@ -51,14 +51,16 @@ export class QrGenerator {
   /** Se dibuja solo mientras escribes; pulsar un botón para verlo sobra. */
   onTextChange(): void {
     if (this.pendiente) clearTimeout(this.pendiente);
-    this.pendiente = setTimeout(() => this.generateQR(), 260);
+    this.pendiente = setTimeout(() => {
+      void this.generateQR();
+    }, 260);
   }
 
   usePreset(id: string): void {
     const preset = this.presets.find((p) => p.id === id);
     if (!preset) return;
     this.inputText = preset.plantilla;
-    this.generateQR();
+    void this.generateQR();
   }
 
   async generateQR(): Promise<void> {
@@ -72,7 +74,7 @@ export class QrGenerator {
 
     try {
       this.qrDataUrl = await QRCode.toDataURL(texto, {
-        width: Number(this.size),
+        width: this.size,
         margin: 2,
         errorCorrectionLevel: this.correction,
         color: {

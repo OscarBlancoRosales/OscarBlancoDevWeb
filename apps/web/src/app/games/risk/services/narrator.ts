@@ -64,7 +64,7 @@ export class NarratorService {
    * Se puede sustituir en los tests, que es la única razón de que sea un campo
    * y no una llamada directa a `fetch`.
    */
-  fetchImpl: typeof fetch = globalThis.fetch?.bind(globalThis);
+  fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis);
 
   /**
    * Narra una línea. No espera a nada ni rompe nada si falla.

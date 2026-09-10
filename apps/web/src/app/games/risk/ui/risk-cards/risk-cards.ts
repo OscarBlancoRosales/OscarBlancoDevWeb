@@ -52,5 +52,5 @@ export class RiskCards {
     return this.cards.slice(0, 3);
   }
 
-  trackCard = (_: number, card: CardView) => card.id;
+  trackCard = (_: number, card: CardView): string => card.id;
 }

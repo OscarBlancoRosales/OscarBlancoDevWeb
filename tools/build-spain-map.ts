@@ -163,7 +163,7 @@ function moveToWindow(
   const dy = window.minLat - minY * scale;
 
   for (const id of ids) {
-    if (!features[id]) continue;
+    if (!(id in features)) continue;
     features[id] = mapMultiPolygon(features[id], ([x, y]) => [x * scale + dx, y * scale + dy]);
   }
 }
@@ -186,7 +186,7 @@ async function main(): Promise<void> {
     features[id] = cleaned;
   }
 
-  const missing = Object.values(PROVINCE_IDS).filter((id) => !features[id]);
+  const missing = Object.values(PROVINCE_IDS).filter((id) => !(id in features));
   if (missing.length > 0) throw new Error(`Faltan provincias en el origen: ${missing.join(', ')}`);
 
   // 2. Canarias al recuadro (todavía en grados).
@@ -345,7 +345,7 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

@@ -84,7 +84,7 @@ describe('la mesa del concurso', () => {
     sala.vista.set({ ...BASE, ...vista });
     fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
-    return (fixture.nativeElement as HTMLElement).textContent ?? '';
+    return (fixture.nativeElement as HTMLElement).textContent;
   }
 
   function botones(): HTMLButtonElement[] {

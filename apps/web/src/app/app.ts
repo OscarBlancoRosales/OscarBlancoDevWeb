@@ -7,4 +7,6 @@ import { RouterOutlet } from '@angular/router';
   template: '<router-outlet></router-outlet>',
   styles: []
 })
+/* eslint-disable-next-line @typescript-eslint/no-extraneous-class --
+   la raíz no tiene estado: su trabajo entero es montar el router-outlet. */
 export class App {}

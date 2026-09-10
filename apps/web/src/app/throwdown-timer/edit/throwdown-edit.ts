@@ -144,8 +144,8 @@ export class ThrowdownEdit implements OnInit {
   addStep(): void {
     const name = this.newStepName.trim();
     if (!name) { return; }
-    const minutes = Math.max(0, Math.floor(Number(this.newStepMinutes ?? 0)));
-    const seconds = Math.max(0, Math.min(59, Math.floor(Number(this.newStepSeconds ?? 0))));
+    const minutes = Math.max(0, Math.floor(this.newStepMinutes ?? 0));
+    const seconds = Math.max(0, Math.min(59, Math.floor(this.newStepSeconds ?? 0)));
     if (minutes === 0 && seconds === 0) { return; }
     this.editConfig = {
       ...this.editConfig,

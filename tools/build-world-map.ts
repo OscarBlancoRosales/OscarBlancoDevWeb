@@ -120,7 +120,7 @@ async function main(): Promise<void> {
     ];
     if (territory === 'UK') keys.push(...russianEuropean.map((name) => `sub:${name}`));
     unitsOf[territory] = keys.filter((key) => {
-      if (units[key]) return true;
+      if (key in units) return true;
       // Los códigos que no existen en esta edición de Natural Earth se avisan
       // pero no rompen la generación (hay alias y territorios discutidos).
       return false;
@@ -176,7 +176,9 @@ async function main(): Promise<void> {
       const key = id < other ? `${id}|${other}` : `${other}|${id}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      if (!touching[id]?.includes(other)) seaRoutes.push(id < other ? [id, other] : [other, id]);
+      if (!(id in touching) || !touching[id].includes(other)) {
+        seaRoutes.push(id < other ? [id, other] : [other, id]);
+      }
     }
   }
   seaRoutes.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
@@ -229,7 +231,7 @@ async function main(): Promise<void> {
   console.log(`Archivo: ${OUTPUT} (${Math.round(output.length / 1024)} kB)`);
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error(error);
   process.exit(1);
 });

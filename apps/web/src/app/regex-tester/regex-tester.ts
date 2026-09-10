@@ -96,8 +96,8 @@ export class RegexTester {
       html += this.escapeHtml(this.testInput.slice(lastIndex));
       this.highlightedHtml = this.sanitizer.bypassSecurityTrustHtml(html);
 
-    } catch (e: any) {
-      this.errorMessage = e.message || 'Regex inválida';
+    } catch (fallo: unknown) {
+      this.errorMessage = fallo instanceof Error ? fallo.message : 'Regex inválida';
     }
     this.cdr.detectChanges();
   }
@@ -127,6 +127,8 @@ export class RegexTester {
       this.copied = true;
       setTimeout(() => { this.copied = false; this.cdr.detectChanges(); }, 1500);
       this.cdr.detectChanges();
-    } catch {}
+    } catch {
+      // Sin permiso de portapapeles no se puede hacer nada más.
+    }
   }
 }

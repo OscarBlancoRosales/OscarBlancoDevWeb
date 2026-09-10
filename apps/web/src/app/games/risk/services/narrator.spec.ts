@@ -107,7 +107,7 @@ describe('narrador de la crónica', () => {
   describe('no se queda atrás', () => {
     it('si llega una crónica nueva mientras se genera, la vieja se tira', async () => {
       narrator.toggle();
-      let resolveFirst: (r: Response) => void = () => {};
+      let resolveFirst: (r: Response) => void = () => undefined;
       let first = true;
       narrator.fetchImpl = (async (url: string, init: RequestInit) => {
         calls.push({ url, body: JSON.parse(init.body as string) });

@@ -1,5 +1,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import type { AbstractControl } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { AuthApiService } from '../api/auth-api.service';
@@ -66,7 +67,7 @@ export class NameScreen implements OnInit, OnDestroy {
     this.sesion = this.auth.settledUser$.subscribe((user) => {
       this.isAdmin = !!user;
       if (!user) {
-        this.router.navigate(['/auth'], { queryParams: { next: '/name-screen' } });
+        void this.router.navigate(['/auth'], { queryParams: { next: '/name-screen' } });
         return;
       }
       this.generateRoomInfo();
@@ -78,7 +79,7 @@ export class NameScreen implements OnInit, OnDestroy {
     this.sesion?.unsubscribe();
   }
 
-  get playerName() {
+  get playerName(): AbstractControl | null {
     return this.nameForm.get('playerName');
   }
 

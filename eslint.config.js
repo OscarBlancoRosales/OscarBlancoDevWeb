@@ -31,43 +31,6 @@ const TS_EXTRA = {
   ],
 };
 
-/**
- * Código heredado: todo lo que ya existía antes del backend propio, esté donde
- * esté después de la mudanza al monorepo. El motor de RISK cambia de carpeta,
- * no de edad.
- */
-const LEGACY_TS = [
-  'apps/web/**/*.ts',
-  'src/**/*.ts',
-  'tools/**/*.ts',
-  'packages/shared/src/engine/**/*.ts',
-];
-const LEGACY_HTML = ['apps/web/**/*.html', 'src/**/*.html'];
-
-/**
- * Las mismas reglas, bajadas a aviso.
- *
- * Se derivan del conjunto en lugar de enumerarse porque una lista escrita a mano
- * se queda corta en cuanto el conjunto crece, y quedarse corta aquí significa un
- * error bloqueante inesperado en código heredado que nadie iba a tocar.
- */
-function asWarnings(configs) {
-  const merged = Object.assign({}, ...configs.map((config) => config.rules ?? {}));
-  const entries = Object.entries(merged)
-    .filter(([, level]) => level !== 'off' && level !== 0)
-    .map(([rule, level]) => [rule, Array.isArray(level) ? ['warn', ...level.slice(1)] : 'warn']);
-  return Object.fromEntries(entries);
-}
-
-/**
- * El código nuevo cumple las reglas o no entra. El heredado avisa y no bloquea.
- *
- * Aplicar `strictTypeChecked` de golpe sobre la web actual son más de mil
- * errores, la mayoría aserciones `!` e interpolaciones sin tipo. Ponerlos como
- * error deja el repositorio en rojo permanente, y un rojo permanente no lo mira
- * nadie: lo primero que se aprende es a ignorar el lint. Como aviso siguen a la
- * vista, y `--max-warnings` en CI impide que la cuenta suba.
- */
 export default tseslint.config(
   {
     ignores: [
@@ -92,22 +55,6 @@ export default tseslint.config(
     extends: [...angular.configs.templateRecommended],
     languageOptions: { parser: angular.templateParser },
   },
-  {
-    files: LEGACY_TS,
-    // La capa de API de la web es código nuevo, escrito ya bajo las reglas: no
-    // hereda la indulgencia del resto de apps/web.
-    ignores: ['apps/web/src/app/api/**/*.ts'],
-    rules: { ...asWarnings(TS_STRICT), ...asWarnings([{ rules: TS_EXTRA }]) },
-  },
-  {
-    files: LEGACY_HTML,
-    extends: [...angular.configs.templateRecommended],
-    languageOptions: { parser: angular.templateParser },
-    rules: asWarnings(angular.configs.templateRecommended),
-  },
-  // Va después del bloque heredado a propósito: en la configuración plana
-  // manda el último que habla, y el heredado vuelve a encender como aviso todo
-  // lo que se apague antes que él.
   /**
    * En una prueba, estas reglas no señalan un fallo: describen su oficio.
    *

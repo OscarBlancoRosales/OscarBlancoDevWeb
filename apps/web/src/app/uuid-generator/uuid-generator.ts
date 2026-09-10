@@ -30,7 +30,7 @@ export class UuidGenerator implements OnInit {
   }
 
   generate(): void {
-    const cuantos = Math.max(1, Math.min(100, Number(this.amount) || 1));
+    const cuantos = Math.max(1, Math.min(100, this.amount || 1));
     this.uuids = Array.from({ length: cuantos }, () =>
       formatUuid(makeUuid(this.version), {
         uppercase: this.uppercase,

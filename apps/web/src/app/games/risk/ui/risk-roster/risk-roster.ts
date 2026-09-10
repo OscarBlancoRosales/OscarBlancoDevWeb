@@ -122,6 +122,6 @@ export class RiskRoster {
     return this.rows.find((row) => row.id === this.openThread)?.askLabel ?? null;
   }
 
-  trackRow = (_: number, row: RosterRow) => row.id;
-  trackLine = (_: number, line: ChatLine) => line.key;
+  trackRow = (_: number, row: RosterRow): string => row.id;
+  trackLine = (_: number, line: ChatLine): string => line.key;
 }

@@ -57,7 +57,7 @@ export class Decoder {
   private encode(text: string): string {
     switch (this.mode) {
       case 'base64':
-        return btoa(unescape(encodeURIComponent(text)));
+        return btoa(String.fromCharCode(...new TextEncoder().encode(text)));
       case 'url':
         return encodeURIComponent(text);
       case 'html':
@@ -84,18 +84,21 @@ export class Decoder {
   private decode(text: string): string {
     switch (this.mode) {
       case 'base64':
-        return decodeURIComponent(escape(atob(text.trim())));
+        return new TextDecoder().decode(
+          Uint8Array.from(atob(text.trim()), (char) => char.charCodeAt(0)),
+        );
       case 'url':
         return decodeURIComponent(text);
-      case 'html':
+      case 'html': {
         const doc = new DOMParser().parseFromString(text, 'text/html');
-        return doc.body.textContent || '';
+        return doc.body.textContent;
+      }
       case 'hex':
         return text.trim().split(/\s+/).map(h => String.fromCharCode(parseInt(h, 16))).join('');
       case 'binary':
         return text.trim().split(/\s+/).map(b => String.fromCharCode(parseInt(b, 2))).join('');
       case 'unicode':
-        return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+        return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
       case 'jwt':
         return this.decodeJWT(text.trim());
       default:
@@ -109,8 +112,8 @@ export class Decoder {
       throw new Error('JWT inválido');
     }
 
-    const header = JSON.parse(atob(parts[0]));
-    const payload = JSON.parse(atob(parts[1]));
+    const header: unknown = JSON.parse(atob(parts[0]));
+    const payload: unknown = JSON.parse(atob(parts[1]));
 
     return JSON.stringify({ header, payload }, null, 2);
   }

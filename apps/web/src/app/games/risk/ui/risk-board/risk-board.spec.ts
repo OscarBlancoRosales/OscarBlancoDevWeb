@@ -44,7 +44,7 @@ describe('RiskBoard', () => {
   it('pinta la ficha con el número de ejércitos', () => {
     const texts = Array.from(
       fixture.nativeElement.querySelectorAll('text.badge-text') as NodeListOf<Element>,
-    ).map((el) => el.textContent?.trim());
+    ).map((el) => el.textContent.trim());
     expect(texts).toContain('5');
     expect(texts).toContain('4');
   });

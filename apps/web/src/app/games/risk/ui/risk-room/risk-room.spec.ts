@@ -88,7 +88,7 @@ describe('RiskRoom (la mesa)', () => {
   });
 
   afterEach(() => {
-    fixture?.destroy();
+    fixture.destroy();
     localStorage.clear();
   });
 

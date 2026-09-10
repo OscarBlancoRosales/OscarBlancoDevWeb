@@ -102,7 +102,7 @@ describe('RiskLobby', () => {
     localStorage.setItem('auth_token', 'me-lo-he-inventado');
     TestBed.resetTestingModule();
     const created = await createLobby();
-    await created.component.ngOnInit();
+    await created.component.arrancar();
     expect(created.component.isAdmin).toBe(false);
   });
 
@@ -113,7 +113,7 @@ describe('RiskLobby', () => {
       email: 'oscar@ejemplo.com',
       displayName: 'Óscar',
     });
-    await created.component.ngOnInit();
+    await created.component.arrancar();
     expect(created.component.isAdmin).toBe(true);
     expect(created.component.ownerUid()).toBe('uid-real');
     expect(created.component.ownerName()).toBe('Óscar');
@@ -349,7 +349,7 @@ describe('RiskLobby', () => {
     it('detecta el parámetro de sala', async () => {
       TestBed.resetTestingModule();
       const created = await createLobby({ room: 'LOCAL-NO-EXISTE' });
-      await created.component.ngOnInit();
+      await created.component.arrancar();
       expect(created.component.invitedRoomId).toBe('LOCAL-NO-EXISTE');
       expect(created.component.invitedError).toContain('ya no existe');
     });
@@ -362,7 +362,7 @@ describe('RiskLobby', () => {
 
       TestBed.resetTestingModule();
       const created = await createLobby({ room: roomId });
-      await created.component.ngOnInit();
+      await created.component.arrancar();
       expect(created.component.invitedRoom?.id).toBe(roomId);
       expect(created.component.invitedError).toBe('');
     });

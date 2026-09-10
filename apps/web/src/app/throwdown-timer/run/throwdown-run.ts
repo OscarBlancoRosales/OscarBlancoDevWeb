@@ -114,7 +114,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   // ── TIMER ─────────────────────────────────────────────────────────────────
 
   private loadStep(index: number): void {
-    const step = this.config().steps[index];
+    const step = this.config().steps.at(index);
     if (!step) { return; }
     this.currentStepIndex = index;
     this.stepTotalSeconds = this.stepSecs(step);
@@ -179,7 +179,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
     this.isRunning = false;
     const spent = this.isCurrentStepCountUp ? this.remainingSeconds : (this.stepTotalSeconds - this.remainingSeconds);
     this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - spent);
-    const prevStep = this.config().steps[this.currentStepIndex - 1];
+    const prevStep = this.config().steps.at(this.currentStepIndex - 1);
     if (prevStep) {
       this.totalElapsedSeconds = Math.max(0, this.totalElapsedSeconds - this.stepSecs(prevStep));
     }
@@ -283,9 +283,7 @@ export class ThrowdownRun implements OnInit, OnDestroy {
   // ── AUDIO ─────────────────────────────────────────────────────────────────
 
   private getAudioCtx(): AudioContext {
-    if (!this.audioCtx) {
-      this.audioCtx = new AudioContext();
-    }
+    this.audioCtx ??= new AudioContext();
     return this.audioCtx;
   }
 

@@ -108,7 +108,7 @@ export class Formatter {
   }
 
   private formatJSON(text: string): string {
-    const parsed = JSON.parse(text);
+    const parsed: unknown = JSON.parse(text);
     return JSON.stringify(parsed, null, this.indent);
   }
 
@@ -128,7 +128,7 @@ export class Formatter {
 
       formatted += indent.repeat(Math.max(0, pad)) + trimmed + '\n';
 
-      if ((/^<\w[^>]*[^\/]>.*$/.exec(trimmed)) && !(/^<\w[^>]*>.*<\/\w/.exec(trimmed))) {
+      if (/^<\w[^>]*[^/]>.*$/.exec(trimmed) && !/^<\w[^>]*>.*<\/\w/.exec(trimmed)) {
         pad++;
       }
     }

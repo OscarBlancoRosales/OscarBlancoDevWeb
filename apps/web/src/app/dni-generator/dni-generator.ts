@@ -27,7 +27,7 @@ export class DniGenerator implements OnInit {
   }
 
   generate(): void {
-    const cuantos = Math.max(1, Math.min(50, Number(this.amount) || 1));
+    const cuantos = Math.max(1, Math.min(50, this.amount || 1));
     this.items = Array.from({ length: cuantos }, () => makeDocument(this.kind));
     this.copiedIndex = -1;
     this.copiedAll = false;

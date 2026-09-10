@@ -132,7 +132,7 @@ describe('almacén de salas locales', () => {
     });
 
     it('update sobre una sala inexistente devuelve null', () => {
-      expect(new LocalRoomStore(fakeStorage()).update('LOCAL-NADA', () => {})).toBeNull();
+      expect(new LocalRoomStore(fakeStorage()).update('LOCAL-NADA', () => undefined)).toBeNull();
     });
   });
 

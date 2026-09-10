@@ -59,11 +59,17 @@ export class LocalRoomStore {
     try {
       const raw = this.storage.getItem(this.keyFor(roomId));
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as LocalRoomData;
-      parsed.seats = parsed.seats ?? {};
-      parsed.log = parsed.log ?? {};
-      parsed.chat = parsed.chat ?? {};
-      parsed.snapshot = parsed.snapshot ?? null;
+      const leido = JSON.parse(raw) as Partial<LocalRoomData>;
+      // Sin `meta` la sala no se puede ni pintar: es un resto de una versión
+      // vieja o de una escritura a medias.
+      if (!leido.meta) return null;
+      const parsed: LocalRoomData = {
+        meta: leido.meta,
+        seats: leido.seats ?? {},
+        log: leido.log ?? {},
+        chat: leido.chat ?? {},
+        snapshot: leido.snapshot ?? null,
+      };
       this.cache.set(roomId, parsed);
       return parsed;
     } catch {

@@ -413,6 +413,7 @@ export class RiskRoomService {
   async removeSeat(roomId: string, seatId: string): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.update(roomId, (data) => {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete data.seats[seatId];
       });
       this.emitLocal(roomId);
@@ -430,8 +431,8 @@ export class RiskRoomService {
   async updateSeat(roomId: string, seatId: string, changes: Partial<RoomSeat>): Promise<void> {
     if (isLocalRoomId(roomId)) {
       this.localStore?.update(roomId, (data) => {
-        const asiento = data.seats[seatId];
-        if (asiento) data.seats[seatId] = { ...asiento, ...changes };
+        if (!(seatId in data.seats)) return;
+        data.seats[seatId] = { ...data.seats[seatId], ...changes };
       });
       this.emitLocal(roomId);
       return;
@@ -530,8 +531,9 @@ export class RiskRoomService {
   }
 
   /** Guarda un punto de control. En red lo lleva el servidor, que es quien aplica. */
-  async writeSnapshot(roomId: string, upTo: number, state: GameState): Promise<void> {
+  writeSnapshot(roomId: string, upTo: number, state: GameState): Promise<void> {
     if (isLocalRoomId(roomId)) this.localStore?.setSnapshot(roomId, upTo, state);
+    return Promise.resolve();
   }
 
   // ===== CHAT =====
@@ -544,7 +546,7 @@ export class RiskRoomService {
    * cliente cualquiera podría firmar con el nombre de otro o publicar avisos
    * con la voz de la sala.
    */
-  async sendChat(
+  sendChat(
     roomId: string,
     entry: {
       authorId: string;
@@ -557,7 +559,7 @@ export class RiskRoomService {
     },
   ): Promise<void> {
     const text = entry.text.trim().slice(0, 600);
-    if (!text) return;
+    if (!text) return Promise.resolve();
 
     if (isLocalRoomId(roomId)) {
       this.localStore?.appendChat(roomId, {
@@ -570,7 +572,7 @@ export class RiskRoomService {
         ...(entry.to !== undefined && { to: entry.to }),
       });
       this.emitLocal(roomId);
-      return;
+      return Promise.resolve();
     }
 
     this.socket.decir(text, {
@@ -579,6 +581,7 @@ export class RiskRoomService {
       ...(entry.origin !== undefined && { origin: entry.origin }),
       ...(entry.to !== undefined && { para: entry.to }),
     });
+    return Promise.resolve();
   }
 
   // ===== MANTENIMIENTO =====
@@ -705,22 +708,25 @@ export class RiskRoomService {
 
   private guardarPase(roomId: string, seatToken: string, seatId = ''): void {
     const pases = this.pases();
-    pases[roomId] = { seatId: seatId || (pases[roomId]?.seatId ?? ''), seatToken };
+    pases[roomId] = { seatId: seatId || this.asientoDe(roomId), seatToken };
     browserStorage()?.setItem(PASES_KEY, JSON.stringify(pases));
   }
 
   private olvidarPase(roomId: string): void {
     const pases = this.pases();
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
     delete pases[roomId];
     browserStorage()?.setItem(PASES_KEY, JSON.stringify(pases));
   }
 
   private paseDe(roomId: string): string | null {
-    return this.pases()[roomId]?.seatToken ?? null;
+    const pases = this.pases();
+    return roomId in pases ? pases[roomId].seatToken : null;
   }
 
   private asientoDe(roomId: string): string {
-    return this.pases()[roomId]?.seatId ?? '';
+    const pases = this.pases();
+    return roomId in pases ? pases[roomId].seatId : '';
   }
 }
 
@@ -850,7 +856,7 @@ export function localSeatToken(storage: KeyValueStorage | undefined = browserSto
 function randomChunk(length: number): string {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const values = new Uint32Array(length);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+  if (typeof crypto !== 'undefined') {
     crypto.getRandomValues(values);
   } else {
     for (let i = 0; i < length; i++) values[i] = Math.floor(Math.random() * 0xffffffff);

@@ -40,42 +40,42 @@ export class Menu implements OnInit {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/']);
+    void this.router.navigate(['/']);
   }
 
   navigateToScrumPoker(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/auth']);
+    void this.router.navigate(['/auth']);
   }
 
   navigateToDniGenerator(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/dni-generator']);
+    void this.router.navigate(['/dni-generator']);
   }
 
   navigateToQrGenerator(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/qr-generator']);
+    void this.router.navigate(['/qr-generator']);
   }
 
   navigateToDecoder(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/decoder']);
+    void this.router.navigate(['/decoder']);
   }
 
   navigateToFormatter(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate(['/formatter']);
+    void this.router.navigate(['/formatter']);
   }
 
   clearSession(event: Event): void {

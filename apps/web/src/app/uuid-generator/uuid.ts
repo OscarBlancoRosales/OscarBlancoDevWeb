@@ -18,7 +18,7 @@ export interface UuidFormat {
 /** Bytes al azar, del navegador si se puede. */
 function randomBytes(n: number): Uint8Array {
   const bytes = new Uint8Array(n);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+  if (typeof crypto !== 'undefined') {
     crypto.getRandomValues(bytes);
     return bytes;
   }

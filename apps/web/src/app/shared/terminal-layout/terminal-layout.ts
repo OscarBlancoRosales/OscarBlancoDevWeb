@@ -118,11 +118,11 @@ export class TerminalLayout implements OnInit, AfterViewInit, OnDestroy {
     this.paletteOpen = false;
     const cmd = findCommand(id);
     if (cmd?.route) {
-      this.router.navigate([cmd.route]);
+      void this.router.navigate([cmd.route]);
       return;
     }
     // Lo que no es una sección (help, whoami...) se atiende en la terminal.
-    this.router.navigate(['/']);
+    void this.router.navigate(['/']);
   }
 
   toggleMenu(): void {
@@ -137,13 +137,13 @@ export class TerminalLayout implements OnInit, AfterViewInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate([path]);
+    void this.router.navigate([path]);
   }
 
   /** Volver a la terminal es salir de la herramienta, no cerrar nada. */
   goHome(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    this.router.navigate(['/']);
+    void this.router.navigate(['/']);
   }
 }

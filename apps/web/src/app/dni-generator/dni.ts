@@ -8,7 +8,7 @@
 export type DocKind = 'dni' | 'nie';
 
 const LETRAS = 'TRWAGMYFPDXBNJZSQVHLCKE';
-const PREFIJOS: Record<string, string> = { X: '0', Y: '1', Z: '2' };
+const PREFIJOS: Partial<Record<string, string>> = { X: '0', Y: '1', Z: '2' };
 
 /** Recibe el número (con prefijo de NIE si lo lleva) y devuelve su letra. */
 export function controlLetter(numero: string): string {

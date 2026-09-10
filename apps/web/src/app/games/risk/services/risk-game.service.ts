@@ -171,7 +171,7 @@ export class RiskGameService implements OnDestroy {
       this.stateSubject.next(derived.state);
       this.hostSubject.next(electHostSeatId(seats));
 
-      if (derived.state) this.afterStateUpdate(derived, snapshot?.upTo ?? 0);
+      if (derived.state) this.afterStateUpdate(derived, derived.state, snapshot?.upTo ?? 0);
     });
 
     this.chatSubscription = this.rooms.chat$.subscribe((chat) => {
@@ -237,7 +237,7 @@ export class RiskGameService implements OnDestroy {
   /** Lo que el modelo quiere, más lo que el bot haya prometido esta ronda. */
   private biasWithPacts(botId: string, round: number): StrategyBias | undefined {
     const pact = this.pacts.get(botId);
-    if (!pact || pact.round !== round || pact.avoid.length === 0) return this.currentBias;
+    if (pact?.round !== round || pact.avoid.length === 0) return this.currentBias;
     return { ...(this.currentBias ?? {}), avoid: pact.avoid };
   }
 
@@ -274,8 +274,7 @@ export class RiskGameService implements OnDestroy {
    * entero a base de mensajes, que es la partida que nadie quiere jugar.
    */
   private registerPact(botId: string, round: number, territories: TerritoryId[]): boolean {
-    const previo = this.pacts.get(botId);
-    if (previo && previo.round === round) return false;
+    if (this.pacts.get(botId)?.round === round) return false;
     this.pacts.set(botId, { round, avoid: [...territories] });
     return true;
   }
@@ -322,8 +321,11 @@ export class RiskGameService implements OnDestroy {
 
   // ===== TAREAS DEL ANFITRIÓN =====
 
-  private afterStateUpdate(derived: DerivedGame, snapshotUpTo: number): void {
-    const state = derived.state!;
+  private afterStateUpdate(
+    derived: DerivedGame,
+    state: GameState,
+    snapshotUpTo: number,
+  ): void {
     // En la sala de espera ya hay un estado calculado (para la vista previa),
     // pero nadie debe mover ficha hasta que se pulse "Empezar".
     if (this.meta?.status !== 'playing' && this.meta?.status !== 'finished') {
@@ -340,7 +342,7 @@ export class RiskGameService implements OnDestroy {
     }
 
     if (state.phase === 'game-over') {
-      if (this.meta?.status !== 'finished') void this.rooms.setStatus(this.roomId, 'finished');
+      if (this.meta.status !== 'finished') void this.rooms.setStatus(this.roomId, 'finished');
       this.thinkingSubject.next(null);
       return;
     }
@@ -397,7 +399,7 @@ export class RiskGameService implements OnDestroy {
   private async driveBots(state: GameState): Promise<void> {
     if (this.driving || !this.map) return;
     const player = currentPlayer(state);
-    if (!player || player.kind !== 'bot' || player.eliminated) {
+    if (player?.kind !== 'bot' || player.eliminated) {
       this.thinkingSubject.next(null);
       return;
     }
@@ -509,7 +511,7 @@ export class RiskGameService implements OnDestroy {
   private maybeAdvise(state: GameState): void {
     if (!this.map || !this.mySeatId) return;
     const player = currentPlayer(state);
-    if (!player || player.id !== this.mySeatId || player.kind !== 'human') return;
+    if (player?.id !== this.mySeatId || player.kind !== 'human') return;
 
     const key = `${state.round}:${state.currentPlayerIndex}:${state.phase}`;
     if (this.advisedTurnKey === key) return;

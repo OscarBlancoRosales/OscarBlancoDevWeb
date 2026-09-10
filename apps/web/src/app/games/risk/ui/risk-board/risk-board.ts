@@ -105,10 +105,6 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.rendered = renderMap(value);
     this.resetView();
   }
-  get map(): GameMap {
-    return this._map!;
-  }
-
   @Input() set state(value: GameState | null) {
     this._state = value;
     this.indexUnits();
@@ -304,9 +300,9 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     const viewport = this.viewportRef?.nativeElement;
     const svg = this.svgRef?.nativeElement;
     if (!territory || !viewport || !svg) return null;
-    const ctm = viewport.getScreenCTM?.();
-    const box = svg.getBoundingClientRect?.();
-    if (!ctm || !box) return null;
+    const ctm = matrizDePantalla(viewport);
+    const box = svg.getBoundingClientRect();
+    if (!ctm) return null;
     const x = ctm.a * territory.label.x + ctm.c * territory.label.y + ctm.e;
     const y = ctm.b * territory.label.x + ctm.d * territory.label.y + ctm.f;
     return { x: x - box.left, y: y - box.top };
@@ -429,8 +425,8 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
    */
   private zoomParaLlenar(): number {
     const caja = this.svgRef?.nativeElement.getBoundingClientRect();
-    const viewBox = this.rendered?.viewBox?.split(/[\s,]+/).map(Number);
-    if (!caja || !viewBox || viewBox.length !== 4 || !caja.width || !caja.height) return 1;
+    const viewBox = this.rendered?.viewBox.split(/[\s,]+/).map(Number);
+    if (!caja?.width || !caja.height || viewBox?.length !== 4) return 1;
     const [, , ancho, alto] = viewBox as [number, number, number, number];
     if (!ancho || !alto) return 1;
     const cabe = Math.min(caja.width / ancho, caja.height / alto);
@@ -441,8 +437,8 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
 
   /** Deja el centro del mapa en el centro de la pantalla tras acercar. */
   private centrarVista(): void {
-    const viewBox = this.rendered?.viewBox?.split(/[\s,]+/).map(Number);
-    if (!viewBox || viewBox.length !== 4) return;
+    const viewBox = this.rendered?.viewBox.split(/[\s,]+/).map(Number);
+    if (viewBox?.length !== 4) return;
     const [x, y, ancho, alto] = viewBox as [number, number, number, number];
     const centroX = x + ancho / 2;
     const centroY = y + alto / 2;
@@ -574,8 +570,8 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     });
   }
 
-  trackView = (_: number, view: TerritoryView) => view.id;
-  trackUnitView = (index: number, unit: TerritoryUnitView) => `${index}:${unit.glyph}`;
+  trackView = (_: number, view: TerritoryView): string => view.id;
+  trackUnitView = (index: number, unit: TerritoryUnitView): string => `${index}:${unit.glyph}`;
 
   /** Recalcula el cartel flotante. Se llama en los pocos sitios que lo cambian. */
   private updateTooltip(): void {
@@ -583,13 +579,14 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
       this.tooltip = null;
       return;
     }
-    const territory = this.rendered.byId[this.hovered];
-    if (!territory) {
+    if (!(this.hovered in this.rendered.byId)) {
       this.tooltip = null;
       return;
     }
+    const territory = this.rendered.byId[this.hovered];
     const ownerId = this.state?.territories[this.hovered]?.ownerId;
     const owner = this.state?.players.find((p) => p.id === ownerId);
+    const apuntando = this.selected;
     const aiming = this.isAiming(this.hovered);
     this.tooltip = {
       name: territory.name,
@@ -599,8 +596,8 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
       odds: this.hoveredOdds(),
       terrain: this.showTerrain ? TERRAIN_META[territory.terrain] : null,
       approach:
-        this.showTerrain && aiming && this._map
-          ? approachOf(this._map, this.selected!, this.hovered, this.originState())
+        this.showTerrain && aiming && this._map && apuntando
+          ? approachOf(this._map, apuntando, this.hovered, this.originState())
           : null,
       matchup: aiming ? this.matchupLines() : [],
     };
@@ -676,11 +673,12 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     for (const [id, territory] of Object.entries(state.territories)) {
       const counts = UNIT_KINDS.map((kind) => territory.units?.[kind] ?? 0);
       if (counts.every((count) => count === 0)) {
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
         delete this.unitSignatures[id];
         continue;
       }
       const signature = counts.join(',');
-      if (this.unitSignatures[id] === signature && this.unitsByTerritory[id]) {
+      if (this.unitSignatures[id] === signature && id in this.unitsByTerritory) {
         next[id] = this.unitsByTerritory[id];
         continue;
       }
@@ -786,7 +784,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.dragging = false;
     const tap = this.pendingTap;
     this.pendingTap = null;
-    if (!tap || tap.id !== id || tap.moved) {
+    if (tap?.id !== id || tap.moved) {
       this.lastGesture = tap?.moved ? 'dragged' : 'none';
       return;
     }
@@ -857,7 +855,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
    * mirando. Medido: 81 píxeles de desvío vertical en un móvil.
    */
   private toMapSpace(clientX: number, clientY: number): { x: number; y: number } | null {
-    const ctm = this.svgRef?.nativeElement.getScreenCTM?.();
+    const ctm = matrizDePantalla(this.svgRef?.nativeElement);
     if (!ctm) return null;
     const inversa = ctm.inverse();
     return {
@@ -1056,8 +1054,21 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
     this.pinchDistance = 0;
   };
 
-  trackTerritory = (_: number, territory: RenderedTerritory) => territory.id;
-  trackRoute = (_: number, route: { from: string; to: string }) => `${route.from}|${route.to}`;
+  trackTerritory = (_: number, territory: RenderedTerritory): string => territory.id;
+  trackRoute = (_: number, route: { from: string; to: string }): string =>
+    `${route.from}|${route.to}`;
+}
+
+/**
+ * La matriz que lleva del SVG a la pantalla, si el entorno la tiene.
+ *
+ * El tipo promete que `getScreenCTM` siempre está, y en un navegador es cierto.
+ * En jsdom no existe, así que se pregunta: sin ella no hay conversión posible y
+ * quien llama ya sabe qué hacer con un null.
+ */
+function matrizDePantalla(elemento: SVGGraphicsElement | undefined): DOMMatrix | null {
+  if (typeof elemento?.getScreenCTM !== 'function') return null;
+  return elemento.getScreenCTM();
 }
 
 function touchDistance(event: TouchEvent): number {

@@ -636,9 +636,9 @@ export class I18nService {
   }
 
   t(key: string, params?: Record<string, string | number>): string {
+    if (!(key in TRANSLATIONS)) return key;
     const entry = TRANSLATIONS[key];
-    if (!entry) return key;
-    let text = entry[this.currentLang] || entry.es || key;
+    let text = entry[this.currentLang] || entry.es;
     if (params) {
       for (const [k, v] of Object.entries(params)) {
         text = text.replace(`{${k}}`, String(v));

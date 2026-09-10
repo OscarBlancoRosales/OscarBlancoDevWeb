@@ -232,11 +232,11 @@ export class TimestampConverter implements OnInit, OnDestroy {
     const prefix = future ? 'en ' : 'hace ';
 
     if (abs < 60000) return future ? 'en unos segundos' : 'hace unos segundos';
-    if (abs < 3600000) return prefix + Math.floor(abs / 60000) + ' minutos';
-    if (abs < 86400000) return prefix + Math.floor(abs / 3600000) + ' horas';
-    if (abs < 2592000000) return prefix + Math.floor(abs / 86400000) + ' días';
-    if (abs < 31536000000) return prefix + Math.floor(abs / 2592000000) + ' meses';
-    return prefix + Math.floor(abs / 31536000000) + ' años';
+    if (abs < 3600000) return `${prefix}${Math.floor(abs / 60000)} minutos`;
+    if (abs < 86400000) return `${prefix}${Math.floor(abs / 3600000)} horas`;
+    if (abs < 2592000000) return `${prefix}${Math.floor(abs / 86400000)} días`;
+    if (abs < 31536000000) return `${prefix}${Math.floor(abs / 2592000000)} meses`;
+    return `${prefix}${Math.floor(abs / 31536000000)} años`;
   }
 
   async copyValue(value: string, label: string): Promise<void> {
@@ -245,7 +245,9 @@ export class TimestampConverter implements OnInit, OnDestroy {
       this.copiedLabel = label;
       setTimeout(() => { this.copiedLabel = ''; this.cdr.detectChanges(); }, 1500);
       this.cdr.detectChanges();
-    } catch {}
+    } catch {
+      // Sin permiso de portapapeles no se puede hacer nada más.
+    }
   }
 
   clear(): void {

@@ -37,7 +37,7 @@ describe('Console (la portada)', () => {
     fixture.detectChanges();
     return Array.from(
       fixture.nativeElement.querySelectorAll('.menu-dropdown .menu-item') as NodeListOf<HTMLElement>,
-    ).map((item) => item.textContent?.trim() ?? '');
+    ).map((item) => item.textContent.trim());
   }
 
   it('el menú ofrece la sección de juegos', () => {

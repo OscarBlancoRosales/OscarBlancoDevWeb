@@ -181,8 +181,8 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     private shell: ShellModeService,
   ) {
     this.history = this.readStored(HISTORY_KEY, [] as string[]);
-    this.gameBest = Number(this.readStored(SNAKE_BEST_KEY, 0)) || 0;
-    this.runBest = Number(this.readStored(RUN_BEST_KEY, 0)) || 0;
+    this.gameBest = this.readStored(SNAKE_BEST_KEY, 0);
+    this.runBest = this.readStored(RUN_BEST_KEY, 0);
   }
 
   ngOnInit(): void {
@@ -208,7 +208,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   private isTouch(): boolean {
     try {
-      return window.matchMedia?.('(pointer: coarse)').matches ?? false;
+      return window.matchMedia('(pointer: coarse)').matches;
     } catch {
       return false;
     }
@@ -284,8 +284,8 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       this.stopMatrix();
       return;
     }
-    if (this.game) { this.gameKey(event); return; }
-    if (this.run) { this.runKey(event); return; }
+    if (this.game) { this.gameKey(event, this.game); return; }
+    if (this.run) { this.runKey(event, this.run); return; }
     this.trackKonami(event);
 
     if (event.ctrlKey || event.metaKey) {
@@ -528,7 +528,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     this.say('muted', 'console.opening', { route });
     setTimeout(() => {
       this.navigating = false;
-      this.router.navigate([route]);
+      void this.router.navigate([route]);
       this.refresh();
     }, NAV_DELAY_MS);
   }
@@ -876,8 +876,8 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   }
 
   /** Mientras se juega, el teclado es del juego y no de la terminal. */
-  private gameKey(event: KeyboardEvent): void {
-    const teclas: Record<string, Dir> = {
+  private gameKey(event: KeyboardEvent, partida: SnakeState): void {
+    const teclas: Partial<Record<string, Dir>> = {
       ArrowUp: 'up',
       ArrowDown: 'down',
       ArrowLeft: 'left',
@@ -890,7 +890,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     const dir = teclas[event.key] ?? teclas[event.key.toLowerCase()];
     if (dir) {
       event.preventDefault();
-      this.game = turn(this.game!, dir);
+      this.game = turn(partida, dir);
       this.refresh();
       return;
     }
@@ -982,17 +982,17 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     return '♥'.repeat(Math.max(0, this.run.lives)).padEnd(3, '·');
   }
 
-  private runKey(event: KeyboardEvent): void {
+  private runKey(event: KeyboardEvent, carrera: RunnerState): void {
     const tecla = event.key.toLowerCase();
     if (event.key === ' ' || event.key === 'ArrowUp' || tecla === 'w') {
       event.preventDefault();
-      this.run = jump(this.run!);
+      this.run = jump(carrera);
       this.refresh();
       return;
     }
     if (event.key === 'ArrowDown' || tecla === 's') {
       event.preventDefault();
-      this.run = duck(this.run!, true);
+      this.run = duck(carrera, true);
       this.refresh();
       return;
     }
@@ -1089,10 +1089,10 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   toggleFullscreen(): void {
     if (document.fullscreenElement) {
-      document.exitFullscreen?.();
+      void document.exitFullscreen();
       return;
     }
-    document.documentElement.requestFullscreen?.().catch(() => {
+    document.documentElement.requestFullscreen().catch(() => {
       // Algunos navegadores lo bloquean sin gesto directo. No pasa nada.
     });
   }
@@ -1174,7 +1174,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     event.preventDefault();
     event.stopPropagation();
     this.menuOpen = false;
-    this.router.navigate([path]);
+    void this.router.navigate([path]);
   }
 
   describe(cmd: CommandDef): string {

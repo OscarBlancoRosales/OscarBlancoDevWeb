@@ -115,38 +115,32 @@ un valor por defecto cómodo para producción y un punto de entrada para el test
 
 ---
 
-## 7. El lint: el código nuevo cumple, el heredado no empeora
+## 7. El lint: cero errores y cero avisos
 
-`npm run lint` es el gate, y es el mismo en local y en CI.
+`npm run lint` es el gate, y es el mismo en local y en CI: `--max-warnings 0`.
+Un aviso rompe la rama igual que un error, así que no hay «ya lo miraré».
 
-**Errores (bloquean):** todo el conjunto `strictTypeChecked` sobre código nuevo.
-Cero tolerancia.
+No siempre fue así. Durante la mudanza al monorepo el código que venía de antes
+—`apps/web`, `tools` y el motor— llevaba las mismas reglas bajadas a aviso y un
+trinquete (`--max-warnings 1352`) que impedía que la cuenta subiera. Eso se
+terminó: los 1352 se arreglaron y el régimen especial se ha borrado de
+`eslint.config.js`. Lo que antes avisaba ahora es error en todo el repositorio.
 
-**Avisos (no bloquean, pero no pueden crecer):** las mismas reglas sobre el código
-que ya existía —`apps/web`, `tools` y el motor en `packages/shared`—. Son 1352 al
-escribir esto, y `--max-warnings 1352` impide que suban.
+**Lo que se aprendió arreglándolos**, porque va a volver a pasar:
 
-**El número lo dicta el CI, no tu máquina.** En Windows salen uno o dos menos
-que en Linux: alguna regla con tipos cuenta distinto según la plataforma. Si al
-bajarlo usas la cifra de tu portátil, el CI se queda por encima del tope y
-bloquea la rama entera. Cuando toques el tope, cógelo de la salida del CI.
-
-El motivo de no ponerlos como error es práctico: son más de mil, la mayoría
-aserciones `!` e interpolaciones sin tipo. Un repositorio en rojo permanente
-enseña a ignorar el lint, y entonces deja de servir para lo único que sirve, que
-es avisar de lo nuevo.
-
-**Cuando se arregla deuda, se baja el número.** El trinquete solo aprieta.
-
-La única vez que ha subido fue al mezclar veinte commits escritos en paralelo
-antes de que existieran estas reglas: 1023 → 1275. Eso no es aflojar el
-trinquete, es contar deuda que ya existía y que hasta entonces nadie medía.
-Subirlo por código nuevo escrito bajo las reglas sí sería aflojarlo, y no toca.
-
-Hay 44 avisos que `eslint --fix` arreglaría solo. No se han aplicado a propósito:
-algunos de esos arreglos —`||` a `??`, por ejemplo— cambian comportamiento en los
-casos límite, y esta fase se comprometió a no cambiar ninguno. Es una tarea
-propia, con sus tests delante.
+- La mitad eran `?.` y `!` que el lint daba por sobrantes **porque el tipo
+  miente**. `state.territories[id]` promete un territorio aunque no esté, y
+  `array[0]` promete un elemento aunque el array esté vacío: sin
+  `noUncheckedIndexedAccess`, TypeScript no lo dice. Dos veces quitamos una de
+  esas guardas y un test se puso en rojo: `canAttack` con un territorio que no
+  existe, y `getScreenCTM`, que en jsdom no está aunque el tipo jure que sí.
+  **Antes de borrar una comprobación, pregúntate quién le pasa ese dato.**
+  Si viene de fuera, la comprobación es buena: se escribe con `in`, que es
+  verdad, o con `.at(0)`, que devuelve `undefined` y no miente.
+- En una prueba, `!` y el acceso a estructuras sin tipo no son un descuido: son
+  su oficio. Esas reglas están apagadas para `**/*.spec.ts` y solo ahí.
+- `noUncheckedIndexedAccess` arreglaría la raíz de todo esto. Medido: 1190
+  errores nuevos. Es su propio proyecto, no un efecto colateral de otro.
 
 ---
 

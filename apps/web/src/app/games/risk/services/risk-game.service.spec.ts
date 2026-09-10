@@ -96,7 +96,9 @@ class SalaFalsa {
   async writeSnapshot(_room: string, upTo: number, state: unknown) {
     this.snapshot$.next({ upTo, state });
   }
-  async setStatus() {}
+  setStatus(): Promise<void> {
+    return Promise.resolve();
+  }
 }
 
 describe('RiskGameService: los bots no pueden dejar la mesa colgada', () => {

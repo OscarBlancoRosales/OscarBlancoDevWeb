@@ -41,7 +41,7 @@ describe('RiskRoster', () => {
   }
 
   function filaDe(nombre: string): HTMLElement {
-    return filas().find((f) => f.textContent?.includes(nombre))!;
+    return filas().find((f) => f.textContent.includes(nombre))!;
   }
 
   beforeEach(async () => {
