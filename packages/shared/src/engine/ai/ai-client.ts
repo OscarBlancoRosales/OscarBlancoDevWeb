@@ -262,6 +262,11 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
  * El plantón cuenta: un gratuito que no contesta en su plazo no va a contestar
  * mejor al insistirle, pero el siguiente de la cadena sí. Sin esto, un solo
  * modelo lento dejaba sin estrenar a los tres que había detrás.
+ *
+ * Y la respuesta vacía también: hay gratuitos que contestan 200 con el mensaje
+ * en blanco —visto en producción— y eso es un modelo que no sirve, no una
+ * avería del proveedor. Preguntar al siguiente cuesta menos que quedarse sin
+ * frase.
  */
 export function isRetryable(error: unknown): boolean {
   if (!(error instanceof AiError)) return false;
@@ -269,7 +274,8 @@ export function isRetryable(error: unknown): boolean {
     error.code === 'rate-limited' ||
     error.code === 'unavailable' ||
     error.code === 'retirado' ||
-    error.code === 'timeout'
+    error.code === 'timeout' ||
+    error.code === 'bad-response'
   );
 }
 

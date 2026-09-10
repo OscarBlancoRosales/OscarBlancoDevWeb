@@ -454,6 +454,22 @@ describe('cadena de reserva', () => {
     expect(seen).toHaveLength(2);
   });
 
+  it('un modelo que contesta en blanco deja paso al siguiente', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(JSON.parse(init.body as string).model);
+      return seen.length === 1
+        ? new Response(JSON.stringify({ choices: [{ message: {} }] }), {
+            headers: { 'content-type': 'application/json' },
+          })
+        : ok('este sí trae frase');
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('este sí trae frase');
+    expect(seen).toHaveLength(2);
+  });
+
   it('un error que no es saturación corta la cadena en seco', async () => {
     let calls = 0;
     const fetchImpl = (async () => {
