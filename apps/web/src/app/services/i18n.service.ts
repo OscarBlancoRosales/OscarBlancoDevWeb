@@ -179,6 +179,10 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'desk.groupHome': { es: 'Quién soy', en: 'Who I am' },
   'desk.groupTools': { es: 'Herramientas', en: 'Tools' },
   'desk.groupPlay': { es: 'Para jugar', en: 'To play' },
+  'desk.groupSystem': { es: 'Sistema', en: 'System' },
+  'desk.admin': { es: 'Administración', en: 'Administration' },
+  'desk.signIn': { es: 'Entrar en tu cuenta', en: 'Log in to your account' },
+  'desk.signOut': { es: 'Cerrar sesión', en: 'Log out' },
   'desk.account': { es: 'Cuenta', en: 'Account' },
 
   // === SCRUM POKER ===

@@ -15,7 +15,9 @@ import { filter, Subscription } from 'rxjs';
 import { I18nService } from '../services/i18n.service';
 import { ThemeService } from '../services/theme.service';
 import { findCommand } from '../console/commands';
-import { DesktopItem, DESKTOP_ITEMS, GROUPS, ItemGroup, itemsOf } from './desktop-items';
+import { DesktopItem, DESKTOP_ITEMS, gruposPara, ItemGroup, itemsOf } from './desktop-items';
+import { AuthApiService } from '../api/auth-api.service';
+import type { PublicUser } from '@devweb/shared/contracts/auth';
 import { DesktopWindow } from './desktop-window/desktop-window';
 import { ShellModeService } from './shell-mode.service';
 import { Taskbar } from './taskbar/taskbar';
@@ -82,8 +84,16 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
   runs: Record<string, string | undefined> = {};
 
   readonly items = DESKTOP_ITEMS;
-  readonly groups = GROUPS;
   mobile = false;
+
+  /**
+   * Quién está dentro, una vez se sabe de verdad.
+   *
+   * Sale de `settledUser$` y no de `user$` porque este último vale null
+   * mientras se comprueba la sesión guardada: con él, al recargar la página el
+   * icono del panel aparecería y se iría medio segundo después.
+   */
+  usuario: PublicUser | null = null;
   /**
    * La ventana que hospeda la sección de la dirección, si la hay. Es la que
    * lleva dentro el `<router-outlet>`, y por eso manda sobre el contenido
@@ -100,6 +110,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
 
   private navegacion?: Subscription;
   private idioma?: Subscription;
+  private sesion?: Subscription;
 
   @ViewChild('area') private area?: ElementRef<HTMLElement>;
 
@@ -108,9 +119,19 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private shell: ShellModeService,
+    private auth: AuthApiService,
     public i18n: I18nService,
     public themes: ThemeService,
   ) {}
+
+  /** Si quien mira administra. Decide qué se pinta, nunca qué se puede hacer. */
+  get esAdmin(): boolean {
+    return this.usuario?.role === 'admin';
+  }
+
+  get groups(): { id: ItemGroup; labelKey: string }[] {
+    return gruposPara(this.esAdmin);
+  }
 
   ngOnInit(): void {
     this.shell.embedded.set(true);
@@ -127,6 +148,25 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
     this.idioma = this.i18n.langChange$.subscribe(() => {
       this.retitle();
     });
+    // Sin zone.js nadie repinta al volver la respuesta: hay que avisar.
+    this.sesion = this.auth.settledUser$.subscribe((usuario) => {
+      this.usuario = usuario;
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+    });
+  }
+
+  /** Abre la ventana de acceso. Es la misma pantalla de siempre. */
+  entrar(): void {
+    void this.router.navigate(['/auth']);
+  }
+
+  async salir(): Promise<void> {
+    await this.auth.salir();
+    // El panel se cierra con la sesión: dejarlo abierto enseñaría datos de
+    // una sesión que ya no existe hasta que alguien lo cerrase a mano.
+    if (this.state.windows.some((w) => w.id === 'admin')) this.closeWindow('admin');
+    this.cdr.detectChanges();
   }
 
   /** Vuelve a traducir el nombre de todo lo que hay abierto. */
@@ -150,6 +190,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     this.navegacion?.unsubscribe();
     this.idioma?.unsubscribe();
+    this.sesion?.unsubscribe();
     // Al salir del escritorio las herramientas vuelven a traer su propia
     // ventana: si no, una ruta suelta se quedaría sin barra de título.
     this.shell.embedded.set(false);
@@ -314,7 +355,7 @@ export class Desktop implements OnInit, AfterViewInit, OnDestroy {
 
   /** Los iconos de una zona, para pintarlas por separado. */
   itemsOf(group: ItemGroup): DesktopItem[] {
-    return itemsOf(group);
+    return itemsOf(group, this.esAdmin);
   }
 
   label(item: DesktopItem): string {

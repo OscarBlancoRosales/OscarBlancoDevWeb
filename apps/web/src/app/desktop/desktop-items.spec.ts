@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   DESKTOP_ITEMS,
   DesktopItem,
+  gruposPara,
   itemRoute,
+  itemsOf,
   searchItems,
   startMenuItems,
 } from './desktop-items';
@@ -85,7 +87,8 @@ describe('a dónde lleva cada icono', () => {
 
 describe('el menú de inicio', () => {
   it('ofrece todo lo que hay en el escritorio', () => {
-    expect(startMenuItems().length).toBeGreaterThanOrEqual(DESKTOP_ITEMS.length);
+    // Con la sesión de quien administra, que es quien ve el catálogo entero.
+    expect(startMenuItems(true).length).toBeGreaterThanOrEqual(DESKTOP_ITEMS.length);
   });
 
   it('incluye el cronómetro escondido, que por comando sí se llega', () => {
@@ -120,5 +123,58 @@ describe('el buscador de la barra', () => {
 
   it('no ofrece lo que está escondido del menú', () => {
     expect(searchItems('throwdown', tal)).toEqual([]);
+  });
+});
+
+/**
+ * El panel de administración no se anuncia.
+ *
+ * Para quien no manda, el servidor contesta 404 a todo `/admin`: enseñar el
+ * icono sería poner el cartel que ese 404 evita. Y esto solo decide si se
+ * pinta un botón —el rol se comprueba en cada petición contra la base—, así
+ * que fabricarse un `role: admin` en el navegador no abre ninguna puerta.
+ */
+describe('lo que solo ve quien administra', () => {
+  const soloAdmin = DESKTOP_ITEMS.filter((i) => i.soloAdmin);
+
+  it('hay algo marcado como suyo, y el panel está', () => {
+    expect(soloAdmin.map((i) => i.id)).toContain('admin');
+  });
+
+  it('sin sesión de administrador, sus iconos no se pintan', () => {
+    for (const item of soloAdmin) {
+      expect(itemsOf(item.group, false).map((i) => i.id), item.id).not.toContain(item.id);
+    }
+  });
+
+  it('con ella, sí', () => {
+    for (const item of soloAdmin) {
+      expect(itemsOf(item.group, true).map((i) => i.id), item.id).toContain(item.id);
+    }
+  });
+
+  /** Una zona vacía con su título sería el mismo cartel, más discreto. */
+  it('la zona que los aloja tampoco aparece si se queda vacía', () => {
+    const suyas = new Set(soloAdmin.map((i) => i.group));
+    for (const grupo of suyas) {
+      expect(gruposPara(false).map((g) => g.id), grupo).not.toContain(grupo);
+      expect(gruposPara(true).map((g) => g.id), grupo).toContain(grupo);
+    }
+  });
+
+  it('ni salen en el menú de inicio ni se encuentran buscándolos', () => {
+    const t = (clave: string) => clave;
+    for (const item of soloAdmin) {
+      expect(startMenuItems(false).map((i) => i.id), item.id).not.toContain(item.id);
+      expect(searchItems(item.id, t, false).map((i) => i.id), item.id).not.toContain(item.id);
+
+      expect(startMenuItems(true).map((i) => i.id), item.id).toContain(item.id);
+      expect(searchItems(item.id, t, true).map((i) => i.id), item.id).toContain(item.id);
+    }
+  });
+
+  it('y el panel abre donde tiene que abrir', () => {
+    const panel = DESKTOP_ITEMS.find((i) => i.id === 'admin');
+    expect(panel && itemRoute(panel)).toBe('/admin');
   });
 });

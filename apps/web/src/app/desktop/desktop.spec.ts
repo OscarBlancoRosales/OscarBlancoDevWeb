@@ -4,8 +4,12 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { routes } from '../app.routes';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Desktop } from './desktop';
-import { DESKTOP_ITEMS, DesktopItem, GROUPS, itemsOf } from './desktop-items';
+import { DESKTOP_ITEMS, DesktopItem, GROUPS, gruposPara, itemsOf } from './desktop-items';
 import { ShellModeService } from './shell-mode.service';
+import { AuthApiService } from '../api/auth-api.service';
+import { I18nService } from '../services/i18n.service';
+import { BehaviorSubject } from 'rxjs';
+import type { PublicUser } from '@devweb/shared/contracts/auth';
 
 /**
  * El escritorio es la puerta de entrada: si esto se rompe, la web no se abre.
@@ -41,8 +45,9 @@ describe('el escritorio', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('se pintan todos los iconos', () => {
-    expect(dom().querySelectorAll('.icon').length).toBe(DESKTOP_ITEMS.length);
+  it('se pintan todos los iconos que le tocan a quien mira', () => {
+    const publicos = DESKTOP_ITEMS.filter((i) => !i.soloAdmin);
+    expect(dom().querySelectorAll('.icon').length).toBe(publicos.length);
   });
 
   it('la barra de tareas está siempre, para poder volver de cualquier sitio', () => {
@@ -142,25 +147,29 @@ describe('el escritorio', () => {
    * Dieciséis iconos en fila son una lista; por zonas se lee de un vistazo.
    */
   describe('las zonas del escritorio', () => {
-    it('se pinta una banda por zona', () => {
-      expect(dom().querySelectorAll('.zone').length).toBe(GROUPS.length);
+    // Sin sesión, que es como llega cualquiera: la zona de sistema no está.
+    it('se pinta una banda por zona de las que le tocan a quien mira', () => {
+      expect(dom().querySelectorAll('.zone').length).toBe(gruposPara(false).length);
     });
 
     it('cada banda lleva su nombre', () => {
       const titulos = Array.from(dom().querySelectorAll('.zone-title')).map(
         (t) => t.textContent.trim(),
       );
-      expect(titulos).toEqual(GROUPS.map((g) => desktop.i18n.t(g.labelKey)));
+      expect(titulos).toEqual(gruposPara(false).map((g) => desktop.i18n.t(g.labelKey)));
     });
 
     it('entre todas las zonas están todos los iconos, sin repetir ninguno', () => {
-      const repartidos = GROUPS.flatMap((g) => itemsOf(g.id)).map((i) => i.id);
+      const repartidos = GROUPS.flatMap((g) => itemsOf(g.id, true)).map((i) => i.id);
       expect(repartidos.sort()).toEqual(DESKTOP_ITEMS.map((i) => i.id).sort());
     });
 
-    it('ninguna zona se queda vacía', () => {
-      for (const g of GROUPS) {
-        expect(itemsOf(g.id).length, g.id).toBeGreaterThan(0);
+    it('ninguna zona se queda vacía de las que se pintan', () => {
+      for (const g of gruposPara(true)) {
+        expect(itemsOf(g.id, true).length, g.id).toBeGreaterThan(0);
+      }
+      for (const g of gruposPara(false)) {
+        expect(itemsOf(g.id, false).length, g.id).toBeGreaterThan(0);
       }
     });
   });
@@ -316,5 +325,92 @@ describe('el escritorio', () => {
       expect(desktop.active?.id).toBe('uuid');
       expect(desktop.state.windows.find((w) => w.id === 'uuid')?.minimized).toBe(false);
     });
+  });
+});
+
+/**
+ * El panel de administración aparece con la sesión y se va con ella.
+ *
+ * Es lo único del escritorio que no ve todo el mundo. Y es maquillaje: el
+ * servidor comprueba el rol en cada petición y contesta 404 a quien no lo
+ * tenga, así que esto solo decide si se enseña la puerta, no si se abre.
+ */
+describe('el panel de quien administra', () => {
+  let fixture: ComponentFixture<Desktop>;
+  let quien: BehaviorSubject<PublicUser | null>;
+  let salidas: number;
+
+  const JEFE: PublicUser = {
+    id: 'u1',
+    email: 'jefe@ejemplo.com',
+    displayName: 'Óscar',
+    status: 'active',
+    role: 'admin',
+  };
+  const ANA: PublicUser = { ...JEFE, id: 'u2', email: 'ana@ejemplo.com', role: 'user' };
+
+  beforeEach(async () => {
+    localStorage.clear();
+    quien = new BehaviorSubject<PublicUser | null>(null);
+    salidas = 0;
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Desktop],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthApiService,
+          useValue: {
+            settledUser$: quien.asObservable(),
+            salir: () => {
+              salidas += 1;
+              quien.next(null);
+              return Promise.resolve();
+            },
+          },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Desktop);
+    // El idioma lo decide el navegador y jsdom dice inglés: aquí se lee en
+    // castellano, como el resto de las pruebas.
+    TestBed.inject(I18nService).setLang('es');
+    fixture.detectChanges();
+  });
+
+  const iconos = (): string[] =>
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.icon-label')).map((e) =>
+      e.textContent.trim(),
+    );
+
+  it('sin sesión no está, ni su zona', () => {
+    expect(iconos()).not.toContain('Administración');
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Sistema');
+  });
+
+  it('con una cuenta normal tampoco', () => {
+    quien.next(ANA);
+    fixture.detectChanges();
+
+    expect(iconos()).not.toContain('Administración');
+  });
+
+  it('con la de quien administra, sí', () => {
+    quien.next(JEFE);
+    fixture.detectChanges();
+
+    expect(iconos()).toContain('Administración');
+  });
+
+  it('y al cerrar sesión desaparece solo', async () => {
+    quien.next(JEFE);
+    fixture.detectChanges();
+    expect(iconos()).toContain('Administración');
+
+    await fixture.componentInstance.salir();
+    fixture.detectChanges();
+
+    expect(salidas).toBe(1);
+    expect(iconos()).not.toContain('Administración');
   });
 });

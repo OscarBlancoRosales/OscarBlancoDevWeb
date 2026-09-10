@@ -16,14 +16,25 @@ export type ItemKind = 'section' | 'terminal';
  * una lista; repartidos por temas se leen de un vistazo: quién soy, con qué
  * trabajar y con qué jugar.
  */
-export type ItemGroup = 'casa' | 'herramientas' | 'juegos';
+export type ItemGroup = 'casa' | 'herramientas' | 'juegos' | 'sistema';
 
 /** Las zonas, en el orden en que se pintan de izquierda a derecha. */
 export const GROUPS: { id: ItemGroup; labelKey: string }[] = [
   { id: 'casa', labelKey: 'desk.groupHome' },
   { id: 'herramientas', labelKey: 'desk.groupTools' },
   { id: 'juegos', labelKey: 'desk.groupPlay' },
+  { id: 'sistema', labelKey: 'desk.groupSystem' },
 ];
+
+/**
+ * Las zonas que se pintan para quien está mirando.
+ *
+ * Una zona sin iconos no se enseña: un título «Sistema» encima de un hueco
+ * sería el mismo cartel que se quiere evitar, solo que más raro.
+ */
+export function gruposPara(esAdmin: boolean): { id: ItemGroup; labelKey: string }[] {
+  return GROUPS.filter((grupo) => itemsOf(grupo.id, esAdmin).length > 0);
+}
 
 export interface DesktopItem {
   id: string;
@@ -36,6 +47,22 @@ export interface DesktopItem {
   group: ItemGroup;
   /** Para los de sección: el comando del registro del que sale la ruta. */
   command?: string;
+  /**
+   * A dónde va, cuando no sale del registro de comandos.
+   *
+   * El panel de administración no tiene comando a propósito: anunciarlo en la
+   * consola es justo lo que su 404 evita.
+   */
+  route?: string;
+  /**
+   * Solo se pinta si quien mira administra.
+   *
+   * Es maquillaje, no seguridad: el servidor comprueba el rol contra la base
+   * en cada petición y contesta 404 a quien no lo tenga. Esto solo evita
+   * enseñar un botón que iba a acabar en un 404 — y, sobre todo, evita
+   * anunciar que ese botón existe.
+   */
+  soloAdmin?: boolean;
   /** Para los de terminal: lo que se escribe solo al abrirla. */
   run?: string;
   /** Tamaño con el que se abre la ventana, si el de por defecto no le sirve. */
@@ -72,14 +99,32 @@ export const DESKTOP_ITEMS: DesktopItem[] = [
   { id: 'timestamp', group: 'herramientas', labelKey: 'desk.timestamp', glyph: '◷', kind: 'section', command: 'timestamp' },
   { id: 'uuid', group: 'herramientas', labelKey: 'desk.uuid', glyph: '#', kind: 'section', command: 'uuid' },
   { id: 'iconos', group: 'herramientas', labelKey: 'desk.icons', glyph: '▣', kind: 'section', command: 'iconos' },
+
+  // --- Sistema: solo para quien administra ---
+  {
+    id: 'admin',
+    group: 'sistema',
+    labelKey: 'desk.admin',
+    glyph: '⚙',
+    kind: 'section',
+    route: '/admin',
+    soloAdmin: true,
+    width: 980,
+    height: 640,
+  },
 ];
+
+/** Lo que puede ver quien está mirando, administre o no. */
+function visibles(esAdmin: boolean): DesktopItem[] {
+  return DESKTOP_ITEMS.filter((item) => !item.soloAdmin || esAdmin);
+}
 
 /**
  * Los iconos de una zona, en el orden del catálogo. El escritorio los pinta
  * en bandas para que no haya que leerse dieciséis nombres seguidos.
  */
-export function itemsOf(group: ItemGroup): DesktopItem[] {
-  return DESKTOP_ITEMS.filter((i) => i.group === group);
+export function itemsOf(group: ItemGroup, esAdmin = false): DesktopItem[] {
+  return visibles(esAdmin).filter((i) => i.group === group);
 }
 
 /**
@@ -87,7 +132,7 @@ export function itemsOf(group: ItemGroup): DesktopItem[] {
  * lanzan un comando no tienen sitio propio: se atienden en la terminal.
  */
 export function itemRoute(item: DesktopItem): string {
-  return findCommand(item.command ?? '')?.route ?? '/terminal';
+  return item.route ?? findCommand(item.command ?? '')?.route ?? '/terminal';
 }
 
 /**
@@ -95,9 +140,11 @@ export function itemRoute(item: DesktopItem): string {
  * sección nueva aparece en los dos sitios a la vez. Lo que está escondido del
  * menú de comandos sigue escondido aquí: se llega escribiéndolo.
  */
-export function startMenuItems(): DesktopItem[] {
+export function startMenuItems(esAdmin = false): DesktopItem[] {
   const anunciadas = new Set(navCommands().map((c) => c.id));
-  return DESKTOP_ITEMS.filter((i) => i.kind === 'terminal' || anunciadas.has(i.command ?? ''));
+  return visibles(esAdmin).filter(
+    (i) => i.kind === 'terminal' || i.route !== undefined || anunciadas.has(i.command ?? ''),
+  );
 }
 
 /**
@@ -106,11 +153,15 @@ export function startMenuItems(): DesktopItem[] {
  * cualquiera de sus alias, para que dé igual si buscas «fechas», «timestamp»
  * o «epoch».
  */
-export function searchItems(query: string, t: (clave: string) => string): DesktopItem[] {
+export function searchItems(
+  query: string,
+  t: (clave: string) => string,
+  esAdmin = false,
+): DesktopItem[] {
   const q = query.trim().toLowerCase();
-  if (!q) return startMenuItems();
+  if (!q) return startMenuItems(esAdmin);
 
-  return startMenuItems().filter((item) => {
+  return startMenuItems(esAdmin).filter((item) => {
     const cmd = item.command ? findCommand(item.command) : undefined;
     const candidatos = [
       item.id,

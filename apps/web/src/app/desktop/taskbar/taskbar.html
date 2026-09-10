@@ -79,8 +79,24 @@
     </div>
 
     <div class="menu-foot">
-      <span class="menu-user">Oscar Blanco Rosales</span>
-      <span class="menu-sub">{{ i18n.t('desk.menuSub') }}</span>
+      @if (usuario) {
+        <button class="menu-cuenta" (click)="salirDeLaCuenta()" [title]="i18n.t('desk.signOut')">
+          <span class="menu-avatar" aria-hidden="true">☻</span>
+          <span class="menu-quien">
+            <span class="menu-user">{{ usuario.displayName }}</span>
+            <span class="menu-sub">{{ i18n.t('desk.signOut') }}</span>
+          </span>
+          <span class="menu-power" aria-hidden="true">⏻</span>
+        </button>
+      } @else {
+        <button class="menu-cuenta" (click)="entrarEnLaCuenta()" [title]="i18n.t('desk.signIn')">
+          <span class="menu-avatar" aria-hidden="true">☻</span>
+          <span class="menu-quien">
+            <span class="menu-user">Oscar Blanco Rosales</span>
+            <span class="menu-sub">{{ i18n.t('desk.signIn') }}</span>
+          </span>
+        </button>
+      }
     </div>
   </div>
 }

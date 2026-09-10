@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { I18nService } from '../../services/i18n.service';
 import { Taskbar } from './taskbar';
+import type { PublicUser } from '@devweb/shared/contracts/auth';
 
 /**
  * La barra de tareas es lo único que está siempre a la vista, así que es
@@ -160,5 +161,83 @@ describe('la barra de tareas', () => {
       bar.toggled.emit('qr');
       expect(tocada).toBe('qr');
     });
+  });
+});
+
+/**
+ * En un escritorio, la sesión vive al pie del menú de inicio. Aquí igual: no
+ * hay icono en el fondo porque quien pasa por la web no tiene por qué ver una
+ * puerta que no le sirve, y quien la busca sabe dónde mirar.
+ */
+describe('la cuenta, al pie del menú de inicio', () => {
+  let fixture: ComponentFixture<Taskbar>;
+  let bar: Taskbar;
+
+  const JEFE: PublicUser = {
+    id: 'u1',
+    email: 'jefe@ejemplo.com',
+    displayName: 'Óscar',
+    status: 'active',
+    role: 'admin',
+  };
+
+  beforeEach(async () => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [Taskbar] }).compileComponents();
+    fixture = TestBed.createComponent(Taskbar);
+    bar = fixture.componentInstance;
+    TestBed.inject(I18nService).setLang('es');
+    fixture.detectChanges();
+  });
+
+  const pie = (): HTMLElement | null =>
+    (fixture.nativeElement as HTMLElement).querySelector('.menu-cuenta');
+
+  it('sin sesión invita a entrar', () => {
+    bar.openMenu();
+    fixture.detectChanges();
+
+    expect(pie()?.textContent).toContain('Entrar en tu cuenta');
+  });
+
+  it('y al pulsarlo pide abrir el acceso, cerrando el menú', () => {
+    let pedido = 0;
+    bar.entrar.subscribe(() => (pedido += 1));
+    bar.openMenu();
+    fixture.detectChanges();
+    pie()?.click();
+
+    expect(pedido).toBe(1);
+    expect(bar.menuOpen).toBe(false);
+  });
+
+  it('con sesión enseña de quién es y ofrece salir', () => {
+    bar.usuario = JEFE;
+    bar.openMenu();
+    fixture.detectChanges();
+
+    expect(pie()?.textContent).toContain('Óscar');
+    expect(pie()?.textContent).toContain('Cerrar sesión');
+  });
+
+  it('y ahí se sale', () => {
+    let salidas = 0;
+    bar.salir.subscribe(() => (salidas += 1));
+    bar.usuario = JEFE;
+    bar.openMenu();
+    fixture.detectChanges();
+    pie()?.click();
+
+    expect(salidas).toBe(1);
+  });
+
+  /** El buscador ofrece lo que se puede abrir, y eso depende de quién mira. */
+  it('el panel solo se encuentra buscándolo si mandas', () => {
+    bar.query = 'admin';
+    expect(bar.results.map((i) => i.id)).not.toContain('admin');
+
+    bar.usuario = JEFE;
+    expect(bar.results.map((i) => i.id)).toContain('admin');
   });
 });

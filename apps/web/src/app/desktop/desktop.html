@@ -57,6 +57,9 @@
   <app-taskbar
     [windows]="state.windows"
     [activeId]="active?.id ?? null"
+    [usuario]="usuario"
+    (entrar)="entrar()"
+    (salir)="salir()"
     (launch)="launch($event)"
     (toggled)="toggleFromTaskbar($event)" />
 </div>

@@ -380,11 +380,57 @@
 }
 
 .menu-foot {
+  border-top: 1px solid var(--border);
+}
+
+/* El pie es el sitio de la sesión: se pulsa para entrar o para salir. */
+.menu-cuenta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.menu-cuenta:hover {
+  background: var(--bg-soft);
+}
+
+.menu-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--accent);
+  font-size: 15px;
+}
+
+.menu-quien {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 11px 14px;
-  border-top: 1px solid var(--border);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.menu-power {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.menu-cuenta:hover .menu-power {
+  color: var(--error, #d66);
 }
 
 .menu-user {

@@ -13,6 +13,7 @@ import {
 import { I18nService, Lang } from '../../services/i18n.service';
 import { ThemeService } from '../../services/theme.service';
 import { DesktopItem, searchItems } from '../desktop-items';
+import type { PublicUser } from '@devweb/shared/contracts/auth';
 import { WindowState } from '../window-manager';
 
 /**
@@ -30,10 +31,14 @@ import { WindowState } from '../window-manager';
 export class Taskbar implements OnInit, OnDestroy {
   @Input() windows: WindowState[] = [];
   @Input() activeId: string | null = null;
+  /** Quién está dentro, para el pie del menú. Null si no hay sesión. */
+  @Input() usuario: PublicUser | null = null;
 
   @Output() launch = new EventEmitter<DesktopItem>();
   /** Tocar el botón de una ventana: la trae al frente o la minimiza. */
   @Output() toggled = new EventEmitter<string>();
+  @Output() entrar = new EventEmitter<void>();
+  @Output() salir = new EventEmitter<void>();
 
   menuOpen = false;
   query = '';
@@ -71,9 +76,31 @@ export class Taskbar implements OnInit, OnDestroy {
     this.today.set(`${dd(ahora.getDate())}/${dd(ahora.getMonth() + 1)}/${ahora.getFullYear()}`);
   }
 
+  /** Si quien mira administra: decide qué se le ofrece, no qué puede hacer. */
+  get esAdmin(): boolean {
+    return this.usuario?.role === 'admin';
+  }
+
   /** Lo que se ofrece: todo, o lo que casa con lo que estás buscando. */
   get results(): DesktopItem[] {
-    return searchItems(this.query, (clave) => this.i18n.t(clave));
+    return searchItems(this.query, (clave) => this.i18n.t(clave), this.esAdmin);
+  }
+
+  /**
+   * El pie del menú es donde vive la sesión, como en cualquier escritorio.
+   *
+   * Sin sesión invita a entrar; con ella enseña de quién es y ofrece salir. No
+   * hay icono en el fondo a propósito: quien pasa por la web no tiene por qué
+   * ver una puerta que no le sirve.
+   */
+  entrarEnLaCuenta(): void {
+    this.closeMenu();
+    this.entrar.emit();
+  }
+
+  salirDeLaCuenta(): void {
+    this.closeMenu();
+    this.salir.emit();
   }
 
   openMenu(): void {
