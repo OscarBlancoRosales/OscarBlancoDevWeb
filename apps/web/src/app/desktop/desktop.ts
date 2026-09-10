@@ -43,7 +43,7 @@ const CONTENT: Record<string, (() => Promise<Type<unknown>>) | undefined> = {
   proyectos: () => import('../console/console').then((m) => m.Console),
   contacto: () => import('../console/console').then((m) => m.Console),
   juegos: () => import('../games/games').then((m) => m.Games),
-  poker: () => import('../auth/auth').then((m) => m.Auth),
+  poker: () => import('../poker-mesa/elegir/elegir').then((m) => m.ElegirPoker),
   qr: () => import('../qr-generator/qr-generator').then((m) => m.QrGenerator),
   dni: () => import('../dni-generator/dni-generator').then((m) => m.DniGenerator),
   color: () => import('../color-picker/color-picker').then((m) => m.ColorPicker),

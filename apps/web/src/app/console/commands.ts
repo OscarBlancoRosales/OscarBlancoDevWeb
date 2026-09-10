@@ -37,7 +37,10 @@ export const COMMANDS: CommandDef[] = [
     aliases: ['scrum-poker', 'scrum', 'planning', 'estimacion'],
     group: 'nav',
     descKey: 'cmd.poker',
-    route: '/auth',
+    // A la puerta donde se elige versión, no a la pantalla de cuenta: entrar
+    // en el planning poker y encontrarte un formulario de acceso no explica
+    // nada, y además esconde que hay dos maneras de jugar.
+    route: '/scrum-poker',
   },
   {
     id: 'dni',
