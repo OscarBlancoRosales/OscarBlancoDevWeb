@@ -242,9 +242,13 @@ function extractText(settings: AiSettings, payload: unknown): string {
  */
 export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
   openrouter: [
-    'nvidia/nemotron-3-ultra-550b-a55b:free',
-    'nvidia/nemotron-3-super-120b-a12b:free',
+    // De menor a mayor, y no al revés: lo que se le pide a un modelo aquí es
+    // una frase de tres líneas, no un razonamiento. El de 550B se llevaba el
+    // plazo entero mientras los pequeños contestaban de sobra.
+    'nvidia/nemotron-3.5-lightning:free',
     'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'nvidia/nemotron-3-ultra-550b-a55b:free',
     'dots-studio/dots-3-note-preview:free',
   ],
   groq: [],
@@ -252,11 +256,20 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
   'openai-compatible': [],
 };
 
-/** ¿Merece la pena reintentar con otro modelo? */
+/**
+ * ¿Merece la pena reintentar con otro modelo?
+ *
+ * El plantón cuenta: un gratuito que no contesta en su plazo no va a contestar
+ * mejor al insistirle, pero el siguiente de la cadena sí. Sin esto, un solo
+ * modelo lento dejaba sin estrenar a los tres que había detrás.
+ */
 export function isRetryable(error: unknown): boolean {
   if (!(error instanceof AiError)) return false;
   return (
-    error.code === 'rate-limited' || error.code === 'unavailable' || error.code === 'retirado'
+    error.code === 'rate-limited' ||
+    error.code === 'unavailable' ||
+    error.code === 'retirado' ||
+    error.code === 'timeout'
   );
 }
 

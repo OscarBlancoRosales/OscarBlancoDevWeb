@@ -434,6 +434,26 @@ describe('cadena de reserva', () => {
     expect(result.model).not.toBe(base.model);
   });
 
+  it('si un modelo se queda pensando, pregunta al siguiente', async () => {
+    // Lo que pasaba en producción con el crupier: el primero agotaba su plazo
+    // y la cadena moría ahí, con tres modelos vivos sin estrenar.
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit, ...rest: unknown[]) => {
+      const model = JSON.parse(init.body as string).model;
+      seen.push(model);
+      if (seen.length > 1) return ok('el segundo sí contesta');
+      void rest;
+      // Un plantón real: se aborta por la señal y `chat` lo traduce a timeout.
+      const error = new Error('The operation was aborted');
+      error.name = 'AbortError';
+      throw error;
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('el segundo sí contesta');
+    expect(seen).toHaveLength(2);
+  });
+
   it('un error que no es saturación corta la cadena en seco', async () => {
     let calls = 0;
     const fetchImpl = (async () => {

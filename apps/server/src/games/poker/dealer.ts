@@ -25,6 +25,9 @@ const LARGO_MAXIMO = 300;
  */
 const PACIENCIA_MS = 25_000;
 
+/** Lo que se le da a cada modelo por separado. Tres caben en la paciencia. */
+const PLAZO_POR_MODELO_MS = 8_000;
+
 /**
  * Cuánto aguanta el dealer antes de meter prisa, y cada cuánto insiste.
  *
@@ -215,7 +218,12 @@ export class DealerDeMesa implements Narrador {
 
     try {
       const respuesta = await Promise.race([
-        this.modelo(this.ajustes, mensajes, { maxTokens: 120 }),
+        // El plazo por modelo es más corto que el de la cadena a propósito: si
+        // el primero se queda pensando, lo que hace falta es preguntarle al
+        // siguiente, no esperarle hasta agotar la paciencia entera.
+        this.modelo({ ...this.ajustes, timeoutMs: PLAZO_POR_MODELO_MS }, mensajes, {
+          maxTokens: 120,
+        }),
         seAgota(),
       ]);
       if (aceptable(respuesta.text)) return respuesta.text.trim();
