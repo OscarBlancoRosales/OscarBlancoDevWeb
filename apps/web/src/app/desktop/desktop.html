@@ -16,11 +16,12 @@
           <h2 class="zone-title">{{ i18n.t(zone.labelKey) }}</h2>
           <div class="icons">
             @for (item of itemsOf(zone.id); track item.id) {
-              <button
-                class="icon"
-                [title]="hint(item)"
-                (dblclick)="launch(item)"
-                (click)="mobile ? launch(item) : null">
+              <!-- Un clic y se abre. El doble clic es de los escritorios de
+                   verdad, donde el primer clic sirve para seleccionar; aquí no
+                   hay nada que seleccionar y en la web se siente roto. Repetir
+                   el clic no duplica nada: la ventana que ya existe se trae al
+                   frente. -->
+              <button class="icon" [title]="hint(item)" (click)="launch(item)">
                 <span class="icon-glyph">{{ item.glyph }}</span>
                 <span class="icon-label">{{ label(item) }}</span>
               </button>
