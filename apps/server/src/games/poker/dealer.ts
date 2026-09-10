@@ -16,11 +16,14 @@ const LARGO_MAXIMO = 300;
 /**
  * Lo que se espera al modelo antes de darlo por perdido.
  *
- * Doce segundos y no seis: los modelos gratuitos de OpenRouter tienen cola, y
- * con seis se agotaba el plazo antes de que contestaran. Mientras tanto la
- * mesa ya está leyendo la frase escrita, así que esperar no cuesta nada.
+ * Este plazo cubre la cadena entera, no una llamada: cuando el primero está
+ * saturado o se ha retirado, el bueno es el segundo o el tercero, y con doce
+ * segundos el plazo se agotaba antes de llegar a él —que es justo lo que
+ * pasaba en producción—. Veinticinco dan para dos intentos largos. Mientras
+ * tanto la mesa ya está leyendo la frase escrita, así que esperar no cuesta
+ * nada: lo floreado sustituye al guion cuando llega.
  */
-const PACIENCIA_MS = 12_000;
+const PACIENCIA_MS = 25_000;
 
 /**
  * Cuánto aguanta el dealer antes de meter prisa, y cada cuánto insiste.
