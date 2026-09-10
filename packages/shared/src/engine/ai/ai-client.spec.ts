@@ -179,6 +179,17 @@ describe('cliente de modelos de lenguaje', () => {
       ).rejects.toMatchObject({ code: 'unavailable' });
     });
 
+    it('un modelo retirado se distingue del resto de errores HTTP', async () => {
+      // OpenRouter jubila sus gratuitos y contesta 404 diciendo cuál es el de
+      // pago. Es "prueba con otro", no "ríndete".
+      const retirado = vi.fn(async () =>
+        jsonResponse({ error: { message: 'This model is unavailable for free' } }, false, 404),
+      );
+      await expect(
+        chat(settings(), [], { fetchImpl: retirado as unknown as typeof fetch }),
+      ).rejects.toMatchObject({ code: 'retirado' });
+    });
+
     it('avisa cuando la respuesta no trae contenido', async () => {
       const fetchImpl = vi.fn(async () => jsonResponse({ choices: [] }));
       await expect(
@@ -403,6 +414,24 @@ describe('cadena de reserva', () => {
     expect(seen).toHaveLength(3);
     expect(result.model).toBe(seen[2]);
     expect(new Set(seen).size).toBe(3);
+  });
+
+  it('si el modelo configurado se ha retirado, sigue por la cadena', async () => {
+    // El caso real: la configuración del servidor apuntaba a un gratuito que
+    // OpenRouter había pasado a pago. Sin esto la mesa se quedaba muda.
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      const model = JSON.parse(init.body as string).model;
+      seen.push(model);
+      return seen.length === 1
+        ? new Response(JSON.stringify({ error: 'unavailable for free' }), { status: 404 })
+        : ok('el de reserva sí contesta');
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('el de reserva sí contesta');
+    expect(seen).toHaveLength(2);
+    expect(result.model).not.toBe(base.model);
   });
 
   it('un error que no es saturación corta la cadena en seco', async () => {

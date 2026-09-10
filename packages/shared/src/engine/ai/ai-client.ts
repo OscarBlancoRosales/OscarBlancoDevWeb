@@ -131,7 +131,16 @@ export interface ChatMessage {
 
 export class AiError extends Error {
   constructor(
-    public code: 'no-key' | 'network' | 'timeout' | 'bad-response' | 'disabled' | 'paid-model' | 'rate-limited' | 'unavailable',
+    public code:
+      | 'no-key'
+      | 'network'
+      | 'timeout'
+      | 'bad-response'
+      | 'disabled'
+      | 'paid-model'
+      | 'rate-limited'
+      | 'unavailable'
+      | 'retirado',
     message: string,
   ) {
     super(message);
@@ -246,7 +255,9 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
 /** ¿Merece la pena reintentar con otro modelo? */
 export function isRetryable(error: unknown): boolean {
   if (!(error instanceof AiError)) return false;
-  return error.code === 'rate-limited' || error.code === 'unavailable';
+  return (
+    error.code === 'rate-limited' || error.code === 'unavailable' || error.code === 'retirado'
+  );
 }
 
 /**
@@ -331,6 +342,16 @@ export async function chat(
     }
     if (response.status === 503 || response.status === 502) {
       throw new AiError('unavailable', 'El modelo no está disponible ahora mismo');
+    }
+    // Los gratuitos se retiran sin avisar: OpenRouter contestaba 404 «este
+    // modelo ya no es gratis» y, al no ser reintentable, la mesa se quedaba sin
+    // crupier teniendo cuatro modelos de reserva sin estrenar.
+    if (response.status === 404) {
+      const detail = await response.text().catch(() => '');
+      throw new AiError(
+        'retirado',
+        `El modelo ya no existe o dejó de ser gratuito${detail ? `: ${detail.slice(0, 160)}` : ''}`,
+      );
     }
     if (!response.ok) {
       const detail = await response.text().catch(() => '');
