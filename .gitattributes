@@ -1,0 +1,27 @@
+# Los finales de línea se deciden aquí y no en la máquina de cada uno.
+#
+# Sin esto, el repositorio se trabaja en Windows y se comprueba en Linux con
+# reglas distintas: había ficheros con finales mezclados dentro del mismo
+# archivo, y el lint llegó a contar un aviso de más en CI que en el portátil,
+# con el trinquete de avisos bloqueando la rama entera por esa diferencia.
+#
+# LF en el repositorio y LF en disco: es lo que ven Node, ESLint, Prettier y
+# los editores de hoy, en los tres sistemas.
+* text=auto eol=lf
+
+# Binarios: que git no toque un solo byte.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary
+*.gz binary
+
+# Scripts que corren en la VPS: un CRLF aquí y el shell no encuentra el
+# intérprete («bad interpreter: /bin/bash^M»).
+*.sh text eol=lf
