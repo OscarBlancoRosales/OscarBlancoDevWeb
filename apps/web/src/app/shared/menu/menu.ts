@@ -1,10 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 
 @Component({
   selector: 'app-menu',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './menu.html',
   styleUrl: './menu.css',
 })

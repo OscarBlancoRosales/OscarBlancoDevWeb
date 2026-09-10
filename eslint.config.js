@@ -88,13 +88,6 @@ export default tseslint.config(
     rules: TS_EXTRA,
   },
   {
-    files: ['**/*.spec.ts'],
-    rules: {
-      '@typescript-eslint/no-unsafe-assignment': 'off',
-      '@typescript-eslint/no-unsafe-member-access': 'off',
-    },
-  },
-  {
     files: ['**/*.html'],
     extends: [...angular.configs.templateRecommended],
     languageOptions: { parser: angular.templateParser },
@@ -111,6 +104,33 @@ export default tseslint.config(
     extends: [...angular.configs.templateRecommended],
     languageOptions: { parser: angular.templateParser },
     rules: asWarnings(angular.configs.templateRecommended),
+  },
+  // Va después del bloque heredado a propósito: en la configuración plana
+  // manda el último que habla, y el heredado vuelve a encender como aviso todo
+  // lo que se apague antes que él.
+  /**
+   * En una prueba, estas reglas no señalan un fallo: describen su oficio.
+   *
+   * Un test manipula estructuras que el compilador no conoce —el estado interno
+   * de un componente, la carga de un mensaje, un doble de `vi.fn()`—, y `!` es
+   * la forma corta de decir «esto tiene que existir, y si no existe quiero que
+   * el test reviente aquí». Eso es exactamente lo que se le pide a una prueba.
+   * En producción es lo contrario, y ahí siguen siendo error.
+   *
+   * `require-await` cae por lo mismo: `it('...', async () => ...)` sin nada que
+   * esperar dentro es la forma normal de escribir un caso, no un descuido.
+   */
+  {
+    files: ['**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-argument': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/require-await': 'off',
+    },
   },
   {
     files: ['packages/shared/**/*.ts'],

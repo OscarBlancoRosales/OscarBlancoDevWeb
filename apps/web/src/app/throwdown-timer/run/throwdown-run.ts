@@ -10,7 +10,7 @@ import { ThrowdownConfig, ThrowdownStep } from '../throwdown-timer';
 })
 export class ThrowdownRun implements OnInit, OnDestroy {
   readonly config = input.required<ThrowdownConfig>();
-  readonly back = output<void>();
+  readonly back = output();
 
   currentStepIndex = 0;
   remainingSeconds = 0;

@@ -428,7 +428,7 @@ export class ScrumPoker implements OnInit, OnDestroy {
 
     // Get sorted votes with player names
     const votes = validPlayers
-      .map(p => ({ vote: p.voteBreakdown!.numbers, name: p.name }))
+      .map(p => ({ vote: p.voteBreakdown.numbers, name: p.name }))
       .sort((a, b) => a.vote - b.vote);
 
     // Dynamic threshold: 20% of range or min 2 points

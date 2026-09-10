@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { LADO } from '@devweb/shared/games/flota/tipos';
 import { celdasDe, indice } from '@devweb/shared/games/flota/reglas';
@@ -25,7 +25,7 @@ const LETRAS = 'ABCDEFGHIJ'.split('');
  */
 @Component({
   selector: 'app-flota-board',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './flota-board.html',
   styleUrl: './flota-board.css',
 })

@@ -304,10 +304,10 @@ describe('lo que el chat pone en el cable', () => {
 
   function servicioQueApunta(): {
     rooms: RiskRoomService;
-    enviados: Array<Record<string, unknown>>;
+    enviados: Record<string, unknown>[];
   } {
     const rooms = new RiskRoomService({} as unknown as RoomsApiService, zona);
-    const enviados: Array<Record<string, unknown>> = [];
+    const enviados: Record<string, unknown>[] = [];
     (
       rooms as unknown as {
         socket: { decir(texto: string, extra: Record<string, unknown>): void };

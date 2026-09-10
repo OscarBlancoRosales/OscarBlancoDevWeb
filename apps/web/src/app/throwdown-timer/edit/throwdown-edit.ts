@@ -1,5 +1,5 @@
 import { Component, input, output, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { KvApiService } from '../../api/kv-api.service';
 import { ThrowdownConfig, ThrowdownStep } from '../throwdown-timer';
@@ -8,13 +8,13 @@ const QUICK_PRESETS = [10, 20, 30, 60, 120, 300];
 
 @Component({
   selector: 'app-throwdown-edit',
-  imports: [CommonModule, FormsModule],
+  imports: [FormsModule],
   templateUrl: './throwdown-edit.html',
   styleUrl: './throwdown-edit.css',
 })
 export class ThrowdownEdit implements OnInit {
   readonly initialConfig = input.required<ThrowdownConfig>();
-  readonly back = output<void>();
+  readonly back = output();
   readonly saved = output<ThrowdownConfig>();
   readonly startTimer = output<ThrowdownConfig>();
 

@@ -15,7 +15,7 @@ export interface DerivedGame {
   /** Cuántas entradas del log se han incorporado (snapshot incluido). */
   applied: number;
   /** Acciones descartadas por ilegales, con su motivo. */
-  rejected: Array<{ entry: LoggedActionEntry; reason: string }>;
+  rejected: { entry: LoggedActionEntry; reason: string }[];
   error: string | null;
 }
 

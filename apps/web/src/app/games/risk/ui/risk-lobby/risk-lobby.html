@@ -9,8 +9,10 @@
     </header>
 
     <!-- ===== INVITACIÓN ===== -->
-    <section class="panel invite-panel" *ngIf="invitedRoomId">
-      <ng-container *ngIf="invitedRoom; else invitedMissing">
+    @if (invitedRoomId) {
+<section class="panel invite-panel">
+      @if (invitedRoom) {
+
         <div class="panel-title">
           <span class="tag">INVITACIÓN</span>
           <h2>{{ invitedRoom.name }}</h2>
@@ -38,16 +40,23 @@
             {{ busy ? 'Entrando…' : 'Entrar en la sala' }}
           </button>
         </div>
-        <p class="error" *ngIf="error">{{ error }}</p>
-      </ng-container>
+        @if (error) {
+<p class="error">{{ error }}</p>
+}
+      
+} @else {
 
-      <ng-template #invitedMissing>
         <p class="error big">{{ invitedError || 'Comprobando la invitación…' }}</p>
-      </ng-template>
+      
+}
+
+      
     </section>
+}
 
     <!-- ===== ADMIN: CREAR SALA ===== -->
-    <ng-container *ngIf="!invitedRoomId">
+    @if (!invitedRoomId) {
+
       <section class="panel">
         <div class="panel-title">
           <span class="tag">NUEVA PARTIDA</span>
@@ -68,10 +77,11 @@
         <div class="subsection">
           <h3>Mapa</h3>
           <div class="map-grid">
-            <button
+            @for (map of maps; track map) {
+<button
               type="button"
               class="map-card"
-              *ngFor="let map of maps"
+             
               [class.active]="map.id === mapId"
               (click)="selectMap(map)"
             >
@@ -81,39 +91,51 @@
               </div>
               <p class="map-desc">{{ map.description }}</p>
               <div class="map-continents">
-                <span
+                @for (continent of map.continents.slice(0, 6); track continent) {
+<span
                   class="continent-chip"
-                  *ngFor="let continent of map.continents.slice(0, 6)"
+                 
                   [style.borderColor]="continent.color"
                   [style.color]="continent.color"
                 >
                   {{ continent.name }} +{{ continent.bonus }}
                 </span>
-                <span class="continent-chip more" *ngIf="map.continents.length > 6">
+}
+                @if (map.continents.length > 6) {
+<span class="continent-chip more">
                   +{{ map.continents.length - 6 }} más
                 </span>
+}
               </div>
             </button>
+}
           </div>
         </div>
 
         <!-- Escenario histórico: quién es quién antes de empezar -->
-        <div class="subsection" *ngIf="scenario as sc">
+        @if (scenario; as sc) {
+<div class="subsection">
           <h3>El escenario</h3>
           <p class="scenario-intro">{{ sc.intro }}</p>
           <div class="side-grid">
-            <div class="side-block" *ngFor="let side of sc.sides" [style.borderColor]="side.color">
+            @for (side of sc.sides; track side) {
+<div class="side-block" [style.borderColor]="side.color">
               <span class="side-name" [style.color]="side.color">{{ side.name }}</span>
-              <div class="faction" *ngFor="let faction of sc.factions">
-                <ng-container *ngIf="faction.side === side.id">
+              @for (faction of sc.factions; track faction) {
+<div class="faction">
+                @if (faction.side === side.id) {
+
                   <span class="faction-name">
                     <span class="faction-dot" [style.background]="faction.color"></span>
                     {{ faction.name }}
                   </span>
                   <small>{{ faction.blurb }}</small>
-                </ng-container>
+                
+}
               </div>
+}
             </div>
+}
           </div>
           <p class="hint">
             Se juega por bandos: los del mismo lado no pueden atacarse y ganan juntos. Con dos
@@ -121,6 +143,7 @@
             dos contra dos. Los huecos los puede rellenar la IA.
           </p>
         </div>
+}
 
         <div class="subsection">
           <h3>Vista previa</h3>
@@ -144,7 +167,9 @@
             <label class="field-label">
               <span>Jugadores en la mesa</span>
               <select class="field" [(ngModel)]="maxPlayers" (ngModelChange)="refreshPreview()">
-                <option *ngFor="let n of maxPlayersOptions" [ngValue]="n">{{ n }} jugadores</option>
+                @for (n of maxPlayersOptions; track n) {
+<option [ngValue]="n">{{ n }} jugadores</option>
+}
               </select>
               <small>Los huecos que sobren los puedes rellenar con bots desde la mesa.</small>
             </label>
@@ -191,8 +216,10 @@
             </span>
           </label>
 
-          <div class="terrain-legend" *ngIf="advancedTerrain">
-            <div class="terrain-item" *ngFor="let terrain of terrains">
+          @if (advancedTerrain) {
+<div class="terrain-legend">
+            @for (terrain of terrains; track terrain) {
+<div class="terrain-item">
               <span class="terrain-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
               <span class="terrain-text">
                 <strong>{{ terrain.name }}</strong>
@@ -200,6 +227,7 @@
                 <span class="terrain-role">Atacando desde aquí:</span> {{ terrain.assault }}
               </span>
             </div>
+}
             <p class="hint">
               Lo que cuenta es la <strong>pareja</strong>: el terreno del que sales y el terreno al
               que entras se suman. Salir de un bosque contra una montaña cancela la altura del
@@ -207,6 +235,7 @@
               Y atacar cruzando una línea de puntos es un desembarco: solo tiras 2 dados.
             </p>
           </div>
+}
 
           <label class="toggle-row">
             <input type="checkbox" [(ngModel)]="advancedUnits" />
@@ -219,60 +248,74 @@
             </span>
           </label>
 
-          <div class="terrain-legend" *ngIf="advancedUnits">
-            <div class="terrain-item" *ngFor="let troop of troops">
+          @if (advancedUnits) {
+<div class="terrain-legend">
+            @for (troop of troops; track troop) {
+<div class="terrain-item">
               <span class="terrain-glyph" [style.color]="troop.color">{{ troop.glyph }}</span>
               <span class="terrain-text">
                 <strong>{{ troop.name }} ({{ troop.cost }})</strong>
                 {{ troop.effect }}
               </span>
             </div>
+}
             <p class="hint">
               Las tropas no se mueven: se preparan donde hacen falta y se pierden si cae el
               territorio.
             </p>
           </div>
+}
         </div>
 
         <div class="create-actions">
-          <button
+          @if (isAdmin) {
+<button
             class="primary big"
             type="button"
-            *ngIf="isAdmin"
+           
             (click)="createRoom(false)"
             [disabled]="busy"
           >
             {{ busy ? 'Creando…' : '🌐 Crear sala online e invitar' }}
           </button>
+}
           <!--
             Sin sesión no se enseña un botón muerto: se enseña el camino. La base
             de datos solo acepta crear salas con sesión real, así que dejarlo
             pulsable solo servía para que fallara después.
           -->
-          <button
+          @if (!isAdmin) {
+<button
             class="primary big"
             type="button"
-            *ngIf="!isAdmin"
+           
             (click)="goToLoginForRoom()"
           >
             🔒 Inicia sesión para crear sala online
           </button>
+}
           <button class="primary big ghost-primary" type="button" (click)="createRoom(true)" [disabled]="busy">
             🤖 Jugar aquí contra la IA
           </button>
         </div>
 
-        <p class="hint" *ngIf="!isAdmin">
+        @if (!isAdmin) {
+<p class="hint">
           Las salas online (con invitación y varios dispositivos) son para usuarios registrados.
           <button class="link" type="button" (click)="goToLogin()">Iniciar sesión</button>.
           La partida local funciona sin cuenta: se guarda en este navegador y puedes retomarla
           cuando quieras.
         </p>
-        <p class="hint" *ngIf="isAdmin">
+}
+        @if (isAdmin) {
+<p class="hint">
           La partida local se guarda solo en este navegador y no necesita conexión: perfecta para
           probar mapas o echar una contra los bots.
         </p>
-        <p class="error" *ngIf="error">{{ error }}</p>
+}
+        @if (error) {
+<p class="error">{{ error }}</p>
+}
       </section>
 
       <!-- ===== PARTIDAS GUARDADAS ===== -->
@@ -286,17 +329,24 @@
           cada persona vuelve a su asiento y sus ejércitos.
         </p>
 
-        <p class="muted" *ngIf="loadingRooms">Cargando salas…</p>
-        <p class="muted" *ngIf="!loadingRooms && savedRooms.length === 0">
+        @if (loadingRooms) {
+<p class="muted">Cargando salas…</p>
+}
+        @if (!loadingRooms && savedRooms.length === 0) {
+<p class="muted">
           Todavía no has creado ninguna sala.
         </p>
+}
 
         <ul class="room-list">
-          <li class="room-item" *ngFor="let room of savedRooms" (click)="resume(room)">
+          @for (room of savedRooms; track room) {
+<li class="room-item" (click)="resume(room)">
             <div class="room-main">
               <span class="room-name">
                 {{ room.meta.name }}
-                <span class="local-tag" *ngIf="room.meta.local">local</span>
+                @if (room.meta.local) {
+<span class="local-tag">local</span>
+}
               </span>
               <span class="room-sub">
                 {{ mapName(room.meta.mapId) }} · {{ room.seatCount }}/{{ room.meta.maxPlayers }} asientos
@@ -306,18 +356,22 @@
             <span class="status" [attr.data-status]="room.meta.status">
               {{ statusLabel(room.meta) }}
             </span>
-            <button
+            @if (canDelete(room)) {
+<button
               class="ghost danger"
               type="button"
-              *ngIf="canDelete(room)"
+             
               (click)="deleteRoom(room, $event)"
               title="Borrar sala"
             >
               ✕
             </button>
+}
           </li>
+}
         </ul>
       </section>
-    </ng-container>
+    
+}
   </div>
 </app-terminal-layout>

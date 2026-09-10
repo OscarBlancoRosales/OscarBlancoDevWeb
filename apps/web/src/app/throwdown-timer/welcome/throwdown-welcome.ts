@@ -10,7 +10,7 @@ import { AuthApiService } from '../../api/auth-api.service';
   styleUrl: './throwdown-welcome.css',
 })
 export class ThrowdownWelcome implements OnInit, OnDestroy {
-  readonly enter = output<void>();
+  readonly enter = output();
 
   isAuthenticated = false;
   email    = '';

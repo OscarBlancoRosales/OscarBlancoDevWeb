@@ -83,5 +83,5 @@ export function portraitFor(
   if (seat?.kind === 'bot') return botPortrait(seat.botProfile);
   const elegido = commanderById(seat?.avatar);
   if (elegido) return elegido.portrait;
-  return COMMANDERS[fallbackIndex % COMMANDERS.length]!.portrait;
+  return COMMANDERS[fallbackIndex % COMMANDERS.length].portrait;
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /** Una carta ya en palabras, para no meter reglas en una pieza de dibujo. */
 export interface CardView {
@@ -20,7 +20,7 @@ export interface CardView {
  */
 @Component({
   selector: 'app-risk-cards',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './risk-cards.html',
   styleUrl: './risk-cards.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

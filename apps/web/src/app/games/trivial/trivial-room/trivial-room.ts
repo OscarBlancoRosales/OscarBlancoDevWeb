@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -49,7 +49,7 @@ const SECCIONES: Readonly<Record<TipoPrueba, Seccion>> = {
  */
 @Component({
   selector: 'app-trivial-room',
-  imports: [CommonModule, FormsModule, TerminalLayout],
+  imports: [FormsModule, TerminalLayout],
   templateUrl: './trivial-room.html',
   styleUrl: './trivial-room.css',
 })

@@ -575,7 +575,7 @@ export class RiskGameService implements OnDestroy {
 const BOT_DELAY_KEY = 'risk_bot_delay';
 
 /** Ritmos disponibles para los bots, de más rápido a más pausado. */
-export const BOT_SPEEDS: Array<{ label: string; ms: number }> = [
+export const BOT_SPEEDS: { label: string; ms: number }[] = [
   { label: 'Rápido', ms: 250 },
   { label: 'Normal', ms: 900 },
   { label: 'Pausado', ms: 1800 },

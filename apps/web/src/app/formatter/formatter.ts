@@ -122,13 +122,13 @@ export class Formatter {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
-      if (trimmed.match(/^<\/\w/)) {
+      if (/^<\/\w/.exec(trimmed)) {
         pad--;
       }
 
       formatted += indent.repeat(Math.max(0, pad)) + trimmed + '\n';
 
-      if (trimmed.match(/^<\w[^>]*[^\/]>.*$/) && !trimmed.match(/^<\w[^>]*>.*<\/\w/)) {
+      if ((/^<\w[^>]*[^\/]>.*$/.exec(trimmed)) && !(/^<\w[^>]*>.*<\/\w/.exec(trimmed))) {
         pad++;
       }
     }

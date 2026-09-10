@@ -651,7 +651,7 @@ describe('RiskRoom (la mesa)', () => {
     it('el paso cuenta lo puesto en ese territorio, y el − lo quita', async () => {
       if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
 
-      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      const mio = territoriesOf(component.state!, component.seatId)[0];
       expect(component.placedAt(mio)).toBe(0);
 
       component.onTerritoryClick(mio);
@@ -666,7 +666,7 @@ describe('RiskRoom (la mesa)', () => {
 
     it('y el paso se ancla al territorio que estás tocando', () => {
       if (component.state!.phase !== 'reinforce' || !component.isMyTurn) return;
-      const mio = territoriesOf(component.state!, component.seatId)[0]!;
+      const mio = territoriesOf(component.state!, component.seatId)[0];
       component.onTerritoryClick(mio);
       expect(component.anchorTerritory).toBe(mio);
     });
@@ -696,7 +696,7 @@ describe('RiskRoom (la mesa)', () => {
       // Al quitar la columna lateral, nada puede quedarse sin puerta. Se abren
       // pulsando, no asignando el campo: en zoneless, cambiarlo a mano después
       // del primer pintado da NG0100, y además nadie juega así.
-      const puertas: Array<[string, string]> = [
+      const puertas: [string, string][] = [
         ['.hud-history', 'Partida'],
         ['.hud-settings', 'Ajustes de IA'],
       ];
@@ -761,7 +761,7 @@ describe('RiskRoom (la mesa)', () => {
         // y otras tantas líneas de registro: online iría a trompicones y el
         // historial quedaría ilegible.
         const game = TestBed.inject(RiskGameService);
-        const enviadas: Array<Record<string, unknown>> = [];
+        const enviadas: Record<string, unknown>[] = [];
         const espia = vi
           .spyOn(game, 'play')
           .mockImplementation(async (a) => void enviadas.push(a as never));
@@ -799,7 +799,7 @@ describe('RiskRoom (la mesa)', () => {
 
       it('cambiar de territorio vuelca lo anterior', async () => {
         const game = TestBed.inject(RiskGameService);
-        const enviadas: Array<Record<string, unknown>> = [];
+        const enviadas: Record<string, unknown>[] = [];
         const espia = vi
           .spyOn(game, 'play')
           .mockImplementation(async (a) => void enviadas.push(a as never));

@@ -1,4 +1,5 @@
-<ng-container *ngIf="open">
+@if (open) {
+
   <!--
     El fondo sólo estorba en móvil, donde el panel tapa el mapa. En ordenador el
     CSS lo esconde, porque allí el panel flota al lado y el mapa se sigue viendo.
@@ -13,4 +14,5 @@
       <ng-content></ng-content>
     </div>
   </section>
-</ng-container>
+
+}

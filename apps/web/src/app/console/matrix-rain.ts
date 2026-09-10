@@ -26,7 +26,7 @@ export class MatrixRain {
     this.ctx = ctx;
     this.resize();
     this.ultimo = 0;
-    this.raf = requestAnimationFrame((t) => this.frame(t));
+    this.raf = requestAnimationFrame((t) => { this.frame(t); });
   }
 
   stop(): void {
@@ -51,7 +51,7 @@ export class MatrixRain {
   }
 
   private frame(tiempo: number): void {
-    this.raf = requestAnimationFrame((t) => this.frame(t));
+    this.raf = requestAnimationFrame((t) => { this.frame(t); });
     if (tiempo - this.ultimo < 1000 / this.fps) return;
     this.ultimo = tiempo;
     this.draw();

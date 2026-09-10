@@ -1,5 +1,5 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { Subscription } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -28,7 +28,7 @@ import {
  */
 @Component({
   selector: 'app-risk-lobby',
-  imports: [CommonModule, FormsModule, TerminalLayout, RiskBoard],
+  imports: [FormsModule, TerminalLayout, RiskBoard],
   templateUrl: './risk-lobby.html',
   styleUrl: './risk-lobby.css',
 })

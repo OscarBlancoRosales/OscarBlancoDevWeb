@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -38,7 +38,7 @@ const RIVALES: readonly OpcionDeRival[] = [
  */
 @Component({
   selector: 'app-flota-lobby',
-  imports: [CommonModule, FormsModule, RouterLink, TerminalLayout],
+  imports: [FormsModule, RouterLink, TerminalLayout],
   templateUrl: './flota-lobby.html',
   styleUrl: './flota-lobby.css',
 })

@@ -347,7 +347,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
   }
 
   /** Marcador ordenado, con el color y el nombre de cada jugador. */
-  get scoreboard(): Array<{ player: PlayerState; territories: number; armies: number }> {
+  get scoreboard(): { player: PlayerState; territories: number; armies: number }[] {
     if (!this.state) return [];
     const state = this.state;
     return standings(state)
@@ -678,14 +678,14 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
    * Igual que el cartel del tablero: si la plantilla llamara a una función que
    * devuelve objetos nuevos en cada ciclo, la vista quedaría siempre sucia.
    */
-  missions: Array<{
+  missions: {
     playerId: string;
     name: string;
     color: string;
     text: string;
     detail: string;
     done: boolean;
-  }> = [];
+  }[] = [];
 
   private refreshMissions(): void {
     if (!this.state || !this.map || this.state.config.victory !== 'objectives') {
@@ -1208,7 +1208,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
       id: entry.player.id,
       name: entry.player.name,
       color: entry.player.color,
-      portrait: caras.get(entry.player.id) ?? COMMANDERS[index % COMMANDERS.length]!.portrait,
+      portrait: caras.get(entry.player.id) ?? COMMANDERS[index % COMMANDERS.length].portrait,
       territories: entry.territories,
       armies: entry.armies,
       eliminated: entry.player.eliminated,
@@ -1282,7 +1282,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
         continue;
       }
       const elegido = commanderById(seat.avatar);
-      const cara = elegido ?? libres[siguiente++ % Math.max(1, libres.length)] ?? COMMANDERS[0]!;
+      const cara = elegido ?? libres[siguiente++ % Math.max(1, libres.length)] ?? COMMANDERS[0];
       reparto.set(seat.id, cara.portrait);
     }
     return reparto;
@@ -1308,7 +1308,7 @@ export class RiskRoom implements AfterViewChecked, OnInit, OnDestroy {
 
   /** El retrato de un asiento en la sala de espera. */
   portraitOfSeat(seat: RoomSeat): string {
-    return this.portraitAssignment().get(seat.id) ?? COMMANDERS[0]!.portrait;
+    return this.portraitAssignment().get(seat.id) ?? COMMANDERS[0].portrait;
   }
 
   onThreadChange(id: string | null): void {

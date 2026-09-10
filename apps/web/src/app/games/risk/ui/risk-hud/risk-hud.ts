@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Bloque de fase: en qué punto va la partida, y el control que la cierra.
@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
  */
 @Component({
   selector: 'app-risk-hud',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './risk-hud.html',
   styleUrl: './risk-hud.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 
 /**
  * Concha de un panel flotante sobre el mapa.
@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
  */
 @Component({
   selector: 'app-risk-panel',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './risk-panel.html',
   styleUrl: './risk-panel.css',
   changeDetection: ChangeDetectionStrategy.OnPush,

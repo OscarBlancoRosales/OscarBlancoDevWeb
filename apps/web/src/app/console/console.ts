@@ -9,7 +9,7 @@ import {
   signal,
   ViewChild,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CommandPalette } from '../shared/command-palette/command-palette';
 import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -111,7 +111,7 @@ export const LOGO: string[] = [
 
 @Component({
   selector: 'app-console',
-  imports: [CommonModule, CommandPalette],
+  imports: [CommandPalette],
   templateUrl: './console.html',
   styleUrl: './console.css',
 })
@@ -192,10 +192,10 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       this.executeCommand();
     }
     this.tickClock();
-    this.clockTimer = setInterval(() => this.tickClock(), 1000);
+    this.clockTimer = setInterval(() => { this.tickClock(); }, 1000);
     // Cambiar de bandera reescribe la pantalla entera, porque las líneas
     // guardan la clave y no el texto.
-    this.langSub = this.i18n.langChange$.subscribe(() => this.refresh());
+    this.langSub = this.i18n.langChange$.subscribe(() => { this.refresh(); });
   }
 
   /**
@@ -284,8 +284,8 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       this.stopMatrix();
       return;
     }
-    if (this.game) return this.gameKey(event);
-    if (this.run) return this.runKey(event);
+    if (this.game) { this.gameKey(event); return; }
+    if (this.run) { this.runKey(event); return; }
     this.trackKonami(event);
 
     if (event.ctrlKey || event.metaKey) {
@@ -443,63 +443,63 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   private dispatch(cmd: CommandDef, args: string[]): void {
     switch (cmd.id) {
       case 'help':
-        return this.doHelp(args[0]);
+        { this.doHelp(args[0]); return; }
       case 'clear':
         this.output = [];
         return;
       case 'ls':
-        return this.doList();
+        { this.doList(); return; }
       case 'cd':
-        return this.doCd(args[0]);
+        { this.doCd(args[0]); return; }
       case 'open':
-        return this.doOpen(args[0]);
+        { this.doOpen(args[0]); return; }
       case 'theme':
-        return this.doTheme(args[0]);
+        { this.doTheme(args[0]); return; }
       case 'lang':
-        return this.doLang(args[0]);
+        { this.doLang(args[0]); return; }
       case 'history':
-        return this.doHistory();
+        { this.doHistory(); return; }
       case 'date':
-        return this.doDate();
+        { this.doDate(); return; }
       case 'echo':
         this.lit('text', args.join(' '));
         return;
       case 'whoami':
-        return this.doWhoami();
+        { this.doWhoami(); return; }
       case 'stack':
-        return this.doStack();
+        { this.doStack(); return; }
       case 'projects':
-        return this.doProjects();
+        { this.doProjects(); return; }
       case 'contact':
       case 'social':
-        return this.doContact();
+        { this.doContact(); return; }
       case 'neofetch':
-        return this.doNeofetch();
+        { this.doNeofetch(); return; }
 
       // --- premios de la casa ---
       case 'easteregg':
-        return this.doEasterEggs();
+        { this.doEasterEggs(); return; }
       case 'snake':
-        return this.startGame();
+        { this.startGame(); return; }
       case 'runner':
-        return this.startRun();
+        { this.startRun(); return; }
       case 'matrix':
-        return this.doMatrix();
+        { this.doMatrix(); return; }
       case 'hack':
-        return this.doHack();
+        { this.doHack(); return; }
       case 'glitch':
-        return this.doGlitch();
+        { this.doGlitch(); return; }
       case 'sl':
-        return this.doTrain();
+        { this.doTrain(); return; }
       case 'cowsay':
-        return this.art(cowsay(args.join(' ')));
+        { this.art(cowsay(args.join(' '))); return; }
       case 'fortune':
         this.lit('text', fortune(Math.floor(Math.random() * 1000)));
         return;
       case 'banner':
-        return this.art(banner(args.join(' ') || 'OBR'));
+        { this.art(banner(args.join(' ') || 'OBR')); return; }
       case 'top':
-        return this.art(fakeTop(() => Math.random()));
+        { this.art(fakeTop(() => Math.random())); return; }
       case 'sudo':
         this.say('warn', 'console.sudo');
         return;
@@ -517,7 +517,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
         return;
 
       default:
-        if (cmd.route) return this.go(cmd.route);
+        if (cmd.route) { this.go(cmd.route); return; }
         this.say('error', 'console.unknownCmd', { cmd: cmd.id });
     }
   }
@@ -534,9 +534,9 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private doHelp(target?: string): void {
-    if (target) return this.doHelpFor(target);
+    if (target) { this.doHelpFor(target); return; }
 
-    const grupos: Array<[string, CommandDef['group']]> = [
+    const grupos: [string, CommandDef['group']][] = [
       ['console.groupNav', 'nav'],
       ['console.groupInfo', 'info'],
       ['console.groupSystem', 'system'],
@@ -585,10 +585,10 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
       this.say('error', 'console.needsArg', { cmd: 'cd', usage: 'cd <seccion>' });
       return;
     }
-    if (target === '..' || target === '~' || target === '/') return this.go('/');
+    if (target === '..' || target === '~' || target === '/') { this.go('/'); return; }
 
     const cmd = findCommand(target);
-    if (cmd?.route) return this.go(cmd.route);
+    if (cmd?.route) { this.go(cmd.route); return; }
 
     const parecido = suggest(target);
     if (parecido) {
@@ -618,7 +618,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private doTheme(target?: string): void {
-    if (!target) return this.listThemes();
+    if (!target) { this.listThemes(); return; }
 
     if (!this.themes.set(target.toLowerCase() as Theme)) {
       this.say('error', 'console.themeUnknown', { theme: target });
@@ -847,7 +847,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
     if (anunciar) this.say('ok', 'console.snakeStart');
     this.refresh();
     this.focusForGame();
-    this.gameTimer = setInterval(() => this.tickGame(), 130);
+    this.gameTimer = setInterval(() => { this.tickGame(); }, 130);
   }
 
   private tickGame(): void {
@@ -947,7 +947,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
    */
   private scheduleRun(): void {
     const ritmo = Math.max(55, 110 - Math.floor((this.run?.distance ?? 0) / 12));
-    this.runTimer = setTimeout(() => this.tickRun(), ritmo);
+    this.runTimer = setTimeout(() => { this.tickRun(); }, ritmo);
   }
 
   private tickRun(): void {
@@ -1106,7 +1106,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   powerOn(): void {
     this.poweredOff = false;
-    this.clockTimer = setInterval(() => this.tickClock(), 1000);
+    this.clockTimer = setInterval(() => { this.tickClock(); }, 1000);
     this.refresh();
     this.focusInput();
   }
@@ -1165,7 +1165,7 @@ export class Console implements OnInit, AfterViewInit, OnDestroy {
 
   /** Tocar el cuerpo de la terminal devuelve el foco al input, como en una real. */
   onBodyClick(): void {
-    if (this.matrixOn) return this.stopMatrix();
+    if (this.matrixOn) { this.stopMatrix(); return; }
     this.closeMenuIfOpen();
     if (!window.getSelection()?.toString()) this.focusInput();
   }

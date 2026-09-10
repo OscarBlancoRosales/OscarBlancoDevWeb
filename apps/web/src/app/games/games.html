@@ -14,9 +14,10 @@
     </header>
 
     <div class="games-grid">
-      <article
+      @for (game of games; track game) {
+<article
         class="game-card"
-        *ngFor="let game of games"
+       
         [class.ready]="game.status === 'listo'"
         [class.wip]="game.status === 'en-obras'"
         (click)="open(game)"
@@ -35,9 +36,11 @@
         <p class="game-description">{{ game.description }}</p>
 
         <ul class="game-highlights">
-          <li *ngFor="let item of game.highlights">
+          @for (item of game.highlights; track item) {
+<li>
             <span class="bullet">▸</span>{{ item }}
           </li>
+}
         </ul>
 
         <div class="card-meta">
@@ -49,6 +52,7 @@
           {{ game.route ? 'Entrar' : 'Próximamente' }}
         </button>
       </article>
+}
     </div>
   </div>
 </app-terminal-layout>

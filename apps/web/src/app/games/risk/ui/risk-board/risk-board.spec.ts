@@ -248,7 +248,7 @@ describe('RiskBoard', () => {
       return {
         ...TINY_MAP,
         id: 'tiny-board-terrain',
-        seaRoutes: [['A1', 'B3']] as Array<[string, string]>,
+        seaRoutes: [['A1', 'B3']] as [string, string][],
         territories: TINY_MAP.territories.map((territory) => ({
           ...territory,
           terrain:

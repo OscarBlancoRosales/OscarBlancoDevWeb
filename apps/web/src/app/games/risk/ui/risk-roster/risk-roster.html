@@ -8,36 +8,46 @@
   >
     <span class="avatar general-avatar">🌐</span>
     <span class="row-name">Todos</span>
-    <span class="unread" *ngIf="generalUnread > 0">{{ generalUnread }}</span>
+    @if (generalUnread > 0) {
+<span class="unread">{{ generalUnread }}</span>
+}
   </button>
-  <ng-container
-    *ngIf="openThread === CANAL_GENERAL"
+  @if (openThread === CANAL_GENERAL) {
+<ng-container
+   
     [ngTemplateOutlet]="hilo"
   ></ng-container>
+}
 
-  <ng-container *ngFor="let row of rows; trackBy: trackRow">
+  @for (row of rows; track trackRow($index, row)) {
+
     <!--
       Tu propia ficha no abre nada: con uno mismo no se chatea. Sigue estando,
       porque saber cuánto tienes tú al lado de lo que tienen los demás es la
       mitad de para qué sirve un marcador.
     -->
-    <div
+    @if (row.id === meId) {
+<div
       class="roster-row"
-      *ngIf="row.id === meId; else fichaAjena"
+     
       [class.current]="row.id === currentId"
       [class.out]="row.eliminated"
     >
       <span class="avatar me" [class.sin-cara]="!row.portrait" [style.border-color]="row.color">
-        <img *ngIf="row.portrait as cara" [src]="cara" [alt]="row.name" loading="lazy" />
-        <span *ngIf="!row.portrait">{{ row.glyph }}</span>
+        @if (row.portrait; as cara) {
+<img [src]="cara" [alt]="row.name" loading="lazy" />
+}
+        @if (!row.portrait) {
+<span>{{ row.glyph }}</span>
+}
       </span>
       <span class="row-name">{{ row.name }}</span>
       <span class="row-num">{{ row.territories }}</span>
       <span class="row-num muted">{{ row.armies }}</span>
       <span class="row-bar"><i [style.width.%]="row.strength * 100" [style.background]="row.color"></i></span>
     </div>
+} @else {
 
-    <ng-template #fichaAjena>
       <button
         class="roster-row"
         type="button"
@@ -49,18 +59,30 @@
         [attr.aria-label]="'Hablar con ' + row.name"
       >
         <span class="avatar" [class.sin-cara]="!row.portrait" [style.border-color]="row.color">
-          <img *ngIf="row.portrait as cara" [src]="cara" [alt]="row.name" loading="lazy" />
-          <span *ngIf="!row.portrait">{{ row.glyph }}</span>
-          <span class="unread dot" *ngIf="row.unread > 0"></span>
+          @if (row.portrait; as cara) {
+<img [src]="cara" [alt]="row.name" loading="lazy" />
+}
+          @if (!row.portrait) {
+<span>{{ row.glyph }}</span>
+}
+          @if (row.unread > 0) {
+<span class="unread dot"></span>
+}
         </span>
         <span class="row-name">{{ row.name }}</span>
         <span class="row-num">{{ row.territories }}</span>
         <span class="row-num muted">{{ row.armies }}</span>
         <span class="row-bar"><i [style.width.%]="row.strength * 100" [style.background]="row.color"></i></span>
       </button>
-      <ng-container *ngIf="openThread === row.id" [ngTemplateOutlet]="hilo"></ng-container>
-    </ng-template>
-  </ng-container>
+      @if (openThread === row.id) {
+<ng-container [ngTemplateOutlet]="hilo"></ng-container>
+}
+    
+}
+
+    
+  
+}
 </div>
 
 <!--
@@ -71,31 +93,44 @@
 <ng-template #hilo>
   <div class="thread">
     <div class="thread-lines">
-      <p class="thread-empty" *ngIf="lines.length === 0">
+      @if (lines.length === 0) {
+<p class="thread-empty">
         Nada todavía. Escribe y se enterará.
       </p>
-      <div
+}
+      @for (line of lines; track trackLine($index, line)) {
+<div
         class="line"
-        *ngFor="let line of lines; trackBy: trackLine"
+       
         [class.mine]="line.mine"
       >
-        <span class="line-author" [style.color]="line.color" *ngIf="!line.mine">
+        @if (!line.mine) {
+<span class="line-author" [style.color]="line.color">
           {{ line.author }}
-          <span class="llm" *ngIf="line.fromLlm" title="Escrito por un modelo de lenguaje">LLM</span>
+          @if (line.fromLlm) {
+<span class="llm" title="Escrito por un modelo de lenguaje">LLM</span>
+}
         </span>
+}
         <span class="line-text">{{ line.text }}</span>
       </div>
-      <p class="thread-waiting" *ngIf="waiting">escribiendo…</p>
+}
+      @if (waiting) {
+<p class="thread-waiting">escribiendo…</p>
+}
     </div>
     <!--
       Hay fichas que no conversan: responden a una petición. Enseñarles un
       campo de texto prometería una conversación que no existe.
     -->
-    <button class="thread-ask" type="button" *ngIf="askLabel as etiqueta" (click)="send.emit('')">
+    @if (askLabel; as etiqueta) {
+<button class="thread-ask" type="button" (click)="send.emit('')">
       {{ etiqueta }}
     </button>
+}
 
-    <div class="thread-input" *ngIf="!askLabel">
+    @if (!askLabel) {
+<div class="thread-input">
       <input
         type="text"
         [(ngModel)]="draft"
@@ -105,5 +140,6 @@
       />
       <button type="button" (click)="submit()" aria-label="Enviar">➤</button>
     </div>
+}
   </div>
 </ng-template>

@@ -899,7 +899,7 @@ export class RiskBoard implements AfterViewChecked, OnDestroy {
 
   private zoomOnCentre(factor: number): void {
     const caja = this.svgRef?.nativeElement.getBoundingClientRect();
-    if (!caja) return this.applyZoom(factor, this.panX, this.panY);
+    if (!caja) { this.applyZoom(factor, this.panX, this.panY); return; }
     this.zoomAround(factor, caja.left + caja.width / 2, caja.top + caja.height / 2);
   }
 

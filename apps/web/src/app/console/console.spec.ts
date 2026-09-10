@@ -391,7 +391,7 @@ describe('Console (la portada)', () => {
     it('y girar tampoco mueve la pantalla', () => {
       const caja = fixture.nativeElement.querySelector('.cmd-input') as HTMLInputElement;
       const focos: unknown[] = [];
-      caja.focus = ((opciones?: unknown) => focos.push(opciones)) as HTMLElement['focus'];
+      caja.focus = ((opciones?: unknown) => focos.push(opciones));
       component.steer('down');
       for (const opciones of focos) {
         expect(opciones).toEqual({ preventScroll: true });
@@ -413,7 +413,7 @@ describe('Console (la portada)', () => {
 
     it('el récord se guarda al morir', () => {
       component.game = { ...component.game!, score: 250 };
-      component.game = { ...component.game!, over: true };
+      component.game = { ...component.game, over: true };
       component.quitGame();
       expect(component.gameBest).toBe(250);
     });
@@ -440,7 +440,7 @@ describe('Console (la portada)', () => {
       component.quitGame();
       component.currentCommand = 'snake';
       component.executeCommand();
-      component.game = { ...component.game!, score: 10 };
+      component.game = { ...component.game, score: 10 };
       component.quitGame();
       expect(component.gameBest).toBe(200);
     });
@@ -549,7 +549,7 @@ describe('Console (la portada)', () => {
     it('los botones del pad no desplazan la pantalla', () => {
       const caja = fixture.nativeElement.querySelector('.cmd-input') as HTMLInputElement;
       const focos: unknown[] = [];
-      caja.focus = ((opciones?: unknown) => focos.push(opciones)) as HTMLElement['focus'];
+      caja.focus = ((opciones?: unknown) => focos.push(opciones));
 
       component.runJump();
       component.runDuck();

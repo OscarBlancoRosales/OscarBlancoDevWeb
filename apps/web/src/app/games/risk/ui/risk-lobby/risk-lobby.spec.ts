@@ -50,7 +50,7 @@ describe('RiskLobby', () => {
     ({ fixture, component } = await createLobby());
   });
 
-  afterEach(() => localStorage.clear());
+  afterEach(() => { localStorage.clear(); });
 
   it('se crea', () => {
     expect(component).toBeTruthy();

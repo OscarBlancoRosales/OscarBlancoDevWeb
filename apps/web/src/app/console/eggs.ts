@@ -75,7 +75,7 @@ export function banner(texto: string): string[] {
     .toUpperCase()
     .split('')
     .map((c) => GLYPHS[c])
-    .filter(Boolean) as string[][];
+    .filter(Boolean);
 
   return Array.from({ length: 5 }, (_, fila) =>
     letras.map((glifo) => glifo[fila]).join(' '),

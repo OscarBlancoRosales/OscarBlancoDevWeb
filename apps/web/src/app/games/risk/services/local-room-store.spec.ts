@@ -16,12 +16,12 @@ function fakeStorage(): Storage {
     get length() {
       return data.size;
     },
-    clear: () => data.clear(),
+    clear: () => { data.clear(); },
     getItem: (key: string) => data.get(key) ?? null,
     key: (index: number) => Array.from(data.keys())[index] ?? null,
     removeItem: (key: string) => void data.delete(key),
     setItem: (key: string, value: string) => void data.set(key, value),
-  } as Storage;
+  };
 }
 
 function meta(id = 'LOCAL-AAAA-BBBB'): RoomMeta {

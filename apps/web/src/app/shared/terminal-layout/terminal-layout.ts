@@ -73,7 +73,7 @@ export class TerminalLayout implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.tick();
-    this.clockTimer = setInterval(() => this.tick(), 1000);
+    this.clockTimer = setInterval(() => { this.tick(); }, 1000);
   }
 
   ngAfterViewInit(): void {

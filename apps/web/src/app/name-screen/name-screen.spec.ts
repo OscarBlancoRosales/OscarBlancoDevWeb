@@ -49,8 +49,8 @@ async function montar(
 }
 
 describe('NameScreen (crear sala de Scrum Poker)', () => {
-  beforeEach(() => localStorage.clear());
-  afterEach(() => localStorage.clear());
+  beforeEach(() => { localStorage.clear(); });
+  afterEach(() => { localStorage.clear(); });
 
   /**
    * La pantalla estaba a medias en inglés -«Join Room» con el resto en

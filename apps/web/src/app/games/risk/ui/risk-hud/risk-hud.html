@@ -6,25 +6,32 @@
       La fase es el botón que la termina. Mientras no se pueda cerrar es texto
       plano, así que no hay ningún control muerto ocupando sitio.
     -->
-    <button
+    @if (myTurn && canEndPhase) {
+<button
       class="hud-phase"
       type="button"
-      *ngIf="myTurn && canEndPhase; else fasePlana"
+     
       (click)="endPhase.emit()"
     >
       {{ phaseLabel }}<span class="hud-go">✓ Terminar →</span>
     </button>
-    <ng-template #fasePlana>
-      <span class="hud-phase">{{ phaseLabel }}</span>
-    </ng-template>
+} @else {
 
-    <span class="hud-reserve" *ngIf="reserveLeft > 0">quedan {{ reserveLeft }}</span>
+      <span class="hud-phase">{{ phaseLabel }}</span>
+    
+}
+    
+
+    @if (reserveLeft > 0) {
+<span class="hud-reserve">quedan {{ reserveLeft }}</span>
+}
 
     <!--
       Deshacer va pegado a la cuenta de la reserva porque es lo que modifica.
       Sólo existe si hay algo que deshacer.
     -->
-    <ng-container *ngIf="placedCount > 0">
+    @if (placedCount > 0) {
+
       <button
         class="hud-undo"
         type="button"
@@ -43,17 +50,22 @@
       >
         ↺
       </button>
-    </ng-container>
+    
+}
   </div>
 
   <div class="hud-line secondary">
     <span class="hud-turn">{{ turnLabel }}</span>
-    <span class="hud-thinking" *ngIf="thinking">{{ thinking }} pensando…</span>
+    @if (thinking) {
+<span class="hud-thinking">{{ thinking }} pensando…</span>
+}
   </div>
 
-  <div class="hud-line" *ngIf="hint">
+  @if (hint) {
+<div class="hud-line">
     <span class="hud-hint">{{ hint }}</span>
   </div>
+}
 
   <!--
     Consultas de diez segundos: objetivos, continentes, historial y ajustes.

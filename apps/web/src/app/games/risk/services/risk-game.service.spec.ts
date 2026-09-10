@@ -58,7 +58,7 @@ class SalaFalsa {
   log$ = new BehaviorSubject<LoggedActionEntry[]>([]);
   /** El chat: por aquí llegan los privados a los que el bot contesta. */
   chat$ = new BehaviorSubject<ChatEntry[]>([]);
-  chats: Array<{ kind: string; text: string; to?: string }> = [];
+  chats: { kind: string; text: string; to?: string }[] = [];
   listenToRoom = vi.fn();
 
   /** Avería 1: aceptar la jugada de este asiento pero no anotarla (rechazo). */

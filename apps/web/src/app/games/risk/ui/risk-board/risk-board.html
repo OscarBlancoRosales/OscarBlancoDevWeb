@@ -1,8 +1,9 @@
 <div class="board-wrapper">
-  <svg
+  @if (rendered) {
+<svg
     #svg
     class="board"
-    *ngIf="rendered"
+   
     [attr.viewBox]="rendered.viewBox"
     preserveAspectRatio="xMidYMid meet"
   >
@@ -42,17 +43,20 @@
     <g #viewport>
       <!-- Rutas marítimas -->
       <g class="routes">
-        <path
-          *ngFor="let route of rendered.routes; trackBy: trackRoute"
+        @for (route of rendered.routes; track trackRoute($index, route)) {
+<path
+         
           class="route"
           [attr.d]="route.path"
         />
+}
       </g>
 
       <!-- Territorios -->
       <g class="territories">
-        <g
-          *ngFor="let territory of views; trackBy: trackView"
+        @for (territory of views; track trackView($index, territory)) {
+<g
+         
           class="territory"
           [ngClass]="territory.classes"
           (click)="onTerritoryClick(territory.id, $event)"
@@ -69,12 +73,14 @@
           />
           <path class="territory-outline" [attr.d]="territory.path" />
         </g>
+}
       </g>
 
       <!-- Fichas de ejércitos -->
       <g class="armies">
-        <g
-          *ngFor="let territory of views; trackBy: trackView"
+        @for (territory of views; track trackView($index, territory)) {
+<g
+         
           class="army-badge"
           [class.mine]="territory.mine"
           [class.spotlight]="territory.spotlit"
@@ -93,22 +99,25 @@
             segundos, y a poco zoom la textura no se distingue. El glifo se lee
             siempre y no cuesta nada.
           -->
-          <text
+          @if (territory.terrainGlyph; as glyph) {
+<text
             class="badge-terrain"
-            *ngIf="territory.terrainGlyph as glyph"
+           
             x="13"
             y="-6"
             [attr.fill]="territory.terrainTint"
           >
             {{ glyph }}
           </text>
+}
           <!--
             Tropas especializadas: un glifo por ficha, en fila sobre la ficha de
             ejércitos. El índice se calcula al cambiar el estado, no aquí.
           -->
           <g class="badge-units">
-            <text
-              *ngFor="let unit of territory.units; trackBy: trackUnitView"
+            @for (unit of territory.units; track trackUnitView($index, unit)) {
+<text
+             
               class="badge-unit"
               [attr.x]="unit.x"
               y="-13"
@@ -116,22 +125,29 @@
             >
               {{ unit.glyph }}
             </text>
+}
           </g>
-          <text class="badge-name" *ngIf="showNames">
-            <tspan
-              *ngFor="let line of territory.nameLines; let i = index"
+          @if (showNames) {
+<text class="badge-name">
+            @for (line of territory.nameLines; track line; let i = $index) {
+<tspan
+             
               x="0"
               [attr.y]="22 + i * 9"
             >
               {{ line }}
             </tspan>
+}
           </text>
+}
         </g>
+}
       </g>
     </g>
 
     <rect class="vignette" x="-4000" y="-4000" width="8000" height="8000" fill="url(#vignette)" />
   </svg>
+}
 
   <!--
     Hueco pegado a un territorio. Lo coloca el componente en cada repintado del
@@ -150,20 +166,30 @@
   </div>
 
   <!-- Cartel flotante del territorio bajo el cursor -->
-  <div class="board-tooltip" #tooltipCard *ngIf="tooltip as info">
+  @if (tooltip; as info) {
+<div class="board-tooltip" #tooltipCard>
     <span class="tip-name">{{ info.name }}</span>
     <span class="tip-owner" [style.color]="info.color">{{ info.owner }}</span>
     <span class="tip-armies">{{ info.armies }} ejércitos</span>
-    <span class="tip-terrain" *ngIf="info.terrain as terrain">
+    @if (info.terrain; as terrain) {
+<span class="tip-terrain">
       <span class="tip-glyph" [style.color]="terrain.tint">{{ terrain.glyph }}</span>
       {{ terrain.name }} · {{ terrain.defence }}
     </span>
-    <span class="tip-matchup" *ngFor="let line of info.matchup">{{ line }}</span>
-    <span class="tip-approach" *ngIf="info.approach === 'desembarco'">
+}
+    @for (line of info.matchup; track line) {
+<span class="tip-matchup">{{ line }}</span>
+}
+    @if (info.approach === 'desembarco') {
+<span class="tip-approach">
       Desembarco: cruzando el mar solo tiras 2 dados.
     </span>
-    <span class="tip-odds" *ngIf="info.odds !== null">
+}
+    @if (info.odds !== null) {
+<span class="tip-odds">
       Conquista: {{ (info.odds * 100) | number: '1.0-0' }} %
     </span>
+}
   </div>
+}
 </div>

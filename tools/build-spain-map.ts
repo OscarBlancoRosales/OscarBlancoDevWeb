@@ -143,7 +143,7 @@ function moveToWindow(
   const group = ids.map((id) => features[id]).filter(Boolean);
   if (group.length === 0) return;
 
-  const points = group.flat(3) as Point2[];
+  const points = group.flat(3);
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;

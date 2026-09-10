@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
@@ -30,7 +30,7 @@ import type { Casilla, FlotaView } from '@devweb/shared/games/flota/tipos';
  */
 @Component({
   selector: 'app-flota-room',
-  imports: [CommonModule, FlotaBoard, TerminalLayout],
+  imports: [FlotaBoard, TerminalLayout],
   templateUrl: './flota-room.html',
   styleUrl: './flota-room.css',
 })

@@ -96,7 +96,7 @@ export class IconGenerator {
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (!input.files || !input.files[0]) return;
+    if (!input.files?.[0]) return;
 
     const file = input.files[0];
     if (!file.type.startsWith('image/')) {

@@ -27,7 +27,7 @@ const FUERA_DE_CASA = ['//', '/\\'];
  * navegadores normalizan a lo anterior.
  */
 export function safeNext(raw: string | null | undefined): string {
-  if (!raw || !raw.startsWith('/')) return DEFAULT_AFTER_LOGIN;
+  if (!raw?.startsWith('/')) return DEFAULT_AFTER_LOGIN;
   if (FUERA_DE_CASA.some((prefijo) => raw.startsWith(prefijo))) return DEFAULT_AFTER_LOGIN;
   return raw;
 }

@@ -17,7 +17,7 @@ function audioResponse(ok = true, status = 200): Response {
 
 describe('narrador de la crónica', () => {
   let narrator: NarratorService;
-  let calls: Array<{ url: string; body: Record<string, unknown> }>;
+  let calls: { url: string; body: Record<string, unknown> }[];
 
   beforeEach(() => {
     narrator = new NarratorService();
@@ -140,16 +140,16 @@ describe('narrador de la crónica', () => {
   describe('cuando falla', () => {
     it('un error del servidor no rompe nada y deja aviso', async () => {
       narrator.toggle();
-      narrator.fetchImpl = (async () => audioResponse(false, 429)) as unknown as typeof fetch;
+      narrator.fetchImpl = async () => audioResponse(false, 429);
       await expect(narrator.speak('hola', settings())).resolves.toBeUndefined();
       expect(narrator.lastError).toContain('429');
     });
 
     it('un fallo de red tampoco', async () => {
       narrator.toggle();
-      narrator.fetchImpl = (async () => {
+      narrator.fetchImpl = async () => {
         throw new Error('sin conexión');
-      }) as unknown as typeof fetch;
+      };
       await expect(narrator.speak('hola', settings())).resolves.toBeUndefined();
       expect(narrator.lastError.length).toBeGreaterThan(0);
     });

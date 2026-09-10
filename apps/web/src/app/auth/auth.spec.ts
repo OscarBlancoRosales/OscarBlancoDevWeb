@@ -23,7 +23,7 @@ async function montar(params: Record<string, string> = {}, entrar = ENTRA_BIEN) 
 }
 
 describe('Auth (iniciar sesión)', () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => { localStorage.clear(); });
 
   it('se crea', async () => {
     const { component } = await montar();

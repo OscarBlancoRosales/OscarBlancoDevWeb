@@ -15,7 +15,7 @@ function salaFalsa() {
   const datos = new BehaviorSubject<unknown>(null);
   return {
     roomData$: datos.asObservable(),
-    emitir: (data: unknown) => datos.next(data),
+    emitir: (data: unknown) => { datos.next(data); },
     unirse: vi.fn(() => Promise.resolve({ seatId: 'asiento-1', seatToken: 'pase-nuevo' })),
     reconectar: vi.fn(),
     desconectar: vi.fn(),
@@ -64,8 +64,8 @@ describe('ScrumPoker', () => {
   let navigate: ReturnType<typeof vi.spyOn>;
   let sala: SalaFalsa;
 
-  beforeEach(() => localStorage.clear());
-  afterEach(() => localStorage.clear());
+  beforeEach(() => { localStorage.clear(); });
+  afterEach(() => { localStorage.clear(); });
 
   /**
    * El estado del consenso salía escrito a fuego en castellano dentro del

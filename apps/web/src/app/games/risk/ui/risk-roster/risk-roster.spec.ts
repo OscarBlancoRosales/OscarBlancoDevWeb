@@ -83,7 +83,7 @@ describe('RiskRoster', () => {
 
     const estratega = filaDe('Estratega');
     expect(estratega.querySelector('.avatar img')).toBeNull();
-    expect(estratega.querySelector('.avatar.sin-cara')!.textContent!.trim()).toBe('🧠');
+    expect(estratega.querySelector('.avatar.sin-cara')!.textContent.trim()).toBe('🧠');
   });
 
   it('marca de quién es el turno y quién está fuera', () => {
