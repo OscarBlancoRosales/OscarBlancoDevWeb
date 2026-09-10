@@ -1,5 +1,6 @@
 import { createRng, shuffle } from '@devweb/shared/engine/rng';
 import { BOMBA, PULSA, RAFAGA } from './pruebas';
+import { BANCO_RESCATADO } from './banco-rescatado';
 import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
 
@@ -284,15 +285,6 @@ export const BANCO: readonly Pregunta[] = [
       'Si todo colisiona en el mismo cubo, se recorre una lista. El O(1) es el caso medio, y hay ataques que fabrican colisiones a propósito.',
   },
   {
-    id: 'utf8-bytes',
-    tipo: 'test',
-    enunciado: '¿Cuántos bytes ocupa como mucho un carácter en UTF-8?',
-    opciones: ['2', '3', '4', '6'],
-    correcta: 2,
-    explicacion:
-      'Cuatro, desde que se limitó Unicode a U+10FFFF. La especificación original llegaba a seis, y por eso mucha gente lo recuerda mal.',
-  },
-  {
     id: 'ascii-a',
     tipo: 'test',
     enunciado: '¿Cuál es el código ASCII de la letra A mayúscula?',
@@ -353,16 +345,6 @@ export const BANCO: readonly Pregunta[] = [
       'Del orden de 40 millones, y más de la mitad son controladores de dispositivos. En 1994, la 1.0 tenía 176.000.',
   },
   {
-    id: 'est-puerto-https',
-    tipo: 'estimacion',
-    enunciado: '¿En qué puerto escucha HTTPS por defecto?',
-    opciones: [],
-    correcta: 443,
-    margen: 200,
-    explicacion:
-      '443. HTTP es el 80, SSH el 22 y el DNS el 53: los cuatro que uno acaba sabiéndose sin querer.',
-  },
-  {
     id: 'est-www-anio',
     tipo: 'estimacion',
     enunciado: '¿En qué año propuso Tim Berners-Lee la World Wide Web?',
@@ -397,7 +379,7 @@ export const BANCO: readonly Pregunta[] = [
 
 /** Todo lo que hay para repartir, junto: el banco de siempre y las pruebas. */
 function todas(): readonly Pregunta[] {
-  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA];
+  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...BANCO_RESCATADO];
 }
 
 /**

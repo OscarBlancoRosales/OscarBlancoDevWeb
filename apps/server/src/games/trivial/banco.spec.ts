@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BANCO, ESCALETA, RONDAS_POR_PROGRAMA, repartir } from './banco';
 import { BOMBA, PULSA, RAFAGA } from './pruebas';
+import { BANCO_RESCATADO } from './banco-rescatado';
 import { OPCIONES } from '@devweb/shared/games/trivial/tipos';
 
 describe('el banco', () => {
@@ -13,8 +14,20 @@ describe('el banco', () => {
     expect([...clases].sort()).toEqual(['estimacion', 'fallo', 'test']);
   });
 
-  it('ninguna repite identificador', () => {
-    expect(new Set(BANCO.map((pregunta) => pregunta.id)).size).toBe(BANCO.length);
+  it('ninguna repite identificador, mire donde mire', () => {
+    const ids = [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...BANCO_RESCATADO].map((p) => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  /**
+   * Un identificador distinto no basta: `utf8-bytes` y `pulsa-utf8-bytes` eran
+   * la misma pregunta con dos caras, y en un programa podían caer las dos.
+   */
+  it('ni repite enunciado, que es lo que de verdad se nota jugando', () => {
+    const enunciados = [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...BANCO_RESCATADO].map((p) =>
+      p.enunciado.toLowerCase().trim(),
+    );
+    expect(new Set(enunciados).size).toBe(enunciados.length);
   });
 
   it('las de opciones traen cuatro, y ninguna repetida', () => {
@@ -48,6 +61,49 @@ describe('el banco', () => {
     for (const pregunta of BANCO) {
       expect(pregunta.explicacion.length, pregunta.id).toBeGreaterThan(15);
       expect(pregunta.enunciado.length, pregunta.id).toBeGreaterThan(10);
+    }
+  });
+});
+
+/**
+ * Vienen de otro formato y de otra época: las mismas exigencias que al resto,
+ * porque en el programa suenan igual que las de siempre.
+ */
+describe('las preguntas rescatadas del banco viejo', () => {
+  const conOpciones = BANCO_RESCATADO.filter((p) => p.tipo !== 'estimacion');
+
+  it('las de opciones traen cuatro (o dos en la rafaga), y la buena entre ellas', () => {
+    for (const pregunta of conOpciones) {
+      const cuantas = pregunta.tipo === 'rafaga' ? 2 : OPCIONES;
+      expect(pregunta.opciones, pregunta.id).toHaveLength(cuantas);
+      expect(new Set(pregunta.opciones).size, pregunta.id).toBe(cuantas);
+      expect(pregunta.correcta, pregunta.id).toBeGreaterThanOrEqual(0);
+      expect(pregunta.correcta, pregunta.id).toBeLessThan(cuantas);
+    }
+  });
+
+  it('las de estimacion traen un margen que no regala el punto', () => {
+    for (const pregunta of BANCO_RESCATADO.filter((p) => p.tipo === 'estimacion')) {
+      expect(pregunta.opciones, pregunta.id).toHaveLength(0);
+      expect(pregunta.margen, pregunta.id).toBeGreaterThan(0);
+      // Un año se falla en años. Un margen de ciento sesenta es acertar por
+      // decir «el siglo XX», y así se coló al convertirlas la primera vez.
+      expect(pregunta.margen ?? 0, pregunta.id).toBeLessThanOrEqual(
+        Math.max(20, Math.abs(pregunta.correcta) * 0.15),
+      );
+    }
+  });
+
+  it('todas explican la respuesta: es la condición por la que entraron', () => {
+    for (const pregunta of BANCO_RESCATADO) {
+      expect(pregunta.explicacion.length, pregunta.id).toBeGreaterThan(15);
+      expect(pregunta.enunciado.length, pregunta.id).toBeGreaterThan(10);
+    }
+  });
+
+  it('la bomba se contesta con la mecha corriendo: enunciados cortos', () => {
+    for (const pregunta of BANCO_RESCATADO.filter((p) => p.tipo === 'bomba')) {
+      expect(pregunta.enunciado.length, pregunta.id).toBeLessThanOrEqual(62);
     }
   });
 });
