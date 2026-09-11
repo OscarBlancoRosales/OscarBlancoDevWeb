@@ -477,7 +477,13 @@ describe('abrir desde el escritorio y desde el menú', () => {
         provideRouter([]),
         {
           provide: AuthApiService,
-          useValue: { settledUser$: quien.asObservable(), salir: () => Promise.resolve() },
+          useValue: {
+            settledUser$: quien.asObservable(),
+            salir: () => Promise.resolve(),
+            // El panel de administración recupera la sesión al abrirse, y aquí
+            // se abre de verdad al recorrer todos los iconos.
+            restaurar: () => Promise.resolve(),
+          },
         },
       ],
     }).compileComponents();

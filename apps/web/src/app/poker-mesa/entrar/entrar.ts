@@ -55,6 +55,11 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
     this.sesion = this.auth.settledUser$.subscribe((user) => {
       this.conSesion.set(!!user);
       this.sesionResuelta.set(true);
+      // Abrir mesa exige cuenta, igual que en la versión clásica: alguien tiene
+      // que ser su dueño. Quien no la tiene va al login y vuelve aquí, en vez
+      // de quedarse en una pantalla sin nada que pulsar. Con invitación no hace
+      // falta, que es justo el sentido de invitar.
+      if (!user && !sala) void this.identificarse();
     });
     if (sala) void this.mirarQuienHay(sala);
   }
@@ -137,6 +142,19 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
     } finally {
       this.trabajando.set(false);
     }
+  }
+
+  /**
+   * Al login, con la vuelta puesta.
+   *
+   * Se espera a `settledUser$` antes de mandar a nadie: `user$` vale null
+   * mientras se recupera la sesión guardada, y actuar sobre ese null echaría a
+   * la calle a quien solo estaba recargando la página.
+   */
+  identificarse(): Promise<boolean> {
+    return this.router.navigate(['/auth'], {
+      queryParams: { next: '/scrum-poker/entrar' },
+    });
   }
 
   volver(): void {

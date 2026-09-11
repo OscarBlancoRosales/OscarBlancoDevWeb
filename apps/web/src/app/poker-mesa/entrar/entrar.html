@@ -83,6 +83,11 @@
           Para abrir una mesa hace falta cuenta, porque alguien tiene que ser su
           dueño. Para sentarte en una a la que te inviten, no.
         </p>
+        <!-- Con el botón, y no solo con el aviso: si la sesión se cae estando
+             aquí, la pantalla se quedaba sin nada que pulsar. -->
+        <button type="button" class="accion" (click)="identificarse()">
+          Entrar con mi cuenta
+        </button>
       }
 
       <button type="button" class="volver" (click)="volver()">Volver a elegir versión</button>
