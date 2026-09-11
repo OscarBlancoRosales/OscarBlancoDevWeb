@@ -17,6 +17,16 @@ import { dirname } from 'node:path';
 /** Cinco minutos de pie en el terminal son de sobra para teclear seis cifras. */
 const VIDA_DEL_CODIGO_MS = 5 * 60 * 1000;
 
+/**
+ * Cuántas veces se puede fallar el código antes de que muera.
+ *
+ * Seis cifras son un millón de combinaciones, y un millón de intentos no es
+ * nada para un script: sin este tope, cualquier página abierta en el navegador
+ * podría probarlas todas contra `127.0.0.1` mientras el código vive. Tres
+ * intentos bastan para un dedo torpe y no para una máquina.
+ */
+const INTENTOS = 3;
+
 export interface Dispositivo {
   readonly id: string;
   readonly nombre: string;
@@ -39,7 +49,7 @@ function iguales(a: string, b: string): boolean {
 
 export class Acceso {
   private lista: Dispositivo[] = [];
-  private pendiente: { codigo: string; nombre: string; caduca: number } | null = null;
+  private pendiente: { codigo: string; nombre: string; caduca: number; fallos: number } | null = null;
 
   constructor(
     private readonly fichero: string,
@@ -79,6 +89,7 @@ export class Acceso {
       codigo,
       nombre: nombre.trim().slice(0, 40) || 'un dispositivo',
       caduca: this.ahora() + VIDA_DEL_CODIGO_MS,
+      fallos: 0,
     };
     return codigo;
   }
@@ -91,7 +102,14 @@ export class Acceso {
       this.pendiente = null;
       return null;
     }
-    if (!iguales(codigo, pendiente.codigo)) return null;
+    if (!iguales(codigo, pendiente.codigo)) {
+      // Al tercer fallo el código muere: hay que pedir otro, y ese sale otra
+      // vez por el terminal. Es lo que convierte un millón de combinaciones en
+      // tres oportunidades.
+      pendiente.fallos += 1;
+      if (pendiente.fallos >= INTENTOS) this.pendiente = null;
+      return null;
+    }
 
     this.pendiente = null;
     const token = randomBytes(32).toString('base64url');

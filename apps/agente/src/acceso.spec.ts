@@ -64,6 +64,29 @@ describe('el control de acceso al canal', () => {
     expect(acceso.dispositivos()).toHaveLength(1);
   });
 
+  /**
+   * Seis cifras son un millón de combinaciones, y eso no es nada para un
+   * script. El tope de intentos es lo que las convierte en tres oportunidades.
+   */
+  it('a los tres fallos el código muere, aunque después aciertes', async () => {
+    const codigo = acceso.empezarEmparejamiento('el móvil');
+
+    expect(await acceso.emparejar('000001')).toBeNull();
+    expect(await acceso.emparejar('000002')).toBeNull();
+    expect(await acceso.emparejar('000003')).toBeNull();
+
+    expect(await acceso.emparejar(codigo)).toBeNull();
+    expect(acceso.dispositivos()).toEqual([]);
+  });
+
+  it('pero fallar una vez no impide acertar a la siguiente', async () => {
+    const codigo = acceso.empezarEmparejamiento('el móvil');
+
+    expect(await acceso.emparejar('000001')).toBeNull();
+
+    expect(await acceso.emparejar(codigo)).toBeTruthy();
+  });
+
   it('y caduca solo, para que no se quede uno vivo en el terminal', async () => {
     let ahora = 1_000_000;
     const conReloj = new Acceso(join(carpeta, 'reloj.json'), () => ahora);

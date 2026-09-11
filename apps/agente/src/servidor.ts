@@ -60,6 +60,23 @@ export async function construirAgente(opciones: OpcionesDelAgente = {}): Promise
     allowedHeaders: ['authorization', 'content-type'],
   });
 
+  /**
+   * Solo se contesta a quien llama a esta máquina por su nombre de máquina.
+   *
+   * CORS no basta contra el ataque clásico a un servicio de `localhost`: una
+   * web cualquiera apunta su propio dominio a 127.0.0.1, y entonces sus
+   * peticiones son del mismo origen y ningún CORS las mira. Lo que no puede
+   * falsificar es la cabecera `Host`, que seguirá diciendo su dominio.
+   *
+   * Esto es lo que hace que «escucha solo en local» signifique algo de verdad.
+   */
+  app.addHook('onRequest', async (peticion, respuesta) => {
+    const host = (peticion.headers.host ?? '').split(':')[0].toLowerCase();
+    if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]') {
+      await respuesta.status(403).send({ code: 'host-raro', message: 'Aquí no se llama así' });
+    }
+  });
+
   const canal = opciones.acceso && opciones.buzon ? { acceso: opciones.acceso, buzon: opciones.buzon } : null;
 
   app.get('/salud', () => ({ agente: 'devweb', version: 1, canal: canal !== null }));
