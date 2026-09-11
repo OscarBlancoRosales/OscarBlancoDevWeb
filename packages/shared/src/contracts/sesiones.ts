@@ -78,10 +78,11 @@ export const Sesion = Type.Object({
   /**
    * Por dónde empieza este tramo dentro de la sesión entera.
    *
-   * Una sesión se abre por el final, como un chat, así que la primera página no
-   * es la cero: sin saber dónde cae, la pantalla no puede pedir lo de antes.
+   * Opcional porque el agente lo actualizas tú, con un `pull`, mientras la web
+   * se despliega sola: siempre habrá agentes más viejos que la pantalla que les
+   * habla. Quien llama sabe qué tramo pidió, así que esto confirma, no informa.
    */
-  desde: Type.Integer(),
+  desde: Type.Optional(Type.Integer()),
 });
 
 export type Autor = Static<typeof Autor>;

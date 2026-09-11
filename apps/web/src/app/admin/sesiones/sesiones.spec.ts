@@ -141,15 +141,37 @@ describe('el visor de sesiones', () => {
    */
   it('se abre por el final, no por el principio', async () => {
     const sesion = vi.fn().mockResolvedValue(ABIERTA);
+    const largo = { ...RESUMEN, tandas: 500 };
     const fixture = await montar({
       disponible: () => Promise.resolve(true),
-      sesiones: () => Promise.resolve([RESUMEN]),
+      sesiones: () => Promise.resolve([largo]),
       sesion,
     });
 
-    await fixture.componentInstance.abrir(RESUMEN);
+    await fixture.componentInstance.abrir(largo);
 
-    expect(sesion).toHaveBeenCalledWith('s1', -1, expect.any(Number));
+    expect(sesion).toHaveBeenCalledWith('s1', 440, 60);
+    fixture.destroy();
+  });
+
+  /**
+   * El agente lo actualiza el dueño de la máquina con un `pull`; la web se
+   * despliega sola. Pedirle al agente que entienda algo nuevo para poder abrir
+   * una sesión rompía el visor entero hasta que se actualizara.
+   */
+  it('el corte lo calcula la pantalla, sin pedirle nada nuevo al agente', async () => {
+    const sesion = vi.fn().mockResolvedValue({ ...ABIERTA, desde: undefined });
+    const corta = { ...RESUMEN, tandas: 2 };
+    const fixture = await montar({
+      disponible: () => Promise.resolve(true),
+      sesiones: () => Promise.resolve([corta]),
+      sesion,
+    });
+
+    await fixture.componentInstance.abrir(corta);
+
+    expect(sesion).toHaveBeenCalledWith('s1', 0, 60);
+    expect(fixture.componentInstance.quedanPorLeer).toBe(0);
     fixture.destroy();
   });
 
@@ -176,7 +198,8 @@ describe('el visor de sesiones', () => {
     });
     const panel = fixture.componentInstance;
 
-    await panel.abrir(RESUMEN);
+    // Una tanda más de las que caben en una página: queda justo una detrás.
+    await panel.abrir({ ...RESUMEN, tandas: 61 });
     expect(panel.quedanPorLeer).toBe(1);
 
     await panel.masTandas();

@@ -224,8 +224,7 @@ export class AgenteApiService {
     return (await respuesta.json()) as T;
   }
 
-  /** `desde` negativo trae el final, que es por donde se abre una sesión. */
-  async sesion(id: string, desde = -1, cuantas = 60): Promise<Sesion> {
+  async sesion(id: string, desde = 0, cuantas = 60): Promise<Sesion> {
     const respuesta = await fetch(
       `${AGENTE}/sesiones/${encodeURIComponent(id)}?desde=${desde}&cuantas=${cuantas}`,
       { signal: AbortSignal.timeout(30_000) },

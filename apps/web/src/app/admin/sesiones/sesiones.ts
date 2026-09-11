@@ -32,6 +32,16 @@ export class Sesiones implements OnInit {
   readonly abierta = signal<Sesion | null>(null);
   readonly cargandoMas = signal(false);
 
+  /**
+   * Por dónde empieza el tramo que se tiene delante.
+   *
+   * Lo lleva la pantalla y no se lee de la respuesta a propósito: el agente
+   * corre en tu máquina y se actualiza cuando haces `pull`, así que uno viejo
+   * contesta sin este dato —o rechaza lo que no entiende— y esto tiene que
+   * seguir funcionando igual. Quien pide un tramo ya sabe cuál pidió.
+   */
+  private readonly desde = signal(0);
+
   /** Para filtrar la lista: son doscientas y pico. */
   readonly busqueda = signal('');
   /** Lo que Claude se dice a sí mismo va plegado: ocupa más que lo que dice. */
@@ -77,11 +87,21 @@ export class Sesiones implements OnInit {
     return this.abierta()?.resumen.id === sesion.id;
   }
 
+  /**
+   * Abre por el final, que es lo último dicho.
+   *
+   * El corte se calcula aquí con las tandas que ya trae el resumen, en vez de
+   * pedirle al agente que entienda un «dame el final»: así vale igual contra
+   * un agente de hace dos semanas.
+   */
   async abrir(resumen: ResumenDeSesion): Promise<void> {
     this.error.set('');
     this.abierta.set(null);
+    const principio = Math.max(0, resumen.tandas - POR_TANDA);
+
     try {
-      this.abierta.set(await this.agente.sesion(resumen.id, -1, POR_TANDA));
+      this.abierta.set(await this.agente.sesion(resumen.id, principio, POR_TANDA));
+      this.desde.set(principio);
       this.alFinal();
     } catch (fallo) {
       this.error.set(fallo instanceof Error ? fallo.message : 'No se ha podido abrir.');
@@ -97,20 +117,18 @@ export class Sesiones implements OnInit {
    */
   async masTandas(): Promise<void> {
     const actual = this.abierta();
-    if (!actual || this.cargandoMas() || actual.desde === 0) return;
+    if (!actual || this.cargandoMas() || this.desde() === 0) return;
 
     this.cargandoMas.set(true);
     const caja = this.hilo?.nativeElement;
     const altoAntes = caja?.scrollHeight ?? 0;
 
     try {
-      const principio = Math.max(0, actual.desde - POR_TANDA);
-      const anterior = await this.agente.sesion(
-        actual.resumen.id,
-        principio,
-        actual.desde - principio,
-      );
+      const hasta = this.desde();
+      const principio = Math.max(0, hasta - POR_TANDA);
+      const anterior = await this.agente.sesion(actual.resumen.id, principio, hasta - principio);
       this.abierta.set({ ...anterior, tandas: [...anterior.tandas, ...actual.tandas] });
+      this.desde.set(principio);
 
       if (caja) {
         requestAnimationFrame(() => {
@@ -129,7 +147,7 @@ export class Sesiones implements OnInit {
 
   /** Cuántas quedan por leer hacia atrás. Hacia adelante ya no queda nada. */
   get quedanPorLeer(): number {
-    return this.abierta()?.desde ?? 0;
+    return this.desde();
   }
 
   /** Las tandas que se pintan, según si quieres ver lo que piensa. */
