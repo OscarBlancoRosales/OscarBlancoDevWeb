@@ -191,6 +191,41 @@ describe('el canal, por HTTP', () => {
     });
   });
 
+  /**
+   * El ataque clásico contra un servicio de `localhost`: una web apunta su
+   * propio dominio a 127.0.0.1 y sus peticiones pasan a ser del mismo origen,
+   * así que ningún CORS las mira. Lo que no puede falsificar es el `Host`.
+   */
+  describe('contra el que se hace pasar por tu máquina', () => {
+    it('no se contesta a quien llama con otro nombre', async () => {
+      const respuesta = await app.inject({
+        method: 'GET',
+        url: '/sesiones',
+        headers: { host: 'malo.example' },
+      });
+
+      expect(respuesta.statusCode).toBe(403);
+    });
+
+    it('ni para emparejarse, que es la puerta de entrada', async () => {
+      const respuesta = await app.inject({
+        method: 'POST',
+        url: '/emparejar/empezar',
+        headers: { host: 'malo.example' },
+        payload: { nombre: 'colado' },
+      });
+
+      expect(respuesta.statusCode).toBe(403);
+    });
+
+    it('y sí a quien llama a esta máquina por su nombre', async () => {
+      for (const host of ['127.0.0.1:4319', 'localhost:4319']) {
+        const respuesta = await app.inject({ method: 'GET', url: '/salud', headers: { host } });
+        expect(respuesta.statusCode, host).toBe(200);
+      }
+    });
+  });
+
   /** Sin canal montado, el agente sigue siendo lo que era: un visor. */
   it('sin canal, esas rutas ni existen', async () => {
     const soloLee = await construirAgente({ almacen: new Almacen(join(carpeta, 'sin-sesiones')) });

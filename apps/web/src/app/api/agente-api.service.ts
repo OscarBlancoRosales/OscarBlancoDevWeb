@@ -10,9 +10,20 @@ export interface Conversacion {
 /**
  * Dónde se guarda la llave de este dispositivo.
  *
- * Es un secreto de ESTE navegador y solo abre `127.0.0.1`: con él no se llega
- * a la VPS ni a nada publicado. Se guarda para no tener que emparejar cada vez,
- * que era justo lo que se pedía.
+ * Un secreto en `localStorage` lo lee cualquier script que se cuele en la
+ * página, y esta llave abre el canal de tu máquina. Merece decir por qué se
+ * guarda aquí de todos modos:
+ *
+ * - Solo sirve desde ESTE navegador contra `127.0.0.1`. Robada y llevada a
+ *   otro sitio no abre nada: al otro lado no hay ningún agente escuchando.
+ * - Quien pudiera robarla ya está ejecutando código en esta página, que está
+ *   emparejada: podría usar el canal directamente sin molestarse en copiarla.
+ *   Guardarla en otro sitio no cambiaría ese escenario.
+ * - La alternativa —no guardarla— obliga a emparejar en cada visita, que es
+ *   exactamente lo que se pidió evitar.
+ *
+ * Lo que sí queda pendiente por esto: poder ver los aparatos emparejados y
+ * echarlos desde la consola. El agente ya lo sirve en `/dispositivos`.
  */
 const LLAVE = 'devweb_canal_token';
 
