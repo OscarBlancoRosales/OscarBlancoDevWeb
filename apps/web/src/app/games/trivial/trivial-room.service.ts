@@ -69,16 +69,15 @@ export class TrivialRoomService {
     nombreJugador: string,
     nivelBot: NivelBot | null,
     personaje: string | null = null,
+    origen: 'banco' | 'ia' = 'banco',
   ): Promise<PaseDeSala> {
     const grant = await this.rooms.crear({
       game: 'trivial',
       name: nombreSala,
       displayName: nombreJugador,
       ...(personaje && { meta: { personaje } }),
-      ...(nivelBot !== null && {
-        config: { nivelBot },
-        bots: [NOMBRE_DEL_BOT[nivelBot]],
-      }),
+      config: { origen, ...(nivelBot !== null && { nivelBot }) },
+      ...(nivelBot !== null && { bots: [NOMBRE_DEL_BOT[nivelBot]] }),
     });
 
     this.conectar(grant.room.id, grant.seatId, grant.seatToken);

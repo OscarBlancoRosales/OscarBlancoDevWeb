@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { AuthApiService } from '../../../api/auth-api.service';
+import { RoomsApiService } from '../../../api/rooms-api.service';
 import { TrivialRoomService } from '../trivial-room.service';
 import { guardarPase } from '../../pase-guardado';
 import { REPARTO, fotoDelPersonaje, personajePorId } from '@devweb/shared/games/trivial/reparto';
@@ -58,6 +59,18 @@ export class TrivialLobby implements OnInit, OnDestroy {
   nombreSala = 'Concurso de la retro';
   nombreJugador = '';
   rival: NivelBot | 'persona' = 'apanado';
+
+  /**
+   * De dónde salen las preguntas. Se elige al abrir y queda fijado en la sala.
+   *
+   * No se puede cambiar a mitad de programa a propósito: las preguntas se
+   * congelan al crear la sala, que es lo que impide pedir otra tanda porque
+   * esta no gustó.
+   */
+  origen: 'banco' | 'ia' = 'banco';
+
+  /** Si el servidor tiene clave. Sin ella no se ofrece un botón que va a fallar. */
+  readonly hayIa = signal(false);
   /** El personaje con el que te sientas. Empieza elegido para no dar pereza. */
   personaje: string = REPARTO[0].id;
 
@@ -65,6 +78,7 @@ export class TrivialLobby implements OnInit, OnDestroy {
 
   constructor(
     private readonly sala: TrivialRoomService,
+    private readonly rooms: RoomsApiService,
     private readonly auth: AuthApiService,
     private readonly router: Router,
     private readonly ruta: ActivatedRoute,
@@ -72,6 +86,10 @@ export class TrivialLobby implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.invitacion.set(this.ruta.snapshot.queryParamMap.get('sala') ?? '');
+
+    void this.rooms.hayIa().then((hay) => {
+      this.hayIa.set(hay);
+    });
 
     this.suscripcion = this.auth.settledUser$.subscribe((usuario) => {
       this.conSesion.set(usuario !== null);
@@ -95,6 +113,7 @@ export class TrivialLobby implements OnInit, OnDestroy {
         this.nombreJugador.trim() || 'Anfitrión',
         this.rival === 'persona' ? null : this.rival,
         this.personaje,
+        this.origen,
       );
       guardarPase(pase);
       await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });

@@ -243,3 +243,13 @@ input[type='text']:focus {
     transform: none;
   }
 }
+
+/* El origen de las preguntas se elige como el rival: mismas fichas. */
+.origen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 25%);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+}

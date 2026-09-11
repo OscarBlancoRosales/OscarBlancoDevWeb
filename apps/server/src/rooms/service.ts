@@ -3,6 +3,7 @@ import { AppError } from '../errors';
 import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
+import { inventar } from '../games/trivial/inventor';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
 import { RegidorDeSala } from '../games/trivial/regidor';
 import { coro } from './coro';
@@ -82,7 +83,7 @@ export class RoomService {
       });
   }
 
-  crear(input: {
+  async crear(input: {
     game: GameId;
     name: string;
     displayName: string;
@@ -91,7 +92,7 @@ export class RoomService {
     meta?: Record<string, unknown>;
     config?: Record<string, unknown>;
     bots?: readonly string[];
-  }): SeatGrant {
+  }): Promise<SeatGrant> {
     if (!moduleFor(input.game)) {
       throw new AppError('no-encontrado', 'Ese juego no existe.');
     }
@@ -110,7 +111,7 @@ export class RoomService {
       ownerId: input.ownerId,
       name: input.name.trim(),
       status: 'lobby',
-      config: conLoQueElJuegoNecesite(input.game, input.config ?? {}),
+      config: await conLoQueElJuegoNecesite(input.game, input.config ?? {}, this.ia),
       createdAt: at,
       updatedAt: at,
     };
@@ -610,12 +611,23 @@ export class RoomService {
  * nada. Por eso sale de `randomInt`, y no del reloj: dos salas creadas en el
  * mismo milisegundo traerían la misma tanda.
  */
-function conLoQueElJuegoNecesite(
+async function conLoQueElJuegoNecesite(
   game: GameId,
   config: Record<string, unknown>,
-): Record<string, unknown> {
+  ia: AiSettings | null,
+): Promise<Record<string, unknown>> {
   if (game !== 'trivial') return config;
 
   const semilla = randomInt(0, 2 ** 31);
-  return { ...config, semilla, preguntas: repartir(semilla) };
+  // El modo IA entra por aquí y por ningún otro sitio: lo que cambia es de
+  // dónde salen las preguntas, no dónde viven. Siguen congeladas en la sala al
+  // crearla, que es lo que mantiene la partida reconstruible desde su log e
+  // impide pedir otra tanda a mitad de programa porque esta no gustó.
+  const conIa = config['origen'] === 'ia' && ia !== null;
+  const preguntas = conIa ? await inventar({ ajustes: ia, semilla }) : repartir(semilla);
+
+  // El origen se normaliza aquí: si alguien pide IA sin que el servidor tenga
+  // clave, la sala sale del banco **y lo dice**, en vez de prometer lo que no
+  // puede dar.
+  return { ...config, semilla, origen: conIa ? 'ia' : 'banco', preguntas };
 }
