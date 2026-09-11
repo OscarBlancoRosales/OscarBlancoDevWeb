@@ -362,6 +362,31 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
     en: 'Deleting takes the account and every room of theirs. There is no going back.',
   },
   'admin.noUsers': { es: 'Nadie todavía.', en: 'Nobody yet.' },
+  'admin.tabGente': { es: 'Gente', en: 'People' },
+  'admin.tabSesiones': { es: 'Sesiones', en: 'Sessions' },
+
+  // === LAS SESIONES DE CLAUDE CODE ===
+  'ses.buscando': { es: 'Buscando el agente…', en: 'Looking for the agent…' },
+  'ses.apagadoTitulo': { es: 'El agente no está abierto', en: 'The agent is not running' },
+  'ses.apagadoTexto': {
+    es: 'Tus sesiones viven en tu ordenador y no salen de ahí. Para leerlas, abre el agente en una terminal:',
+    en: 'Your sessions live on your computer and never leave it. To read them, start the agent in a terminal:',
+  },
+  'ses.reintentar': { es: 'Volver a mirar', en: 'Look again' },
+  'ses.buscar': { es: 'Buscar por título, rama o proyecto…', en: 'Search by title, branch or project…' },
+  'ses.recargar': { es: 'Recargar', en: 'Reload' },
+  'ses.sesion': { es: 'Sesión', en: 'Session' },
+  'ses.rama': { es: 'Rama', en: 'Branch' },
+  'ses.tandas': { es: 'tandas', en: 'turns' },
+  'ses.cuando': { es: 'Última', en: 'Last' },
+  'ses.abrir': { es: 'Abrir', en: 'Open' },
+  'ses.ninguna': { es: 'Ninguna sesión por aquí.', en: 'No sessions here.' },
+  'ses.volver': { es: '← Volver', en: '← Back' },
+  'ses.verPensamientos': { es: 'Ver lo que piensa', en: 'Show its thinking' },
+  'ses.tu': { es: 'Tú', en: 'You' },
+  'ses.subagente': { es: 'subagente', en: 'subagent' },
+  'ses.verMas': { es: 'Leer más', en: 'Read more' },
+  'ses.leyendo': { es: 'Leyendo…', en: 'Reading…' },
 
   // === ENTRAR EN UNA SALA ===
   'join.title': { es: 'Entrar en la sala', en: 'Join the room' },

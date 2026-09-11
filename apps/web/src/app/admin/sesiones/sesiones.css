@@ -1,0 +1,270 @@
+.ses-nota,
+.ses-vacio {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* El agente apagado es el estado normal, no un error: se explica con calma. */
+.ses-apagado {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+}
+
+.ses-apagado h3 {
+  color: var(--accent);
+  font-size: 14px;
+  margin: 0 0 6px 0;
+}
+
+.ses-apagado p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 12px 0;
+}
+
+.ses-apagado code {
+  display: inline-block;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--bright);
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.ses-barra {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.ses-buscar {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--bright);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.ses-buscar:focus {
+  border-color: var(--accent);
+}
+
+.ses-cuenta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ses-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ses-tabla th,
+.ses-tabla td {
+  text-align: left;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ses-tabla th {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 10px;
+  font-weight: normal;
+}
+
+.ses-nombre {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--bright);
+}
+
+.ses-proyecto,
+.ses-peso {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.ses-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ===== UNA SESIÓN ABIERTA ===== */
+
+.ses-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ses-titulo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ses-titulo strong {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+.ses-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ses-conmutador {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ses-hilo {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tanda {
+  border-left: 2px solid var(--border);
+  padding-left: 12px;
+}
+
+/* Lo tuyo se distingue de un vistazo al recorrer una sesión de mil tandas. */
+.tanda.mia {
+  border-left-color: var(--accent);
+}
+
+.tanda-quien {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tanda-autor {
+  color: var(--bright);
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.tanda.mia .tanda-autor {
+  color: var(--accent);
+}
+
+.tanda-sub,
+.tanda-hora {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.tanda-sub {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
+.parte-texto {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Lo que Claude se dice a sí mismo: presente, pero sin robar la atención. */
+.parte-pensamiento {
+  margin: 0 0 6px 0;
+  padding-left: 10px;
+  border-left: 1px dotted var(--border);
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.parte-herramienta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 6px 0;
+  font-size: 11px;
+  min-width: 0;
+}
+
+.herr-nombre {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-weight: bold;
+}
+
+.herr-entrada {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.parte-resultado {
+  margin: 0 0 6px 0;
+  padding: 6px 8px;
+  max-height: 220px;
+  overflow: auto;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.parte-resultado.malo {
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.ses-error {
+  color: var(--error);
+  border-left: 2px solid currentColor;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 700px) {
+  .ses-tabla th:nth-child(2),
+  .ses-tabla td:nth-child(2),
+  .ses-tabla th:nth-child(4),
+  .ses-tabla td:nth-child(4) {
+    display: none;
+  }
+}

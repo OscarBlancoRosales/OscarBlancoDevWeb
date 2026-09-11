@@ -7,6 +7,8 @@ import { Desktop } from './desktop';
 import { DESKTOP_ITEMS, DesktopItem, GROUPS, gruposPara, itemsOf } from './desktop-items';
 import { ShellModeService } from './shell-mode.service';
 import { AuthApiService } from '../api/auth-api.service';
+import { AdminApiService } from '../api/admin-api.service';
+import { ApiClient } from '../api/api-client';
 import { I18nService } from '../services/i18n.service';
 import { BehaviorSubject } from 'rxjs';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
@@ -529,5 +531,136 @@ describe('abrir desde el escritorio y desde el menú', () => {
 
     expect(ventana('qr')?.maximized).toBe(true);
     expect(ventana('qr')?.minimized).toBe(false);
+  });
+});
+
+/**
+ * Abrir el panel tiene que PINTARLO, no solo apuntar la ventana.
+ *
+ * Las pruebas de arriba comprueban que la ventana se crea, pero no llegan a
+ * montar lo que va dentro: el componente solo se instancia cuando Angular
+ * pinta. En producción se colgaba justo ahí, con la ventana en el estado y la
+ * pestaña sin aparecer, así que aquí se pinta de verdad.
+ */
+describe('el panel, montado dentro de su ventana', () => {
+  let fixture: ComponentFixture<Desktop>;
+
+  const JEFE: PublicUser = {
+    id: 'u1',
+    email: 'jefe@ejemplo.com',
+    displayName: 'Óscar',
+    status: 'active',
+    role: 'admin',
+  };
+
+  beforeEach(async () => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Desktop],
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthApiService,
+          useValue: {
+            settledUser$: new BehaviorSubject<PublicUser | null>(JEFE).asObservable(),
+            usuario: JEFE,
+            restaurar: () => Promise.resolve(),
+            salir: () => Promise.resolve(),
+          },
+        },
+        {
+          provide: AdminApiService,
+          useValue: {
+            usuarios: () => Promise.resolve([JEFE]),
+            invitaciones: () => Promise.resolve([]),
+          },
+        },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(Desktop);
+    TestBed.inject(I18nService).setLang('es');
+    fixture.detectChanges();
+  });
+
+  it('se abre, se pinta y enseña lo suyo', async () => {
+    const panel = DESKTOP_ITEMS.find((i) => i.id === 'admin');
+    if (!panel) throw new Error('sin icono de administración');
+
+    await fixture.componentInstance.launch(panel);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const dentro = (fixture.nativeElement as HTMLElement).textContent;
+    expect(dentro).toContain('Invitaciones');
+    expect(dentro).toContain('Usuarios');
+  });
+});
+
+/**
+ * El escritorio repinta cuando la sesión habla, y el panel hace hablar a la
+ * sesión al arrancar. Si cada repintado vuelve a arrancar el panel, la cosa no
+ * para: en producción esto congelaba la pestaña entera, sin error en consola,
+ * con el icono marcado y sin ventana a la vista.
+ *
+ * Aquí se monta con el servicio de cuenta DE VERDAD —solo la red va doblada—,
+ * que es lo que cierra el círculo. Con el servicio simulado no se reproducía.
+ */
+describe('abrir el panel no puede repintar sin fin', () => {
+  const JEFE: PublicUser = {
+    id: 'u1',
+    email: 'jefe@ejemplo.com',
+    displayName: 'Óscar',
+    status: 'active',
+    role: 'admin',
+  };
+
+  it('el panel arranca una vez, por muchas vueltas que dé la pantalla', async () => {
+    let arranques = 0;
+    localStorage.clear();
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [Desktop],
+      providers: [
+        provideRouter([]),
+        {
+          // La red, doblada: renovar siempre vale y /auth/yo devuelve al jefe.
+          provide: ApiClient,
+          useValue: {
+            renovar: () => Promise.resolve(true),
+            request: () => Promise.resolve(JEFE),
+            setToken: () => undefined,
+          },
+        },
+        {
+          provide: AdminApiService,
+          useValue: {
+            usuarios: () => {
+              arranques += 1;
+              return Promise.resolve([JEFE]);
+            },
+            invitaciones: () => Promise.resolve([]),
+          },
+        },
+      ],
+    }).compileComponents();
+
+    const fixture = TestBed.createComponent(Desktop);
+    TestBed.inject(I18nService).setLang('es');
+    fixture.detectChanges();
+
+    const panel = DESKTOP_ITEMS.find((i) => i.id === 'admin');
+    if (!panel) throw new Error('sin icono de administración');
+    await fixture.componentInstance.launch(panel);
+
+    // Varias vueltas de pintado, como las que provoca la sesión al resolverse.
+    for (let i = 0; i < 5; i++) {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    }
+
+    expect(arranques, 'el panel se ha vuelto a arrancar en cada repintado').toBeLessThanOrEqual(1);
+    fixture.destroy();
   });
 });

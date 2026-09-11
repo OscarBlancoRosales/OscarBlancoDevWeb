@@ -4,6 +4,35 @@
   margin: 0 auto;
 }
 
+/* Tres cosas en una página la hacían interminable: se reparten en pestañas. */
+.admin-pestanas {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-pestana {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.admin-pestana:hover {
+  color: var(--bright);
+}
+
+.admin-pestana.activa {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
 .admin-bloque {
   margin-bottom: 40px;
 }
