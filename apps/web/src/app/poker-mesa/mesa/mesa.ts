@@ -35,6 +35,12 @@ export interface EnLaMesa {
   /** Cuánto se ha salido del corro, para pintarlo cuando se destapa. */
   readonly desvio: number;
   readonly bocadillo: string;
+  /** Si tiene a alguien detrás. Un sitio vacío se pinta apagado. */
+  readonly conectado: boolean;
+  /** Quien abrió la sala lleva el botón de la banca, como en una mesa de verdad. */
+  readonly esAnfitrion: boolean;
+  /** Lo que pone debajo del nombre: pensando, listo, o lo que haya pedido. */
+  readonly estado: string;
   readonly x: number;
   readonly y: number;
 }
@@ -74,8 +80,14 @@ export class MesaPoker implements OnInit, OnDestroy {
   readonly ahora = signal(Date.now());
 
   asuntoNuevo = '';
-  mensaje = '';
-  numeroSuelto: number | null = null;
+  /**
+   * Lo que se está escribiendo, en señales.
+   *
+   * La aplicación va sin zone.js: al vaciar un campo suelto después de enviar,
+   * el `[(ngModel)]` no se entera y el texto se queda escrito en el hueco.
+   */
+  readonly mensaje = signal('');
+  readonly numeroSuelto = signal<number | null>(null);
 
   private reloj?: ReturnType<typeof setInterval>;
 
@@ -121,28 +133,69 @@ export class MesaPoker implements OnInit, OnDestroy {
     const mesa = this.sala.mesa();
     if (!vista) return [];
 
-    const sitios = sitiosEnLaMesa(mesa.length);
+    const enOrden = desdeTuSitio(mesa, this.sala.miAsiento);
+    const sitios = sitiosEnLaMesa(enOrden.length);
     const stats = this.estadistica;
     const dichos = this.sala.bocadillos(this.ahora());
 
-    return mesa.map((asiento, i) => {
+    return enOrden.map((asiento, i) => {
       const voto = puedeFaltar(vista.votos, asiento.id);
       const suyo = voto?.tipo === 'numero' ? voto.valor : null;
+      const haVotado = vista.hanVotado.includes(asiento.id);
 
       return {
         seatId: asiento.id,
         nombre: asiento.displayName,
         foto: fotoDelAvatar(this.sala.avatarDe(asiento.id)),
         eresTu: asiento.id === this.sala.miAsiento,
-        haVotado: vista.hanVotado.includes(asiento.id),
+        haVotado,
         carta: cartaDe(voto),
         tapada: !vista.revelado && asiento.id !== this.sala.miAsiento,
         desvio: vista.revelado && suyo !== null ? desvioDe(suyo, stats) : 0,
         bocadillo: puedeFaltar(dichos, asiento.id)?.texto ?? '',
+        conectado: asiento.connected,
+        esAnfitrion: asiento.isOwner,
+        estado: estadoDe(voto, haVotado, vista.revelado, asiento.connected),
         x: sitios[i]?.x ?? 50,
         y: sitios[i]?.y ?? 50,
       };
     });
+  }
+
+  // --- Quién lleva la ronda ----------------------------------------------
+
+  /** El nombre de quien abrió la sala. La banca es suya. */
+  get anfitrion(): string {
+    return this.sala.mesa().find((uno) => uno.isOwner)?.displayName ?? '';
+  }
+
+  /**
+   * Si puedes destapar y repartir de nuevo.
+   *
+   * La ronda la lleva el anfitrión, como en una mesa de verdad la lleva la
+   * banca. Pero si el anfitrión se ha ido, la mesa no se queda encallada
+   * esperándole: entonces puede repartir cualquiera.
+   */
+  get puedesLlevarLaRonda(): boolean {
+    const banca = this.sala.mesa().find((uno) => uno.isOwner);
+    if (!banca) return true;
+    return banca.id === this.sala.miAsiento || !banca.connected;
+  }
+
+  /** A quién se está esperando, para quien no lleva la ronda. */
+  get quienLleva(): string {
+    const quien = this.anfitrion;
+    return quien ? `La lleva ${quien}` : 'La lleva la banca';
+  }
+
+  /** Cómo va la ronda, para cuando el crupier no tiene nada que decir. */
+  get estadoDeLaRonda(): string {
+    const vista = this.vista();
+    if (!vista) return '';
+    if (vista.revelado) return 'Cartas sobre la mesa.';
+    if (this.sala.mesa().length === 0) return 'La mesa está vacía.';
+    if (this.todosHanVotado) return 'Todos han puesto. Cuando queráis.';
+    return this.hanPuesto.length === 0 ? 'Nadie ha puesto todavía.' : `Faltan ${this.faltan}.`;
   }
 
   /** Las cuentas de la ronda, que es lo que se enseña al destapar. */
@@ -244,9 +297,10 @@ export class MesaPoker implements OnInit, OnDestroy {
 
   /** El número exacto, para quien lo tiene claro y no quiere ir sumando. */
   votarSuelto(): void {
-    if (this.numeroSuelto === null) return;
-    this.sala.votar({ tipo: 'numero', valor: Math.max(0, Math.round(this.numeroSuelto)) });
-    this.numeroSuelto = null;
+    const escrito = this.numeroSuelto();
+    if (escrito === null) return;
+    this.sala.votar({ tipo: 'numero', valor: Math.max(0, Math.round(escrito)) });
+    this.numeroSuelto.set(null);
   }
 
   /** Lo que llevas apostado ahora mismo, para enseñarlo grande. */
@@ -295,20 +349,26 @@ export class MesaPoker implements OnInit, OnDestroy {
   }
 
   hablar(): void {
-    this.sala.decir(this.mensaje);
-    this.mensaje = '';
+    this.sala.decir(this.mensaje());
+    this.mensaje.set('');
   }
 
-  /** Lo que se ha dicho, para quien prefiera leerlo en lista. */
-  get conversacion(): { seatId: string; nombre: string; texto: string }[] {
+  /**
+   * Lo que se ha dicho en la mesa.
+   *
+   * Va entero y no recortado a los últimos seis: el chat vive en su columna con
+   * su propio scroll, así que no le quita sitio a nada. Antes se cortaba porque
+   * colgaba al pie de la página y crecía empujando la mesa hacia arriba.
+   */
+  get conversacion(): { clave: string; nombre: string; texto: string; eresTu: boolean }[] {
     return this.sala
       .chat()
       .filter((entrada) => entrada.kind === 'player')
-      .slice(-6)
       .map((entrada) => ({
-        seatId: entrada.authorId,
+        clave: String(entrada.seq),
         nombre: entrada.author,
         texto: entrada.text,
+        eresTu: entrada.authorId === this.sala.miAsiento,
       }));
   }
 
@@ -338,6 +398,37 @@ export class MesaPoker implements OnInit, OnDestroy {
   volver(): void {
     void this.router.navigate(['/scrum-poker']);
   }
+}
+
+/**
+ * La mesa empezando por ti.
+ *
+ * Los sitios se reparten desde abajo en el centro, que es tu silla: en una mesa
+ * de verdad uno no se ve a sí mismo enfrente. Se gira la lista para que te
+ * toque el primero y se conserva el orden de los demás, que es el de llegada.
+ */
+export function desdeTuSitio<T extends { readonly id: string }>(
+  mesa: readonly T[],
+  miAsiento: string,
+): readonly T[] {
+  const donde = mesa.findIndex((uno) => uno.id === miAsiento);
+  if (donde <= 0) return mesa;
+  return [...mesa.slice(donde), ...mesa.slice(0, donde)];
+}
+
+/** Lo que pone debajo del nombre de cada uno. */
+export function estadoDe(
+  voto: ScrumView['votos'][string] | undefined,
+  haVotado: boolean,
+  revelado: boolean,
+  conectado: boolean,
+): string {
+  if (!conectado) return 'Se ha ido';
+  if (revelado) return haVotado ? '' : 'No votó';
+  if (!haVotado) return 'Pensando…';
+  if (voto?.tipo === 'cafe') return 'Pide café';
+  if (voto?.tipo === 'porro') return 'Se planta';
+  return 'Ha puesto';
 }
 
 /** Lo que se ve en la carta de alguien cuando se destapa. */
