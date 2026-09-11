@@ -28,10 +28,19 @@
           (click)="pestana.set('sesiones')">
           {{ i18n.t('admin.tabSesiones') }}
         </button>
+        <button
+          type="button"
+          class="admin-pestana"
+          [class.activa]="pestana() === 'consola'"
+          (click)="pestana.set('consola')">
+          {{ i18n.t('admin.tabConsola') }}
+        </button>
       </nav>
 
       @if (pestana() === 'sesiones') {
         <app-sesiones />
+      } @else if (pestana() === 'consola') {
+        <app-consola />
       } @else {
       <section class="admin-bloque">
         <h2 class="admin-titulo">&gt; {{ i18n.t('admin.invitations') }}</h2>

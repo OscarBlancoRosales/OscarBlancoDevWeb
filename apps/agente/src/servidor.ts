@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { Type } from '@sinclair/typebox';
 import { Almacen } from './almacen';
+import type { Acceso } from './acceso';
+import type { Buzon } from './buzon';
 import { ListaDeSesiones, Sesion } from '@devweb/shared/contracts/sesiones';
 import type { FastifyInstance } from 'fastify';
 import type { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -23,6 +25,14 @@ export interface OpcionesDelAgente {
   readonly almacen?: Almacen;
   /** Desde dónde se acepta que llamen. La web, y el desarrollo en local. */
   readonly origenes?: readonly string[];
+  /**
+   * Con qué dispositivos se ha emparejado. Sin esto, el agente solo lee: no
+   * hay canal al que escribir y las rutas de abajo no se registran.
+   */
+  readonly acceso?: Acceso;
+  readonly buzon?: Buzon;
+  /** Enseña el código de emparejamiento donde solo tú puedes verlo. */
+  readonly mostrarCodigo?: (codigo: string, nombre: string) => void;
 }
 
 const ORIGENES_POR_DEFECTO = [
@@ -46,10 +56,13 @@ export async function construirAgente(opciones: OpcionesDelAgente = {}): Promise
   // este puerto, y lo que hay detrás es el historial de todo lo que trabajas.
   await app.register(cors, {
     origin: [...(opciones.origenes ?? ORIGENES_POR_DEFECTO)],
-    methods: ['GET'],
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['authorization', 'content-type'],
   });
 
-  app.get('/salud', () => ({ agente: 'devweb', version: 1 }));
+  const canal = opciones.acceso && opciones.buzon ? { acceso: opciones.acceso, buzon: opciones.buzon } : null;
+
+  app.get('/salud', () => ({ agente: 'devweb', version: 1, canal: canal !== null }));
 
   app.get('/sesiones', { schema: { response: { 200: ListaDeSesiones } } }, async (_req, reply) => {
     await reply.send({ sesiones: await almacen.listar() });
@@ -66,6 +79,103 @@ export async function construirAgente(opciones: OpcionesDelAgente = {}): Promise
         return;
       }
       await reply.send(sesion);
+    },
+  );
+
+  if (!canal) return app;
+
+  // ===== EL CANAL: a partir de aquí se escribe, y hace falta estar emparejado =====
+
+  const { acceso, buzon } = canal;
+
+  /**
+   * Quién llama.
+   *
+   * El token lo dio un emparejamiento hecho delante de este ordenador. Sin él
+   * no se pasa de aquí: una cookie de administrador robada no vale, porque el
+   * dispositivo tiene que haberse presentado una vez en persona.
+   */
+  const identificado = (peticion: { headers: Record<string, unknown> }): boolean => {
+    const cabecera = peticion.headers['authorization'];
+    const token = typeof cabecera === 'string' ? cabecera.replace(/^Bearer /, '') : '';
+    return acceso.reconoce(token);
+  };
+
+  app.post(
+    '/emparejar/empezar',
+    { schema: { body: Type.Object({ nombre: Type.String({ maxLength: 40 }) }) } },
+    async (request, reply) => {
+      const codigo = acceso.empezarEmparejamiento(request.body.nombre);
+      opciones.mostrarCodigo?.(codigo, request.body.nombre);
+      // El código NO viaja en la respuesta: sale por el terminal, que es lo que
+      // obliga a estar delante del ordenador una vez.
+      await reply.send({ pedido: true });
+    },
+  );
+
+  app.post(
+    '/emparejar',
+    { schema: { body: Type.Object({ codigo: Type.String({ minLength: 6, maxLength: 6 }) }) } },
+    async (request, reply) => {
+      const token = await acceso.emparejar(request.body.codigo);
+      if (!token) {
+        await reply.status(403).send({ code: 'codigo-invalido', message: 'Ese código no vale' });
+        return;
+      }
+      await reply.send({ token });
+    },
+  );
+
+  app.get('/dispositivos', async (request, reply) => {
+    if (!identificado(request)) {
+      await reply.status(401).send({ code: 'sin-emparejar', message: 'Este aparato no está dentro' });
+      return;
+    }
+    await reply.send({
+      dispositivos: acceso.dispositivos().map(({ id, nombre, desde }) => ({ id, nombre, desde })),
+    });
+  });
+
+  app.post(
+    '/mensaje',
+    { schema: { body: Type.Object({ texto: Type.String({ minLength: 1, maxLength: 4000 }) }) } },
+    async (request, reply) => {
+      if (!identificado(request)) {
+        await reply.status(401).send({ code: 'sin-emparejar', message: 'Este aparato no está dentro' });
+        return;
+      }
+      buzon.escribir(request.body.texto);
+      await reply.send({ enviado: true });
+    },
+  );
+
+  app.get('/conversacion', async (request, reply) => {
+    if (!identificado(request)) {
+      await reply.status(401).send({ code: 'sin-emparejar', message: 'Este aparato no está dentro' });
+      return;
+    }
+    await reply.send({ mensajes: buzon.conversacion(), permisos: buzon.pendientes() });
+  });
+
+  app.post(
+    '/permisos/:id',
+    {
+      schema: {
+        params: Type.Object({ id: Type.String({ minLength: 1, maxLength: 32 }) }),
+        body: Type.Object({ veredicto: Type.Union([Type.Literal('allow'), Type.Literal('deny')]) }),
+      },
+    },
+    async (request, reply) => {
+      if (!identificado(request)) {
+        await reply.status(401).send({ code: 'sin-emparejar', message: 'Este aparato no está dentro' });
+        return;
+      }
+      const valio = buzon.decidir(request.params.id, request.body.veredicto);
+      if (!valio) {
+        await reply.status(409).send({ code: 'ya-no-toca', message: 'Eso ya está contestado' });
+        return;
+      }
+      await reply.send({ hecho: true });
     },
   );
 

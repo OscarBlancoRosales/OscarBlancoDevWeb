@@ -5,6 +5,7 @@ import { AdminApiService } from '../api/admin-api.service';
 import { AuthApiService } from '../api/auth-api.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { Sesiones } from './sesiones/sesiones';
+import { Consola } from './consola/consola';
 import { I18nService } from '../services/i18n.service';
 import type { CreatedInvitation, Invitation } from '@devweb/shared/contracts/admin';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
@@ -21,7 +22,7 @@ const DIAS_POR_DEFECTO = 7;
  */
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones],
+  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones, Consola],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
 })
@@ -51,7 +52,7 @@ export class Admin implements OnInit {
    * Tres cosas en una sola página la hacían interminable, y las sesiones no se
    * consultan a la vez que se reparten invitaciones.
    */
-  readonly pestana = signal<'gente' | 'sesiones'>('gente');
+  readonly pestana = signal<'gente' | 'sesiones' | 'consola'>('gente');
 
   nota = '';
   dias = DIAS_POR_DEFECTO;

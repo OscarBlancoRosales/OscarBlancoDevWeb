@@ -1,0 +1,111 @@
+@if (cargando()) {
+  <p class="con-nota">{{ i18n.t('con.buscando') }}</p>
+} @else if (!hayCanal()) {
+  <!-- El canal lo levanta Claude Code, no tú: sin sesión abierta no hay a quién escribir. -->
+  <div class="con-apagado">
+    <h3>{{ i18n.t('con.sinCanalTitulo') }}</h3>
+    <p>{{ i18n.t('con.sinCanalTexto') }}</p>
+    <code>claude --dangerously-load-development-channels server:devweb</code>
+    <button type="button" class="btn" (click)="arrancar()">{{ i18n.t('con.reintentar') }}</button>
+  </div>
+} @else if (!emparejado()) {
+  <!--
+    El código sale por el terminal del canal, nunca por la red. Es lo único
+    que obliga a estar delante del ordenador una vez, y lo que hace que una
+    cookie robada no sirva para escribirle a tu máquina.
+  -->
+  <div class="con-emparejar">
+    <h3>{{ i18n.t('con.emparejarTitulo') }}</h3>
+    @if (!esperandoCodigo()) {
+      <p>{{ i18n.t('con.emparejarTexto') }}</p>
+      <div class="con-fila">
+        <input
+          type="text"
+          name="nombre"
+          [(ngModel)]="nombre"
+          maxlength="40"
+          [placeholder]="i18n.t('con.nombrePh')"
+        />
+        <button type="button" class="btn btn-primary" (click)="pedirCodigo()">
+          {{ i18n.t('con.pedirCodigo') }}
+        </button>
+      </div>
+    } @else {
+      <p>{{ i18n.t('con.miraElTerminal') }}</p>
+      <div class="con-fila">
+        <input
+          type="text"
+          name="codigo"
+          [(ngModel)]="codigo"
+          maxlength="6"
+          inputmode="numeric"
+          class="con-codigo"
+          placeholder="000000"
+        />
+        <button type="button" class="btn btn-primary" (click)="emparejar()">
+          {{ i18n.t('con.confirmar') }}
+        </button>
+      </div>
+    }
+  </div>
+} @else {
+  @if (conversacion().permisos.length > 0) {
+    <!--
+      Lo más serio que se puede hacer desde aquí. El diálogo del terminal
+      sigue abierto: vale el primero de los dos que conteste.
+    -->
+    <div class="con-permisos">
+      @for (permiso of conversacion().permisos; track permiso.id) {
+        <div class="permiso">
+          <div class="permiso-que">
+            <strong>{{ permiso.herramienta }}</strong>
+            <span>{{ permiso.descripcion }}</span>
+          </div>
+          <code class="permiso-detalle">{{ permiso.detalle }}</code>
+          <div class="permiso-botones">
+            <button type="button" class="btn btn-si" (click)="decidir(permiso.id, 'allow')">
+              {{ i18n.t('con.permitir') }}
+            </button>
+            <button type="button" class="btn btn-no" (click)="decidir(permiso.id, 'deny')">
+              {{ i18n.t('con.denegar') }}
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <div class="con-hilo">
+    @for (mensaje of conversacion().mensajes; track $index) {
+      <div class="con-mensaje" [class.mio]="mensaje.de === 'yo'">
+        <span class="con-quien">{{ mensaje.de === 'yo' ? i18n.t('con.tu') : 'Claude' }}</span>
+        <span class="con-hora">{{ hora(mensaje.cuando) }}</span>
+        <p class="con-texto">{{ mensaje.texto }}</p>
+      </div>
+    } @empty {
+      <p class="con-nota">{{ i18n.t('con.vacio') }}</p>
+    }
+  </div>
+
+  <div class="con-escribir">
+    <textarea
+      name="texto"
+      [(ngModel)]="texto"
+      (keydown)="alTeclear($event)"
+      rows="2"
+      maxlength="4000"
+      [placeholder]="i18n.t('con.escribePh')"
+    ></textarea>
+    <button type="button" class="btn btn-primary" (click)="enviar()" [disabled]="enviando()">
+      {{ enviando() ? i18n.t('con.enviando') : i18n.t('con.enviar') }}
+    </button>
+  </div>
+
+  <button type="button" class="con-salir" (click)="desemparejar()">
+    {{ i18n.t('con.desemparejar') }}
+  </button>
+}
+
+@if (error()) {
+  <p class="con-error">{{ error() }}</p>
+}

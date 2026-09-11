@@ -364,6 +364,42 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'admin.noUsers': { es: 'Nadie todavía.', en: 'Nobody yet.' },
   'admin.tabGente': { es: 'Gente', en: 'People' },
   'admin.tabSesiones': { es: 'Sesiones', en: 'Sessions' },
+  'admin.tabConsola': { es: 'Consola', en: 'Console' },
+
+  // === HABLAR CON LA SESIÓN ===
+  'con.buscando': { es: 'Buscando el canal…', en: 'Looking for the channel…' },
+  'con.sinCanalTitulo': { es: 'No hay ninguna sesión escuchando', en: 'No session is listening' },
+  'con.sinCanalTexto': {
+    es: 'El canal lo levanta Claude Code en tu ordenador. Arráncalo así y vuelve:',
+    en: 'The channel is started by Claude Code on your computer. Start it like this and come back:',
+  },
+  'con.reintentar': { es: 'Volver a mirar', en: 'Look again' },
+  'con.emparejarTitulo': { es: 'Este aparato no está emparejado', en: 'This device is not paired' },
+  'con.emparejarTexto': {
+    es: 'Pide un código y léelo en el terminal donde corre Claude Code. Hay que hacerlo una vez: después este aparato entra siempre.',
+    en: 'Ask for a code and read it in the terminal running Claude Code. Once is enough: this device is then remembered.',
+  },
+  'con.nombrePh': { es: '¿Qué aparato es? (el móvil, el portátil…)', en: 'Which device is this?' },
+  'con.pedirCodigo': { es: 'Pedir código', en: 'Ask for a code' },
+  'con.miraElTerminal': {
+    es: 'Mira el terminal donde corre Claude Code y escribe aquí las seis cifras.',
+    en: 'Look at the terminal running Claude Code and type the six digits here.',
+  },
+  'con.confirmar': { es: 'Emparejar', en: 'Pair' },
+  'con.desemparejar': { es: 'Olvidar este aparato', en: 'Forget this device' },
+  'con.tu': { es: 'Tú', en: 'You' },
+  'con.vacio': {
+    es: 'Escríbele algo: llega a la sesión que tengas abierta.',
+    en: 'Write something: it lands in your open session.',
+  },
+  'con.escribePh': {
+    es: 'Lo que quieras pedirle…  (Enter manda)',
+    en: 'What do you want to ask?  (Enter sends)',
+  },
+  'con.enviar': { es: 'Mandar', en: 'Send' },
+  'con.enviando': { es: 'Mandando…', en: 'Sending…' },
+  'con.permitir': { es: 'Permitir', en: 'Allow' },
+  'con.denegar': { es: 'Denegar', en: 'Deny' },
 
   // === LAS SESIONES DE CLAUDE CODE ===
   'ses.buscando': { es: 'Buscando el agente…', en: 'Looking for the agent…' },
