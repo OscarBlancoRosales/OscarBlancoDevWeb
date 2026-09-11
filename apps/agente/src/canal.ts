@@ -4,6 +4,7 @@ import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprot
 import { z } from 'zod';
 import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { Acceso } from './acceso';
 import { Buzon } from './buzon';
 import { construirAgente } from './servidor';
@@ -36,7 +37,11 @@ import { construirAgente } from './servidor';
 const PUERTO_BASE = Number(process.env['PUERTO'] ?? 4319);
 const CUANTOS_PUERTOS = 5;
 
-const FICHERO_DE_ACCESO = join(homedir(), '.claude', 'devweb-canal', 'access.json');
+const CARPETA = join(homedir(), '.claude', 'devweb-canal');
+const FICHERO_DE_ACCESO = join(CARPETA, 'access.json');
+
+/** El último código pedido, por si la sesión está a otra cosa y se pierde. */
+const FICHERO_DEL_CODIGO = join(CARPETA, 'ultimo-codigo.txt');
 
 /** Lo que Claude Code manda cuando se abre un diálogo de permiso. */
 const PeticionDePermiso = z.object({
@@ -75,6 +80,7 @@ export async function arrancarCanal(): Promise<void> {
     },
   );
 
+  await mkdir(CARPETA, { recursive: true });
   const acceso = new Acceso(FICHERO_DE_ACCESO);
   await acceso.cargar();
 
@@ -136,16 +142,30 @@ export async function arrancarCanal(): Promise<void> {
     acceso,
     buzon,
     proyecto: basename(process.cwd()),
+    /**
+     * Enseñar el código donde de verdad se está mirando.
+     *
+     * La salida de error de un servidor MCP no aparece en pantalla: Claude Code
+     * se la queda. Escribirlo ahí era escribirlo en un cajón. Así que el código
+     * entra en la conversación como un mensaje más del canal, y además queda en
+     * un fichero por si la sesión está ocupada en otra cosa.
+     *
+     * Sigue sin viajar por la red, que era el punto: para leerlo hay que estar
+     * delante de este ordenador.
+     */
     mostrarCodigo: (codigo, nombre) => {
-      // Por la salida de error: la estándar es de MCP y meter ahí un texto
-      // suelto rompería la conversación con Claude Code.
-      process.stderr.write(
-        `\n  ┌────────────────────────────────────────────┐\n` +
-          `  │  Emparejar «${nombre}»\n` +
-          `  │  Código: ${codigo}\n` +
-          `  │  Caduca en cinco minutos.\n` +
-          `  └────────────────────────────────────────────┘\n\n`,
-      );
+      const aviso =
+        `Alguien quiere emparejar «${nombre}» con este canal. ` +
+        `El código es ${codigo} y caduca en cinco minutos. ` +
+        `Enséñaselo tal cual a Óscar para que lo escriba en la web; si no lo ha pedido él, dile que no empareje nada.`;
+
+      void mcp.notification({
+        method: 'notifications/claude/channel',
+        params: { content: aviso, meta: { source: 'devweb', tipo: 'emparejamiento' } },
+      });
+
+      void writeFile(FICHERO_DEL_CODIGO, `${codigo}\n`, 'utf8').catch(() => undefined);
+      process.stderr.write(`  Código de emparejamiento para «${nombre}»: ${codigo}\n`);
     },
   });
 
