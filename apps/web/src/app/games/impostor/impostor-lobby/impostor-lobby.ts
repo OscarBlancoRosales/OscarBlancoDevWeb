@@ -66,7 +66,8 @@ export class ImpostorLobby implements OnInit, OnDestroy {
 
   nombreSala = 'Aquí miente alguien';
   nombreJugador = '';
-  tema = TEMA_MEZCLA;
+  /** Vacío o todos = mezcla. Si no, los ids marcados, juntos. */
+  readonly elegidos = signal<ReadonlySet<string>>(new Set());
   modo: Modo = 'clasico';
   vueltas: 1 | 2 = 1;
   impostores: 1 | 2 = 1;
@@ -111,6 +112,37 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   /** Dos impostores en una mesa corta es media mesa mintiendo. */
   get cabenDos(): boolean {
     return this.bots + 1 >= 6;
+  }
+
+  get esMezcla(): boolean {
+    const n = this.elegidos().size;
+    return n === 0 || n === this.temas.length;
+  }
+
+  get tema(): string {
+    if (this.esMezcla) return this.mezcla;
+    return [...this.elegidos()].join(',');
+  }
+
+  get palabrasElegidas(): number {
+    const ids = this.elegidos();
+    const mazos = this.esMezcla ? this.temas : this.temas.filter((uno) => ids.has(uno.id));
+    return mazos.reduce((suma, uno) => suma + uno.terminos.length, 0);
+  }
+
+  marcado(id: string): boolean {
+    return this.esMezcla || this.elegidos().has(id);
+  }
+
+  toggleMazo(id: string): void {
+    const siguiente = new Set(this.esMezcla ? this.temas.map((uno) => uno.id) : this.elegidos());
+    if (siguiente.has(id) && siguiente.size > 1) siguiente.delete(id);
+    else siguiente.add(id);
+    this.elegidos.set(siguiente.size === this.temas.length ? new Set() : siguiente);
+  }
+
+  toggleMezcla(): void {
+    this.elegidos.set(new Set());
   }
 
   async crear(): Promise<void> {

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { ImpostorRoomService } from '../impostor-room.service';
 import { caraPorId, fotoDeLaCara } from '@devweb/shared/games/impostor/caras';
+import { sitiosEnElOvalo } from '@devweb/shared/games/impostor/sitios';
 import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
 import type { ChatEntry } from '@devweb/shared/contracts/rooms';
@@ -29,6 +30,20 @@ export interface Puesto {
   /** Si era impostor. Solo al acabar la ronda. */
   readonly eraImpostor: boolean;
   readonly puntos: number;
+  /** Sitio en el óvalo, en por cientos del tapete. */
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Una línea de la charla: pista dicha o mensaje de mesa. */
+export interface LineaDeCharla {
+  readonly clave: string;
+  readonly autor: string;
+  readonly texto: string;
+  readonly foto: string | null;
+  readonly mia: boolean;
+  readonly deLaSala: boolean;
+  readonly esPista: boolean;
 }
 
 /** Cómo se llama cada modo en pantalla. */
@@ -151,6 +166,24 @@ export class ImpostorRoom implements OnInit, OnDestroy {
     this.mensaje.set('');
   }
 
+  /**
+   * Un solo hueco: en tu turno de pistas manda la pista; el resto del tiempo,
+   * el chat. Si se pueden las dos a la vez, el turno deja de significar nada.
+   */
+  enviar(): void {
+    if (this.puedesHablar) this.decirPista();
+    else this.enviarMensaje();
+  }
+
+  campoEscrito(): string {
+    return this.puedesHablar ? this.pista() : this.mensaje();
+  }
+
+  escribir(texto: string): void {
+    if (this.puedesHablar) this.pista.set(texto);
+    else this.mensaje.set(texto);
+  }
+
   // --- Cómo va la cosa -----------------------------------------------------
 
   get miAsiento(): string {
@@ -178,6 +211,57 @@ export class ImpostorRoom implements OnInit, OnDestroy {
   get puedesHablar(): boolean {
     const vista = this.vista();
     return vista?.fase === 'pistas' && vista.tuTurno && this.conectado();
+  }
+
+  /**
+   * En pistas, si no te toca, el hueco se apaga. El resto del tiempo es chat.
+   *
+   * Señal y no getter: sin zone.js un getter en `[disabled]` a veces se queda
+   * en el valor del primer pintado, y el turno del otro se veía como el tuyo.
+   */
+  readonly inputBloqueado = computed(() => {
+    const vista = this.vista();
+    if (!this.conectado()) return true;
+    return vista?.fase === 'pistas' && !(vista.tuTurno && this.conectado());
+  });
+
+  get placeholder(): string {
+    if (this.puedesHablar) return 'Tu pista (una palabra)…';
+    if (this.vista()?.fase === 'pistas' && this.quienHabla) {
+      return `Habla ${this.quienHabla.nombre}…`;
+    }
+    return 'Di algo…';
+  }
+
+  nombreDe(seatId: string): string {
+    return this.sala.nombreDe(seatId);
+  }
+
+  /**
+   * Pistas y chat en el mismo hilo: primero lo dicho en el turno, luego la
+   * discusión. Así el historial es uno y no hay que mirar dos sitios.
+   */
+  charlaDeLaMesa(): readonly LineaDeCharla[] {
+    const vista = this.vista();
+    const pistas: LineaDeCharla[] = (vista?.pistas ?? []).map((pista, i) => ({
+      clave: `pista-${i}-${pista.seatId}`,
+      autor: this.sala.nombreDe(pista.seatId),
+      texto: pista.texto,
+      foto: fotoDeLaCara(this.sala.caraDe(pista.seatId)),
+      mia: pista.seatId === this.sala.miAsiento,
+      deLaSala: false,
+      esPista: true,
+    }));
+    const mensajes: LineaDeCharla[] = this.chat().map((entrada) => ({
+      clave: `chat-${entrada.seq}`,
+      autor: this.autorDe(entrada),
+      texto: entrada.text,
+      foto: this.fotoDelAutor(entrada),
+      mia: this.esMio(entrada),
+      deLaSala: entrada.kind === 'system',
+      esPista: false,
+    }));
+    return [...pistas, ...mensajes];
   }
 
   /** Lo que le queda al debate, en segundos. Cero cuando no hay reloj. */
@@ -321,13 +405,26 @@ export class ImpostorRoom implements OnInit, OnDestroy {
         expulsado: vista.expulsado === asiento.id,
         eraImpostor: vista.impostores?.includes(asiento.id) ?? false,
         puntos: vista.marcador[asiento.id] ?? 0,
+        x: 50,
+        y: 50,
       };
     });
 
-    // En orden de mesa mientras se juega: es el orden en que se habla, y
-    // seguirlo con la vista es media partida.
-    if (vista.orden.length === 0) return puestos;
-    return puestos.sort((uno, otro) => sitio(vista.orden, uno) - sitio(vista.orden, otro));
+    // En orden de mesa mientras se juega: es el orden en que se habla.
+    const ordenados =
+      vista.orden.length === 0
+        ? puestos
+        : puestos.slice().sort((uno, otro) => sitio(vista.orden, uno) - sitio(vista.orden, otro));
+
+    // Tú abajo del todo, que es donde se sienta uno en una mesa de verdad.
+    const yo = ordenados.findIndex((puesto) => puesto.eresTu);
+    const rotados = yo > 0 ? [...ordenados.slice(yo), ...ordenados.slice(0, yo)] : ordenados;
+    const huecos = sitiosEnElOvalo(rotados.length);
+    return rotados.map((puesto, i) => ({
+      ...puesto,
+      x: huecos[i]?.x ?? 50,
+      y: huecos[i]?.y ?? 50,
+    }));
   }
 }
 
