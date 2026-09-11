@@ -160,3 +160,84 @@ function corta(
 ): Pregunta {
   return { id, tipo: 'bomba', enunciado, opciones, correcta, explicacion };
 }
+
+/**
+ * La final: gordas, de las que se recuerdan al salir.
+ *
+ * Aquí se está jugando el programa entero, así que no valen las de un vistazo:
+ * una final que se resuelve en dos segundos no es una final. Tampoco valen las
+ * de dato suelto -no se trata de saberse un número-, sino las de entender algo
+ * que casi todo el mundo cree saber.
+ */
+export const FINAL: readonly Pregunta[] = [
+  {
+    id: 'final-utf16',
+    tipo: 'final',
+    enunciado: '¿Por qué "👨‍👩‍👧".length devuelve 8 en JavaScript?',
+    opciones: [
+      'Porque cuenta bytes y no caracteres',
+      'Porque son tres emojis unidos por dos caracteres invisibles, y cada persona ocupa dos posiciones',
+      'Porque el emoji está mal formado',
+      'Porque length siempre devuelve potencias de dos',
+    ],
+    correcta: 1,
+    explicacion:
+      'Son tres emojis de persona unidos por dos ZWJ. Cada persona va fuera del plano básico y ocupa dos unidades UTF-16: 3x2 + 2 = 8.',
+  },
+  {
+    id: 'final-indices',
+    tipo: 'final',
+    enunciado: 'Una consulta con índice tarda más que sin él. ¿Cuál es la explicación más probable?',
+    opciones: [
+      'El índice está corrupto',
+      'La consulta devuelve casi toda la tabla, y saltar del índice a cada fila sale más caro que leerla entera',
+      'Los índices solo aceleran las escrituras',
+      'Falta un ORDER BY',
+    ],
+    correcta: 1,
+    explicacion:
+      'Es el caso clásico: con poca selectividad, el salto del índice a la tabla fila a fila cuesta más que un recorrido secuencial. Por eso el planificador a veces ignora el índice a propósito.',
+  },
+  {
+    id: 'final-git-rebase',
+    tipo: 'final',
+    enunciado: 'Rebaseas una rama que ya se habían descargado otros. ¿Qué pasa exactamente?',
+    opciones: [
+      'No pasa nada, git lo arregla solo',
+      'Los commits nuevos tienen otro identificador, así que a los demás les aparecen duplicados al mezclar',
+      'Se borra el historial de todos',
+      'Git rechaza el rebase',
+    ],
+    correcta: 1,
+    explicacion:
+      'Rebase no mueve commits: crea otros con el mismo contenido y distinto padre, y por tanto distinto hash. Quien tuviera los viejos acaba con las dos versiones.',
+  },
+  {
+    id: 'final-cache',
+    tipo: 'final',
+    enunciado: 'Un despliegue rompe la web solo para quien ya la había visitado antes. ¿Por dónde se empieza a mirar?',
+    opciones: [
+      'Por la base de datos',
+      'Por la caché: un HTML viejo pidiendo ficheros con nombres que ya no existen',
+      'Por el certificado',
+      'Por el DNS',
+    ],
+    correcta: 1,
+    explicacion:
+      'Es el síntoma de libro: el visitante nuevo se lo trae todo fresco y el que vuelve arrastra un índice cacheado que apunta a bundles ya borrados.',
+  },
+  {
+    id: 'final-float',
+    tipo: 'final',
+    enunciado: 'Sumas 0.1 diez veces y comparas con 1. ¿Por qué falla?',
+    opciones: [
+      'Porque JavaScript redondea mal a propósito',
+      'Porque 0.1 no se puede representar exacto en binario, y cada suma arrastra el error',
+      'Porque hay que usar enteros siempre',
+      'Porque el compilador optimiza la suma',
+    ],
+    correcta: 1,
+    explicacion:
+      'IEEE 754 guarda 0.1 como la fracción binaria más cercana, que no es exacta. Diez sumas acumulan el error y dan 0.9999999999999999.',
+  },
+];

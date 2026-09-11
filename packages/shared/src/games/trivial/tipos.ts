@@ -15,8 +15,17 @@ export const OPCIONES = 4;
  * afirmaciones y premia la racha. `bomba` va por turnos: contesta quien la
  * tiene, y los demás miran.
  */
-export type TipoPrueba = 'test' | 'estimacion' | 'fallo' | 'pulsa' | 'rafaga' | 'bomba';
-export type Fase = 'presentacion' | 'ronda' | 'resultado' | 'fin';
+export type TipoPrueba =
+  | 'test'
+  | 'estimacion'
+  | 'fallo'
+  | 'pulsa'
+  | 'rafaga'
+  | 'bomba'
+  // La última del programa: se apuesta antes de verla y se cobra o se paga lo
+  // apostado. Es la única que puede dar la vuelta a un marcador entero.
+  | 'final';
+export type Fase = 'presentacion' | 'ronda' | 'resultado' | 'apuestas' | 'fin';
 export type NivelBot = 'pardillo' | 'apanado' | 'sabelotodo';
 
 /**
@@ -100,6 +109,15 @@ export interface TrivialState {
   readonly cierraEn: number;
 
   /**
+   * Lo que se juega cada uno en la final.
+   *
+   * Secreto mientras la fase sigue abierta, igual que las respuestas: lo que no
+   * se manda no se puede mirar. Al cerrarse se cantan todas a la vez, que es el
+   * momento de la final.
+   */
+  readonly apuestas: Readonly<Record<SeatId, number>>;
+
+  /**
    * Cuántas veces se ha dicho ya cada momento en este programa.
    *
    * De aquí sale que el presentador no repita frase: el guion recorre todas
@@ -141,6 +159,10 @@ export const TrivialAction = Type.Union([
     SIN_EXTRAS,
   ),
   Type.Object({ tipo: Type.Literal('tiempo') }, SIN_EXTRAS),
+  Type.Object(
+    { tipo: Type.Literal('apostar'), cuanto: Type.Integer({ minimum: 0, maximum: 1_000_000 }) },
+    SIN_EXTRAS,
+  ),
   // La dice el servidor, no una persona: es la voz del presentador entrando
   // en la partida para que todos la lean a la vez.
   Type.Object(
@@ -192,6 +214,11 @@ export interface TrivialView {
   readonly mecha: number;
   /** Cuándo se cierra la ronda. Cero mientras no haya reloj puesto. */
   readonly cierraEn: number;
+  /** Quién ha apostado ya. Nunca cuánto, mientras la fase siga abierta. */
+  readonly hanApostado: readonly SeatId[];
+  readonly tuApuesta: number | null;
+  /** Todas las apuestas, cuando ya se pueden cantar. Antes, `null`. */
+  readonly apuestas: Readonly<Record<SeatId, number>> | null;
   /** Si te toca a ti contestar. En las demás pruebas contestan todos. */
   readonly tuTurno: boolean;
 

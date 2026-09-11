@@ -359,3 +359,135 @@ describe('el reloj de la ronda', () => {
     expect(vencida.puntos[mirando] ?? 0).toBe(0);
   });
 });
+
+/** Una partida que llega a la final con puntos repartidos para poder apostar. */
+function hastaLaFinal(): TrivialState {
+  const conFinal: Pregunta[] = [
+    PREGUNTAS[0],
+    {
+      id: 'f1',
+      tipo: 'final',
+      enunciado: '¿Por qué "👨‍👩‍👧".length devuelve 8?',
+      opciones: ['Cuenta bytes', 'Son tres emojis unidos y algunos ocupan dos', 'Está mal formado', 'Siempre son potencias de dos'],
+      correcta: 1,
+      explicacion: 'Tres personas fuera del plano básico más dos uniones invisibles.',
+    },
+  ];
+  const inicial = trivialModule.createState(SEATS, { preguntas: conFinal, semilla: 7 });
+  let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+  state = trivialModule.apply(state, { tipo: 'empezar' }, 'bea', SEATS);
+  // Las dos aciertan la primera, así que llegan a la final con puntos.
+  state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+  state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+  return state;
+}
+
+/** Ya en la fase de apuestas, con la pregunta de la final por jugar. */
+function apostando(): TrivialState {
+  return trivialModule.apply(hastaLaFinal(), { tipo: 'siguiente' }, 'ana', SEATS);
+}
+
+describe('la final a doble o nada', () => {
+  it('a la final se entra apostando, no contestando', () => {
+    expect(apostando().fase).toBe('apuestas');
+  });
+
+  it('nadie ve lo que apuestan los demás hasta que se cierra', () => {
+    // La misma regla que la respuesta correcta: lo que no se manda, no se puede
+    // mirar con las herramientas de desarrollo abiertas.
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    const vista = vistaDe(conApuesta, 'ana');
+
+    expect(vista.hanApostado).toContain('bea');
+    expect(vista.apuestas).toBeNull();
+  });
+
+  it('pero tú sí ves la tuya', () => {
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    expect(vistaDe(conApuesta, 'bea').tuApuesta).toBe(50);
+  });
+
+  it('no puedes apostar más de lo que llevas', () => {
+    const enJuego = apostando();
+    const sobran = (enJuego.puntos['bea'] ?? 0) + 1;
+
+    expect(trivialModule.validate(enJuego, { tipo: 'apostar', cuanto: sobran }, 'bea', SEATS))
+      .toMatchObject({ code: 'no-tienes-tanto' });
+  });
+
+  it('ni apostar dos veces', () => {
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 10 }, 'bea', SEATS);
+
+    expect(trivialModule.validate(conApuesta, { tipo: 'apostar', cuanto: 20 }, 'bea', SEATS))
+      .toMatchObject({ code: 'ya-apostaste' });
+  });
+
+  it('ni contestar mientras se apuesta', () => {
+    expect(trivialModule.validate(apostando(), { tipo: 'responder', valor: 1 }, 'ana', SEATS))
+      .toMatchObject({ code: 'aun-se-apuesta' });
+  });
+
+  it('cuando han apostado todos, se cantan y se juega la pregunta', () => {
+    let state = apostando();
+    for (const quien of state.orden) {
+      state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 50 }, quien, SEATS);
+    }
+
+    expect(state.fase).toBe('ronda');
+    expect(vistaDe(state, 'ana').apuestas).not.toBeNull();
+  });
+
+  it('quien no apuesta a tiempo se planta', () => {
+    // Cero es una apuesta: no perder nada. Bloquear la final esperando a
+    // alguien que se ha ido a por un café es peor que darle un cero.
+    const vencida = trivialModule.apply(apostando(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.fase).toBe('ronda');
+    expect(vencida.apuestas['ana'] ?? 0).toBe(0);
+  });
+
+  it('acertar te lleva lo que te jugabas', () => {
+    let state = apostando();
+    const tenia = state.puntos['ana'] ?? 0;
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana']).toBe(tenia + 100);
+  });
+
+  it('y fallar te lo quita, pero te deja a cero y no en rojo', () => {
+    // No hace falta ningún suelo: la apuesta ya está topada por lo que llevas.
+    let state = apostando();
+    const todo = state.puntos['ana'] ?? 0;
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: todo }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 0 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana']).toBe(0);
+  });
+
+  it('acertar el primero no vale más que acertar el último', () => {
+    // En una apuesta, correr no es la gracia: lo que se premia es lo que te
+    // jugabas. Un bonus por rapidez aquí la convertiría en otra ronda normal.
+    let state = apostando();
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'bea', SEATS);
+    const antes = { ...state.puntos };
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana'] - (antes['ana'] ?? 0)).toBe(
+      state.puntos['bea'] - (antes['bea'] ?? 0),
+    );
+  });
+
+  it('un bot apuesta solo, que si no la final no arranca', () => {
+    const conBot = apostando();
+    const jugada = trivialModule.botAction?.(conBot, 'bea', SEATS);
+
+    expect(jugada).toMatchObject({ tipo: 'apostar' });
+  });
+});

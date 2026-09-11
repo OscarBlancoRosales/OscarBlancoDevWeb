@@ -37,6 +37,7 @@ const SECCIONES: Readonly<Record<TipoPrueba, Seccion>> = {
   pulsa: { nombre: 'El primero que pulse', pista: 'Solo cobra el primero. Fallar cuesta.' },
   rafaga: { nombre: 'Ráfaga', pista: 'Verdadero o falso. Encadenar multiplica.' },
   bomba: { nombre: 'La bomba', pista: 'Contesta y pásala. Que no te pille.' },
+  final: { nombre: 'La final', pista: 'Apuesta lo que llevas. Una pregunta decide.' },
 };
 
 /**
