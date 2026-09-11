@@ -17,6 +17,13 @@ export const CreateInvitationRequest = Type.Object(
     /** Para acordarse de a quién iba. No lo ve nadie más. */
     nota: Type.String({ maxLength: 120, default: '' }),
     diasDeVida: Type.Integer({ minimum: 1, maximum: 90, default: 7 }),
+    /**
+     * A quién mandarle el enlace, si se quiere que salga solo.
+     *
+     * No ata la invitación a esa dirección: el enlace sigue sirviendo para
+     * quien lo tenga. Solo evita el paseo de copiarlo y pegarlo en el correo.
+     */
+    email: Type.Optional(Type.String({ format: 'email', maxLength: 200 })),
   },
   SIN_EXTRAS,
 );
@@ -32,6 +39,15 @@ export const CreatedInvitation = Type.Object({
   id: Type.String(),
   enlace: Type.String(),
   expiraEn: Type.Integer(),
+  /**
+   * A dónde ha salido, o nulo.
+   *
+   * Nulo tanto si no se pidió mandarlo como si el relay no lo aceptó: en los
+   * dos casos el enlace de arriba es lo único que hay, y por eso se enseña
+   * siempre. Un correo que no sale no puede llevarse por delante la única
+   * copia del enlace.
+   */
+  enviadoA: Type.Union([Type.String(), Type.Null()]),
 });
 
 export const Invitation = Type.Object({

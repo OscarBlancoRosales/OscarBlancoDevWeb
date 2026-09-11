@@ -367,6 +367,8 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'admin.tab.consola': { es: 'Consola', en: 'Console' },
 
   // === HABLAR CON LA SESIÓN ===
+  'admin.emailPh': { es: 'Correo (opcional)', en: 'Email (optional)' },
+  'admin.sentTo': { es: 'Y se ha mandado a {correo}.', en: 'And it was sent to {correo}.' },
   'admin.tab.salas': { es: 'Salas', en: 'Rooms' },
   'admin.kpiBlocked': { es: 'Bloqueados', en: 'Blocked' },
   'admin.kpiPending': { es: 'Invitaciones vivas', en: 'Live invitations' },

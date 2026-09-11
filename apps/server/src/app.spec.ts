@@ -32,6 +32,18 @@ describe('el servidor', () => {
     expect(response.json()).toMatchObject({ status: 'ok', database: true });
   });
 
+  /**
+   * Sin relay, el alta contesta que todo ha ido bien y el enlace acaba en el
+   * journal. Poder verlo desde fuera es lo que evita descubrirlo semanas
+   * después, cuando alguien dice que no le llegó nada.
+   */
+  it('dice si hay relay de correo puesto, sin decir cuál', async () => {
+    const response = await app.inject({ method: 'GET', url: '/health' });
+
+    expect(response.json()).toMatchObject({ correo: { configurado: false } });
+    expect(response.payload).not.toContain('smtp');
+  });
+
   it('devuelve 503 si la base ha dejado de responder', async () => {
     db.close();
 

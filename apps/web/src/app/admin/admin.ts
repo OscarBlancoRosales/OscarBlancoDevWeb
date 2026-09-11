@@ -61,6 +61,7 @@ export class Admin implements OnInit {
 
   nota = '';
   dias = DIAS_POR_DEFECTO;
+  correo = '';
   readonly creando = signal(false);
 
   constructor(
@@ -113,8 +114,9 @@ export class Admin implements OnInit {
     this.creando.set(true);
     this.copiado.set(false);
     await this.intentar(async () => {
-      this.reciente.set(await this.admin.crearInvitacion(this.nota, this.dias));
+      this.reciente.set(await this.admin.crearInvitacion(this.nota, this.dias, this.correo));
       this.nota = '';
+      this.correo = '';
       this.invitaciones.set(await this.admin.invitaciones());
     });
     this.creando.set(false);

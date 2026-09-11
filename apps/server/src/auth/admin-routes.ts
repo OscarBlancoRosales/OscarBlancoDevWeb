@@ -76,10 +76,11 @@ export function adminRoutes(service: AuthService, rooms: RoomService): FastifyPl
         schema: { body: CreateInvitationRequest, response: { 201: CreatedInvitation } },
       },
       async (request, reply) => {
-        const invitacion = service.crearInvitacion({
+        const invitacion = await service.crearInvitacion({
           creadaPor: request.userId,
           nota: request.body.nota,
           diasDeVida: request.body.diasDeVida,
+          ...(request.body.email !== undefined && { email: request.body.email }),
         });
         await reply.status(201).send(invitacion);
       },

@@ -21,6 +21,16 @@ const HealthResponse = Type.Object({
     modelo: Type.String(),
     soloGratis: Type.Boolean(),
   }),
+  /**
+   * Si hay relay de correo puesto.
+   *
+   * Sin él, el registro contesta que todo ha ido bien y el enlace de
+   * verificación acaba en el journal: quien se acaba de dar de alta espera un
+   * correo que nunca sale. Es el mismo agujero que el de la IA —funciona
+   * distinto sin quejarse— y se destapa igual, desde fuera y sin entrar en la
+   * máquina. Dice si hay relay, nunca cuál ni con qué clave.
+   */
+  correo: Type.Object({ configurado: Type.Boolean() }),
 });
 
 /**
@@ -30,7 +40,11 @@ const HealthResponse = Type.Object({
  * exactamente cuando más falta hace la verdad: el día que el disco esté lleno y
  * SQLite no pueda escribir, el proceso sigue en pie y el servicio no funciona.
  */
-export function healthRoutes(db: Db, ia?: AiSettings | null): FastifyPluginCallbackTypebox {
+export function healthRoutes(
+  db: Db,
+  ia?: AiSettings | null,
+  correoConfigurado = false,
+): FastifyPluginCallbackTypebox {
   return (app, _options, done) => {
     app.get(
       '/health',
@@ -47,6 +61,7 @@ export function healthRoutes(db: Db, ia?: AiSettings | null): FastifyPluginCallb
             modelo: ia?.model ?? '(los gratuitos por defecto)',
             soloGratis: ia?.freeOnly !== false,
           },
+          correo: { configurado: correoConfigurado },
         });
       },
     );

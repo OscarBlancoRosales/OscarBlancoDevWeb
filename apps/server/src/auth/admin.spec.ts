@@ -286,6 +286,46 @@ describe('el panel de administración', () => {
     it('quien no manda no puede repartirlas', async () => {
       expect((await crear(cualquiera)).statusCode).toBe(404);
     });
+
+    it('se puede mandar sola a un correo', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/admin/invitaciones',
+        headers: como(jefe),
+        payload: { nota: 'Para Luis', diasDeVida: 7, email: 'Luis@Example.com' },
+      });
+
+      expect(response.json<CreatedInvitation>().enviadoA).toBe('luis@example.com');
+    });
+
+    /**
+     * El enlace solo existe en esta respuesta. Si el relay falla y se contesta
+     * un 500, queda una invitación viva cuyo enlace no tiene nadie.
+     */
+    it('y si el correo no sale, el enlace no se pierde', async () => {
+      const rota = await buildApp({
+        config: loadConfig({
+          NODE_ENV: 'test',
+          JWT_SECRET: 'x'.repeat(48),
+          CORS_ORIGINS: 'https://oscarblancorosales.com',
+          ADMIN_EMAILS: JEFE.email,
+          SMTP_URL: 'smtp://nadie@127.0.0.1:1',
+        }),
+        db,
+      });
+
+      const response = await rota.inject({
+        method: 'POST',
+        url: '/admin/invitaciones',
+        headers: como(jefe),
+        payload: { nota: '', diasDeVida: 7, email: 'luis@example.com' },
+      });
+
+      expect(response.statusCode).toBe(201);
+      expect(response.json<CreatedInvitation>().enlace).toContain('invitacion=');
+      expect(response.json<CreatedInvitation>().enviadoA).toBeNull();
+      await rota.close();
+    });
   });
 
   describe('las salas', () => {

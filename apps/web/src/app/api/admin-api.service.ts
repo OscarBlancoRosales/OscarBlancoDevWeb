@@ -44,11 +44,16 @@ export class AdminApiService {
       .invitaciones;
   }
 
-  async crearInvitacion(nota: string, diasDeVida: number): Promise<CreatedInvitation> {
+  /** Con `email`, además de devolver el enlace se lo manda a esa dirección. */
+  async crearInvitacion(
+    nota: string,
+    diasDeVida: number,
+    email = '',
+  ): Promise<CreatedInvitation> {
     return this.api.request<CreatedInvitation>({
       method: 'POST',
       path: '/admin/invitaciones',
-      body: { nota, diasDeVida },
+      body: { nota, diasDeVida, ...(email.trim() !== '' && { email: email.trim() }) },
     });
   }
 

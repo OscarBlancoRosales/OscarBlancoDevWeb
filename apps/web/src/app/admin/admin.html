@@ -60,6 +60,14 @@
               maxlength="120"
               [placeholder]="i18n.t('admin.notePh')"
             />
+            <input
+              class="input"
+              type="email"
+              name="correo"
+              [(ngModel)]="correo"
+              maxlength="200"
+              [placeholder]="i18n.t('admin.emailPh')"
+            />
             <input class="input input--xs" type="number" name="dias" [(ngModel)]="dias" min="1" max="90" />
             <button type="submit" class="btn btn--primary" [disabled]="creando()">
               {{ creando() ? i18n.t('admin.creating') : i18n.t('admin.createInvite') }}
@@ -68,7 +76,12 @@
 
           @if (reciente(); as nueva) {
             <div class="admin-enlace">
-              <p>{{ i18n.t('admin.linkOnce') }}</p>
+              <p>
+                {{ i18n.t('admin.linkOnce') }}
+                @if (nueva.enviadoA) {
+                  <span class="admin-enviado">{{ i18n.t('admin.sentTo', { correo: nueva.enviadoA }) }}</span>
+                }
+              </p>
               <code>{{ nueva.enlace }}</code>
               <button type="button" class="btn btn--sm" (click)="copiar(nueva.enlace)">
                 {{ copiado() ? i18n.t('common.copied') : i18n.t('common.copy') }}

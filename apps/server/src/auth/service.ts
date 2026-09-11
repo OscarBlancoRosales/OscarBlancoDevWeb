@@ -187,11 +187,12 @@ export class AuthService {
   }
 
   /** Crea una invitación de un solo uso y devuelve su enlace. */
-  crearInvitacion(input: { creadaPor: string; nota: string; diasDeVida: number }): {
-    id: string;
-    enlace: string;
-    expiraEn: number;
-  } {
+  async crearInvitacion(input: {
+    creadaPor: string;
+    nota: string;
+    diasDeVida: number;
+    email?: string;
+  }): Promise<{ id: string; enlace: string; expiraEn: number; enviadoA: string | null }> {
     const token = generateToken();
     const id = randomUUID();
     const expiresAt = this.now() + input.diasDeVida * DIA;
@@ -210,7 +211,41 @@ export class AuthService {
     // El enlace se devuelve UNA vez, aquí. El token solo se guarda hasheado, así
     // que ni el panel ni la base pueden volver a enseñarlo: si se pierde, se
     // crea otra invitación y ya está.
-    return { id, enlace: `${this.publicWebUrl}/auth/registro?invitacion=${token}`, expiraEn: expiresAt };
+    const enlace = `${this.publicWebUrl}/auth/registro?invitacion=${token}`;
+
+    return { id, enlace, expiraEn: expiresAt, enviadoA: await this.mandarInvitacion(enlace, input.email) };
+  }
+
+  /**
+   * Manda el enlace, si se ha pedido. Devuelve a dónde salió, o nulo.
+   *
+   * Que el relay falle no puede tumbar la petición: la invitación ya está
+   * creada y el enlace solo existe en esta respuesta. Un 500 aquí dejaría una
+   * invitación viva cuyo enlace no tiene nadie, que es lo peor de los dos
+   * mundos. Se traga el fallo y quien mira la pantalla ve el enlace igual.
+   */
+  private async mandarInvitacion(enlace: string, email?: string): Promise<string | null> {
+    if (email === undefined || email.trim() === '') return null;
+    const destino = normalizeEmail(email);
+
+    try {
+      await this.mailer.send({
+        to: destino,
+        subject: `Te han invitado a ${NOMBRE_DEL_SITIO}`,
+        text:
+          `Hola:
+
+Tienes una invitación para crear tu cuenta en ${NOMBRE_DEL_SITIO}. ` +
+          `Entra aquí:
+${enlace}
+
+` +
+          'El enlace sirve para un alta y una sola, y caduca. Si no esperabas esto, ignóralo.',
+      });
+      return destino;
+    } catch {
+      return null;
+    }
   }
 
   listarInvitaciones(): {
