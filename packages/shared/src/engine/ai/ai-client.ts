@@ -229,6 +229,11 @@ function bodyFor(settings: AiSettings, messages: ChatMessage[], maxTokens: numbe
     // local sin decir por qué. Excluyendo el razonamiento contestan en menos de
     // 400 ms con el JSON limpio.
     ...(settings.provider === 'openrouter' ? { reasoning: { exclude: true } } : {}),
+    // Lo mismo en Groq, que lo pide con otro nombre: los GPT-OSS razonan por
+    // defecto y con 120 tokens de presupuesto devolvían el contenido vacío.
+    ...(settings.provider === 'groq'
+      ? { reasoning_effort: 'low', include_reasoning: false }
+      : {}),
   });
 }
 
@@ -251,11 +256,14 @@ function bajar(valor: unknown, ...ruta: (string | number)[]): unknown {
 function extractText(settings: AiSettings, payload: unknown): string {
   if (settings.provider === 'gemini') {
     const text = bajar(payload, 'candidates', 0, 'content', 'parts', 0, 'text');
-    if (typeof text === 'string') return text;
+    if (typeof text === 'string' && text.trim()) return text;
     throw new AiError('bad-response', 'Respuesta de Gemini sin texto');
   }
   const text = bajar(payload, 'choices', 0, 'message', 'content');
-  if (typeof text === 'string') return text;
+  // En blanco cuenta como sin contenido: un modelo de razonamiento que se ha
+  // gastado el presupuesto pensando contesta 200 con la cadena vacía, y darla
+  // por buena dejaba la mesa muda con la cadena de reserva sin estrenar.
+  if (typeof text === 'string' && text.trim()) return text;
   throw new AiError('bad-response', 'Respuesta sin contenido');
 }
 
@@ -284,7 +292,9 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
   // En Groq y Gemini la cuota gratuita se cuenta por modelo, así que un 429 en
   // uno no dice nada del siguiente. Estaban vacías y no debían: el mismo 429
   // que aquí se esquiva dejaba la mesa sin frase.
-  groq: ['openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b'],
+  // Los Llama van delante porque no razonan: para una frase de tres líneas son
+  // la reserva más segura cuando el que falla es un modelo de razonamiento.
+  groq: ['llama-3.1-8b-instant', 'llama-3.3-70b-versatile', 'openai/gpt-oss-120b'],
   gemini: ['gemini-2.0-flash-lite', 'gemini-2.0-flash'],
   // Un servidor propio no tiene a quién recurrir: o está levantado o no está.
   'openai-compatible': [],
