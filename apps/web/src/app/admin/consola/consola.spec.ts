@@ -6,11 +6,16 @@ import { I18nService } from '../../services/i18n.service';
 
 const VACIA = { mensajes: [], permisos: [] };
 
+/** Un canal escuchando, que es el caso normal: una sesión abierta. */
+const UNO = [{ puerto: 4319, proyecto: 'DevWeb' }];
+
 async function montar(agente: Partial<AgenteApiService>): Promise<ComponentFixture<Consola>> {
   TestBed.resetTestingModule();
   await TestBed.configureTestingModule({
     imports: [Consola],
-    providers: [{ provide: AgenteApiService, useValue: agente }],
+    providers: [
+      { provide: AgenteApiService, useValue: { hablarCon: vi.fn(), ...agente } },
+    ],
   }).compileComponents();
   TestBed.inject(I18nService).setLang('es');
   const fixture = TestBed.createComponent(Consola);
@@ -29,7 +34,7 @@ describe('la consola contra tu sesión', () => {
   });
 
   it('sin canal, dice cómo levantarlo', async () => {
-    const fixture = await montar({ estado: () => Promise.resolve({ vivo: true, canal: false }) });
+    const fixture = await montar({ canales: () => Promise.resolve([]) });
 
     expect(texto(fixture)).toContain('No hay ninguna sesión escuchando');
     fixture.destroy();
@@ -42,7 +47,7 @@ describe('la consola contra tu sesión', () => {
    */
   it('con canal pero sin emparejar, pide emparejar', async () => {
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: false,
     });
 
@@ -53,7 +58,7 @@ describe('la consola contra tu sesión', () => {
   it('pedir el código no lo enseña en pantalla: lo manda al terminal', async () => {
     const pedirCodigo = vi.fn().mockResolvedValue(undefined);
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: false,
       pedirCodigo,
     });
@@ -68,7 +73,7 @@ describe('la consola contra tu sesión', () => {
   it('con el código bueno, este aparato queda dentro', async () => {
     const emparejar = vi.fn().mockResolvedValue(undefined);
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: false,
       emparejar,
       conversacion: () => Promise.resolve(VACIA),
@@ -87,7 +92,7 @@ describe('la consola contra tu sesión', () => {
   it('emparejado, lo que escribes se manda y se limpia el cuadro', async () => {
     const escribir = vi.fn().mockResolvedValue(undefined);
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: true,
       escribir,
       conversacion: () => Promise.resolve(VACIA),
@@ -105,7 +110,7 @@ describe('la consola contra tu sesión', () => {
   it('un mensaje en blanco no se manda', async () => {
     const escribir = vi.fn();
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: true,
       escribir,
       conversacion: () => Promise.resolve(VACIA),
@@ -120,7 +125,7 @@ describe('la consola contra tu sesión', () => {
 
   it('se ve lo que Claude ha contestado', async () => {
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: true,
       conversacion: () =>
         Promise.resolve({
@@ -147,7 +152,7 @@ describe('la consola contra tu sesión', () => {
 
     it('se ven, con lo que quiere hacer', async () => {
       const fixture = await montar({
-        estado: () => Promise.resolve({ vivo: true, canal: true }),
+        canales: () => Promise.resolve(UNO),
         emparejado: true,
         conversacion: () => Promise.resolve(conPermiso),
       });
@@ -161,7 +166,7 @@ describe('la consola contra tu sesión', () => {
     it('y se contestan desde aquí', async () => {
       const decidir = vi.fn().mockResolvedValue(undefined);
       const fixture = await montar({
-        estado: () => Promise.resolve({ vivo: true, canal: true }),
+        canales: () => Promise.resolve(UNO),
         emparejado: true,
         conversacion: () => Promise.resolve(conPermiso),
         decidir,
@@ -175,13 +180,84 @@ describe('la consola contra tu sesión', () => {
   });
 
   /**
+   * Un canal por repositorio abierto. El emparejamiento vale para todos,
+   * porque la lista de aparatos es una sola y vive en tu carpeta de usuario:
+   * emparejas una vez y hablas con la sesión que quieras.
+   */
+  describe('con varios repositorios abiertos', () => {
+    const DOS = [
+      { puerto: 4319, proyecto: 'DevWeb' },
+      { puerto: 4320, proyecto: 'OneToolOne' },
+    ];
+
+    it('se pueden elegir, y con uno solo no hay nada que elegir', async () => {
+      const conDos = await montar({
+        canales: () => Promise.resolve(DOS),
+        emparejado: true,
+        conversacion: () => Promise.resolve(VACIA),
+      });
+
+      expect(texto(conDos)).toContain('DevWeb');
+      expect(texto(conDos)).toContain('OneToolOne');
+      conDos.destroy();
+
+      const conUno = await montar({
+        canales: () => Promise.resolve(UNO),
+        emparejado: true,
+        conversacion: () => Promise.resolve(VACIA),
+      });
+
+      expect(
+        (conUno.nativeElement as HTMLElement).querySelectorAll('.con-canal'),
+      ).toHaveLength(0);
+      conUno.destroy();
+    });
+
+    it('al empezar se habla con la primera que esté escuchando', async () => {
+      const hablarCon = vi.fn();
+      const fixture = await montar({
+        canales: () => Promise.resolve(DOS),
+        emparejado: true,
+        conversacion: () => Promise.resolve(VACIA),
+        hablarCon,
+      });
+
+      expect(hablarCon).toHaveBeenCalledWith(4319);
+      expect(fixture.componentInstance.canal()?.proyecto).toBe('DevWeb');
+      fixture.destroy();
+    });
+
+    it('y cambiar de una a otra no mezcla las conversaciones', async () => {
+      const hablarCon = vi.fn();
+      const fixture = await montar({
+        canales: () => Promise.resolve(DOS),
+        emparejado: true,
+        conversacion: () =>
+          Promise.resolve({
+            mensajes: [{ de: 'yo' as const, texto: 'lo de DevWeb', cuando: Date.now() }],
+            permisos: [],
+          }),
+        hablarCon,
+      });
+      fixture.detectChanges();
+      expect(texto(fixture)).toContain('lo de DevWeb');
+
+      await fixture.componentInstance.cambiarDeCanal(DOS[1]);
+
+      expect(hablarCon).toHaveBeenLastCalledWith(4320);
+      expect(fixture.componentInstance.canal()?.proyecto).toBe('OneToolOne');
+      fixture.destroy();
+    });
+  });
+
+  /**
    * Si el canal deja de reconocer a este aparato, insistir cada dos segundos
    * no arregla nada: se dice y se para.
    */
   it('si el canal nos olvida, se deja de insistir', async () => {
     const conversacion = vi.fn().mockRejectedValue(new Error('Este aparato ya no está emparejado.'));
     const fixture = await montar({
-      estado: () => Promise.resolve({ vivo: true, canal: true }),
+      canales: () => Promise.resolve(UNO),
       emparejado: true,
       conversacion,
     });

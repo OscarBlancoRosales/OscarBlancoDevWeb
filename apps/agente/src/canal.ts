@@ -2,7 +2,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { homedir } from 'node:os';
 import { Acceso } from './acceso';
 import { Buzon } from './buzon';
@@ -24,7 +24,18 @@ import { construirAgente } from './servidor';
  * aprobar lo que Claude quiera hacer en tu máquina.
  */
 
-const PUERTO = Number(process.env['PUERTO'] ?? 4319);
+/**
+ * El primero de los puertos, y cuántos se prueban.
+ *
+ * Un canal por sesión de Claude Code, y se tiene más de una abierta: una por
+ * repositorio. Cada uno coge el primer hueco libre y la web los va buscando
+ * por ahí, así que trabajar en dos proyectos a la vez no exige configurar
+ * nada — y el emparejamiento vale para todos, porque la lista de aparatos es
+ * una sola y vive en tu carpeta de usuario.
+ */
+const PUERTO_BASE = Number(process.env['PUERTO'] ?? 4319);
+const CUANTOS_PUERTOS = 5;
+
 const FICHERO_DE_ACCESO = join(homedir(), '.claude', 'devweb-canal', 'access.json');
 
 /** Lo que Claude Code manda cuando se abre un diálogo de permiso. */
@@ -124,6 +135,7 @@ export async function arrancarCanal(): Promise<void> {
   const app = await construirAgente({
     acceso,
     buzon,
+    proyecto: basename(process.cwd()),
     mostrarCodigo: (codigo, nombre) => {
       // Por la salida de error: la estándar es de MCP y meter ahí un texto
       // suelto rompería la conversación con Claude Code.
@@ -137,22 +149,30 @@ export async function arrancarCanal(): Promise<void> {
     },
   });
 
-  try {
-    await app.listen({ port: PUERTO, host: '127.0.0.1' });
-  } catch (fallo) {
-    // El visor a secas usa este mismo puerto. Si se quedó abierto, el canal no
-    // puede tomarlo, y morir aquí en silencio se ve desde Claude Code como un
-    // servidor que no arranca y ya está: sin esto, se pierde media tarde.
-    const ocupado = (fallo as { code?: string }).code === 'EADDRINUSE';
+  // Se coge el primer hueco libre: cada repositorio abierto trae su canal, y
+  // el visor suelto también usa el primero de estos puertos.
+  const puerto = await escuchar(app);
+  if (puerto === null) {
     process.stderr.write(
-      ocupado
-        ? `\n  El puerto ${PUERTO} ya está ocupado, seguramente por el visor.\n` +
-            `  Ciérralo (Ctrl+C donde corra «npm run start -w @devweb/agente») y vuelve\n` +
-            `  a arrancar Claude Code. El canal ya trae el visor dentro: no hacen falta\n` +
-            `  los dos.\n\n`
-        : `\n  El canal no ha podido escuchar en ${PUERTO}: ${String(fallo)}\n\n`,
+      `\n  No hay ningún puerto libre entre el ${PUERTO_BASE} y el ${PUERTO_BASE + CUANTOS_PUERTOS - 1}.\n` +
+        `  Cierra alguna sesión con canal abierto y vuelve a arrancar.\n\n`,
     );
     return;
   }
-  process.stderr.write(`  Canal de DevWeb escuchando en 127.0.0.1:${PUERTO}\n`);
+  process.stderr.write(
+    `  Canal de DevWeb escuchando en 127.0.0.1:${puerto} · ${basename(process.cwd())}\n`,
+  );
+}
+
+/** Prueba los puertos por orden y devuelve el que ha cogido, o null. */
+async function escuchar(app: { listen: (o: { port: number; host: string }) => Promise<unknown> }): Promise<number | null> {
+  for (let puerto = PUERTO_BASE; puerto < PUERTO_BASE + CUANTOS_PUERTOS; puerto++) {
+    try {
+      await app.listen({ port: puerto, host: '127.0.0.1' });
+      return puerto;
+    } catch (fallo) {
+      if ((fallo as { code?: string }).code !== 'EADDRINUSE') throw fallo;
+    }
+  }
+  return null;
 }

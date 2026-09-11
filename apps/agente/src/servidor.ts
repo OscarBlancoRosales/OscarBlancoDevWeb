@@ -33,6 +33,8 @@ export interface OpcionesDelAgente {
   readonly buzon?: Buzon;
   /** Enseña el código de emparejamiento donde solo tú puedes verlo. */
   readonly mostrarCodigo?: (codigo: string, nombre: string) => void;
+  /** En qué repositorio corre esta sesión, para distinguirla de las demás. */
+  readonly proyecto?: string;
 }
 
 const ORIGENES_POR_DEFECTO = [
@@ -79,7 +81,18 @@ export async function construirAgente(opciones: OpcionesDelAgente = {}): Promise
 
   const canal = opciones.acceso && opciones.buzon ? { acceso: opciones.acceso, buzon: opciones.buzon } : null;
 
-  app.get('/salud', () => ({ agente: 'devweb', version: 1, canal: canal !== null }));
+  /**
+   * Quién es y de qué proyecto.
+   *
+   * Con varios repositorios abiertos hay un canal por sesión, cada uno en su
+   * puerto: la web los recorre y enseña esto para que elijas a cuál escribir.
+   */
+  app.get('/salud', () => ({
+    agente: 'devweb',
+    version: 1,
+    canal: canal !== null,
+    proyecto: opciones.proyecto ?? '',
+  }));
 
   app.get('/sesiones', { schema: { response: { 200: ListaDeSesiones } } }, async (_req, reply) => {
     await reply.send({ sesiones: await almacen.listar() });

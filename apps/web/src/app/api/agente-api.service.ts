@@ -31,6 +31,20 @@ const LLAVE = 'devweb_canal_token';
 const AGENTE = 'http://127.0.0.1:4319';
 
 /**
+ * Los puertos donde puede haber un canal.
+ *
+ * Hay uno por sesión de Claude Code abierta, así que con dos repositorios en
+ * marcha hay dos: cada uno coge el primer hueco libre y aquí se recorren todos
+ * para saber a cuáles se puede escribir.
+ */
+const PUERTOS = [4319, 4320, 4321, 4322, 4323];
+
+export interface CanalVivo {
+  puerto: number;
+  proyecto: string;
+}
+
+/**
  * Habla con el agente que corre en tu ordenador.
  *
  * No pasa por la API de la VPS a propósito: tus sesiones de Claude Code no
@@ -56,6 +70,38 @@ export class AgenteApiService {
 
   async disponible(): Promise<boolean> {
     return (await this.estado()).vivo;
+  }
+
+  /**
+   * Qué sesiones están escuchando ahora mismo, y de qué repositorio son.
+   *
+   * Se prueban todos los puertos a la vez: son cinco peticiones a tu propia
+   * máquina, y las que no contestan fallan en milisegundos.
+   */
+  async canales(): Promise<CanalVivo[]> {
+    const encontrados = await Promise.all(
+      PUERTOS.map(async (puerto) => {
+        try {
+          const respuesta = await fetch(`http://127.0.0.1:${puerto}/salud`, {
+            signal: AbortSignal.timeout(1500),
+          });
+          if (!respuesta.ok) return null;
+          const salud = (await respuesta.json()) as { canal?: boolean; proyecto?: string };
+          if (salud.canal !== true) return null;
+          return { puerto, proyecto: salud.proyecto ?? `puerto ${puerto}` };
+        } catch {
+          return null;
+        }
+      }),
+    );
+    return encontrados.filter((canal): canal is CanalVivo => canal !== null);
+  }
+
+  /** A cuál de las sesiones se le está hablando. */
+  private elegido = AGENTE;
+
+  hablarCon(puerto: number): void {
+    this.elegido = `http://127.0.0.1:${puerto}`;
   }
 
   async sesiones(): Promise<ListaDeSesiones['sesiones']> {
@@ -106,7 +152,7 @@ export class AgenteApiService {
   }
 
   async conversacion(): Promise<Conversacion> {
-    const respuesta = await fetch(`${AGENTE}/conversacion`, {
+    const respuesta = await fetch(`${this.elegido}/conversacion`, {
       headers: { authorization: `Bearer ${this.token}` },
       signal: AbortSignal.timeout(10_000),
     });
@@ -119,7 +165,7 @@ export class AgenteApiService {
   }
 
   private async mandar<T = unknown>(ruta: string, cuerpo: unknown): Promise<T> {
-    const respuesta = await fetch(`${AGENTE}${ruta}`, {
+    const respuesta = await fetch(`${this.elegido}${ruta}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: `Bearer ${this.token}` },
       body: JSON.stringify(cuerpo),

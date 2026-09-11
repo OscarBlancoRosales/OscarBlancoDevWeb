@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgenteApiService } from '../../api/agente-api.service';
 import { I18nService } from '../../services/i18n.service';
-import type { Conversacion } from '../../api/agente-api.service';
+import type { CanalVivo, Conversacion } from '../../api/agente-api.service';
 
 /** Cada cuánto se mira si Claude ha contestado o pide permiso para algo. */
 const LATIDO_MS = 2000;
@@ -35,6 +35,16 @@ export class Consola implements OnInit, OnDestroy {
 
   readonly conversacion = signal<Conversacion>({ mensajes: [], permisos: [] });
 
+  /**
+   * Las sesiones que están escuchando, una por repositorio abierto.
+   *
+   * Trabajando en dos proyectos a la vez hay dos canales, cada uno en su
+   * puerto: aquí se elige a cuál se le habla. El emparejamiento vale para
+   * todos, porque la lista de aparatos es una sola.
+   */
+  readonly canales = signal<readonly CanalVivo[]>([]);
+  readonly canal = signal<CanalVivo | null>(null);
+
   texto = '';
   codigo = '';
   nombre = '';
@@ -56,12 +66,30 @@ export class Consola implements OnInit, OnDestroy {
 
   async arrancar(): Promise<void> {
     this.cargando.set(true);
-    const estado = await this.agente.estado();
-    this.hayCanal.set(estado.canal);
+    const encontrados = await this.agente.canales();
+    this.canales.set(encontrados);
+    this.hayCanal.set(encontrados.length > 0);
+
+    // Si solo hay una sesión escuchando no hay nada que elegir; si hay varias
+    // se mantiene la elegida mientras siga viva.
+    const sigueViva = encontrados.find((c) => c.puerto === this.canal()?.puerto);
+    this.elegir(sigueViva ?? encontrados.at(0) ?? null);
+
     this.emparejado.set(this.agente.emparejado);
     if (this.hayCanal() && this.emparejado()) await this.refrescar();
     this.cargando.set(false);
     this.vigilar();
+  }
+
+  elegir(canal: CanalVivo | null): void {
+    this.canal.set(canal);
+    if (canal) this.agente.hablarCon(canal.puerto);
+  }
+
+  async cambiarDeCanal(canal: CanalVivo): Promise<void> {
+    this.elegir(canal);
+    this.conversacion.set({ mensajes: [], permisos: [] });
+    await this.refrescar();
   }
 
   /** Mientras la pantalla esté abierta, se mira si hay algo nuevo. */

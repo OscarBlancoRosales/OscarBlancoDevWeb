@@ -49,6 +49,21 @@
     }
   </div>
 } @else {
+  @if (canales().length > 1) {
+    <!-- Un canal por repositorio abierto: aquí se elige a cuál se le habla. -->
+    <nav class="con-canales">
+      @for (uno of canales(); track uno.puerto) {
+        <button
+          type="button"
+          class="con-canal"
+          [class.activo]="uno.puerto === canal()?.puerto"
+          (click)="cambiarDeCanal(uno)">
+          {{ uno.proyecto }}
+        </button>
+      }
+    </nav>
+  }
+
   @if (conversacion().permisos.length > 0) {
     <!--
       Lo más serio que se puede hacer desde aquí. El diálogo del terminal

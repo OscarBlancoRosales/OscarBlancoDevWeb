@@ -66,6 +66,35 @@
   font-size: 16px !important;
 }
 
+/* Una pestaña por repositorio con sesión abierta. */
+.con-canales {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.con-canal {
+  padding: 5px 12px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.con-canal:hover {
+  color: var(--bright);
+}
+
+.con-canal.activo {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* ===== LOS PERMISOS ===== */
 
 .con-permisos {
