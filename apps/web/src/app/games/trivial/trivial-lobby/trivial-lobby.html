@@ -83,6 +83,20 @@
         </fieldset>
 
         <fieldset class="origen">
+          <legend>De qué va</legend>
+          <label class="rival" [class.elegido]="tema === 'dev'">
+            <input type="radio" name="tema" value="dev" [(ngModel)]="tema" />
+            <span class="nombre">De programación</span>
+            <span class="descripcion">Lenguajes, redes, bases de datos y las manías del oficio.</span>
+          </label>
+          <label class="rival" [class.elegido]="tema === 'general'">
+            <input type="radio" name="tema" value="general" [(ngModel)]="tema" />
+            <span class="nombre">Cultura general</span>
+            <span class="descripcion">Geografía, cine, historia, música y deporte. Sin código.</span>
+          </label>
+        </fieldset>
+
+        <fieldset class="origen">
           <legend>Preguntas</legend>
           <label class="rival" [class.elegido]="origen === 'banco'">
             <input type="radio" name="origen" value="banco" [(ngModel)]="origen" />

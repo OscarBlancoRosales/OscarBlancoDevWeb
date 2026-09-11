@@ -10,7 +10,7 @@ import { TrivialRoomService } from '../trivial-room.service';
 import { guardarPase } from '../../pase-guardado';
 import { REPARTO, fotoDelPersonaje, personajePorId } from '@devweb/shared/games/trivial/reparto';
 import type { Personaje } from '@devweb/shared/games/trivial/reparto';
-import type { NivelBot } from '@devweb/shared/games/trivial/tipos';
+import type { NivelBot, Tema } from '@devweb/shared/games/trivial/tipos';
 
 interface OpcionDeRival {
   readonly id: NivelBot | 'persona';
@@ -59,6 +59,14 @@ export class TrivialLobby implements OnInit, OnDestroy {
   nombreSala = 'Concurso de la retro';
   nombreJugador = '';
   rival: NivelBot | 'persona' = 'apanado';
+
+  /**
+   * De qué va el programa.
+   *
+   * Son dos juegos distintos: mezclar «¿qué devuelve typeof null?» con «¿en
+   * qué año fue la peste negra?» en la misma tanda no es variedad.
+   */
+  tema: Tema = 'dev';
 
   /**
    * De dónde salen las preguntas. Se elige al abrir y queda fijado en la sala.
@@ -114,6 +122,7 @@ export class TrivialLobby implements OnInit, OnDestroy {
         this.rival === 'persona' ? null : this.rival,
         this.personaje,
         this.origen,
+        this.tema,
       );
       guardarPase(pase);
       await this.router.navigate(['/juegos/trivial/mesa'], { queryParams: { sala: pase.roomId } });

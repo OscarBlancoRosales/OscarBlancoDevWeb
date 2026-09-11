@@ -1,5 +1,5 @@
-import { ESCALETA } from './banco';
-import type { TipoPrueba } from '@devweb/shared/games/trivial/tipos';
+import { escaletaDe } from './banco';
+import type { Tema, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
 /**
  * De qué van las preguntas.
@@ -7,6 +7,22 @@ import type { TipoPrueba } from '@devweb/shared/games/trivial/tipos';
  * Se reparten a la fuerza porque a un modelo al que le pides preguntas de
  * programación te da diez de JavaScript. La variedad no sale sola.
  */
+/** De qué van las de cultura general, que es el otro juego. */
+export const TEMAS_GENERALES: readonly string[] = [
+  'geografía',
+  'historia',
+  'cine y televisión',
+  'música',
+  'ciencia y naturaleza',
+  'deporte',
+  'arte y literatura',
+  'España',
+  'comida y bebida',
+  'mitología',
+  'inventos y descubrimientos',
+  'el cuerpo humano',
+];
+
 export const TEMAS: readonly string[] = [
   'redes y protocolos',
   'bases de datos y SQL',
@@ -43,13 +59,13 @@ export const ENCARGO_POR_PRUEBA: Readonly<Record<TipoPrueba, string>> = {
  * La dificultad se pide por posición en el programa, no dentro de cada sección:
  * lo que tiene que subir es la noche entera.
  */
-export function encargoDelPrograma(): string {
+export function encargoDelPrograma(tema: Tema = 'dev'): string {
   const secciones: string[] = [];
   let ronda = 1;
 
-  for (const seccion of ESCALETA) {
-    const desde = nivelEn(ronda);
-    const hasta = nivelEn(ronda + seccion.cuantas - 1);
+  for (const seccion of escaletaDe(tema)) {
+    const desde = nivelEn(ronda, tema);
+    const hasta = nivelEn(ronda + seccion.cuantas - 1, tema);
     secciones.push(
       `- ${seccion.cuantas} de tipo "${seccion.tipo}" (rondas ${ronda}-${ronda + seccion.cuantas - 1}, ` +
         `dificultad ${desde} a ${hasta}): ${ENCARGO_POR_PRUEBA[seccion.tipo]}`,
@@ -58,13 +74,15 @@ export function encargoDelPrograma(): string {
   }
 
   const total = ronda - 1;
+  const de = tema === 'general' ? 'cultura general' : 'programación';
+  const materias = tema === 'general' ? TEMAS_GENERALES : TEMAS;
 
   return [
-    `Escribe las ${total} preguntas de un concurso de programación, en este orden exacto:`,
+    `Escribe las ${total} preguntas de un concurso de ${de}, en este orden exacto:`,
     '',
     secciones.join('\n'),
     '',
-    `Temas, repartidos sin repetir más de dos veces: ${TEMAS.join(', ')}.`,
+    `Temas, repartidos sin repetir más de dos veces: ${materias.join(', ')}.`,
     '',
     'Devuelve SOLO un array JSON con los objetos, sin texto alrededor.',
     'Cada objeto: {"enunciado","opciones","respuesta","explicacion","dificultad"},',
@@ -85,8 +103,8 @@ export function encargoDelPrograma(): string {
  * de memoria y la última muerde. Es el crescendo, y sin él un programa de
  * veintiuna preguntas es una tanda larga.
  */
-function nivelEn(ronda: number): 1 | 2 | 3 | 4 | 5 {
-  const total = ESCALETA.reduce((suma, una) => suma + una.cuantas, 0);
+function nivelEn(ronda: number, tema: Tema = 'dev'): 1 | 2 | 3 | 4 | 5 {
+  const total = escaletaDe(tema).reduce((suma, una) => suma + una.cuantas, 0);
   const parte = Math.ceil((ronda / total) * 5);
   return Math.min(5, Math.max(1, parte)) as 1 | 2 | 3 | 4 | 5;
 }

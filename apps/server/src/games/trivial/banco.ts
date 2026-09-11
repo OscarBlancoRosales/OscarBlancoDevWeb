@@ -1,7 +1,7 @@
 import { createRng, shuffle } from '@devweb/shared/engine/rng';
-import { BOMBA, FINAL, PULSA, RAFAGA } from './pruebas';
+import { BOMBA, FINAL, GENERAL_EXTRA, PULSA, RAFAGA } from './pruebas';
 import { BANCO_RESCATADO } from './banco-rescatado';
-import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
+import type { Pregunta, Tema, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
 
 /**
@@ -12,7 +12,7 @@ import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
  * se afloja con las de pensar y se cierra con la bomba, que es donde se dan
  * los vuelcos. Cambiar este array cambia el programa entero.
  */
-export const ESCALETA: readonly { tipo: TipoPrueba; cuantas: number }[] = [
+export const ESCALETA: readonly Seccion[] = [
   { tipo: 'test', cuantas: 3 },
   { tipo: 'pulsa', cuantas: 2 },
   { tipo: 'rafaga', cuantas: 5 },
@@ -24,8 +24,43 @@ export const ESCALETA: readonly { tipo: TipoPrueba; cuantas: number }[] = [
   { tipo: 'final', cuantas: 1 },
 ];
 
+/**
+ * La escaleta del programa de cultura general.
+ *
+ * Mismas rondas y mismo arco, pero **sin «encuentra el fallo»**: esa prueba es
+ * leer código con un error dentro, y eso no existe fuera de la programación.
+ * Sus dos rondas se reparten entre el test y la bomba.
+ *
+ * Los números salen de lo que hay escrito: de cada sección se coge menos de lo
+ * que tiene el banco, para que dos partidas seguidas no traigan lo mismo.
+ */
+export const ESCALETA_GENERAL: readonly Seccion[] = [
+  { tipo: 'test', cuantas: 4 },
+  { tipo: 'pulsa', cuantas: 3 },
+  { tipo: 'rafaga', cuantas: 2 },
+  { tipo: 'estimacion', cuantas: 3 },
+  { tipo: 'bomba', cuantas: 8 },
+  { tipo: 'final', cuantas: 1 },
+];
+
+/** La escaleta de ese tema. */
+export function escaletaDe(tema: Tema): readonly Seccion[] {
+  return tema === 'general' ? ESCALETA_GENERAL : ESCALETA;
+}
+
+/** Una parte del programa: qué prueba y cuántas rondas dura. */
+export interface Seccion {
+  readonly tipo: TipoPrueba;
+  readonly cuantas: number;
+}
+
 /** Cuántas rondas tiene un programa. Sale de la escaleta, no al revés. */
 export const RONDAS_POR_PROGRAMA = ESCALETA.reduce((total, uno) => total + uno.cuantas, 0);
+
+/** Cuántas rondas tiene el programa de ese tema. */
+export function rondasDe(tema: Tema): number {
+  return escaletaDe(tema).reduce((total, uno) => total + uno.cuantas, 0);
+}
 
 /**
  * Las preguntas, con sus respuestas.
@@ -382,7 +417,17 @@ export const BANCO: readonly Pregunta[] = [
 
 /** Todo lo que hay para repartir, junto: el banco de siempre y las pruebas. */
 function todas(): readonly Pregunta[] {
-  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...FINAL, ...BANCO_RESCATADO];
+  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...FINAL, ...GENERAL_EXTRA, ...BANCO_RESCATADO];
+}
+
+/**
+ * Las de ese tema, y solo las de ese tema.
+ *
+ * Sin declarar, una pregunta es de programación: el banco nació siendo solo de
+ * dev, así que lo que hay que acordarse de marcar es lo otro.
+ */
+export function delTema(tema: Tema): readonly Pregunta[] {
+  return todas().filter((una) => (una.tema ?? 'dev') === tema);
 }
 
 /**
@@ -396,11 +441,11 @@ function todas(): readonly Pregunta[] {
  * Sale de la semilla de la sala, así que una partida se reconstruye igual
  * desde su log.
  */
-export function repartir(semilla: number): Pregunta[] {
-  const disponibles = todas();
+export function repartir(semilla: number, tema: Tema = 'dev'): Pregunta[] {
+  const disponibles = delTema(tema);
   const escaleta: Pregunta[] = [];
 
-  for (const [i, seccion] of ESCALETA.entries()) {
+  for (const [i, seccion] of escaletaDe(tema).entries()) {
     const suyas = disponibles.filter((una) => una.tipo === seccion.tipo);
     // Una semilla por sección: si todas barajaran con la misma, dos secciones
     // del mismo tamaño saldrían siempre en el mismo orden relativo.

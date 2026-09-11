@@ -10,6 +10,7 @@ import { coro } from './coro';
 import { VozDeLaSala } from '../games/impostor/voz';
 import { DealerDeMesa } from '../games/poker/dealer';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
+import type { Tema } from '@devweb/shared/games/trivial/tipos';
 import { moduleFor } from './registry';
 import type {
   GameId,
@@ -638,15 +639,20 @@ async function conLoQueElJuegoNecesite(
   if (game !== 'trivial') return config;
 
   const semilla = randomInt(0, 2 ** 31);
+  // De qué va el programa. Se elige al abrir y queda fijado: mezclar dev con
+  // cultura general en la misma tanda no es variedad, es incoherencia.
+  const tema: Tema = config['tema'] === 'general' ? 'general' : 'dev';
   // El modo IA entra por aquí y por ningún otro sitio: lo que cambia es de
   // dónde salen las preguntas, no dónde viven. Siguen congeladas en la sala al
   // crearla, que es lo que mantiene la partida reconstruible desde su log e
   // impide pedir otra tanda a mitad de programa porque esta no gustó.
   const conIa = config['origen'] === 'ia' && ia !== null;
-  const preguntas = conIa ? await inventar({ ajustes: ia, semilla, avisar }) : repartir(semilla);
+  const preguntas = conIa
+    ? await inventar({ ajustes: ia, semilla, tema, avisar })
+    : repartir(semilla, tema);
 
   // El origen se normaliza aquí: si alguien pide IA sin que el servidor tenga
   // clave, la sala sale del banco **y lo dice**, en vez de prometer lo que no
   // puede dar.
-  return { ...config, semilla, origen: conIa ? 'ia' : 'banco', preguntas };
+  return { ...config, semilla, tema, origen: conIa ? 'ia' : 'banco', preguntas };
 }

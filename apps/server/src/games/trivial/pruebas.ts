@@ -241,3 +241,91 @@ export const FINAL: readonly Pregunta[] = [
       'IEEE 754 guarda 0.1 como la fracción binaria más cercana, que no es exacta. Diez sumas acumulan el error y dan 0.9999999999999999.',
   },
 ];
+
+/**
+ * Lo que le faltaba a la baraja de cultura general.
+ *
+ * De las 152 preguntas rescatadas, 49 son de cultura general: de sobra para el
+ * test, la bomba y las estimaciones, pero **ninguna de final** y solo tres de
+ * ráfaga. Sin final no hay programa que cerrar, y con tres ráfagas justas dos
+ * partidas seguidas traen las mismas.
+ *
+ * «Encuentra el fallo» no lleva ninguna a propósito: esa prueba es leer código
+ * con un error dentro, y eso no existe fuera de la programación. Por eso el
+ * programa de cultura general tiene su propia escaleta, sin esa sección.
+ */
+export const GENERAL_EXTRA: readonly Pregunta[] = [
+  {
+    id: 'gen-final-nobel',
+    tipo: 'final',
+    tema: 'general',
+    enunciado: '¿Quién es la única persona que ha ganado el Nobel en dos ciencias distintas?',
+    opciones: ['Linus Pauling', 'Marie Curie', 'John Bardeen', 'Frederick Sanger'],
+    correcta: 1,
+    explicacion:
+      'Física en 1903 y Química en 1911. Pauling ganó Química y Paz; Bardeen y Sanger repitieron en la misma disciplina.',
+  },
+  {
+    id: 'gen-final-meridiano',
+    tipo: 'final',
+    tema: 'general',
+    enunciado: '¿Por qué el meridiano cero pasa por Greenwich y no por otro sitio?',
+    opciones: [
+      'Porque es el punto más alto de Europa',
+      'Porque en 1884 se votó, y dos tercios de los barcos del mundo ya usaban sus cartas',
+      'Porque lo decidió la ONU en 1945',
+      'Porque está en el centro exacto del hemisferio norte',
+    ],
+    correcta: 1,
+    explicacion:
+      'Conferencia de Washington de 1884. No hubo razón astronómica: ganó el que ya usaba casi todo el mundo. Francia se abstuvo y siguió con el de París décadas.',
+  },
+  {
+    id: 'gen-final-everest',
+    tipo: 'final',
+    tema: 'general',
+    enunciado: 'El Everest es la montaña más alta, pero no la más lejana al centro de la Tierra. ¿Cuál lo es?',
+    opciones: ['El Kilimanjaro', 'El Chimborazo', 'El Aconcagua', 'El Mont Blanc'],
+    correcta: 1,
+    explicacion:
+      'El Chimborazo, en Ecuador. La Tierra está achatada por los polos y abultada en el ecuador, así que su cima queda dos kilómetros más lejos del centro.',
+  },
+  {
+    id: 'gen-final-idiomas',
+    tipo: 'final',
+    tema: 'general',
+    enunciado: '¿Cuál de estos idiomas tiene más hablantes nativos en el mundo?',
+    opciones: ['Inglés', 'Español', 'Hindi', 'Árabe'],
+    correcta: 1,
+    explicacion:
+      'El español, con unos 485 millones de nativos. El inglés gana de calle contando a quien lo habla como segunda lengua, que es de donde viene la confusión.',
+  },
+  vofGeneral('gen-raf-sol', 'El Sol es una estrella de tamaño medio.', true,
+    'Es una enana amarilla: pequeña comparada con las gigantes, enorme comparada con las enanas rojas, que son la mayoría.'),
+  vofGeneral('gen-raf-muralla', 'La Muralla China se ve a simple vista desde la Luna.', false,
+    'No se ve ni desde la órbita baja sin ayuda: es larguísima pero estrecha. El bulo es anterior a los viajes espaciales.'),
+  vofGeneral('gen-raf-murcielagos', 'Los murciélagos son ciegos.', false,
+    'Ven, y algunos bastante bien. Usan el eco porque cazan de noche, no porque no tengan ojos.'),
+  vofGeneral('gen-raf-oxigeno', 'La mayor parte del oxígeno que respiramos viene de los bosques.', false,
+    'Viene del mar: el fitoplancton produce más de la mitad. Al Amazonas se le llama el pulmón del planeta, pero consume casi tanto como produce.'),
+  vofGeneral('gen-raf-vidrio', 'El vidrio es un líquido que fluye muy despacio.', false,
+    'Es un sólido amorfo. Lo de las vidrieras más gruesas por abajo es por cómo se fabricaban, no porque escurran.'),
+];
+
+/** Una de verdadero o falso de cultura general. */
+function vofGeneral(
+  id: string,
+  enunciado: string,
+  verdadero: boolean,
+  explicacion: string,
+): Pregunta {
+  return {
+    id,
+    tipo: 'rafaga',
+    tema: 'general',
+    enunciado,
+    opciones: ['Verdadero', 'Falso'],
+    correcta: verdadero ? 0 : 1,
+    explicacion,
+  };
+}

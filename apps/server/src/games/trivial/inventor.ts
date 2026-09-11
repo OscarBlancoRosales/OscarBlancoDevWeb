@@ -1,10 +1,10 @@
 import { chatWithFallback } from '@devweb/shared/engine/ai/ai-client';
 import { rngFor } from '@devweb/shared/engine/rng';
-import { ESCALETA, repartir } from './banco';
+import { escaletaDe, repartir } from './banco';
 import { aPregunta } from './inventor-esquema';
 import { encargoDelPrograma } from './inventor-prompts';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
-import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
+import type { Pregunta, Tema, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
 /**
  * Lo que se espera a que escriba el programa entero.
@@ -24,6 +24,8 @@ export interface EncargoDelInventor {
   readonly ajustes: AiSettings;
   /** La semilla de la sala: manda en el barajado y en el relleno del banco. */
   readonly semilla: number;
+  /** De qué va el programa. Decide la escaleta y de qué se le pide que escriba. */
+  readonly tema?: Tema;
   readonly modelo?: Llamada;
   readonly plazoMs?: number;
   /** Dónde se apunta lo que se ha caído. Sin esto no hay diagnóstico. */
@@ -39,7 +41,8 @@ export interface EncargoDelInventor {
  * escaleta no se mueve ni aunque se caiga la llamada entera.
  */
 export async function inventar(encargo: EncargoDelInventor): Promise<Pregunta[]> {
-  const deReserva = repartir(encargo.semilla);
+  const tema = encargo.tema ?? 'dev';
+  const deReserva = repartir(encargo.semilla, tema);
   const crudas = await pedirlas(encargo);
   if (crudas.length === 0) {
     // Es el caso que más falta hace diagnosticar: la sala se abre igual, con el
@@ -53,7 +56,7 @@ export async function inventar(encargo: EncargoDelInventor): Promise<Pregunta[]>
   let leidas = 0;
   let caidas = 0;
 
-  for (const [i, prevista] of previstas().entries()) {
+  for (const [i, prevista] of previstas(tema).entries()) {
     const cruda = crudas[leidas];
     leidas += 1;
 
@@ -73,9 +76,9 @@ export async function inventar(encargo: EncargoDelInventor): Promise<Pregunta[]>
   return programa;
 }
 
-/** Qué tipo de prueba toca en cada ronda, según la escaleta. */
-function previstas(): TipoPrueba[] {
-  return ESCALETA.flatMap((seccion) =>
+/** Qué tipo de prueba toca en cada ronda, según la escaleta del tema. */
+function previstas(tema: Tema): TipoPrueba[] {
+  return escaletaDe(tema).flatMap((seccion) =>
     Array.from({ length: seccion.cuantas }, () => seccion.tipo),
   );
 }
@@ -97,9 +100,12 @@ async function pedirlas(encargo: EncargoDelInventor): Promise<unknown[]> {
           {
             role: 'system',
             content:
-              'Escribes preguntas de concurso para programadores. Contestas solo con JSON válido, sin explicaciones alrededor.',
+              (encargo.tema === 'general'
+                ? 'Escribes preguntas de concurso de cultura general, del estilo de los concursos de televisión.'
+                : 'Escribes preguntas de concurso para programadores.') +
+              ' Contestas solo con JSON válido, sin explicaciones alrededor.',
           },
-          { role: 'user', content: encargoDelPrograma() },
+          { role: 'user', content: encargoDelPrograma(encargo.tema ?? 'dev') },
         ],
         { maxTokens: TOKENS },
       ),

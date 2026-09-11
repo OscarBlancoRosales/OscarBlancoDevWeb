@@ -4,7 +4,7 @@ import { RoomsApiService } from '../../api/rooms-api.service';
 import type { Signal } from '@angular/core';
 import { personajePorDefecto, repartirCaras } from '@devweb/shared/games/trivial/reparto';
 import type { SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
-import type { NivelBot, TrivialView } from '@devweb/shared/games/trivial/tipos';
+import type { NivelBot, Tema, TrivialView } from '@devweb/shared/games/trivial/tipos';
 import type { PaseDeSala } from '../pase-guardado';
 
 /** Cómo se llama cada rival de mesa. */
@@ -70,13 +70,14 @@ export class TrivialRoomService {
     nivelBot: NivelBot | null,
     personaje: string | null = null,
     origen: 'banco' | 'ia' = 'banco',
+    tema: Tema = 'dev',
   ): Promise<PaseDeSala> {
     const grant = await this.rooms.crear({
       game: 'trivial',
       name: nombreSala,
       displayName: nombreJugador,
       ...(personaje && { meta: { personaje } }),
-      config: { origen, ...(nivelBot !== null && { nivelBot }) },
+      config: { origen, tema, ...(nivelBot !== null && { nivelBot }) },
       ...(nivelBot !== null && { bots: [NOMBRE_DEL_BOT[nivelBot]] }),
     });
 

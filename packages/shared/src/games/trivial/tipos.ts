@@ -25,6 +25,15 @@ export type TipoPrueba =
   // La última del programa: se apuesta antes de verla y se cobra o se paga lo
   // apostado. Es la única que puede dar la vuelta a un marcador entero.
   | 'final';
+/**
+ * De qué va el programa.
+ *
+ * Son dos juegos distintos y mezclarlos no es variedad, es incoherencia: nadie
+ * quiere que entre «¿qué devuelve typeof null?» y «¿en qué año fue la peste
+ * negra?» en la misma tanda. Se elige al abrir la sala y no se mezcla.
+ */
+export type Tema = 'dev' | 'general';
+
 export type Fase = 'presentacion' | 'ronda' | 'resultado' | 'apuestas' | 'fin';
 export type NivelBot = 'pardillo' | 'apanado' | 'sabelotodo';
 
@@ -62,6 +71,14 @@ export interface Pregunta {
    * posición para que el programa vaya subiendo de la primera a la última.
    */
   readonly dificultad?: 1 | 2 | 3 | 4 | 5;
+  /**
+   * De qué baraja es. Sin declarar, de programación.
+   *
+   * El banco nació siendo solo de dev y se queda como estaba: así una pregunta
+   * nueva de programación no tiene que acordarse de ponerlo, y una de cultura
+   * general sí, que es la que se cuela donde no debe.
+   */
+  readonly tema?: Tema;
 }
 
 /**
