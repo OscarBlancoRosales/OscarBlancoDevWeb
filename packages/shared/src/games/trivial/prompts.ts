@@ -171,14 +171,65 @@ function datos(ctx: ContextoDelPresentador): string {
 }
 
 /**
- * Cuánto puede hablar.
+ * Cuánto puede hablar en cada momento, en letras.
  *
- * La entradilla y el cierre son los dos momentos en los que un presentador se
- * extiende; en mitad de una ronda, alargarse es cortar el ritmo del juego.
+ * Esta cifra manda en tres sitios a la vez -lo que se le pide, los tokens que
+ * se le dan y por dónde se recorta- y por eso está sola aquí. Cuando había una
+ * longitud para los veinte momentos, la entradilla salía igual de larga que un
+ * «¡BOOM!», y el presupuesto de tokens daba para el doble de lo que se
+ * aceptaba: el concurso estuvo mudo en producción por eso.
+ *
+ * El criterio es el ritmo del programa, no la importancia del momento: se habla
+ * largo cuando el juego está parado -entradilla, repaso, despedida- y corto
+ * cuando está corriendo.
+ *
+ * Va sin `Partial` a propósito. Un momento nuevo sin medida no compila, que es
+ * justo lo que hace falta: sin ella volvería a pedirse una longitud y aceptarse
+ * otra.
+ */
+const LARGOS: Readonly<Record<Momento, number>> = {
+  bienvenida: 420,
+  presentaRonda: 120,
+  aciertaAlguien: 140,
+  nadieAcierta: 140,
+  empate: 120,
+  ultimaRonda: 160,
+  despedida: 380,
+
+  seccionTest: 240,
+  seccionEstimacion: 240,
+  seccionFallo: 240,
+  seccionPulsa: 240,
+  seccionRafaga: 240,
+  seccionBomba: 240,
+
+  lider: 300,
+  remonta: 160,
+  seHunde: 160,
+  pegados: 140,
+  rachaBuena: 140,
+
+  pasaLaBomba: 90,
+  explota: 120,
+};
+
+/** Las letras que puede gastar en este momento del programa. */
+export function largoDe(momento: Momento): number {
+  return LARGOS[momento];
+}
+
+/** A partir de aquí se considera que el juego está parado y se puede hablar. */
+const HABLA_LARGO = 300;
+
+/**
+ * Cuánto puede hablar, dicho con un número.
+ *
+ * «Una o dos frases cortas» no es una instrucción: es una opinión. Un modelo la
+ * cumple escribiendo cuatrocientas letras y convencido de que ha sido breve, y
+ * eso es exactamente lo que pasaba.
  */
 function limite(momento: Momento): string {
-  const largos: readonly Momento[] = ['bienvenida', 'despedida', 'lider'];
-  return largos.includes(momento)
-    ? 'Extensión: entre dos y cuatro frases. Devuelve solo lo que se dice.'
-    : 'Extensión: una o dos frases cortas. Devuelve solo lo que se dice.';
+  const largo = largoDe(momento);
+  const frases = largo >= HABLA_LARGO ? 'Entre dos y cuatro frases.' : 'Una o dos frases.';
+  return `Extensión: como mucho ${largo} letras. ${frases} Devuelve solo lo que se dice en voz alta.`;
 }

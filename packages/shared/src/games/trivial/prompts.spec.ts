@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MOMENTOS } from './guion';
-import { encargoPara, instruccionesDelPresentador } from './prompts';
+import { encargoPara, instruccionesDelPresentador, largoDe } from './prompts';
 import type { ContextoDelPresentador } from './prompts';
 import type { Momento } from './guion';
 
@@ -139,7 +139,7 @@ describe('cada momento pide lo suyo', () => {
 describe('cuánto puede hablar', () => {
   /** Alargarse en mitad de una ronda es cortar el ritmo del juego. */
   it('en mitad del juego, corto', () => {
-    expect(encargoPara(contexto({ momento: 'aciertaAlguien' }))).toContain('una o dos frases');
+    expect(encargoPara(contexto({ momento: 'aciertaAlguien' }))).toContain('Una o dos frases');
   });
 
   it('en la entradilla y el cierre, algo más', () => {
@@ -152,6 +152,31 @@ describe('cuánto puede hablar', () => {
     for (const momento of MOMENTOS) {
       expect(encargoPara(contexto({ momento })), momento).toContain('solo lo que se dice');
     }
+  });
+});
+
+describe('cada momento tiene su medida', () => {
+  it('todos los momentos declaran una', () => {
+    for (const momento of MOMENTOS) {
+      expect(largoDe(momento), momento).toBeGreaterThan(0);
+    }
+  });
+
+  it('la entradilla puede extenderse y la bomba no', () => {
+    // No es un capricho: en la bomba se habla con la mecha corriendo, y una
+    // parrafada ahí corta el ritmo de la prueba.
+    expect(largoDe('bienvenida')).toBeGreaterThan(largoDe('pasaLaBomba'));
+    expect(largoDe('despedida')).toBeGreaterThan(largoDe('presentaRonda'));
+  });
+
+  it('el encargo le dice la cifra, no un adjetivo', () => {
+    // «Una o dos frases cortas» no es una instrucción, es una opinión: un
+    // modelo la cumple escribiendo cuatrocientas letras y creyendo que ha sido
+    // breve. Es lo que dejó al presentador mudo en producción.
+    const encargo = encargoPara(contexto({ momento: 'explota' }));
+
+    expect(encargo).toContain(String(largoDe('explota')));
+    expect(encargo).toContain('letras');
   });
 });
 
