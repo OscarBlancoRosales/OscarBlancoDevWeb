@@ -29,6 +29,7 @@ const BASE: ImpostorView = {
   eresImpostor: false,
   orden: ['yo', 'bea', 'bot'],
   listos: ['yo', 'bea', 'bot'],
+  eliminados: [],
   vuelta: 1,
   vueltas: 1,
   debateHasta: 0,
@@ -160,7 +161,7 @@ describe('la mesa del impostor', () => {
   });
 
   it('en la votación se vota tocando a alguien, pero nunca a uno mismo', () => {
-    sala.vista.set({ ...BASE, fase: 'votacion', turno: null, tuTurno: false });
+    sala.vista.set({ ...BASE, fase: 'votacion', turno: 'yo', tuTurno: true });
     fixture.detectChanges();
 
     componente.votar('yo');

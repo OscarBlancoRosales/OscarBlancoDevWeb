@@ -10,7 +10,7 @@ import {
 } from './reglas';
 import { disparoDelBot, pistaDelBot, votoDelBot } from './bot';
 import { rngFor } from '../../engine/rng';
-import type { Desenlace, Fase, ImpostorState, Modo, ImpostorView } from './tipos';
+import type { Desenlace, ImpostorState, Modo, ImpostorView } from './tipos';
 import type { GameModule, RuleError, Seat, SeatId } from '../module';
 
 /**
@@ -38,6 +38,11 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
   // El sorteo y la voz de la sala los pone el servidor. Si los pudiera mandar
   // un cliente, cualquiera se repartiría la palabra a sí mismo.
   accionesDeSistema: ['reparte', 'narra', 'debate', 'aVotar'],
+  /**
+   * Los bots no disparan en bloque: entre pista y pista (y entre voto y voto)
+   * la sala espera esto, para que se vea el turno. En test la pausa es cero.
+   */
+  botEntreJugadasMs: 1600,
 
   createState(_seats, config) {
     return {
@@ -49,6 +54,7 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
       orden: [],
       impostores: [],
       listos: [],
+      eliminados: [],
       vueltas: config['vueltas'] === 2 ? 2 : 1,
       segundosDebate: segundosDe(config['segundosDebate']),
       debateHasta: 0,
@@ -90,8 +96,8 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
         if (state.fase !== 'votacion') {
           return { code: 'aun-no-se-vota', message: 'Todavía no se vota.' };
         }
-        if (!state.orden.includes(by)) {
-          return { code: 'no-juegas', message: 'No estás jugando esta ronda.' };
+        if (aQuienLeToca(state) !== by) {
+          return { code: 'no-es-tu-turno', message: 'No te toca votar.' };
         }
         if (by in state.votos) return { code: 'ya-votaste', message: 'Ya has votado.' };
         if (action.aQuien === by) {
@@ -171,6 +177,7 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
           opciones: action.opciones,
           semilla: action.semilla,
           listos: action.orden,
+          eliminados: [],
           vuelta: 0,
           turno: 0,
           pistas: [],
@@ -188,7 +195,7 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
 
       case 'votar': {
         const votos = { ...state.votos, [by]: action.aQuien };
-        const conVoto: ImpostorState = { ...state, jugadas, votos };
+        const conVoto: ImpostorState = { ...state, jugadas, votos, turno: state.turno + 1 };
         return hanVotadoTodos(conVoto) ? cerrarVotacion(conVoto) : conVoto;
       }
 
@@ -213,7 +220,15 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
       case 'alVoto':
       case 'aVotar':
         return state.fase === 'debate'
-          ? { ...state, jugadas, fase: 'votacion', debateHasta: 0 }
+          ? {
+              ...state,
+              jugadas,
+              fase: 'votacion',
+              debateHasta: 0,
+              turno: 0,
+              votos: {},
+              orden: barajarAsientos(state.orden, state.semilla, jugadas, 'voto'),
+            }
           : state;
 
       case 'otra':
@@ -247,6 +262,7 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
       eresImpostor: eres && state.modo !== 'infiltrado' && state.fase !== 'sala',
       orden: state.orden,
       listos: state.listos,
+      eliminados: state.eliminados,
       vuelta: state.vuelta + 1,
       vueltas: state.vueltas,
       debateHasta: state.debateHasta,
@@ -282,7 +298,7 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
     if (state.fase === 'pistas' && aQuienLeToca(state) === seat) {
       return { tipo: 'pista', texto: pistaDelBot(state, seat, rng) };
     }
-    if (state.fase === 'votacion' && !(seat in state.votos)) {
+    if (state.fase === 'votacion' && aQuienLeToca(state) === seat) {
       const aQuien = votoDelBot(state, seat, rng);
       return aQuien === null ? null : { tipo: 'votar', aQuien };
     }
@@ -330,14 +346,23 @@ export const impostorModule: GameModule<ImpostorState, ImpostorAction> = {
 };
 
 /** Dónde queda el turno después de que alguien hable. */
-function trasHablar(state: ImpostorState): { turno: number; vuelta: number; fase: Fase } {
+function trasHablar(
+  state: ImpostorState,
+): Pick<ImpostorState, 'turno' | 'vuelta' | 'fase'> & Partial<Pick<ImpostorState, 'orden'>> {
   const siguiente = state.turno + 1;
   if (siguiente < state.orden.length) {
     return { turno: siguiente, vuelta: state.vuelta, fase: 'pistas' };
   }
 
   const vuelta = state.vuelta + 1;
-  if (vuelta < state.vueltas) return { turno: 0, vuelta, fase: 'pistas' };
+  if (vuelta < state.vueltas) {
+    return {
+      turno: 0,
+      vuelta,
+      fase: 'pistas',
+      orden: barajarAsientos(state.orden, state.semilla, state.jugadas + 1, `pista:${vuelta}`),
+    };
+  }
 
   // Dichas todas las pistas se abre el debate, no la votación: votar sobre
   // cuatro palabras sueltas y sin hablarlo es echarlo a suertes.
@@ -347,18 +372,52 @@ function trasHablar(state: ImpostorState): { turno: number; vuelta: number; fase
 /**
  * Cuenta los votos y decide qué pasa.
  *
- * En la revancha, pillar al impostor no acaba la ronda: abre la última palabra.
- * Es el único sitio donde la votación no termina en un resultado.
+ * Pillar al impostor cierra (o abre el disparo, en la revancha). Echar a un
+ * inocente no: sale de la mesa y se vuelve a hablar, hasta que queden dos.
+ * El empate tampoco cierra: nadie sale y otra vuelta.
  */
 function cerrarVotacion(state: ImpostorState): ImpostorState {
   const expulsado = masVotado(state.votos);
   const desenlace = desenlaceDeLaVotacion(state, expulsado);
   const conExpulsado: ImpostorState = { ...state, expulsado };
 
-  if (desenlace === null) {
+  if (expulsado && state.impostores.includes(expulsado) && desenlace === null) {
     return { ...conExpulsado, fase: 'ultima-palabra' };
   }
-  return terminar(conExpulsado, desenlace);
+  if (desenlace === 'tripulacion' || desenlace === 'impostores') {
+    return terminar(conExpulsado, desenlace);
+  }
+
+  const vivos = expulsado ? state.orden.filter((id) => id !== expulsado) : state.orden;
+  const orden = barajarAsientos(vivos, state.semilla, state.jugadas, 'sigue');
+  return {
+    ...conExpulsado,
+    fase: 'pistas',
+    orden,
+    eliminados: expulsado ? [...state.eliminados, expulsado] : state.eliminados,
+    turno: 0,
+    vuelta: 0,
+    votos: {},
+    debateHasta: 0,
+  };
+}
+
+/** El orden de la mesa, barajado con el azar de la ronda. */
+function barajarAsientos(
+  asientos: readonly SeatId[],
+  semilla: number,
+  jugadas: number,
+  canal: string,
+): SeatId[] {
+  const rng = rngFor(semilla, jugadas, canal);
+  const salida = asientos.slice();
+  for (let i = salida.length - 1; i > 0; i--) {
+    const j = rng.int(0, i);
+    const tmp = salida[i];
+    salida[i] = salida[j];
+    salida[j] = tmp;
+  }
+  return salida;
 }
 
 /** Cierra la ronda, reparte el punto y deja la mesa lista para otra. */

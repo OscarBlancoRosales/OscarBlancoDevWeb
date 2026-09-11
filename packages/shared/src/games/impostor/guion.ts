@@ -21,6 +21,8 @@ export type Momento =
   | 'aDebate'
   | 'aVotar'
   | 'empate'
+  | 'inocenteFuera'
+  | 'manoAMano'
   | 'ultimaPalabra'
   | 'ganaTripulacion'
   | 'ganaImpostor'
@@ -53,10 +55,22 @@ const FRASES: Readonly<Record<Momento, readonly string[]>> = {
     'Se cierra la conversación. La mesa decide.',
   ],
   empate: [
-    'Empate. Nadie sale, y alguien ahí dentro está respirando muy tranquilo.',
-    'No os ponéis de acuerdo. Enhorabuena al impostor.',
-    'Empate a votos. La duda también es una respuesta, y esta la ha ganado él.',
-    'Nadie se va. Y así es como se pierde una partida.',
+    'Empate. Nadie sale. Otra vuelta, y esta vez decidíos.',
+    'No os ponéis de acuerdo. Se vuelve a hablar.',
+    'Empate a votos. La duda no echa a nadie: otra ronda.',
+    'Nadie se va. Coged aire y dad otra pista.',
+  ],
+  inocenteFuera: [
+    'Fuera {quien}, y no era. La caza sigue.',
+    '{quien} se va de vacío. Quien miente sigue en la mesa.',
+    'Habéis echado a {quien} para nada. A hablar otra vez.',
+    '{quien} era inocente. Quedan menos, y el impostor sigue aquí.',
+  ],
+  manoAMano: [
+    'Quedan dos. Ya no os podéis acusar: gana el impostor. Era «{palabra}».',
+    'Uno contra uno. Se acabó acusar. La palabra era «{palabra}».',
+    'La mesa se ha quedado en dos. El impostor se lleva la ronda: «{palabra}».',
+    'Ya no hay a quién votar. Gana quien mentía. «{palabra}».',
   ],
   ultimaPalabra: [
     'Le habéis pillado. Pero le queda una bala: si dice la palabra, gana él.',
@@ -99,13 +113,16 @@ export function momentoDe(
 
   if (ahora.fase === 'debate' && antes.fase === 'pistas') return 'aDebate';
   if (ahora.fase === 'votacion' && antes.fase === 'debate') return 'aVotar';
+  if (ahora.fase === 'pistas' && antes.fase === 'votacion') {
+    return ahora.expulsado ? 'inocenteFuera' : 'empate';
+  }
   if (ahora.fase === 'ultima-palabra') return 'ultimaPalabra';
   if (ahora.fase === 'fin') {
     if (ahora.desenlace === 'tripulacion') return 'ganaTripulacion';
     if (ahora.desenlace === 'impostores') {
-      if (ahora.expulsado === null) return 'empate';
-      // Pillado y aun así ganador: la revancha, que es su propio final.
-      return ahora.intento >= 0 ? 'ganaConLaPalabra' : 'ganaImpostor';
+      if (ahora.intento >= 0) return 'ganaConLaPalabra';
+      if (ahora.orden.length <= 2) return 'manoAMano';
+      return 'ganaImpostor';
     }
     return null;
   }

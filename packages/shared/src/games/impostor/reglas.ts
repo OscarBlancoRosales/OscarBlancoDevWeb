@@ -46,21 +46,32 @@ export function masVotado(votos: Readonly<Record<SeatId, SeatId>>): SeatId | nul
 /**
  * Cómo acaba la votación.
  *
- * Devuelve `null` cuando la partida todavía no ha terminado, que en la revancha
- * pasa justo al pillar al impostor: ahí empieza lo otro, no acaba nada.
+ * Devuelve `null` cuando la caza sigue: empate (nadie sale) o un inocente
+ * echado con gente de sobra. La partida no es una ronda: se echa y se sigue
+ * hasta pillar al impostor o hasta que queden uno contra uno, que ya no se
+ * pueden acusar.
  *
- * Con dos impostores basta con cazar a uno. Es una regla de la casa, y se
- * escribe para que se pueda discutir: obligar a cazar a los dos pediría varias
- * votaciones seguidas, y en una mesa de ocho eso es media hora de partida para
- * un juego que dura diez minutos.
+ * Con dos impostores basta con cazar a uno. Es una regla de la casa.
  */
 export function desenlaceDeLaVotacion(
   state: ImpostorState,
   expulsado: SeatId | null,
 ): Desenlace {
-  if (expulsado === null) return 'impostores';
-  if (!state.impostores.includes(expulsado)) return 'impostores';
-  return state.modo === 'revancha' ? null : 'tripulacion';
+  if (expulsado === null) return null;
+  if (state.impostores.includes(expulsado)) {
+    return state.modo === 'revancha' ? null : 'tripulacion';
+  }
+  return quedaManoAMano(state, expulsado) ? 'impostores' : null;
+}
+
+/**
+ * Si, echando a ese, la tripulación ya no puede votar: tantos o más impostores
+ * que inocentes. El caso típico es 1 contra 1.
+ */
+export function quedaManoAMano(state: ImpostorState, expulsado: SeatId): boolean {
+  const vivos = state.orden.filter((id) => id !== expulsado);
+  const impostores = vivos.filter((id) => state.impostores.includes(id)).length;
+  return vivos.length - impostores <= impostores;
 }
 
 /** Si esa palabra es la que buscaba el impostor. */

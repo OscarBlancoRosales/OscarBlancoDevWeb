@@ -42,6 +42,7 @@ const EN_PISTAS = {
   eresImpostor: false,
   orden: ['asiento-1', 'asiento-2'],
   listos: ['asiento-1', 'asiento-2'],
+  eliminados: [],
   vuelta: 1,
   vueltas: 1,
   debateHasta: 0,

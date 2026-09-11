@@ -89,4 +89,13 @@ export interface GameModule<TState, TAction> {
    * igual que cualquier otra. El azar sale del estado, nunca de `Math.random`.
    */
   botAction?(state: TState, seat: SeatId, seats: readonly Seat[]): TAction | null;
+
+  /**
+   * Pausa entre jugadas de bot, en milisegundos.
+   *
+   * Sin esto, un bot encadena el turno del siguiente y la mesa ve cuatro
+   * pistas de golpe. Cero o ausente: se juegan todas seguidas, que es lo que
+   * quieren los tests y los juegos que no van por turnos lentos.
+   */
+  readonly botEntreJugadasMs?: number;
 }

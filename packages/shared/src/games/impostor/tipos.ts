@@ -79,6 +79,8 @@ export interface ImpostorState {
   readonly impostores: readonly SeatId[];
   /** Quién ha dicho que está listo, mientras se llena la mesa. */
   readonly listos: readonly SeatId[];
+  /** Quiénes ya salieron votados en esta partida. Siguen en la sala, no juegan. */
+  readonly eliminados: readonly SeatId[];
 
   /**
    * Cuánto dura el debate y cuándo se acaba.
@@ -214,6 +216,7 @@ export interface ImpostorView {
 
   readonly orden: readonly SeatId[];
   readonly listos: readonly SeatId[];
+  readonly eliminados: readonly SeatId[];
   readonly vuelta: number;
   readonly vueltas: number;
   /** Cuándo se acaba el debate, en hora del servidor. Cero, sin reloj. */
@@ -249,8 +252,8 @@ export interface ImpostorView {
   readonly momento: string;
 }
 
-/** A quién le toca hablar ahora mismo, o `null` si no toca hablar a nadie. */
+/** A quién le toca ahora mismo: hablar o votar. `null` si no toca a nadie. */
 export function aQuienLeToca(state: ImpostorState): SeatId | null {
-  if (state.fase !== 'pistas') return null;
+  if (state.fase !== 'pistas' && state.fase !== 'votacion') return null;
   return state.orden[state.turno] ?? null;
 }

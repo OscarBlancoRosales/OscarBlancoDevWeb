@@ -5,7 +5,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { ImpostorRoomService } from '../impostor-room.service';
 import { caraPorId, fotoDeLaCara } from '@devweb/shared/games/impostor/caras';
-import { sitiosEnElOvalo } from '@devweb/shared/games/impostor/sitios';
 import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
 import type { ChatEntry } from '@devweb/shared/contracts/rooms';
@@ -27,12 +26,11 @@ export interface Puesto {
   /** Votos que ha recibido. Solo cuando la votación se cierra. */
   readonly votos: number;
   readonly expulsado: boolean;
+  /** Ya salió en una votación anterior. */
+  readonly fuera: boolean;
   /** Si era impostor. Solo al acabar la ronda. */
   readonly eraImpostor: boolean;
   readonly puntos: number;
-  /** Sitio en el óvalo, en por cientos del tapete. */
-  readonly x: number;
-  readonly y: number;
 }
 
 /** Una línea de la charla: pista dicha o mensaje de mesa. */
@@ -285,12 +283,32 @@ export class ImpostorRoom implements OnInit, OnDestroy {
 
   get puedesVotar(): boolean {
     const vista = this.vista();
-    return vista?.fase === 'votacion' && vista.tuVoto === null && this.conectado();
+    return vista?.fase === 'votacion' && vista.tuTurno && this.conectado();
+  }
+
+  get quedan(): number {
+    return this.vista()?.orden.length ?? 0;
+  }
+
+  get fraseDeTurno(): string {
+    const vista = this.vista();
+    if (!vista) return '';
+    if (vista.fase === 'pistas') {
+      return vista.tuTurno ? 'Te toca. Una palabra.' : `Habla ${this.quienHabla?.nombre ?? 'alguien'}…`;
+    }
+    if (vista.fase === 'votacion') {
+      return vista.tuTurno
+        ? 'Te toca acusar. Toca una cara.'
+        : `Acusa ${this.quienHabla?.nombre ?? 'alguien'}…`;
+    }
+    return '';
   }
 
   /** Quién tiene la palabra ahora mismo, para decirlo con nombre y cara. */
   get quienHabla(): Puesto | null {
-    const turno = this.vista()?.turno;
+    const vista = this.vista();
+    if (vista?.fase !== 'pistas' && vista?.fase !== 'votacion') return null;
+    const turno = vista.turno;
     return turno ? (this.mesa().find((puesto) => puesto.seatId === turno) ?? null) : null;
   }
 
@@ -403,28 +421,14 @@ export class ImpostorRoom implements OnInit, OnDestroy {
         pistas: pistasDe(vista.pistas, asiento.id),
         votos: recibidos[asiento.id] ?? 0,
         expulsado: vista.expulsado === asiento.id,
+        fuera: vista.eliminados.includes(asiento.id),
         eraImpostor: vista.impostores?.includes(asiento.id) ?? false,
         puntos: vista.marcador[asiento.id] ?? 0,
-        x: 50,
-        y: 50,
       };
     });
 
-    // En orden de mesa mientras se juega: es el orden en que se habla.
-    const ordenados =
-      vista.orden.length === 0
-        ? puestos
-        : puestos.slice().sort((uno, otro) => sitio(vista.orden, uno) - sitio(vista.orden, otro));
-
-    // Tú abajo del todo, que es donde se sienta uno en una mesa de verdad.
-    const yo = ordenados.findIndex((puesto) => puesto.eresTu);
-    const rotados = yo > 0 ? [...ordenados.slice(yo), ...ordenados.slice(0, yo)] : ordenados;
-    const huecos = sitiosEnElOvalo(rotados.length);
-    return rotados.map((puesto, i) => ({
-      ...puesto,
-      x: huecos[i]?.x ?? 50,
-      y: huecos[i]?.y ?? 50,
-    }));
+    if (vista.orden.length === 0) return puestos;
+    return puestos.sort((uno, otro) => sitio(vista.orden, uno) - sitio(vista.orden, otro));
   }
 }
 
