@@ -292,7 +292,39 @@ confeti.
 
 ---
 
-## 6. El presentador: un encargo y una medida por momento
+## 6. El presentador: base de mensajes, no IA
+
+> **Cambio de rumbo del 11 de septiembre.** Lo que sigue en esta sección se
+> escribió dando por hecho que el presentador hablaría con un modelo en cada
+> momento del programa. Ya no: **la cuota de IA se gasta entera en inventar las
+> preguntas**, que es lo único que una máquina hace mejor que un guion escrito.
+>
+> El motivo es de cuentas. La capa gratuita se cuenta por cuenta y por día
+> -cincuenta peticiones en OpenRouter- y un programa son veinte momentos en los
+> que el presentador abre la boca. Una sola partida se comía el día entero, y
+> se comprobó en producción: límite 50, restantes 0.
+>
+> **Lo que se hizo en su lugar**, y está implementado:
+>
+> - `AI_PRESENTADOR` en el VPS, **apagado por defecto**. El código de la
+>   sección de abajo sigue vivo y se enciende poniéndolo a `1`.
+> - La base de mensajes pasa de tres frases por momento a **doce**, y se eligen
+>   **según la situación**: paliza o marcador de infarto, principio o recta
+>   final, persona o máquina, a cero o en cabeza.
+> - El guion recibe **la mesa entera**, así que puede nombrar al segundo y al
+>   último, y decir cuánta diferencia hay.
+> - **No repite.** La partida apunta cuántas veces se ha usado cada momento y
+>   el guion recorre todas sus frases antes de volver a la primera. Con doce
+>   frases y elección al azar, repetir en un programa era casi seguro, y una
+>   frase repetida delata al guion más que ninguna otra cosa.
+> - `/health` separa «hay clave» -que decide si se pueden inventar preguntas- de
+>   «el presentador improvisa», que son cosas distintas y estaban en el mismo
+>   campo.
+>
+> Y el proveedor pasa a ser **Groq con `openai/gpt-oss-20b`**, que ya estaba en
+> el catálogo del cliente y en la cadena de reserva.
+
+## 6-bis. El presentador con IA, cuando se enciende
 
 Esta es la parte que arregla el fallo de producción y, de paso, la que hace que
 el presentador deje de sonar siempre igual.
@@ -413,10 +445,17 @@ Que se generen **una vez, al crear la sala**, no es un detalle: es lo que
 mantiene la partida reconstruible desde su log y lo que impide pedir otra tanda
 a mitad de programa porque esta no gustó.
 
-### Una llamada por prueba
+### Una sola llamada, el programa entero
 
-Nada de pedir veintiuna preguntas de golpe. Una llamada por sección, en
-paralelo, cada una con su encargo —igual que el presentador tiene un encargo
+**Corregido el 11 de septiembre.** El diseño original pedía una llamada por
+sección, en paralelo. Con Groq y `gpt-oss-20b` no hace falta: veintiuna
+preguntas son unos 2.500 tokens de salida y el modelo admite mucho más, así que
+cabe **todo en una llamada**, con las instrucciones de cada prueba dentro.
+
+Una llamada por sala, no siete. Y como es lo único en lo que se gasta IA, la
+cuota deja de ser un problema.
+
+Lo que no cambia es **qué** se le pide a cada prueba, que sigue siendo distinto —igual que el presentador tiene un encargo
 por momento—:
 
 | Sección | Qué se le pide |
