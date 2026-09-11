@@ -111,7 +111,9 @@ export class RoomService {
       ownerId: input.ownerId,
       name: input.name.trim(),
       status: 'lobby',
-      config: await conLoQueElJuegoNecesite(input.game, input.config ?? {}, this.ia),
+      config: await conLoQueElJuegoNecesite(input.game, input.config ?? {}, this.ia, (motivo) => {
+        this.avisar(`El inventor de preguntas: ${motivo}`);
+      }),
       createdAt: at,
       updatedAt: at,
     };
@@ -578,7 +580,7 @@ export class RoomService {
       game: room.game,
       name: room.name,
       status: room.status,
-      config: room.config,
+      config: sinLaChuleta(room.config),
       seats: this.repository.listSeats(room.id).map(
         (seat): SeatInfo => ({
           id: seat.seatId,
@@ -594,6 +596,22 @@ export class RoomService {
       updatedAt: room.updatedAt,
     };
   }
+}
+
+/**
+ * La configuración de la sala, menos lo que no puede salir de aquí.
+ *
+ * Las preguntas del concurso se guardan en la sala para que la partida se
+ * reconstruya desde su log, pero llevan la respuesta marcada dentro. Devolver
+ * la configuración entera por HTTP era repartir el examen resuelto a cualquiera
+ * con sesión, que es exactamente lo que este juego existe para impedir.
+ *
+ * Se quita aquí, en el único sitio por el que una sala sale hacia fuera, y no
+ * en cada ruta: una ruta nueva que se olvide de quitarlo volvería a abrirlo.
+ */
+function sinLaChuleta(config: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const { preguntas: _preguntas, ...resto } = config;
+  return resto;
 }
 
 /**
@@ -615,6 +633,7 @@ async function conLoQueElJuegoNecesite(
   game: GameId,
   config: Record<string, unknown>,
   ia: AiSettings | null,
+  avisar: (motivo: string) => void,
 ): Promise<Record<string, unknown>> {
   if (game !== 'trivial') return config;
 
@@ -624,7 +643,7 @@ async function conLoQueElJuegoNecesite(
   // crearla, que es lo que mantiene la partida reconstruible desde su log e
   // impide pedir otra tanda a mitad de programa porque esta no gustó.
   const conIa = config['origen'] === 'ia' && ia !== null;
-  const preguntas = conIa ? await inventar({ ajustes: ia, semilla }) : repartir(semilla);
+  const preguntas = conIa ? await inventar({ ajustes: ia, semilla, avisar }) : repartir(semilla);
 
   // El origen se normaliza aquí: si alguien pide IA sin que el servidor tenga
   // clave, la sala sale del banco **y lo dice**, en vez de prometer lo que no

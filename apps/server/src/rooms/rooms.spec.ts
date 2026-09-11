@@ -4,7 +4,7 @@ import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
 import { RONDAS_POR_PROGRAMA } from '../games/trivial/banco';
 import type { FastifyInstance } from 'fastify';
-import type { SeatGrant } from '@devweb/shared/contracts/rooms';
+import type { RoomInfo, SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { Db } from '../db/index';
 import { invitacionDePrueba } from '../auth/testing';
 
@@ -278,5 +278,92 @@ describe('salas', () => {
 
       expect(response.json<{ rooms: unknown[] }>().rooms).toHaveLength(1);
     });
+  });
+});
+
+/**
+ * Las respuestas del concurso no salen del servidor.
+ *
+ * El banco vive aquí y las preguntas se guardan en la configuración de la sala
+ * para que la partida se reconstruya desde su log. Pero esa configuración se
+ * devolvía entera por HTTP: cualquiera con sesión podía pedir la sala y leerse
+ * el examen con las respuestas marcadas, que es exactamente lo que este juego
+ * existe para impedir.
+ */
+describe('la chuleta del concurso', () => {
+  let app: FastifyInstance;
+  let db: Db;
+  let token: string;
+
+  beforeEach(async () => {
+    db = openDatabase(':memory:');
+    app = await buildApp({ config, db });
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/registro',
+      payload: { ...ALTA, invitacion: invitacionDePrueba(db) },
+    });
+    db.prepare("UPDATE users SET status = 'active'").run();
+    const acceso = await app.inject({
+      method: 'POST',
+      url: '/auth/acceso',
+      payload: { email: ALTA.email, password: ALTA.password },
+    });
+    token = acceso.json<{ accessToken: string }>().accessToken;
+  });
+
+  afterEach(async () => {
+    await app.close();
+    db.close();
+  });
+
+  async function abrirConcurso(): Promise<string> {
+    const creada = await app.inject({
+      method: 'POST',
+      url: '/salas',
+      headers: { authorization: `Bearer ${token}` },
+      payload: { game: 'trivial', name: 'Concurso', displayName: 'Óscar' },
+    });
+    return creada.json<SeatGrant>().room.id;
+  }
+
+  it('no viajan al pedir una sala', async () => {
+    const id = await abrirConcurso();
+
+    const info = await app.inject({
+      method: 'GET',
+      url: `/salas/${id}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const config = info.json<RoomInfo>().config;
+
+    expect(config['preguntas']).toBeUndefined();
+  });
+
+  it('ni al listar las tuyas', async () => {
+    await abrirConcurso();
+
+    const lista = await app.inject({
+      method: 'GET',
+      url: '/salas',
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const salas = lista.json<{ rooms: RoomInfo[] }>().rooms;
+
+    for (const sala of salas) expect(sala.config['preguntas']).toBeUndefined();
+  });
+
+  it('pero lo demás de la configuración sí, que hace falta para entrar', async () => {
+    const id = await abrirConcurso();
+
+    const info = await app.inject({
+      method: 'GET',
+      url: `/salas/${id}`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const config = info.json<RoomInfo>().config;
+
+    expect(config['origen']).toBe('banco');
   });
 });
