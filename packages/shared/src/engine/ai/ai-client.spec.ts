@@ -169,7 +169,7 @@ describe('cliente de modelos de lenguaje', () => {
       await chat(settings({ provider: 'openrouter' }), [], {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       });
-      await chat(settings({ provider: 'groq', model: 'llama-3.3-70b-versatile' }), [], {
+      await chat(settings({ provider: 'groq', model: 'openai/gpt-oss-120b' }), [], {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       });
       expect(calls[0]).toContain('openrouter.ai');
