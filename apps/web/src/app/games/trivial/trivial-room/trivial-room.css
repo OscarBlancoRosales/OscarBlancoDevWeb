@@ -106,7 +106,6 @@ app-rotulo {
   color: rgb(148 163 184);
 }
 
-
 .bomba {
   margin: 0;
   padding: 0.4rem 0.9rem;
@@ -125,8 +124,60 @@ app-rotulo {
   font-variant-numeric: tabular-nums;
 }
 
+/**
+ * La racha.
+ *
+ * Salta cada vez que sube, no una sola vez al aparecer: el momento no es que
+ * tengas racha, es que acabas de alargarla. Y el resplandor crece con ella,
+ * que a la cuarta seguida hay que notar que está pasando algo.
+ */
 .racha {
   margin: 0;
   font-size: 0.9rem;
   color: rgb(250 204 21);
+  animation: sube-la-racha 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.racha strong {
+  display: inline-block;
+  padding: 0 0.35rem;
+  border-radius: 0.4rem;
+  background: rgb(250 204 21);
+  color: rgb(10 8 26);
+  font-size: 1.15em;
+  text-shadow: none;
+  box-shadow: 0 0 18px rgb(250 204 21 / 55%);
+}
+
+.racha[data-racha='3'] strong,
+.racha[data-racha='4'] strong {
+  box-shadow: 0 0 26px rgb(250 204 21 / 75%);
+}
+
+.racha[data-racha='5'] strong,
+.racha[data-racha='6'] strong,
+.racha[data-racha='7'] strong {
+  background: rgb(249 115 22);
+  box-shadow: 0 0 34px rgb(249 115 22 / 85%);
+}
+
+@keyframes sube-la-racha {
+  0% {
+    transform: scale(0.82);
+    opacity: 0.4;
+  }
+  55% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .racha {
+    animation: none;
+  }
 }

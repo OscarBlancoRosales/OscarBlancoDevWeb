@@ -1,10 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@angular/core';
 import { TrivialRoom } from './trivial-room';
 import { TrivialRoomService } from '../trivial-room.service';
 import { guardarPase } from '../../pase-guardado';
+import { CADA_APUESTA, LO_QUE_DURA, cuandoEmpieza } from '../plato/revelacion';
 import type { TrivialView } from '@devweb/shared/games/trivial/tipos';
 
 /**
@@ -108,6 +109,24 @@ describe('la mesa del concurso', () => {
     return (fixture.nativeElement as HTMLElement).textContent;
   }
 
+  /**
+   * Pinta una vista y deja correr el destape entero.
+   *
+   * La respuesta ya no aparece al cerrarse la ronda: se cuenta, y el marcador
+   * y el botón de seguir esperan a que se cuente. Para mirar cómo queda la
+   * pantalla hay que adelantar el reloj.
+   */
+  function pintaDestapada(vista: Partial<TrivialView>): string {
+    vi.useFakeTimers();
+    pinta(vista);
+    vi.advanceTimersByTime(LO_QUE_DURA);
+    vi.useRealTimers();
+
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    return (fixture.nativeElement as HTMLElement).textContent;
+  }
+
   function botones(): HTMLButtonElement[] {
     return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.opcion'));
   }
@@ -174,7 +193,7 @@ describe('la mesa del concurso', () => {
     });
 
     it('y lo ganado en la ronda se ve en su atril', () => {
-      pinta({
+      pintaDestapada({
         cerrada: true,
         explicacion: 'Pues eso.',
         resultados: [{ seatId: 'otra', valor: 1, ganados: 100 }],
@@ -272,7 +291,7 @@ describe('la mesa del concurso', () => {
   describe('el resultado de la ronda', () => {
     /** En dos pruebas se resta, y restar tiene que verse que resta. */
     it('lo que se pierde se enseña con su signo', () => {
-      const texto = pinta({
+      const texto = pintaDestapada({
         cerrada: true,
         explicacion: 'Pues eso.',
         resultados: [
@@ -359,6 +378,134 @@ describe('la mesa del concurso', () => {
     it('y el botón de impugnar no existe en el modo del banco', () => {
       pinta({ fase: 'ronda', inventadas: false });
       expect(hayImpugnar()).toBe(false);
+    });
+  });
+
+  /**
+   * El destape.
+   *
+   * Lo que se comprueba aquí es lo que *no* se ve todavía. Que la respuesta
+   * acabe saliendo es lo fácil; lo que hace que un concurso tenga tensión es
+   * que durante medio segundo no la sepa nadie, ni siquiera mirando el
+   * marcador de reojo.
+   */
+  describe('el destape de la respuesta', () => {
+    // Los puntos llegan del servidor ya sumados: Bea tenía 40 y acaba de ganar
+    // 100. Que el plató enseñe 40 hasta el destape es justo lo que se prueba.
+    const CERRADA: Partial<TrivialView> = {
+      cerrada: true,
+      correcta: 1,
+      explicacion: 'Pues eso.',
+      puntos: { yo: 100, otra: 140 },
+      resultados: [{ seatId: 'otra', valor: 1, ganados: 100 }],
+    };
+
+    function alCerrar(ms: number): HTMLElement {
+      vi.useFakeTimers();
+      pinta(CERRADA);
+      vi.advanceTimersByTime(ms);
+      vi.useRealTimers();
+
+      fixture.changeDetectorRef.markForCheck();
+      fixture.detectChanges();
+      return fixture.nativeElement as HTMLElement;
+    }
+
+    it('en el primer compás no se marca nada', () => {
+      const dom = alCerrar(0);
+
+      expect(dom.querySelector('.opcion.buena')).toBeNull();
+      expect(dom.querySelector('.opcion.apagada')).toBeNull();
+    });
+
+    it('el marcador tampoco se mueve todavía', () => {
+      // Bea tiene 40 y acaba de ganar 100. Si se vieran ya los 140, el
+      // marcador cantaría la respuesta antes que la pantalla.
+      const dom = alCerrar(0);
+      const suyo = Array.from(dom.querySelectorAll('.atril')).find((atril) =>
+        atril.textContent.includes('Bea'),
+      );
+
+      expect(suyo?.textContent).toContain('40');
+      expect(suyo?.textContent).not.toContain('+100');
+    });
+
+    it('después se enciende la buena, y las demás siguen ahí', () => {
+      const dom = alCerrar(cuandoEmpieza('enciende'));
+
+      expect(dom.querySelector('.opcion.buena')).not.toBeNull();
+      expect(dom.querySelector('.opcion.apagada')).toBeNull();
+    });
+
+    it('luego se apagan las otras y reacciona el marcador', () => {
+      const dom = alCerrar(cuandoEmpieza('apaga'));
+
+      expect(dom.querySelectorAll('.opcion.apagada')).toHaveLength(3);
+      expect(dom.textContent).toContain('+100');
+    });
+
+    it('la explicación no se adelanta al destape', () => {
+      // Al revés, medio plató pulsa «siguiente» sin haber leído nada.
+      const dom = alCerrar(cuandoEmpieza('apaga'));
+
+      expect(dom.textContent).not.toContain('Pues eso.');
+      expect(dom.textContent).not.toContain('Siguiente ronda');
+    });
+
+    it('y es lo último en salir, con el botón de seguir', () => {
+      const dom = alCerrar(LO_QUE_DURA);
+
+      expect(dom.textContent).toContain('Pues eso.');
+      expect(dom.textContent).toContain('Siguiente ronda');
+    });
+
+    it('quien entra en una ronda ya cerrada la ve entera', () => {
+      // Sin vista anterior no hay destape que contar, porque no se ha visto
+      // cerrarse nada. Lo que no puede pasar es que se quede a medias para
+      // siempre esperando una animación que nunca empezó.
+      sala.vista.set({ ...BASE, ...CERRADA });
+      const recienLlegado = TestBed.createComponent(TrivialRoom);
+      recienLlegado.detectChanges();
+
+      expect((recienLlegado.nativeElement as HTMLElement).textContent).toContain('Pues eso.');
+    });
+  });
+
+  /** En la final, las apuestas se cantan de una en una. */
+  describe('cantar las apuestas', () => {
+    const CANTANDO: Partial<TrivialView> = {
+      fase: 'ronda',
+      tipo: 'final',
+      apuestas: { yo: 90, otra: 30 },
+    };
+
+    function apuestasEnPantalla(ms: number): string[] {
+      vi.useFakeTimers();
+      pinta(CANTANDO);
+      vi.advanceTimersByTime(ms);
+      vi.useRealTimers();
+
+      fixture.changeDetectorRef.markForCheck();
+      fixture.detectChanges();
+      const dom = fixture.nativeElement as HTMLElement;
+      return Array.from(dom.querySelectorAll('.atril .apuesta')).map((una) => una.textContent);
+    }
+
+    it('al principio no se ve ninguna', () => {
+      expect(apuestasEnPantalla(0)).toHaveLength(0);
+    });
+
+    it('la primera en salir es la del que va último', () => {
+      // Yo llevo 100 y Bea 40: canta Bea, que es la que tiene menos que
+      // perder y más que decir.
+      const cantadas = apuestasEnPantalla(CADA_APUESTA);
+
+      expect(cantadas).toHaveLength(1);
+      expect(cantadas[0]).toContain('30');
+    });
+
+    it('y al final están todas', () => {
+      expect(apuestasEnPantalla(CADA_APUESTA * 2)).toHaveLength(2);
     });
   });
 

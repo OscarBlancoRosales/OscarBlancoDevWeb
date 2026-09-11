@@ -1,9 +1,26 @@
 import * as THREE from 'three';
-import { ACERCAMIENTO, CAMARA_EN_REPOSO, RESOLUCION_MAXIMA, sitioDe } from './escenario';
+import {
+  ACERCAMIENTO,
+  CAMARA_EN_REPOSO,
+  RESOLUCION_MAXIMA,
+  SACUDIDA_MAXIMA,
+  fuerzaDeLaSacudida,
+  puntoDeMira,
+  sitioDe,
+} from './escenario';
 import type { Cuadro, EnElEscenario } from './escenario';
 
 /** Lo que tarda la cámara en llegar a donde va. Cuanto más bajo, más perezosa. */
 const PEREZA = 0.055;
+
+/**
+ * Lo que tarda la cámara en girarse hacia alguien.
+ *
+ * Bastante más vivo que `PEREZA`: la cámara se pasea despacio, pero cuando la
+ * bomba cambia de manos da un latigazo. Esa diferencia de velocidad es justo
+ * lo que hace que se lea como un golpe de realización y no como una deriva.
+ */
+const LATIGAZO = 0.13;
 
 /** Cuánto sube un atril al acertar, y cuánto se hunde al fallar. */
 const SALTO = 0.35;
@@ -43,6 +60,14 @@ export class Diorama {
   private acercamiento = 1;
   private bucle = 0;
   private arrancoEn = 0;
+
+  /** A dónde mira la cámara, y a dónde quiere mirar. */
+  private readonly mira = new THREE.Vector3(0, 1.2, 0);
+  private miraA = 0;
+
+  /** Cuándo explotó la bomba. Muy atrás, para no arrancar temblando. */
+  private sacudioEn = Number.NEGATIVE_INFINITY;
+  private sacudiendo = false;
   private tono = new THREE.Color('rgb(250, 204, 21)');
 
   constructor(private readonly lienzo: HTMLCanvasElement) {
@@ -112,6 +137,15 @@ export class Diorama {
     this.tono = new THREE.Color(`rgb(${cuadro.tono.replaceAll(' ', ', ')})`);
     this.acercamiento = cuadro.golpe ? ACERCAMIENTO[cuadro.golpe] : 1;
     this.repartirAtriles(cuadro.puestos);
+
+    // Después de repartir, que es cuando cada atril ya sabe dónde está.
+    const donde = cuadro.mirandoA ? this.atriles.get(cuadro.mirandoA) : undefined;
+    this.miraA = donde ? puntoDeMira(donde.grupo.position.x) : 0;
+
+    // Solo al empezar a sacudir, no en cada repintado: si no, la explosión se
+    // reiniciaría sesenta veces por segundo y no se apagaría nunca.
+    if (cuadro.sacude && !this.sacudiendo) this.sacudioEn = performance.now();
+    this.sacudiendo = cuadro.sacude;
   }
 
   // --- El decorado -------------------------------------------------------
@@ -235,7 +269,20 @@ export class Diorama {
       CAMARA_EN_REPOSO.z * this.acercamiento,
     );
     this.camara.position.lerp(objetivo, PEREZA);
-    this.camara.lookAt(0, 1.2, 0);
+
+    // Y cuando hay a quién mirar, se gira: el latigazo de la bomba.
+    this.mira.x += (this.miraA - this.mira.x) * LATIGAZO;
+
+    // La explosión mueve la cámara, no la escena: sacudir el plató entero se
+    // nota falso, y además obliga a recalcularlo todo.
+    const fuerza = fuerzaDeLaSacudida(performance.now() - this.sacudioEn);
+    if (fuerza > 0) {
+      const golpe = fuerza * fuerza * SACUDIDA_MAXIMA;
+      this.camara.position.x += Math.sin(t * 97) * golpe;
+      this.camara.position.y += Math.sin(t * 131) * golpe;
+    }
+
+    this.camara.lookAt(this.mira);
 
     // Los focos barren, y se tiñen del color de la prueba.
     for (const [i, foco] of this.focos.entries()) {

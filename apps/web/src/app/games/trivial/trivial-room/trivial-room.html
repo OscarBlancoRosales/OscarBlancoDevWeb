@@ -2,6 +2,7 @@
   [callado]="callado()"
   [rotulo]="rotuloDeArriba"
   [cuadro]="cuadro"
+  [sacude]="sacudiendo()"
   (alterna)="alternarSonido()"
   (sale)="volver()"
 >
@@ -48,14 +49,23 @@
             @if (v.tuTurno) {
               <strong>¡La bomba la tienes tú!</strong> Contesta y pásala.
             } @else {
-              La tiene <strong>{{ quienTieneLaBomba }}</strong>. Tú mira.
+              La tiene <strong>{{ quienTieneLaBomba }}</strong
+              >. Tú mira.
             }
             <span class="mecha">Mecha: {{ v.mecha }}</span>
           </p>
         }
 
+        <!-- El `@for` sobre un solo número no es un rodeo: al cambiar la
+             racha, Angular tira el párrafo y pone otro, y con el elemento
+             nuevo vuelve a empezar la animación. Un contador que sube sin
+             moverse no cuenta que estás en racha. -->
         @if (v.tipo === 'rafaga' && v.racha > 0) {
-          <p class="racha">Llevas <strong>{{ v.racha }}</strong> seguidas. Multiplicador activo.</p>
+          @for (sube of [v.racha]; track sube) {
+            <p class="racha" [attr.data-racha]="sube">
+              Llevas <strong>{{ sube }}</strong> seguidas. Multiplicador activo.
+            </p>
+          }
         }
 
         <app-panel-pregunta
@@ -69,6 +79,7 @@
           [correcta]="v.correcta"
           [tuRespuesta]="v.tuRespuesta"
           [explicacion]="v.explicacion"
+          [paso]="destapa()"
           [sePuedeImpugnar]="v.inventadas"
           [impugnan]="v.impugnan"
           [hacenFalta]="v.hacenFalta"
@@ -77,7 +88,9 @@
           (impugna)="impugnar()"
         />
 
-        @if (v.cerrada) {
+        <!-- El botón de seguir no sale hasta que la respuesta está destapada:
+             si sale antes, medio plató lo pulsa sin haberla mirado. -->
+        @if (v.cerrada && yaSeExplica) {
           <button type="button" class="principal" (click)="siguiente()">
             {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
           </button>

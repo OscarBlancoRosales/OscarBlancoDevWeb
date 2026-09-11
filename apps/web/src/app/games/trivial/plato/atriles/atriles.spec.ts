@@ -21,6 +21,7 @@ function puesto(cambios: Partial<PuestoEnAtril> = {}): PuestoEnAtril {
     tieneLaBomba: false,
     lidera: false,
     haApostado: false,
+    apuesta: null,
     ...cambios,
   };
 }

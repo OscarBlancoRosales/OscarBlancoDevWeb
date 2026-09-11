@@ -32,6 +32,16 @@ export interface Cuadro {
   readonly tono: string;
   /** Lo que se está contando, si se está contando algo. */
   readonly golpe: Golpe | null;
+  /**
+   * El puesto al que la cámara se gira ahora mismo.
+   *
+   * Es la bomba: cuando cambia de manos, la cámara da un latigazo hacia quien
+   * la tiene. En un plató de verdad eso lo hace un realizador, y es lo que
+   * hace que mires a esa persona y no a la pregunta.
+   */
+  readonly mirandoA: string | null;
+  /** Si el plató está temblando. La bomba acaba de explotar. */
+  readonly sacude: boolean;
 }
 
 /**
@@ -83,3 +93,28 @@ export function sitioDe(indice: number, cuantos: number): number {
   const paso = separacionPara(cuantos);
   return (indice - (cuantos - 1) / 2) * paso;
 }
+
+/**
+ * Cuánto se aparta el punto de mira hacia el atril al que se gira la cámara.
+ *
+ * Ni nada ni del todo: si la cámara se planta delante de quien tiene la bomba,
+ * la pregunta se va de cuadro y deja de poder contestarse.
+ */
+export const GIRO_HACIA = 0.55;
+
+/** A dónde mira la cámara cuando se gira hacia un atril que está en `x`. */
+export function puntoDeMira(x: number): number {
+  return x * GIRO_HACIA;
+}
+
+/** Lo que dura la sacudida de la explosión. */
+export const LO_QUE_SACUDE = 700;
+
+/** Lo fuerte que sacude a los `ms` de explotar: de golpe, y se va apagando. */
+export function fuerzaDeLaSacudida(ms: number): number {
+  if (ms < 0 || ms >= LO_QUE_SACUDE) return 0;
+  return 1 - ms / LO_QUE_SACUDE;
+}
+
+/** Cuánto se mueve la cámara con la sacudida a tope, en metros. */
+export const SACUDIDA_MAXIMA = 0.17;

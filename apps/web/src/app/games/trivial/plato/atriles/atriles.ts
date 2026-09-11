@@ -16,6 +16,14 @@ export interface PuestoEnAtril {
   readonly lidera: boolean;
   /** Ya ha puesto su apuesta en la final. Nunca cuánto. */
   readonly haApostado: boolean;
+  /**
+   * Lo que apostó, una vez cantada.
+   *
+   * `null` hasta que le llega el turno de destaparse: en la final las apuestas
+   * se cantan de una en una, y hasta entonces de este solo se sabe que ya ha
+   * apostado.
+   */
+  readonly apuesta: number | null;
 }
 
 /**

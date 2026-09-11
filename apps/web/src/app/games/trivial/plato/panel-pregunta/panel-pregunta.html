@@ -36,7 +36,8 @@
         <button
           type="button"
           class="opcion"
-          [class.buena]="cerrada && correcta === $index"
+          [class.buena]="esLaBuena($index)"
+          [class.apagada]="estaApagada($index)"
           [class.tuya]="tuRespuesta === $index"
           [disabled]="!puedesContestar"
           (click)="responde.emit($index)"
@@ -49,7 +50,7 @@
   </ul>
 }
 
-@if (cerrada && explicacion) {
+@if (seExplica && explicacion) {
   <p class="explicacion">{{ explicacion }}</p>
 }
 

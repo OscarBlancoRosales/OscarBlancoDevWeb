@@ -29,7 +29,9 @@ export const DURACION: Readonly<Record<Golpe, number>> = {
   arranca: 2_600,
   seccion: 3_000,
   pregunta: 600,
-  resuelve: 900,
+  // Lo que dura el destape entero: la cámara tiene que aguantar acercada
+  // hasta que se apagan las opciones malas, no soltar a la mitad.
+  resuelve: 1_600,
   apuestas: 2_200,
   podio: 4_000,
 };

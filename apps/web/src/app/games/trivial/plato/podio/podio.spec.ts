@@ -15,6 +15,7 @@ function puesto(nombre: string, puntos: number): PuestoEnAtril {
     tieneLaBomba: false,
     lidera: false,
     haApostado: false,
+    apuesta: null,
   };
 }
 

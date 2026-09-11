@@ -130,6 +130,45 @@
   color: rgb(56 189 248);
 }
 
+/* La apuesta cantada. No se enciende sola: en la final salen de una en una,
+   y cada una entra de golpe porque lo que se está contando es el número. */
+.apuesta {
+  position: absolute;
+  bottom: -0.55rem;
+  left: 50%;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(56 189 248);
+  color: rgb(8 10 26);
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgb(56 189 248 / 45%);
+  animation: canta-apuesta 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes canta-apuesta {
+  0% {
+    transform: translate(-50%, 0.6rem) scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(-50%, 0) scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apuesta {
+    animation: none;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes tiembla {
   0%,
   100% {

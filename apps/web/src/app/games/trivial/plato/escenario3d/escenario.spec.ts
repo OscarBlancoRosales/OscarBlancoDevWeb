@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { ACERCAMIENTO, RESOLUCION_MAXIMA, separacionPara, sitioDe } from './escenario';
+import {
+  ACERCAMIENTO,
+  LO_QUE_SACUDE,
+  RESOLUCION_MAXIMA,
+  SACUDIDA_MAXIMA,
+  fuerzaDeLaSacudida,
+  puntoDeMira,
+  separacionPara,
+  sitioDe,
+} from './escenario';
 import type { Golpe } from '../escena';
 
 /**
@@ -59,5 +68,50 @@ describe('el cuidado con el móvil', () => {
     // Un móvil moderno dice que tiene tres píxeles por punto. Pintar a esa
     // resolución un plató entero es calentar el teléfono para nada.
     expect(RESOLUCION_MAXIMA).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('el latigazo hacia quien tiene la bomba', () => {
+  it('la cámara se gira hacia su lado', () => {
+    const x = sitioDe(3, 4);
+
+    expect(puntoDeMira(x)).toBeGreaterThan(0);
+    expect(puntoDeMira(-x)).toBeLessThan(0);
+  });
+
+  it('pero no se planta delante: la pregunta tiene que seguir viéndose', () => {
+    const extremo = sitioDe(7, 8);
+
+    expect(Math.abs(puntoDeMira(extremo))).toBeLessThan(Math.abs(extremo));
+  });
+
+  it('y en el centro no se gira nada', () => {
+    expect(puntoDeMira(0)).toBe(0);
+  });
+});
+
+describe('la sacudida de la explosión', () => {
+  it('empieza a tope', () => {
+    expect(fuerzaDeLaSacudida(0)).toBe(1);
+  });
+
+  it('se va apagando', () => {
+    expect(fuerzaDeLaSacudida(500)).toBeLessThan(fuerzaDeLaSacudida(100));
+  });
+
+  it('y se acaba sola', () => {
+    // Sin esto, una explosión dejaría el plató temblando el resto del
+    // programa: nadie vuelve a apagar lo que nadie enciende.
+    expect(fuerzaDeLaSacudida(LO_QUE_SACUDE)).toBe(0);
+    expect(fuerzaDeLaSacudida(9_000)).toBe(0);
+  });
+
+  it('nunca antes de tiempo', () => {
+    expect(fuerzaDeLaSacudida(-10)).toBe(0);
+  });
+
+  it('sacude lo justo para que se note y no para marear', () => {
+    expect(SACUDIDA_MAXIMA).toBeLessThan(0.3);
+    expect(LO_QUE_SACUDE).toBeLessThan(1_500);
   });
 });
