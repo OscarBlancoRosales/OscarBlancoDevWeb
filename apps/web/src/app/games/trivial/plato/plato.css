@@ -85,14 +85,25 @@
   color: rgb(250 204 21);
 }
 
+/*
+ * Tres bandas que se reparten el alto: presentador, pregunta y atriles.
+ *
+ * En rejilla y no en flex, y este es el arreglo del fallo que se veía en el
+ * móvil: como cajas flex, las tres se encogían por debajo de su contenido
+ * -`flex-shrink` vale 1 por defecto- y el texto se desbordaba **encima de la
+ * siguiente**. De ahí que el bocadillo tapara la pregunta y los atriles se
+ * comieran las opciones. Con filas `auto`, las de arriba y abajo se
+ * dimensionan por lo que llevan y no ceden; solo cede la del medio.
+ */
 .tablas {
   position: relative;
   z-index: 1;
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding: 0.4rem 0.9rem 1rem;
-  overflow-y: auto;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(0.3rem, 1.2vh, 1rem);
+  /* Abajo, sitio para la barra de tareas del escritorio: sin esto los atriles
+     se quedan medio escondidos detrás de ella. */
+  padding: 0.2rem 0.9rem 3.6rem;
+  min-height: 0;
 }

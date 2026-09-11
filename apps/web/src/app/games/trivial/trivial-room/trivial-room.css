@@ -1,3 +1,54 @@
+/*
+ * El director casi no pinta: lo suyo es colocar.
+ *
+ * El escenario reparte su alto en tres bandas y aquí se dice quién va en cada
+ * una. Sin esto, el aviso de error y el rótulo -que también son hijos de la
+ * rejilla- se comerían una banda cada uno y descuadrarían el plató.
+ */
+app-presentador {
+  grid-row: 1;
+  display: block;
+  min-height: 0;
+}
+
+.medio {
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+app-atriles {
+  grid-row: 3;
+  display: block;
+}
+
+/* El reloj vive en la cabecera del escenario, así que aquí solo se le dice que
+   ocupe el hueco que le dan. */
+app-cronometro {
+  display: block;
+  width: 100%;
+}
+
+/* El rótulo se pinta fijo sobre todo lo demás: no ocupa banda. */
+app-rotulo {
+  display: contents;
+}
+
+/* Y el aviso flota arriba, sin robarle sitio a nadie. */
+.aviso {
+  position: absolute;
+  top: 2.6rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  margin: 0;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.4rem;
+  background: rgb(127 29 29 / 95%);
+  border: 1px solid rgb(239 68 68 / 60%);
+  font-size: 0.85rem;
+}
+
 /* El director casi no pinta: lo suyo es colocar. Cada pieza trae su estilo. */
 .medio {
   display: flex;
@@ -55,14 +106,6 @@
   color: rgb(148 163 184);
 }
 
-.aviso {
-  margin: 0;
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.4rem;
-  background: rgb(239 68 68 / 20%);
-  border: 1px solid rgb(239 68 68 / 50%);
-  font-size: 0.85rem;
-}
 
 .bomba {
   margin: 0;

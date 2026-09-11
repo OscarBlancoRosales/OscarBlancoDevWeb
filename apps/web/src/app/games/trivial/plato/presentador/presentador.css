@@ -6,7 +6,9 @@
 }
 
 .host {
-  width: clamp(6rem, 14vw, 11rem);
+  /* Por el alto de la pantalla y no por el ancho: en apaisado se quedaba en un
+     sello de correos, y en un móvil se comía un cuarto de la pantalla. */
+  width: clamp(4.2rem, 16vh, 11rem);
   aspect-ratio: 1;
   object-fit: contain;
   filter: drop-shadow(0 12px 24px rgb(0 0 0 / 55%));
