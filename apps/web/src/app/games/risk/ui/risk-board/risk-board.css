@@ -12,7 +12,7 @@
   height: 100%;
   min-height: 0;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 0;
   background:
     radial-gradient(1200px 700px at 30% -10%, rgba(0, 255, 140, 0.07), transparent 60%),
     linear-gradient(180deg, #070b0a 0%, var(--bg) 100%);
@@ -248,6 +248,12 @@
   box-shadow: 0 0 12px rgba(0, 230, 118, 0.25);
 }
 
+.board-controls button:focus-visible {
+  outline: 2px solid var(--bright, #fff);
+  outline-offset: 2px;
+  opacity: 1;
+}
+
 /* ===== TOOLTIP ===== */
 
 .board-tooltip {
@@ -397,5 +403,15 @@
 @media (hover: none) {
   .board-controls button:not(:last-child) {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route,
+  .territory-fill,
+  .territory.target .territory-outline,
+  .board-tooltip {
+    animation: none;
+    transition: none;
   }
 }

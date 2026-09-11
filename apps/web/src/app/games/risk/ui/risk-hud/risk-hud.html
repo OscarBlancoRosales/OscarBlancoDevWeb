@@ -1,4 +1,8 @@
-<header class="hud" [class.my-turn]="myTurn">
+<header class="hud" [class.my-turn]="myTurn" aria-label="Centro de mando">
+  <div class="hud-kicker">
+    <span class="hud-live" [class.active]="myTurn" aria-hidden="true"></span>
+    <span>{{ myTurn ? 'TURNO ACTIVO' : 'MESA EN JUEGO' }}</span>
+  </div>
   <div class="hud-line">
     <span class="hud-round">{{ roundLabel }}</span>
 
@@ -71,13 +75,13 @@
     Consultas de diez segundos: objetivos, continentes, historial y ajustes.
     No merecen píxeles fijos, así que viven detrás de dos iconos pequeños.
   -->
-  <div class="hud-line tools">
-    <button class="hud-leave" type="button" (click)="leave.emit()">◀ Salir</button>
-    <button class="hud-history" type="button" (click)="history.emit()" aria-label="Partida">
-      📜
+  <div class="hud-line tools" aria-label="Herramientas de partida">
+    <button class="hud-leave" type="button" (click)="leave.emit()">◀ <span>Salir</span></button>
+    <button class="hud-history" type="button" (click)="history.emit()" aria-label="Abrir resumen de partida">
+      <span aria-hidden="true">📜</span><span class="tool-label">Partida</span>
     </button>
-    <button class="hud-settings" type="button" (click)="settings.emit()" aria-label="Ajustes">
-      ⚙
+    <button class="hud-settings" type="button" (click)="settings.emit()" aria-label="Abrir objetivos y ajustes">
+      <span aria-hidden="true">⚙</span><span class="tool-label">Objetivos</span>
     </button>
   </div>
 </header>

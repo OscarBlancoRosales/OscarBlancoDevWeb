@@ -26,6 +26,10 @@
 
   @if (open) {
 <div class="cards-sheet">
+    <header class="cards-sheet-head">
+      <span>ARSENAL</span>
+      <span>{{ cards.length }} / 5</span>
+    </header>
     @if (mustTrade) {
 <p class="cards-hint urgent">
       Tienes {{ cards.length }} cartas: hay que canjear un trío antes de seguir.
