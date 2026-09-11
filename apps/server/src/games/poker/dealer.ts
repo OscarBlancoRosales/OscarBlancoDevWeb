@@ -95,7 +95,7 @@ export class DealerDeMesa implements Narrador {
   }
 
   private soltar(actor: RoomActor, state: ScrumState, momento: MomentoDealer): void {
-    const contexto = this.contexto(state, momento);
+    const contexto = this.contexto(state, momento, actor);
     const guionada = fraseDelDealer(momento, this.datosDeLaFrase(contexto), createRng(Date.now()));
 
     actor.aplicarDelSistema(this.locutor(state), {
@@ -119,11 +119,11 @@ export class DealerDeMesa implements Narrador {
    */
   private reprogramarLaPrisa(actor: RoomActor, state: ScrumState): void {
     this.parar();
-    if (state.revelado || this.faltan(state).length === 0) return;
+    if (state.revelado || this.faltan(state, actor).length === 0) return;
 
     const insistir = (): void => {
       const ahora = actor.estadoDelJuego() as ScrumState | null;
-      if (!ahora || ahora.revelado || this.faltan(ahora).length === 0) {
+      if (!ahora || ahora.revelado || this.faltan(ahora, actor).length === 0) {
         this.parar();
         return;
       }
@@ -135,12 +135,26 @@ export class DealerDeMesa implements Narrador {
     this.prisa = setTimeout(insistir, ANTES_DE_METER_PRISA_MS).unref();
   }
 
-  /** Quién falta por votar, sin contar a los bots. */
-  private faltan(state: ScrumState): SeatId[] {
-    return this.mesa.humanos().filter((seat) => !(seat in state.votos));
+  /**
+   * Quién falta por votar, sin contar a los bots ni a quien ya no está.
+   *
+   * Un asiento se queda cuando su dueño cierra la pestaña, y el crupier se
+   * pasaba la ronda metiendo prisa a gente que se había ido hace media hora.
+   * Para el juego siguen contando -su voto se espera-, pero para el que habla
+   * no: a un asiento vacío no se le mete prisa.
+   */
+  private faltan(state: ScrumState, actor?: RoomActor): SeatId[] {
+    return this.mesa
+      .humanos()
+      .filter((seat) => !(seat in state.votos))
+      .filter((seat) => sigueEnLaMesa(actor, seat));
   }
 
-  private contexto(state: ScrumState, momento: MomentoDealer): ContextoDelDealer {
+  private contexto(
+    state: ScrumState,
+    momento: MomentoDealer,
+    actor?: RoomActor,
+  ): ContextoDelDealer {
     const nombres = this.mesa.nombres();
     const votos = numericos(state.votos);
     const stats = estadisticaDe(votos);
@@ -150,6 +164,7 @@ export class DealerDeMesa implements Narrador {
       nombre: nombres[seat] ?? 'alguien',
       voto: comoSeLee(state.votos[seat]),
       haVotado: seat in state.votos,
+      presente: sigueEnLaMesa(actor, seat),
     }));
 
     const protagonista = this.deQuienSeHabla(state, momento, desviado?.seatId ?? null);
@@ -158,31 +173,38 @@ export class DealerDeMesa implements Narrador {
       momento,
       asunto: state.asunto,
       mesa,
+      // El interruptor que decide qué se le cuenta al modelo. Ver `poker-prompts`.
+      revelado: state.revelado,
       protagonista: protagonista ? (nombres[protagonista] ?? 'alguien') : null,
       voto: desviado?.valor ?? 0,
       media: stats.media,
       mediana: stats.mediana,
       desviacion: stats.desviacion,
-      faltan: this.faltan(state).length,
+      faltan: this.faltan(state, actor).length,
       segundos: Math.round(ANTES_DE_METER_PRISA_MS / 1000),
       guion: '',
     };
   }
 
   /**
-   * A quién señala el comentario.
+   * A quién señala el comentario, si es que señala a alguien.
    *
-   * Según el momento: al que se ha ido de madre, al que ha pedido café, al
-   * primero que votó. Señalar al que no toca es peor que no señalar a nadie.
+   * Solo hay nombre cuando decirlo no destapa una carta: al que se ha ido de
+   * madre, que eso solo pasa con la mesa ya destapada, y al primero que votó,
+   * porque haber votado ya se ve en la pantalla. Del café y del porro no se
+   * dice de quién son: son votos como cualquier otro.
    */
   private deQuienSeHabla(
     state: ScrumState,
     momento: MomentoDealer,
     desviado: SeatId | null,
   ): SeatId | null {
+    // El desviado solo existe con las cartas destapadas, así que ahí sí hay
+    // nombre. El café y el porro pasan con la mano en juego: son votos, y
+    // decir de quién es el café es destapar su carta.
     if (momento === 'elDesviado') return desviado;
-    if (momento === 'cafe') return quienVoto(state, 'cafe');
-    if (momento === 'porro') return quienVoto(state, 'porro');
+    // Que alguien ya ha puesto se ve en la mesa; qué ha puesto, no. Por eso
+    // este sí lleva nombre.
     if (momento === 'primerVoto') return Object.keys(state.votos).at(0) ?? null;
     return null;
   }
@@ -289,16 +311,22 @@ export function momentoDe(
   return null;
 }
 
+/**
+ * Si ese asiento tiene a alguien detrás ahora mismo.
+ *
+ * Sin actor a mano -o con uno que no sabe de conexiones- se da por presente:
+ * equivocarse hacia «está» solo hace que el crupier meta prisa de más, y
+ * equivocarse hacia «se ha ido» le haría dar por cerrada una ronda que sigue.
+ */
+function sigueEnLaMesa(actor: RoomActor | undefined, seat: SeatId): boolean {
+  return typeof actor?.conectado === 'function' ? actor.conectado(seat) : true;
+}
+
 /** Cómo se lee un voto para contárselo al modelo. */
 function comoSeLee(voto: ScrumVote | undefined): string {
   if (!voto) return '';
   if (voto.tipo === 'numero') return String(voto.valor);
   return voto.tipo === 'cafe' ? 'café (necesita un descanso)' : 'porro (esto no se puede estimar)';
-}
-
-function quienVoto(state: ScrumState, tipo: 'cafe' | 'porro'): SeatId | null {
-  const encontrado = Object.entries(state.votos).find(([, voto]) => voto.tipo === tipo);
-  return encontrado?.[0] ?? null;
 }
 
 function seAgota(): Promise<never> {
@@ -312,8 +340,13 @@ function seAgota(): Promise<never> {
 /**
  * Si lo que ha devuelto el modelo se puede enseñar.
  *
- * Se comprueba lo mínimo: que diga algo y que no se enrolle. Lo único que
- * puede estropear es el tono, porque los votos no salen de aquí.
+ * Se comprueba lo mínimo: que diga algo y que no se enrolle.
+ *
+ * No se intenta cazar aquí una fuga de votos, y no por pereza: revisar el texto
+ * buscando números sería adivinar, con falsos positivos garantizados -la media
+ * es un número, y el asunto puede llevar otro-. Lo que impide la fuga es que al
+ * modelo no se le cuentan los votos mientras las cartas están boca abajo. Lo
+ * que no sabe, no lo puede decir.
  */
 function aceptable(texto: string): boolean {
   const limpio = texto.trim();

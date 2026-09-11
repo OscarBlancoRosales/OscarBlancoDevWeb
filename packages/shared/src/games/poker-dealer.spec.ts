@@ -101,10 +101,11 @@ describe('el encargo de cada momento', () => {
       momento: 'reparte',
       asunto: 'migrar el login a OAuth',
       mesa: [
-        { nombre: 'Óscar', voto: '5', haVotado: true },
-        { nombre: 'Bea', voto: '21', haVotado: true },
-        { nombre: 'Eva', voto: '', haVotado: false },
+        { nombre: 'Óscar', voto: '5', haVotado: true, presente: true },
+        { nombre: 'Bea', voto: '21', haVotado: true, presente: true },
+        { nombre: 'Eva', voto: '', haVotado: false, presente: true },
       ],
+      revelado: true,
       protagonista: 'Bea',
       voto: 21,
       media: 5.5,
@@ -130,11 +131,12 @@ describe('el encargo de cada momento', () => {
     expect(new Set(tareas).size).toBe(MOMENTOS_DEALER.length);
   });
 
+  /** Ya destapada: aquí sí se puede hablar de lo que ha puesto cada uno. */
   it('la mesa entera va dentro, con quién ha votado y qué', () => {
     const encargo = encargoDelDealer(contexto());
     expect(encargo).toContain('Óscar: 5');
     expect(encargo).toContain('Bea: 21');
-    expect(encargo).toContain('Eva: todavía no ha votado');
+    expect(encargo).toContain('Eva: no votó');
   });
 
   it('las cifras se dan hechas y se prohíbe cambiarlas', () => {
