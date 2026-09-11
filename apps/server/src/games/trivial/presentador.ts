@@ -1,6 +1,7 @@
 import { chatWithFallback } from '@devweb/shared/engine/ai/ai-client';
 import { frasePara } from '@devweb/shared/games/trivial/guion';
-import { encargoPara, instruccionesDelPresentador } from '@devweb/shared/games/trivial/prompts';
+import { encargoPara, instruccionesDelPresentador, largoDe } from '@devweb/shared/games/trivial/prompts';
+import { presupuestoDe, recortar } from '@devweb/shared/games/trivial/medida';
 import { comentarioDe } from '@devweb/shared/games/trivial/momentos';
 import { rngFor } from '@devweb/shared/engine/rng';
 import type { AiSettings, ChatMessage } from '@devweb/shared/engine/ai/ai-client';
@@ -10,16 +11,21 @@ import type { TrivialState } from '@devweb/shared/games/trivial/tipos';
 import type { Narrador, RoomActor } from '../../rooms/actor';
 import type { SeatId } from '@devweb/shared/games/module';
 
-/** Más largo que esto no es una frase de presentador: es un discurso. */
-const LARGO_MAXIMO = 320;
+/**
+ * Lo que se espera en total antes de darlo por perdido.
+ *
+ * Los modelos gratuitos tienen cola. Mientras tanto la mesa ya está leyendo la
+ * frase escrita, así que esperar no cuesta nada.
+ */
+const PACIENCIA_MS = 25_000;
 
 /**
- * Lo que se espera al modelo antes de darlo por perdido.
+ * Lo que se le da a cada modelo por separado. Tres caben en la paciencia.
  *
- * Doce segundos y no seis: los modelos gratuitos tienen cola. Mientras tanto
- * la mesa ya está leyendo la frase escrita, así que esperar no cuesta nada.
+ * Sin esto, el primero que va lento se come el presupuesto entero y la cadena
+ * de reserva no llega a usarse: cinco modelos configurados y ninguno probado.
  */
-const PACIENCIA_MS = 12_000;
+const PLAZO_POR_MODELO_MS = 8_000;
 
 type Llamada = typeof chatWithFallback;
 
@@ -137,6 +143,7 @@ export class PresentadorDeSala implements Narrador {
   private async florear(contexto: ContextoDelPresentador): Promise<string | null> {
     if (!this.ajustes?.enabled) return null;
 
+    const largo = largoDe(contexto.momento);
     const mensajes: ChatMessage[] = [
       { role: 'system', content: instruccionesDelPresentador() },
       { role: 'user', content: encargoPara(contexto) },
@@ -144,11 +151,19 @@ export class PresentadorDeSala implements Narrador {
 
     try {
       const respuesta = await Promise.race([
-        this.modelo(this.ajustes, mensajes, { maxTokens: 120 }),
+        this.modelo({ ...this.ajustes, timeoutMs: PLAZO_POR_MODELO_MS }, mensajes, {
+          maxTokens: presupuestoDe(largo),
+        }),
         seAgota(),
       ]);
-      if (aceptable(respuesta.text)) return respuesta.text.trim();
-      this.avisar(`el modelo contestó algo que no se puede enseñar (${respuesta.text.length} letras)`);
+
+      // Recortar y no tirar. Una frase de más no puede dejar mudo al
+      // presentador, y era exactamente lo que pasaba: diez de diez respuestas
+      // descartadas enteras por pasarse de largo.
+      const enseñable = recortar(respuesta.text, largo);
+      if (enseñable) return enseñable;
+
+      this.avisar(`el modelo no dijo ni una frase entera que quepa en ${largo} letras`);
       return null;
     } catch (fallo) {
       // La mesa no se entera, pero quien mantiene el servidor sí.
@@ -218,13 +233,3 @@ function seAgota(): Promise<never> {
   });
 }
 
-/**
- * Si lo que ha devuelto el modelo se puede enseñar.
- *
- * Se comprueba lo mínimo -que diga algo y que no se enrolle-, porque lo único
- * que puede estropear es el tono: los datos de la ronda no salen de aquí.
- */
-function aceptable(texto: string): boolean {
-  const limpio = texto.trim();
-  return limpio.length > 5 && limpio.length <= LARGO_MAXIMO;
-}

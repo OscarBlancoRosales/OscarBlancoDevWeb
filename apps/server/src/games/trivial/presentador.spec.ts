@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { PresentadorDeSala, ajustesDeIa, nombresDe } from './presentador';
 import { trivialModule } from '@devweb/shared/games/trivial/index';
+import { presupuestoDe } from '@devweb/shared/games/trivial/medida';
+import { largoDe } from '@devweb/shared/games/trivial/prompts';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
 import type { Pregunta, TrivialState } from '@devweb/shared/games/trivial/tipos';
 import type { RoomActor } from '../../rooms/actor';
@@ -275,5 +277,69 @@ describe('los nombres de la mesa', () => {
         { seatId: 'b', displayName: 'Bea' },
       ]),
     ).toEqual({ a: 'Ana', b: 'Bea' });
+  });
+});
+
+/**
+ * La medida de cada momento, que es lo que devolvió la voz al presentador.
+ *
+ * En producción llevaba mudo desde el 10 de septiembre: el modelo contestaba
+ * bien y nosotros tirábamos entero todo lo que decía por pasarse de largo.
+ * Diez de diez, ninguna respuesta por debajo de 375 letras contra un tope de
+ * 320 y un presupuesto de 120 tokens que da para 480.
+ */
+describe('lo que el presentador se atreve a decir', () => {
+  it('recorta la respuesta larga en vez de tirarla', async () => {
+    const { actor, dicho } = actorFalso();
+    const { antes, ahora } = empezada();
+    const ladrillo = 'Menudo nivel, señores. '.repeat(30);
+    const modelo = vi.fn().mockResolvedValue({ text: ladrillo, model: 'x' });
+
+    new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo).trasJugada(actor, antes, ahora);
+    await vi.waitFor(() => {
+      expect(dicho).toHaveLength(2);
+    });
+
+    const florida = dicho[1].accion.frase;
+    expect(florida.length).toBeLessThanOrEqual(largoDe('bienvenida'));
+    // Por frases enteras: media frase del presentador suena a fallo.
+    expect(florida.endsWith('.')).toBe(true);
+  });
+
+  it('se queda con el guion cuando no hay ni una frase aprovechable', async () => {
+    const { actor, dicho } = actorFalso();
+    const { antes, ahora } = empezada();
+    const modelo = vi.fn().mockResolvedValue({ text: 'palabra '.repeat(100), model: 'x' });
+
+    new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo).trasJugada(actor, antes, ahora);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(dicho).toHaveLength(1);
+  });
+
+  it('le pide al modelo los tokens que pide la medida del momento', async () => {
+    const { actor } = actorFalso();
+    const { antes, ahora } = empezada();
+    const modelo = vi.fn().mockResolvedValue({ text: 'Buenas noches.', model: 'x' });
+
+    new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo).trasJugada(actor, antes, ahora);
+
+    const opciones = modelo.mock.calls[0][2] as { maxTokens?: number };
+    expect(opciones.maxTokens).toBe(presupuestoDe(largoDe('bienvenida')));
+  });
+
+  it('le da su turno a cada modelo, no la paciencia entera al primero', async () => {
+    const { actor } = actorFalso();
+    const { antes, ahora } = empezada();
+    const modelo = vi.fn().mockResolvedValue({ text: 'Buenas noches.', model: 'x' });
+
+    new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo).trasJugada(actor, antes, ahora);
+
+    // Sin esto, el primer modelo lento se come la paciencia entera y los cuatro
+    // de reserva no llegan a estrenarse. Le pasaba al crupier y allí se arregló.
+    const ajustes = modelo.mock.calls[0][0] as AiSettings;
+    expect(ajustes.timeoutMs).toBeDefined();
+    expect(ajustes.timeoutMs).toBeLessThan(25_000);
   });
 });
