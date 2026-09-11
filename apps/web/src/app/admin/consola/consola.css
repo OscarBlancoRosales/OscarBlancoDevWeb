@@ -1,0 +1,217 @@
+.con-nota {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.con-apagado,
+.con-emparejar {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  text-align: center;
+}
+
+.con-apagado h3,
+.con-emparejar h3 {
+  color: var(--accent);
+  font-size: 14px;
+  margin: 0 0 6px 0;
+}
+
+.con-apagado p,
+.con-emparejar p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 12px 0;
+}
+
+.con-apagado code {
+  display: inline-block;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--bright);
+  font-size: 11px;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+
+.con-fila {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.con-fila input {
+  padding: 8px 10px;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--bright);
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.con-fila input:focus {
+  border-color: var(--accent);
+}
+
+/* Seis cifras que se leen del terminal: grandes y separadas. */
+.con-codigo {
+  width: 140px;
+  text-align: center;
+  letter-spacing: 6px;
+  font-size: 16px !important;
+}
+
+/* ===== LOS PERMISOS ===== */
+
+.con-permisos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.permiso {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--bg-soft);
+}
+
+.permiso-que {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.permiso-que strong {
+  color: var(--accent);
+}
+
+.permiso-que span {
+  color: var(--bright);
+}
+
+.permiso-detalle {
+  display: block;
+  max-height: 120px;
+  overflow: auto;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.permiso-botones {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-si {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn-no {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* ===== LA CONVERSACIÓN ===== */
+
+.con-hilo {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 12px;
+}
+
+.con-mensaje {
+  border-left: 2px solid var(--border);
+  padding-left: 10px;
+}
+
+.con-mensaje.mio {
+  border-left-color: var(--accent);
+}
+
+.con-quien {
+  color: var(--bright);
+  font-size: 11px;
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+.con-mensaje.mio .con-quien {
+  color: var(--accent);
+}
+
+.con-hora {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.con-texto {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.con-escribir {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.con-escribir textarea {
+  flex: 1 1 auto;
+  padding: 8px 10px;
+  background: var(--bg-chrome);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--bright);
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.con-escribir textarea:focus {
+  border-color: var(--accent);
+}
+
+.con-salir {
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.con-error {
+  color: var(--error);
+  border-left: 2px solid currentColor;
+  padding: 8px 12px;
+  font-size: 12px;
+}

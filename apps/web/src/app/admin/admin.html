@@ -13,6 +13,35 @@
         <a routerLink="/">{{ i18n.t('admin.backHome') }}</a>
       </p>
     } @else {
+      <nav class="admin-pestanas">
+        <button
+          type="button"
+          class="admin-pestana"
+          [class.activa]="pestana() === 'gente'"
+          (click)="pestana.set('gente')">
+          {{ i18n.t('admin.tabGente') }}
+        </button>
+        <button
+          type="button"
+          class="admin-pestana"
+          [class.activa]="pestana() === 'sesiones'"
+          (click)="pestana.set('sesiones')">
+          {{ i18n.t('admin.tabSesiones') }}
+        </button>
+        <button
+          type="button"
+          class="admin-pestana"
+          [class.activa]="pestana() === 'consola'"
+          (click)="pestana.set('consola')">
+          {{ i18n.t('admin.tabConsola') }}
+        </button>
+      </nav>
+
+      @if (pestana() === 'sesiones') {
+        <app-sesiones />
+      } @else if (pestana() === 'consola') {
+        <app-consola />
+      } @else {
       <section class="admin-bloque">
         <h2 class="admin-titulo">&gt; {{ i18n.t('admin.invitations') }}</h2>
         <p class="admin-sub">{{ i18n.t('admin.invitationsSub') }}</p>
@@ -121,6 +150,7 @@
           <p class="admin-aviso">{{ i18n.t('admin.deleteWarning') }}</p>
         }
       </section>
+      }
 
       @if (error()) {
         <p class="admin-error">{{ error() }}</p>
