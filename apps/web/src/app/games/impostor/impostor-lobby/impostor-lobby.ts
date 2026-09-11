@@ -117,8 +117,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   }
 
   get esMezcla(): boolean {
-    const n = this.elegidos().size;
-    return n === 0 || n === this.temas.length;
+    return this.elegidos().size === 0;
   }
 
   get tema(): string {
@@ -133,12 +132,16 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   }
 
   marcado(id: string): boolean {
-    return this.esMezcla || this.elegidos().has(id);
+    return this.elegidos().has(id);
   }
 
   toggleMazo(id: string): void {
-    const siguiente = new Set(this.esMezcla ? this.temas.map((uno) => uno.id) : this.elegidos());
-    if (siguiente.has(id) && siguiente.size > 1) siguiente.delete(id);
+    if (this.esMezcla) {
+      this.elegidos.set(new Set([id]));
+      return;
+    }
+    const siguiente = new Set(this.elegidos());
+    if (siguiente.has(id)) siguiente.delete(id);
     else siguiente.add(id);
     this.elegidos.set(siguiente.size === this.temas.length ? new Set() : siguiente);
   }
