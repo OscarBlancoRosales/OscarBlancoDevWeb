@@ -556,4 +556,31 @@ describe('cadena de reserva', () => {
       expect(isFreeModel('openrouter', model), model).toBe(true);
     }
   });
+
+  /**
+   * Una reserva de pago no es una reserva: con `freeOnly` puesta -que es lo
+   * normal- se salta en silencio, y el usuario se queda sin frase creyendo que
+   * tenía cuatro modelos detrás.
+   */
+  it('y ninguna reserva cuesta dinero', () => {
+    for (const provider of Object.keys(FALLBACK_CHAIN) as AiProvider[]) {
+      for (const model of FALLBACK_CHAIN[provider]) {
+        expect(isFreeModel(provider, model), `${provider}/${model}`).toBe(true);
+      }
+    }
+  });
+
+  /**
+   * Groq y Gemini no llevan sufijo que delate lo gratuito, así que ahí
+   * `isFreeModel` solo sabe lo que le diga el catálogo. Una reserva que no esté
+   * en él se descarta por creerla de pago.
+   */
+  it('y está en el catálogo de su proveedor', () => {
+    for (const provider of Object.keys(FALLBACK_CHAIN) as AiProvider[]) {
+      const catalogo = FREE_MODELS[provider].map((option) => option.id);
+      for (const model of FALLBACK_CHAIN[provider]) {
+        expect(catalogo, `${provider}/${model}`).toContain(model);
+      }
+    }
+  });
 });
