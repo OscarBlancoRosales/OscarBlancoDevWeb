@@ -15,8 +15,14 @@ const DIA_MS = 24 * 60 * 60 * 1000;
 const JUEGOS: readonly GameId[] = ['scrum', 'risk', 'flota', 'trivial', 'impostor'];
 const ESTADOS: readonly RoomStatus[] = ['lobby', 'playing', 'paused', 'finished'];
 
+/**
+ * Solo se pinta lo que pide atención.
+ *
+ * Casi todas las salas están esperando: dándoles color, la tabla entera se
+ * enciende y deja de señalar nada. En marcha y en pausa sí son excepciones.
+ */
 const COLOR_DEL_ESTADO: Readonly<Record<RoomStatus, string>> = {
-  lobby: 'badge--warn',
+  lobby: '',
   playing: 'badge--vivo',
   paused: 'badge--warn',
   finished: '',
@@ -155,6 +161,12 @@ export class Salas implements OnInit {
 
   claseDe(estado: RoomStatus): string {
     return COLOR_DEL_ESTADO[estado];
+  }
+
+  /** El aviso del bloque, sin «sala(s)». */
+  get aviso(): string {
+    const cuantas = this.enElFiltro();
+    return this.i18n.t(cuantas === 1 ? 'salas.bloqueAvisoUna' : 'salas.bloqueAviso', { cuantas });
   }
 
   cuando(marca: number): string {

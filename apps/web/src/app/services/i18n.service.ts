@@ -395,8 +395,12 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'salas.ninguna': { es: 'No hay ninguna sala.', en: 'There are no rooms.' },
   'salas.bloqueTitulo': { es: 'Cerrar en bloque', en: 'Close in bulk' },
   'salas.bloqueAviso': {
-    es: 'Se llevará por delante {cuantas} sala(s), las que encajen con los filtros de arriba. Escribe BORRAR para confirmar.',
-    en: 'This will take down {cuantas} room(s), the ones matching the filters above. Type BORRAR to confirm.',
+    es: 'Se llevará por delante {cuantas} salas, las que encajen con los filtros de arriba. Escribe BORRAR para confirmar.',
+    en: 'This will take down {cuantas} rooms, the ones matching the filters above. Type BORRAR to confirm.',
+  },
+  'salas.bloqueAvisoUna': {
+    es: 'Se llevará por delante una sala, la que encaja con los filtros de arriba. Escribe BORRAR para confirmar.',
+    en: 'This will take down one room, the one matching the filters above. Type BORRAR to confirm.',
   },
   'salas.inactivas': { es: 'Días sin tocar', en: 'Days untouched' },
   'salas.cerrarTodas': { es: 'Cerrar las que encajen', en: 'Close matching rooms' },
