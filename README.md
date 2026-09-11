@@ -44,7 +44,7 @@ Portfolio interactivo de desarrollador construido con Angular, con una interfaz 
 #### Juegos — El Impostor
 - Todos reciben la misma palabra menos uno: se dice una pista por turno, se discute y se vota
 - Tres modos: clásico, «la última palabra» —al impostor pillado le queda un disparo: si acierta, gana él— e infiltrado, que le da una palabra parecida y no le dice que lo es
-- Diez temas y ciento veinte palabras, cada una con su parecida
+- Trece mazos de más de cien palabras cada uno —futbolistas clásicos y modernos, famosos, títulos de Wikipedia— y se marcan en la mesa
 - Veinticuatro memes elegibles: la cara viaja con el asiento, así que la mesa entera te ve igual
 - Tiempo de debate con reloj del servidor entre las pistas y la votación, o hasta que el anfitrión corte
 - Chat de mesa: acusarse en voz alta es la mitad del juego
@@ -137,7 +137,7 @@ Interactive developer portfolio built with Angular, featuring a retro terminal-s
 #### Games — The Impostor
 - Everyone gets the same word except one: a clue each per turn, then talk it over, then vote
 - Three modes: classic, "the last word" —the caught impostor gets one shot at the word, and wins if they guess it— and infiltrator, which hands them a similar word and never tells them they are the impostor
-- Ten topics, one hundred and twenty words, each paired with a near-miss
+- Thirteen packs of 100+ words each —classic and modern footballers, famous people, Wikipedia titles— picked at the table
 - Twenty-four meme faces to pick from: your face travels with your seat, so the whole table sees the same one
 - A timed debate between clues and voting, on the server's clock, or until the host calls it
 - Table chat: accusing people out loud is half the game

@@ -26,7 +26,7 @@ por un enlace de invitación, no: se pone nombre, se elige cara y a jugar.
 |---|---|
 | `sala` | La gente se sienta y dice que está lista. Con menos de tres no se reparte. |
 | `repartiendo` | El servidor sortea palabra, impostores y orden de mesa. Dura un suspiro. |
-| `pistas` | Una palabra cada uno, por turnos. Una o dos vueltas, según la casa. |
+| `pistas` | Una palabra cada uno, por turnos. El chat se apaga: si no te toca, esperas. |
 | `debate` | El rato de hablar. Con reloj del servidor, o hasta que el anfitrión corte. |
 | `votacion` | Todos votan a la vez. Nadie ve el recuento hasta que vota el último. |
 | `ultima-palabra` | Solo en el modo revancha: al impostor pillado le queda un disparo. |
@@ -62,7 +62,7 @@ minutos más en un juego que dura diez.
 ```
 packages/shared/src/games/impostor/
   tipos.ts    estado, acciones (TypeBox) y la vista que sale hacia cada asiento
-  temas.ts    diez temas, ciento veinte palabras, cada una con su parecida y sus pistas
+  temas/      trece mazos de ≥100 palabras, cada una con su parecida y sus pistas
   caras.ts    el elenco de memes y el reparto de caras sin repetir
   reglas.ts   recuento, desenlaces y marcador. Funciones puras y sueltas
   guion.ts    lo que dice la sala en cada momento
@@ -75,8 +75,8 @@ apps/server/src/games/impostor/
 
 apps/web/src/app/games/impostor/
   impostor-room.service.ts       la sala contra el backend propio
-  impostor-lobby/                abrir mesa o entrar por invitación
-  impostor-room/                 la mesa: caras, pistas, debate, votación y chat
+  impostor-lobby/                abrir mesa: se marcan mazos, no un tema suelto
+  impostor-room/                 la mesa de interrogatorio: óvalo, evidencias, un solo chat
 ```
 
 El juego encaja en la infraestructura de salas que ya existía: se escribió su `GameModule`

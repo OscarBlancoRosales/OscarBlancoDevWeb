@@ -12,8 +12,35 @@ import { ELENCO, caraPorDefecto, caraPorId, repartirCaras } from './caras';
 describe('el banco de palabras', () => {
   it('todos los temas traen palabras de sobra para una noche', () => {
     for (const tema of TEMAS) {
-      expect(tema.terminos.length, tema.id).toBeGreaterThanOrEqual(10);
+      expect(tema.terminos.length, tema.id).toBeGreaterThanOrEqual(100);
     }
+  });
+
+  it('fútbol es un mazo y mezcla épocas', () => {
+    const futbol = temaPorId('futbol');
+    expect(futbol).not.toBeNull();
+    const nombres = (futbol?.terminos ?? []).flatMap((uno) => [uno.a, uno.b]).join(' ');
+    expect(nombres).toMatch(/Pelé|Maradona|Cruyff|Di Stéfano/);
+    expect(nombres).toMatch(/Messi|Haaland|Mbappé|Vinicius|Bellingham/);
+  });
+
+  it('famosos no se come a los futbolistas', () => {
+    const delFutbol = new Set(
+      terminosDe('futbol').flatMap((uno) => [uno.a.toLowerCase(), uno.b.toLowerCase()]),
+    );
+    for (const uno of terminosDe('famosos')) {
+      expect(delFutbol.has(uno.a.toLowerCase()), uno.a).toBe(false);
+      expect(delFutbol.has(uno.b.toLowerCase()), uno.b).toBe(false);
+    }
+  });
+
+  it('varios mazos juntos suman las palabras de cada uno', () => {
+    const juntos = terminosDe('futbol,comida');
+    expect(juntos.length).toBe(terminosDe('futbol').length + terminosDe('comida').length);
+  });
+
+  it('el nombre de varios mazos se lee entero', () => {
+    expect(nombreDelTema('futbol,famosos')).toContain(' + ');
   });
 
   it('no hay dos temas con el mismo identificador', () => {
@@ -47,6 +74,15 @@ describe('el banco de palabras', () => {
    * Una pista que es la palabra la delata entera, y el juego se acaba en el
    * primer turno.
    */
+  it('ninguna palabra se pasa de los cuarenta', () => {
+    for (const tema of TEMAS) {
+      for (const termino of tema.terminos) {
+        expect(termino.a.length, `${tema.id}/${termino.a}`).toBeLessThanOrEqual(40);
+        expect(termino.b.length, `${tema.id}/${termino.b}`).toBeLessThanOrEqual(40);
+      }
+    }
+  });
+
   it('ninguna pista dice la palabra', () => {
     for (const tema of TEMAS) {
       for (const termino of tema.terminos) {

@@ -280,6 +280,39 @@ describe('la mesa del impostor', () => {
     expect(componente.mensaje()).toBe('');
   });
 
+  it('fuera de tu turno no deja escribir la pista', () => {
+    sala.vista.set({ ...BASE, tuTurno: false, turno: 'bea', fase: 'pistas' });
+    fixture.detectChanges();
+    expect(componente.inputBloqueado()).toBe(true);
+    const input = raiz().querySelector('.charla input');
+    expect(input?.hasAttribute('disabled')).toBe(true);
+    expect(texto()).toContain('Habla Bea');
+  });
+
+  it('las pistas se ven en el centro, en el orden en que se dijeron', () => {
+    sala.vista.set({
+      ...BASE,
+      pistas: [
+        { seatId: 'yo', texto: 'horno', ronda: 0 },
+        { seatId: 'bea', texto: 'masa', ronda: 0 },
+      ],
+    });
+    fixture.detectChanges();
+    const evidencias = raiz().querySelector('.evidencias')?.textContent ?? '';
+    expect(evidencias).toContain('horno');
+    expect(evidencias).toContain('masa');
+    expect(evidencias.indexOf('horno')).toBeLessThan(evidencias.indexOf('masa'));
+  });
+
+  it('en el debate el mismo hueco manda chat, no pista', () => {
+    sala.vista.set({ ...BASE, fase: 'debate', turno: null, tuTurno: false });
+    fixture.detectChanges();
+    componente.mensaje.set('ha sido Bea');
+    componente.enviar();
+    expect(sala.decir).toHaveBeenCalledWith('ha sido Bea');
+    expect(sala.pista).not.toHaveBeenCalled();
+  });
+
   it('mientras no hay conexión se avisa y no se deja jugar', () => {
     sala.conectado.set(false);
     fixture.detectChanges();

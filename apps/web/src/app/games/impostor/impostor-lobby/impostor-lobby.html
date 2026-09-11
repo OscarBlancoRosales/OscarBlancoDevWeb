@@ -44,14 +44,14 @@
         <ng-container [ngTemplateOutlet]="elegirCara"></ng-container>
 
         <fieldset class="bloque">
-          <legend>De qué va la palabra</legend>
+          <legend>De qué va la palabra · {{ palabrasElegidas }} palabras</legend>
           <div class="temas">
             <button
               type="button"
               class="tema"
-              [class.elegido]="tema === mezcla"
-              [attr.aria-pressed]="tema === mezcla"
-              (click)="tema = mezcla"
+              [class.elegido]="esMezcla"
+              [attr.aria-pressed]="esMezcla"
+              (click)="toggleMezcla()"
             >
               <span class="tema-nombre">Mezcla</span>
               <span class="tema-pinta">Todo junto y que salga lo que salga</span>
@@ -60,12 +60,12 @@
               <button
                 type="button"
                 class="tema"
-                [class.elegido]="tema === uno.id"
-                [attr.aria-pressed]="tema === uno.id"
-                (click)="tema = uno.id"
+                [class.elegido]="marcado(uno.id)"
+                [attr.aria-pressed]="marcado(uno.id)"
+                (click)="toggleMazo(uno.id)"
               >
                 <span class="tema-nombre">{{ uno.nombre }}</span>
-                <span class="tema-pinta">{{ uno.pinta }}</span>
+                <span class="tema-pinta">{{ uno.pinta }} · {{ uno.terminos.length }}</span>
               </button>
             }
           </div>

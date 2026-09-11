@@ -34,6 +34,17 @@ describe('el sorteo de la ronda', () => {
     expect(comida.some((uno) => uno.a === reparto?.palabra && uno.b === reparto.senuelo)).toBe(true);
   });
 
+  it('varios mazos juntos sortean de cualquiera de ellos', () => {
+    const reparto = sortear({
+      jugadores: MESA,
+      temaId: 'futbol,comida',
+      impostoresPedidos: 1,
+      azar: primero,
+    });
+    const banco = [...terminosDe('futbol'), ...terminosDe('comida')];
+    expect(banco.some((uno) => uno.a === reparto?.palabra && uno.b === reparto.senuelo)).toBe(true);
+  });
+
   it('un tema que no existe cae en la mezcla en vez de dejar la mesa sin palabra', () => {
     const reparto = sortear({ jugadores: MESA, temaId: 'ni-idea', impostoresPedidos: 1, azar: primero });
     expect(reparto?.palabra.length).toBeGreaterThan(0);
