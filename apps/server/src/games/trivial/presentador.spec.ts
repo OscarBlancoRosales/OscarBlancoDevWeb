@@ -402,3 +402,71 @@ describe('el interruptor del presentador', () => {
 function sinEncender(ajustes: AiSettings): AiSettings {
   return { ...ajustes, enabled: false };
 }
+
+describe('un programa entero sin repetirse', () => {
+  it('el mismo momento, cuatro veces seguidas, dice cuatro cosas distintas', () => {
+    // Lo que delata a un guion escrito no es que sea escrito: es oírle la misma
+    // frase dos veces en el mismo programa.
+    const { actor, dicho } = actorFalso();
+    const presentador = new PresentadorDeSala(null, NOMBRES);
+
+    let antes = trivialModule.createState(SEATS, { preguntas: PREGUNTAS, semilla: 11 });
+    let ahora = trivialModule.apply(antes, { tipo: 'empezar' }, 'ana', SEATS);
+    ahora = trivialModule.apply(ahora, { tipo: 'empezar' }, 'bea', SEATS);
+
+    // Cuatro bienvenidas seguidas, contando cada una como el programa la cuenta.
+    for (let vez = 0; vez < 4; vez += 1) {
+      presentador.trasJugada(actor, antes, ahora);
+      const ultima = dicho.at(-1);
+      if (ultima) {
+        ahora = trivialModule.apply(
+          ahora,
+          { tipo: 'presenta', momento: ultima.accion.momento, frase: ultima.accion.frase },
+          'ana',
+          SEATS,
+        );
+      }
+      antes = trivialModule.createState(SEATS, { preguntas: PREGUNTAS, semilla: 11 });
+    }
+
+    const frases = dicho.map((una) => una.accion.frase);
+    expect(frases).toHaveLength(4);
+    expect(new Set(frases).size).toBe(4);
+  });
+
+  it('y nombra al segundo y al último cuando hay mesa para ello', () => {
+    const cuatro: Seat[] = [
+      ...SEATS,
+      { id: 'caco', displayName: 'Caco', isBot: false, connected: true, order: 2 },
+      { id: 'dana', displayName: 'Dana', isBot: false, connected: true, order: 3 },
+    ];
+    const nombres = () => ({ ana: 'Ana', bea: 'Bea', caco: 'Caco', dana: 'Dana' });
+    const { actor, dicho } = actorFalso();
+
+    let antes = trivialModule.createState(cuatro, { preguntas: PREGUNTAS, semilla: 3 });
+    let ahora = antes;
+    for (const quien of ['ana', 'bea', 'caco', 'dana']) {
+      ahora = trivialModule.apply(ahora, { tipo: 'empezar' }, quien, cuatro);
+    }
+
+    // Se recorren unas cuantas veces para cazar alguna de las frases que sí
+    // nombran al resto de la mesa: no todas lo hacen.
+    const salen = new Set<string>();
+    for (let vez = 0; vez < 12; vez += 1) {
+      new PresentadorDeSala(null, nombres).trasJugada(actor, antes, ahora);
+      const ultima = dicho.at(-1);
+      if (!ultima) continue;
+      salen.add(ultima.accion.frase);
+      ahora = trivialModule.apply(
+        ahora,
+        { tipo: 'presenta', momento: ultima.accion.momento, frase: ultima.accion.frase },
+        'ana',
+        cuatro,
+      );
+      antes = trivialModule.createState(cuatro, { preguntas: PREGUNTAS, semilla: 3 });
+    }
+
+    expect(salen.size).toBeGreaterThan(4);
+    for (const frase of salen) expect(frase).not.toContain('{');
+  });
+});

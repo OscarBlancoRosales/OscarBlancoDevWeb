@@ -99,6 +99,16 @@ export interface TrivialState {
    */
   readonly cierraEn: number;
 
+  /**
+   * Cuántas veces se ha dicho ya cada momento en este programa.
+   *
+   * De aquí sale que el presentador no repita frase: el guion recorre todas
+   * las suyas antes de volver a la primera. Sorteando cada vez, con doce
+   * frases y cuatro usos se repite casi una de cada dos, y una frase repetida
+   * delata al guion más que ninguna otra cosa.
+   */
+  readonly dichos: Readonly<Record<string, number>>;
+
   /** Lo último que dijo el presentador, para que la mesa lo lea a la vez. */
   readonly dice: string;
   /** El momento del programa al que corresponde esa frase. */

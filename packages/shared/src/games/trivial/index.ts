@@ -49,6 +49,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       turno: null,
       mecha: 0,
       cierraEn: 0,
+      dichos: {},
       dice: '',
       momento: '',
     };
@@ -159,7 +160,18 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       }
 
       case 'presenta':
-        return { ...state, jugadas, dice: action.frase, momento: action.momento };
+        return {
+          ...state,
+          jugadas,
+          dice: action.frase,
+          momento: action.momento,
+          // Se apunta para que la próxima vez que toque este momento salga otra
+          // frase. Quien la elige lee esta cuenta antes de aplicar la acción.
+          dichos: {
+            ...state.dichos,
+            [action.momento]: (state.dichos[action.momento] ?? 0) + 1,
+          },
+        };
 
       case 'reloj':
         return { ...state, jugadas, cierraEn: action.hasta };

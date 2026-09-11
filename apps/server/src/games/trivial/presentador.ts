@@ -82,8 +82,23 @@ export class PresentadorDeSala implements Narrador {
     });
   }
 
+  /**
+   * La frase escrita que toca, con todo lo que el guion puede aprovechar.
+   *
+   * No es un plan B por si la IA falla: es el presentador. Por eso se le da la
+   * mesa entera -quién va segundo, quién último, cuánta diferencia hay, si de
+   * quien hablamos hay alguien detrás-, que es lo que le permite decir algo
+   * que pega con lo que acaba de pasar en vez de una frase suelta.
+   */
   private guion(comentario: Comentario, state: TrivialState): string {
     const nombres = this.nombres();
+    const bots = this.bots();
+    const tabla = [...state.orden].sort(
+      (uno, otro) => (state.puntos[otro] ?? 0) - (state.puntos[uno] ?? 0),
+    );
+    const nombreDe = (seat: SeatId | undefined): string =>
+      seat ? (nombres[seat] ?? 'alguien') : '';
+
     return frasePara(
       comentario.momento,
       {
@@ -91,8 +106,22 @@ export class PresentadorDeSala implements Narrador {
         puntos: comentario.puntos,
         ronda: state.actual + 1,
         rondas: state.rondas.length,
+        // El segundo y el último solo cuando hay mesa de sobra: con dos
+        // jugadores, el segundo y el último son la misma persona y nombrarla
+        // dos veces en la misma frase queda fatal.
+        ...(tabla.length >= 3 && {
+          segundo: nombreDe(tabla[1]),
+          ultimo: nombreDe(tabla.at(-1)),
+          diferencia: (state.puntos[tabla[0] ?? ''] ?? 0) - (state.puntos[tabla[1] ?? ''] ?? 0),
+        }),
+        seccion: nombreDeLaSeccion(state) ?? '',
+        esBot: comentario.quien ? bots.has(comentario.quien) : false,
       },
-      rngFor(state.semilla, state.jugadas, `guion:${comentario.momento}`),
+      // La semilla del momento, no la de la jugada: así el punto de partida es
+      // el mismo durante todo el programa y la cuenta de abajo puede recorrer
+      // las frases una a una sin repetir.
+      rngFor(state.semilla, 0, `guion:${comentario.momento}`),
+      state.dichos[comentario.momento] ?? 0,
     );
   }
 
