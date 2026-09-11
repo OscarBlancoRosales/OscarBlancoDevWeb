@@ -20,12 +20,29 @@ export interface EnLaMesaDePoker {
   /** Lo que ha votado, ya legible: un número, «café», «porro» o nada. */
   readonly voto: string;
   readonly haVotado: boolean;
+  /**
+   * Si sigue en la mesa.
+   *
+   * Un asiento se queda cuando su dueño cierra la pestaña, así que sin esto el
+   * crupier se pasa la ronda metiéndole prisa a gente que ya no está y diciendo
+   * que faltan tres cuando en la sala hay uno.
+   */
+  readonly presente: boolean;
 }
 
 export interface ContextoDelDealer {
   readonly momento: MomentoDealer;
   readonly asunto: string;
   readonly mesa: readonly EnLaMesaDePoker[];
+  /**
+   * Si las cartas ya están boca arriba.
+   *
+   * Es el interruptor que decide qué se le cuenta al modelo. Con las cartas
+   * boca abajo no ve un solo voto, y por eso no puede decirlos: un crupier que
+   * canta lo que has puesto antes de destapar arruina la ronda, y como corre en
+   * el servidor es el único de la mesa que podría hacerlo.
+   */
+  readonly revelado: boolean;
   /** De quién se habla, si se habla de alguien. */
   readonly protagonista: string | null;
   /** El voto del protagonista, cuando el momento va de un voto concreto. */
@@ -62,6 +79,7 @@ export function instruccionesDelDealer(): string {
     // Los límites, que en un personaje así hacen falta y no son un adorno:
     'Nunca insultas de verdad, ni te metes con nadie por su aspecto, su acento, su origen ni nada personal: solo por lo que acaba de votar.',
     'Nunca inventas votos, nombres, medias ni cosas que no hayan pasado. Solo puedes usar los datos que te dan.',
+    'Mientras las cartas estén boca abajo no sabes lo que ha votado nadie, y no lo dices ni lo insinúas: lo que hay debajo de una carta boca abajo no se canta.',
     'Nada de emojis, ni comillas, ni asteriscos, ni acotaciones de escena. Devuelves solo lo que se dice en voz alta.',
   ].join(' ');
 }
@@ -135,12 +153,23 @@ function tarea(ctx: ContextoDelDealer): string {
         'Dilo y mándalos a hablarlo antes de volver a votar.',
       ].join(' ');
 
+    /*
+     * El café y el porro se comentan **sin decir de quién son**.
+     *
+     * Son votos, y las cartas siguen boca abajo: decir que el café es de Rosa
+     * es destapar la carta de Rosa. La broma del café funciona igual de bien
+     * en abstracto, que es como la cuenta el guion escrito de toda la vida.
+     */
     case 'cafe':
-      return `${quien} ha pedido café en vez de votar. Coméntalo con complicidad, que tú vas por el tercero.`;
+      return [
+        'Alguien acaba de pedir café en vez de votar, pero no sabes quién y no lo puedes decir.',
+        'Coméntalo en general, con complicidad, que tú vas por el tercero.',
+      ].join(' ');
 
     case 'porro':
       return [
-        `${quien} ha sacado la carta del porro: esto es demasiado grande para estimarlo.`,
+        'Alguien ha sacado la carta del porro: esto es demasiado grande para estimarlo.',
+        'No sabes quién ha sido ni lo puedes decir.',
         'Tradúcelo para la mesa: hay que partir la tarea en trozos.',
       ].join(' ');
 
@@ -149,13 +178,82 @@ function tarea(ctx: ContextoDelDealer): string {
   }
 }
 
-/** Los votos de la mesa, en crudo, para que no se invente nada. */
+/**
+ * Lo que el crupier puede saber en este momento de la mano.
+ *
+ * Dos bloques distintos y no uno con recortes, porque son dos situaciones
+ * distintas: con las cartas boca abajo lo único que hay sobre la mesa es quién
+ * ha puesto y quién no; al destapar, la mesa entera. Antes iba siempre el mismo
+ * bloque con todos los votos dentro, y de ahí salía el crupier cantando lo que
+ * habías puesto media ronda antes de que se viera.
+ */
 function datos(ctx: ContextoDelDealer): string {
+  return ctx.revelado ? datosDestapada(ctx) : datosEnJuego(ctx);
+}
+
+/**
+ * Con las cartas boca abajo: quién ha puesto, quién falta, y nada más.
+ *
+ * Los dos grupos van con nombres **y con su cuenta**. La cuenta no es un
+ * adorno: sin ella el modelo se lía contando nombres y acaba diciendo que
+ * faltan tres cuando falta uno.
+ */
+function datosEnJuego(ctx: ContextoDelDealer): string {
+  const enLaMesa = ctx.mesa.filter((uno) => uno.presente);
+  const puestos = enLaMesa.filter((uno) => uno.haVotado).map((uno) => uno.nombre);
+  const faltan = enLaMesa.filter((uno) => !uno.haVotado).map((uno) => uno.nombre);
+  const idos = ctx.mesa.filter((uno) => !uno.presente).map((uno) => uno.nombre);
+
+  return [
+    'ESTADO: la mano está en juego. Las cartas siguen boca abajo.',
+    ctx.asunto ? `Se estima: ${ctx.asunto}` : 'La tarea no tiene nombre puesto.',
+    puestos.length > 0
+      ? `Ya han puesto (${puestos.length} de ${enLaMesa.length}): ${puestos.join(', ')}.`
+      : 'Todavía no ha puesto nadie.',
+    faltan.length > 0
+      ? `Faltan ${faltan.length} por poner: ${faltan.join(', ')}.`
+      : 'No falta nadie por poner.',
+    idos.length > 0 ? `Ya no están en la mesa: ${idos.join(', ')}. No les metas prisa.` : '',
+    recuentoDeCartasRaras(ctx),
+    'NO SABES lo que ha votado nadie: las cartas están boca abajo y eso no se ve hasta que se destapan. No digas números de nadie, ni los insinúes, ni te los inventes.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * La broma de los cafés, que sí se puede contar.
+ *
+ * Cuántos hay es un dato de la mesa y no de nadie en concreto... salvo cuando
+ * lo es: si de los que han puesto **todos** pidieron café, decir cuántos hay es
+ * decir lo que ha votado cada uno. En ese caso el crupier se calla.
+ */
+function recuentoDeCartasRaras(ctx: ContextoDelDealer): string {
+  const puestos = ctx.mesa.filter((uno) => uno.presente && uno.haVotado);
+  const cafes = puestos.filter((uno) => uno.voto.startsWith('café')).length;
+  const porros = puestos.filter((uno) => uno.voto.startsWith('porro')).length;
+
+  const delata = (cuantos: number): boolean =>
+    cuantos === 0 || puestos.length < 2 || cuantos >= puestos.length;
+
+  const trozos = [
+    delata(cafes) ? '' : `${cafes} ${cafes === 1 ? 'café' : 'cafés'}`,
+    delata(porros) ? '' : `${porros} ${porros === 1 ? 'porro' : 'porros'}`,
+  ].filter(Boolean);
+
+  return trozos.length > 0
+    ? `Sobre la mesa hay ${trozos.join(' y ')}, pero no sabes de quién ni lo puedes decir.`
+    : '';
+}
+
+/** Ya destapada: la mesa entera, para que no se invente nada. */
+function datosDestapada(ctx: ContextoDelDealer): string {
   const mesa = ctx.mesa
-    .map((uno) => `- ${uno.nombre}: ${uno.haVotado ? uno.voto : 'todavía no ha votado'}`)
+    .map((uno) => `- ${uno.nombre}: ${uno.haVotado ? uno.voto : 'no votó'}`)
     .join('\n');
 
   return [
+    'ESTADO: las cartas están destapadas. Ya se puede hablar de lo que ha votado cada uno.',
     'DATOS REALES (no inventes otros, no cambies estos nombres ni estas cifras):',
     ctx.asunto ? `Se estima: ${ctx.asunto}` : 'La tarea no tiene nombre puesto.',
     mesa ? `La mesa:\n${mesa}` : 'La mesa está vacía.',

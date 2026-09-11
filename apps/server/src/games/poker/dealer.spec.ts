@@ -34,7 +34,7 @@ function numero(valor: number): { tipo: 'numero'; valor: number } {
 }
 
 /** Un actor de mentira que apunta lo que le mandan decir. */
-function actorFalso(estadoActual: ScrumState = estado()) {
+function actorFalso(estadoActual: ScrumState = estado(), idos: readonly string[] = []) {
   const dicho: { momento: string; frase: string }[] = [];
   const actor = {
     aplicarDelSistema(_seatId: string, accion: unknown) {
@@ -42,6 +42,7 @@ function actorFalso(estadoActual: ScrumState = estado()) {
       dicho.push({ momento: dicha.momento, frase: dicha.frase });
     },
     estadoDelJuego: () => estadoActual,
+    conectado: (seatId: string) => !idos.includes(seatId),
   };
   return { actor: actor as unknown as RoomActor, dicho };
 }
@@ -192,7 +193,8 @@ describe('el dealer hablando', () => {
       expect(dicho).toHaveLength(1);
     });
 
-    it('al modelo se le manda la mesa entera y quién falta por votar', () => {
+    /** Lo que se le manda al modelo con la mano en juego. */
+    function encargoEnJuego(): string {
       const { actor } = actorFalso();
       const modelo = vi.fn().mockResolvedValue({ text: 'Va.', model: 'x' });
       const votos = { oscar: numero(5) };
@@ -200,14 +202,98 @@ describe('el dealer hablando', () => {
       new DealerDeMesa(CON_CLAVE, MESA, modelo).trasJugada(actor, estado(), estado({ votos }));
 
       const mensajes = modelo.mock.calls[0][1] as { role: string; content: string }[];
+      return mensajes[1].content;
+    }
+
+    /**
+     * El agujero por el que se escapaba la ronda.
+     *
+     * El crupier corre en el servidor y ve el estado entero, así que es el
+     * único de la mesa capaz de contar lo que `view` esconde. Y lo hacía: se le
+     * mandaban todos los votos en todos los momentos, y cantaba lo que habías
+     * puesto media ronda antes de que se destapara.
+     */
+    it('con las cartas boca abajo, al modelo no le llega ni un voto', () => {
+      const encargo = encargoEnJuego();
+      expect(encargo).not.toContain('Óscar: 5');
+      expect(encargo).not.toMatch(/Óscar[^\n]*\b5\b/);
+      expect(encargo).toMatch(/no sabes/i);
+    });
+
+    it('pero sí quién ha puesto y quién falta, con su cuenta', () => {
+      const encargo = encargoEnJuego();
+      expect(encargo).toContain('Óscar');
+      expect(encargo).toContain('Bea');
+      expect(encargo).toMatch(/han puesto \(1 de 3\)/);
+      expect(encargo).toContain('Faltan 2');
+    });
+
+    it('y el personaje sigue siendo el mismo', () => {
+      const { actor } = actorFalso();
+      const modelo = vi.fn().mockResolvedValue({ text: 'Va.', model: 'x' });
+      new DealerDeMesa(CON_CLAVE, MESA, modelo).trasJugada(
+        actor,
+        estado(),
+        estado({ votos: { oscar: numero(5) } }),
+      );
+      const mensajes = modelo.mock.calls[0][1] as { role: string; content: string }[];
       expect(mensajes[0].content).toContain('manchego');
-      expect(mensajes[1].content).toContain('Óscar: 5');
-      expect(mensajes[1].content).toContain('Bea: todavía no ha votado');
+    });
+
+    it('al destapar sí le llega la mesa entera', () => {
+      const { actor } = actorFalso();
+      const modelo = vi.fn().mockResolvedValue({ text: 'Va.', model: 'x' });
+      const votos = { oscar: numero(5), bea: numero(5), eva: numero(5) };
+
+      new DealerDeMesa(CON_CLAVE, MESA, modelo).trasJugada(
+        actor,
+        estado({ votos }),
+        estado({ votos, revelado: true }),
+      );
+
+      const encargo = (modelo.mock.calls[0][1] as { content: string }[])[1].content;
+      expect(encargo).toContain('Óscar: 5');
+      expect(encargo).toContain('destapadas');
+    });
+
+    /** El café es un voto como otro cualquiera: de quién es, no se dice. */
+    it('del café no se dice de quién es', () => {
+      const { actor } = actorFalso();
+      const modelo = vi.fn().mockResolvedValue({ text: 'Va.', model: 'x' });
+
+      new DealerDeMesa(CON_CLAVE, MESA, modelo).trasJugada(
+        actor,
+        estado(),
+        estado({ votos: { bea: { tipo: 'cafe' } } }),
+      );
+
+      const encargo = (modelo.mock.calls[0][1] as { content: string }[])[1].content;
+      expect(encargo).toMatch(/alguien acaba de pedir café/i);
+      expect(encargo).not.toContain('Bea ha pedido');
     });
   });
 });
 
 describe('meter prisa a la mesa', () => {
+  /**
+   * A un asiento vacío no se le mete prisa.
+   *
+   * Quien cierra la pestaña deja el asiento puesto, y el crupier se quedaba
+   * insistiéndole cada cuarenta segundos a una silla.
+   */
+  it('si los que faltan ya se han ido, no insiste', () => {
+    vi.useFakeTimers();
+    const enMarcha = estado({ votos: { oscar: numero(5) } });
+    const { actor, dicho } = actorFalso(enMarcha, ['bea', 'eva']);
+
+    new DealerDeMesa(null, MESA).trasJugada(actor, estado(), enMarcha);
+    dicho.length = 0;
+
+    vi.advanceTimersByTime(120_000);
+    expect(dicho.filter((una) => una.momento === 'espabila')).toHaveLength(0);
+    vi.useRealTimers();
+  });
+
   it('con gente sin votar, programa el aviso', () => {
     vi.useFakeTimers();
     const enMarcha = estado({ votos: { oscar: numero(5) } });
