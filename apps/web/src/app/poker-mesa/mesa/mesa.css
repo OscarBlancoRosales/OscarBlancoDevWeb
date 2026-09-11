@@ -1,161 +1,713 @@
 /* =========================================================================
    La mesa de planning poker.
 
-   Todo sale del tema del sitio menos el tapete, que es verde de casino en
-   cualquier tema: una mesa de poker marrón no es una mesa de poker. Aun así
-   se mezcla con el fondo del tema para que no cante.
+   Cabe entera en la ventana y no se hace scroll para nada: la barra arriba,
+   la mesa y la charla en el medio repartiéndose el alto, y tus fichas al pie.
+   Lo que crece -la conversación, el reparto de votos- crece dentro de su
+   panel, nunca empujando a lo demás.
+
+   El tapete sale del tema, no es verde fijo: se tiñe con el color de acento
+   sobre un fondo muy oscuro, así que en cada piel es un fieltro distinto y en
+   todas sigue pareciendo un fieltro.
    ========================================================================= */
 
 :host {
-  --tapete: #1d6b41;
-  --tapete-hondo: #0d3220;
-  --madera: #6b4a24;
-  --madera-clara: #a2794a;
+  /*
+   * El paño y su canto.
+   *
+   * Cuelgan del acento del tema, pero muy diluidos sobre un fondo casi negro:
+   * un fieltro no es el color de la marca a todo trapo, es ese color visto con
+   * poca luz. Con el acento al veinte por ciento salía un verde de neón.
+   */
+  --fieltro: color-mix(in srgb, var(--accent) 12%, #0a1d15);
+  --fieltro-hondo: color-mix(in srgb, var(--accent) 4%, #050e0a);
+  /*
+   * El canto es cuero oscuro, casi sin teñir. Con el acento subido, el filo de
+   * luz de arriba se convertía en una raya de neón alrededor de la mesa.
+   */
+  --canto: color-mix(in srgb, var(--accent) 6%, #17130e);
+  --canto-luz: color-mix(in srgb, var(--accent) 9%, #3a3128);
+  /* Las placas de cada sitio: cristal oscuro sobre el paño. */
+  --placa: color-mix(in srgb, var(--bg) 78%, transparent);
+  --placa-borde: color-mix(in srgb, var(--bright) 16%, transparent);
+
+  display: block;
+  height: 100%;
 }
 
-/* Todo cabe en una pantalla sin scroll: la mesa arriba con el crupier al
-   lado, tus fichas debajo y la charla al pie. Si la mesa creciera sin tope se
-   comería el sitio de las fichas, que es con lo que de verdad se juega. */
-.salon {
-  display: grid;
-  /* El crupier tiene ancho fijo: si compartiera el reparto con la mesa, cada
-     vez que dijera algo largo le robaría sitio al tapete y todo se movería. */
-  grid-template-columns: minmax(0, 1fr) 200px;
-  grid-template-areas:
-    'tapete crupier'
-    'reparto reparto'
-    'bandos bandos'
-    'mano mano'
-    'charla charla';
-  gap: 18px 26px;
-  /* Hueco arriba para las cabezas y los bocadillos de quien se sienta al
-     fondo: sobresalen del tapete a propósito, como en una mesa de verdad. */
-  padding: 74px 12px 8px;
-  max-width: 1240px;
-  margin: 0 auto;
-}
-
-/* ===== EL TAPETE ===== */
-.tapete {
-  grid-area: tapete;
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 50vh;
-  min-height: 330px;
-  justify-self: center;
+* {
+  box-sizing: border-box;
 }
 
 /**
- * El óvalo del fieltro, con su cerco de madera y su luz cenital.
+ * En columna y no en rejilla de filas fijas.
  *
- * Los recortes no son decorativos: dibujan **la misma elipse** por la que el
- * motor reparte los sitios -centro en (50%, 52%), radios 42% y 40%-, así que
- * cada uno se sienta justo en el borde y no flotando dentro del tapete.
+ * El aviso de error solo existe cuando hay error, y con filas fijas su ausencia
+ * corría el reparto: la mesa se quedaba con la fila de «auto» y el pie con todo
+ * el alto sobrante. En una columna flexible da igual cuántos hijos haya.
+ */
+.sala {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  padding: 10px 12px 12px;
+  color: var(--text);
+}
+
+.barra,
+.aviso,
+.mano {
+  flex: none;
+}
+
+.juego {
+  flex: 1;
+}
+
+/* ===== LA BARRA DE ARRIBA ===== */
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.asunto {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 220px;
+}
+
+.asunto-etiqueta {
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.asunto input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--bright);
+  padding: 7px 11px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.asunto input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.barra-acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ronda {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+}
+
+/* ===== BOTONES ===== */
+.chico {
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  border-radius: 6px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 11px;
+  cursor: pointer;
+  transition:
+    color 0.13s,
+    border-color 0.13s;
+}
+
+.chico:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.chico:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.principal {
+  border: 1px solid rgba(var(--accent-rgb), 0.65);
+  background: linear-gradient(
+    180deg,
+    rgba(var(--accent-rgb), 0.28),
+    rgba(var(--accent-rgb), 0.12)
+  );
+  border-radius: 7px;
+  color: var(--bright);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 9px 18px;
+  cursor: pointer;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  transition: filter 0.13s;
+}
+
+.principal:hover:not(:disabled) {
+  filter: brightness(1.22);
+}
+
+.principal:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.aviso {
+  margin: 0;
+  border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
+  background: color-mix(in srgb, var(--error) 12%, var(--bg-soft));
+  border-radius: 6px;
+  color: var(--error);
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
+/* ===== EL REPARTO DE LA PANTALLA ===== */
+.juego {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 290px;
+  gap: 12px;
+  min-height: 0;
+}
+
+/**
+ * El salón.
+ *
+ * Lleva su propia penumbra: una luz cenital floja sobre el fondo del tema. Sin
+ * ella la mesa flota recortada sobre un negro plano y parece pegada encima de
+ * la pantalla en vez de estar en una sala.
+ */
+.salon {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 14px;
+  background:
+    radial-gradient(
+      ellipse 70% 60% at 50% 42%,
+      color-mix(in srgb, var(--accent) 5%, transparent),
+      transparent 70%
+    ),
+    linear-gradient(180deg, var(--bg-soft), var(--bg) 60%);
+  border: 1px solid var(--border);
+  padding: 8px;
+}
+
+.salon .banca {
+  flex: none;
+}
+
+.salon .mesa-hueco {
+  flex: 1;
+  padding: 4px 0 10px;
+}
+
+/* ===== LA BANCA: arriba siempre ===== */
+/**
+ * La banca: arriba, centrada, y del ancho de la mesa.
+ *
+ * A todo lo ancho parecía una barra de herramientas. Con el ancho de la mesa se
+ * lee como lo que es: el sitio del crupier, justo detrás del tapete.
+ */
+.banca {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bright) 6%, var(--bg)), var(--bg));
+  padding: 7px 12px 7px 7px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Una luz de acento cuando el crupier suelta algo: se nota sin moverse nada. */
+.banca::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.5) inset;
+  opacity: 0;
+  transition: opacity 0.35s;
+}
+
+.banca.hablando::after {
+  opacity: 1;
+}
+
+.banca-cara {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  object-position: 50% 8%;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
+  flex: none;
+}
+
+.banca-voz {
+  min-width: 0;
+}
+
+.banca-quien {
+  margin: 0 0 2px;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.banca-host {
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  text-transform: none;
+}
+
+.dice {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--bright);
+  /* Dos líneas como mucho: si el crupier se enrolla, no empuja la mesa. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.dice.callado {
+  color: var(--muted);
+}
+
+.banca-mandos {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.siguiente {
+  width: 150px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.siguiente:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.espera-banca {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ===== EL TAPETE ===== */
+
+/* El hueco donde vive la mesa. La mesa se centra dentro, no lo llena. */
+.mesa-hueco {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  min-width: 0;
+}
+
+/**
+ * La mesa.
+ *
+ * Con tope de ancho y de alto, y guardando la proporción: una mesa de poker es
+ * más ancha que alta y tiene un tamaño. Estirada a lo ancho de un monitor de
+ * 27 pulgadas deja un descampado verde en el medio y las placas parecen
+ * moscas; el sitio que sobra se lo queda el margen, que es lo que hace que se
+ * vea como una mesa y no como un fondo de pantalla.
+ */
+.tapete {
+  position: relative;
+  width: 100%;
+  max-width: 1180px;
+  aspect-ratio: 2.25 / 1;
+  max-height: 100%;
+  min-height: 0;
+  min-width: 0;
+}
+
+/**
+ * El canto de la mesa: la madera que rodea el paño.
+ *
+ * Va por detrás del fieltro y un poco más afuera, con la luz arriba, que es
+ * como se ve un canto de verdad: la madera coge el brillo por encima y se
+ * apaga hacia abajo.
+ */
+.tapete::before {
+  content: '';
+  position: absolute;
+  inset: calc(10% - 13px) calc(4% - 13px);
+  border-radius: 20% / 27%;
+  background: linear-gradient(180deg, var(--canto-luz), var(--canto) 42%, #090705);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.09) inset,
+    0 20px 44px rgba(0, 0, 0, 0.55);
+}
+
+/**
+ * El paño.
+ *
+ * Los recortes dibujan **la misma figura** por la que el reparto coloca a la
+ * gente: un rectángulo de 4% a 96% de ancho y de 10% a 90% de alto, con las
+ * esquinas comidas 16% en horizontal y 18% en vertical. Si esto y el reparto
+ * no coincidieran, habría gente sentada en el aire por las esquinas.
  */
 .fieltro {
   position: absolute;
-  inset: 12% 8% 8%;
-  border-radius: 50%;
-  /* La madera con veta: dos bordes y un degradado en lugar de una línea
-     plana, que es lo que hacía que pareciera un óvalo pintado. */
-  border: 14px solid transparent;
+  inset: 10% 4%;
+  border-radius: 17.4% / 22.5%;
   background:
-    /* El fieltro, con la luz de la lámpara cayendo en el centro */
-    radial-gradient(58% 52% at 50% 40%, color-mix(in srgb, var(--tapete) 82%, #fff 18%), transparent 72%)
-      padding-box,
-    radial-gradient(130% 110% at 50% 38%, var(--tapete), var(--tapete-hondo)) padding-box,
-    /* Y el cerco, con su veta */
-    linear-gradient(150deg, var(--madera-clara), var(--madera) 40%, #4a3116 75%, var(--madera-clara))
-      border-box;
+    /* La trama del tejido: dos rayados muy flojos cruzados */
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.014) 0 2px,
+      transparent 2px 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(0, 0, 0, 0.05) 0 2px,
+      transparent 2px 4px
+    ),
+    /* Y la luz cenital, que es lo que le da bulto */
+      radial-gradient(ellipse at 50% 34%, var(--fieltro), var(--fieltro-hondo) 76%);
   box-shadow:
-    inset 0 0 70px rgba(0, 0, 0, 0.6),
-    inset 0 3px 0 rgba(255, 255, 255, 0.07),
-    0 18px 50px rgba(0, 0, 0, 0.55);
+    /* El paño se hunde contra el canto, y se apaga hacia los bordes */
+    0 14px 34px rgba(0, 0, 0, 0.6) inset,
+    0 -10px 30px rgba(0, 0, 0, 0.45) inset,
+    26px 0 40px rgba(0, 0, 0, 0.28) inset,
+    -26px 0 40px rgba(0, 0, 0, 0.28) inset,
+    0 0 0 1px rgba(0, 0, 0, 0.65);
 }
 
-/* La costura del fieltro, un centímetro por dentro del cerco */
-.fieltro::after {
-  content: '';
+/* La raya del paño, esa que marca hasta dónde llegan las cartas. */
+.linea {
   position: absolute;
-  inset: 12px;
-  border-radius: 50%;
-  border: 1px dashed rgba(255, 255, 255, 0.13);
+  inset: 12% 7%;
+  border-radius: 16% / 22%;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/**
+ * La marca de la casa, serigrafiada en el paño.
+ *
+ * Es el detalle que separa un rectángulo verde de una mesa: toda mesa de
+ * casino lleva su nombre en el centro, apagado, por debajo de las cartas.
+ */
+.linea::after {
+  content: 'SCRUM POKER';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(13px, 2.6vw, 26px);
+  letter-spacing: 0.5em;
+  font-weight: 700;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--bright) 7%, transparent);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
   pointer-events: none;
 }
 
-/* Cada sitio se coloca por porcentaje, que es lo que reparte el motor */
-.sitio {
+/* ===== EL CENTRO: el bote, y luego las cuentas ===== */
+.centro {
   position: absolute;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, -50%);
+  z-index: 1;
+  width: min(62%, 360px);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.bote {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+  max-width: 190px;
+}
+
+/**
+ * Cada ficha del bote, vista de canto y pisando a la de al lado.
+ *
+ * El margen negativo es lo que hace la pila: sin él son monedas sueltas en
+ * fila, y una fila de monedas no es un bote.
+ */
+.bote i {
+  width: 22px;
+  height: 22px;
+  margin-right: -9px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0.7) 0deg 7deg,
+      transparent 7deg 45deg
+    ),
+    radial-gradient(circle at 50% 42%, var(--accent) 0 55%, rgba(0, 0, 0, 0.78) 55%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.75),
+    0 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+.bote i:last-child {
+  margin-right: 0;
+}
+
+.esperando {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  color: color-mix(in srgb, var(--bright) 72%, transparent);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.acuerdo {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+.acuerdo.unanime,
+.acuerdo.consenso {
+  color: var(--ok);
+}
+
+.acuerdo.disperso {
+  color: var(--warn);
+}
+
+.acuerdo.roto {
+  color: var(--error);
+}
+
+.numeros {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+
+.numero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 58px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.42);
+  padding: 5px 8px;
+}
+
+.numero strong {
+  font-size: 17px;
+  color: var(--bright);
+  line-height: 1.1;
+}
+
+.numero i {
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ===== LOS SITIOS ===== */
+.sitio {
+  position: absolute;
+  transform: translate(-50%, -50%);
   z-index: 2;
 }
 
 /**
- * El puesto de cada uno: su chapa y su carta, en horizontal.
+ * La placa de cada uno.
  *
- * En una pastilla con fondo propio y no suelto sobre el fieltro: un nombre
- * blanco sobre verde claro no se lee, y la carta debajo del avatar caía
- * dentro del tapete y chocaba con lo que hubiera en el centro.
+ * Es la «zona» de esa persona: su cara, su nombre, lo que está haciendo y su
+ * carta, todo junto en una pastilla con fondo propio. Va montada a caballo del
+ * canto de la mesa, como los asientos de un cliente de poker de verdad.
  */
-.puesto {
-  display: flex;
+.placa {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  gap: 7px;
-  padding: 5px 9px 5px 5px;
-  border-radius: 999px;
-  background: rgba(10, 12, 10, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 9px;
+  width: 168px;
+  border: 1px solid var(--placa-borde);
+  border-radius: 10px;
+  background: var(--placa);
   backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  padding: 5px 6px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  transition: border-color 0.18s, box-shadow 0.18s;
+  transition:
+    border-color 0.18s,
+    box-shadow 0.18s;
 }
 
-/* Quien ya ha votado se enciende: se ve de un vistazo a quién se espera */
-.sitio.ha-votado .puesto {
-  border-color: rgba(var(--accent-rgb), 0.55);
-  box-shadow:
-    0 4px 14px rgba(0, 0, 0, 0.5),
-    0 0 16px rgba(var(--accent-rgb), 0.28);
+.placa.tu {
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 
-.sitio.tu .puesto {
-  border-color: var(--bright);
+/*
+ * Haber puesto lo marca el aro del retrato, no el borde de la placa.
+ *
+ * Con las dos cosas a la vez, cinco placas encendidas eran cinco halos verdes
+ * y la mesa parecía un árbol de Navidad. El aro basta: se ve de un vistazo
+ * quién ha puesto sin que la mesa se llene de luces.
+ */
+.placa.ha-votado {
+  border-color: var(--placa-borde);
 }
 
-.jugador {
-  display: flex;
-  align-items: center;
-  gap: 7px;
+.placa.fuera {
+  opacity: 0.45;
 }
 
-.avatar {
-  width: 42px;
-  height: 42px;
+.placa.grave {
+  border-color: color-mix(in srgb, var(--error) 70%, transparent);
+}
+
+.placa.leve {
+  border-color: color-mix(in srgb, var(--warn) 65%, transparent);
+}
+
+.retrato {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  flex: none;
+}
+
+/**
+ * El hueco redondo donde vive la cara.
+ *
+ * El retrato se mete dentro **ampliado**: los dibujos vienen encuadrados a
+ * 512x512 con la cabeza ocupando el sesenta por ciento del alto (ver
+ * tools/encuadrar-avatares.mjs), así que a tamaño natural en un círculo de
+ * 46 px se ve la persona entera y la cara queda del tamaño de una lenteja. Al
+ * ampliarlos al ciento cincuenta por ciento y subirlos un poco, el círculo
+ * encuadra la cara de todos por igual, que es de lo que se trataba.
+ */
+.retrato .hueco {
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  object-fit: cover;
-  object-position: 50% 12%;
-  background: var(--bg);
-  border: 2px solid rgba(255, 255, 255, 0.16);
-  flex-shrink: 0;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 8%, #0b0f0d);
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.75),
+    0 0 0 3px color-mix(in srgb, var(--bright) 20%, transparent);
+  transition: box-shadow 0.18s;
 }
 
-.sitio.ha-votado .avatar {
-  border-color: var(--accent);
+.retrato img {
+  position: absolute;
+  width: 150%;
+  height: 150%;
+  left: -25%;
+  top: -9%;
+  object-fit: cover;
+}
+
+.placa.ha-votado .retrato .hueco {
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.75),
+    0 0 0 3px color-mix(in srgb, var(--ok) 62%, transparent);
+}
+
+.placa.tu .retrato .hueco {
+  box-shadow:
+    0 0 0 1.5px rgba(0, 0, 0, 0.75),
+    0 0 0 3px color-mix(in srgb, var(--accent) 75%, transparent);
+}
+
+/* El botón de la banca, el disco blanco que en una mesa marca quién reparte. */
+.boton-de-banca {
+  position: absolute;
+  right: -4px;
+  bottom: -3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #fff, #cfcfcf);
+  color: #1a1a1a;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.quien {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .nombre {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--bright);
-  max-width: 92px;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.estado {
+  font-size: 10px;
+  color: var(--muted);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ===== LAS CARTAS ===== */
@@ -164,395 +716,359 @@
   align-items: center;
   justify-content: center;
   width: 34px;
-  height: 48px;
-  flex-shrink: 0;
+  height: 45px;
+  flex: none;
   border-radius: 5px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #f4f1e8;
-  color: #1a1a1a;
+  background: linear-gradient(180deg, #fdfdf7, #e6e6db);
+  color: #16181a;
   font-size: 17px;
   font-weight: 700;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.55);
-  animation: destapa 0.28s ease-out;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.55);
 }
 
-/* Boca abajo: el dorso rojo con su rejilla, como una baraja de verdad */
-.carta.tapada {
-  background:
-    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.14) 0 3px, transparent 3px 6px),
-    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.14) 0 3px, transparent 3px 6px),
-    linear-gradient(160deg, #9c2b2b, #6d1b1b);
-  border-color: rgba(255, 255, 255, 0.3);
-  animation: none;
-}
-
-/* Sin votar todavía: hueco, para que se note que falta */
 .carta.vacia {
-  border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.22);
   background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.18);
   box-shadow: none;
-  animation: none;
 }
 
-/* Al destapar, quien se ha salido del corro se ve enseguida */
-.carta.leve {
-  background: #ffe9b8;
-  border-color: var(--warn);
-  color: #6a4a00;
+.carta.tapada {
+  background: linear-gradient(140deg, #7d1421, #4a0b14);
 }
 
-.carta.grave {
-  background: #ffd7d7;
-  border-color: var(--error);
-  color: #7a1414;
-  box-shadow:
-    0 3px 8px rgba(0, 0, 0, 0.55),
-    0 0 16px color-mix(in srgb, var(--error) 55%, transparent);
+/* El dorso: el rombo de toda la vida. */
+.dorso {
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.16) 0 3px, transparent 3px 6px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.16) 0 3px, transparent 3px 6px);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
-/* La carta gira al destaparse; sin esto todas aparecen de golpe y no se ve
-   que ha pasado algo. */
-@keyframes destapa {
-  from {
-    transform: rotateY(90deg) scale(0.9);
-    opacity: 0.4;
-  }
-}
-
-/* ===== LOS BOCADILLOS =====
-   Se salen del ancho del sitio a propósito: un bocadillo estrecho parte
-   cualquier frase en seis líneas y no hay quien lo lea. */
+/* ===== EL BOCADILLO ===== */
 .bocadillo {
-  position: relative;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
-  padding: 7px 11px;
+  max-width: 190px;
   width: max-content;
-  max-width: 200px;
+  border-radius: 10px;
   background: var(--bright);
-  color: #111;
-  border-radius: 11px;
-  font-size: 11.5px;
-  line-height: 1.45;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.55);
-  animation: sale 0.18s ease-out;
+  color: #14171a;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  z-index: 3;
 }
 
-/* El pico, apuntando hacia abajo a quien habla */
 .bocadillo::after {
   content: '';
   position: absolute;
+  top: 100%;
   left: 50%;
-  bottom: -6px;
   transform: translateX(-50%);
-  border: 7px solid transparent;
+  border: 6px solid transparent;
   border-top-color: var(--bright);
-  border-bottom: 0;
 }
 
-@keyframes sale {
-  from {
-    opacity: 0;
-    transform: translateY(5px) scale(0.96);
-  }
-}
-
-/* ===== EL CENTRO DE LA MESA ===== */
-.centro {
-  position: absolute;
-  left: 50%;
-  top: 54%;
-  transform: translate(-50%, -50%);
-  width: min(300px, 48%);
-  text-align: center;
-  z-index: 1;
-}
-
-/* Se escribe encima del tapete, sin caja ni marco: parece el rótulo de la
-   mesa hasta que lo pulsas. */
-.asunto {
-  display: block;
-  width: 100%;
-  margin: 0 0 12px;
-  padding: 4px 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  text-align: center;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
-}
-
-.asunto::placeholder {
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.asunto:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-.asunto:focus {
-  outline: none;
-  border-color: rgba(255, 255, 255, 0.55);
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* El bote: una ficha por voto puesto, para ver crecer la mesa */
-.bote {
+/* ===== LA COLUMNA DE LA DERECHA ===== */
+/* En columna, no en filas fijas: el resultado solo existe al destapar, y con
+   filas fijas su ausencia dejaba la charla con el alto de su contenido. */
+.columna {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
-}
-
-.bote-fichas {
-  display: inline-flex;
-  gap: 4px;
-  min-height: 18px;
-}
-
-.bote-fichas i {
-  display: block;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: linear-gradient(160deg, #e8e2d4, #b9b0a0);
-  border: 2px dashed rgba(0, 0, 0, 0.35);
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
-  animation: cae 0.25s ease-out;
-}
-
-@keyframes cae {
-  from {
-    transform: translateY(-14px) scale(0.6);
-    opacity: 0;
-  }
-}
-
-.numeros {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 16px;
-}
-
-.numero {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
-}
-
-.numero strong {
-  display: block;
-  font-size: 20px;
-  color: #fff;
-}
-
-.acuerdo {
-  margin: 10px 0 0;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
-}
-
-.acuerdo.total,
-.acuerdo.consenso {
-  color: #8fe58f;
-}
-
-.acuerdo.dispersion {
-  color: #ffd166;
-}
-
-.acuerdo.desacuerdo {
-  color: #ff8f8f;
-}
-
-.esperando {
-  margin: 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.82);
-  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.9);
-}
-
-.bote.listo .esperando {
-  color: #9fe89f;
-}
-
-/* ===== EL CRUPIER ===== */
-.crupier {
-  grid-area: crupier;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   gap: 10px;
-  width: 100%;
-  align-self: end;
+  min-height: 0;
 }
 
-.dealer {
-  width: 100%;
-  height: auto;
-  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.65));
+.columna .resultado {
+  flex: none;
 }
 
-.crupier.callado .dealer {
-  filter: grayscale(0.45) opacity(0.78) drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+.columna .charla {
+  flex: 1;
 }
 
-.dice {
-  position: relative;
-  margin: 0;
-  padding: 12px 14px;
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg-soft));
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  color: var(--bright);
-  font-size: 12.5px;
-  line-height: 1.55;
-  animation: sale 0.2s ease-out;
+  background: var(--bg-soft);
+  padding: 10px 12px;
 }
 
-/* Aquí el pico va arriba: el crupier está encima de lo que dice */
-.dice::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: -8px;
-  transform: translateX(-50%);
-  border: 9px solid transparent;
-  border-bottom-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-  border-top: 0;
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* ===== EL REPARTO DE VOTOS ===== */
+.filas {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fila {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+
+.fila .valor {
+  color: var(--bright);
+  text-align: right;
+}
+
+.fila .barra {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.fila .barra i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent), rgba(var(--accent-rgb), 0.45));
+}
+
+.fila .cuantos {
+  color: var(--muted);
+  text-align: right;
 }
 
 .bandos {
-  grid-area: bandos;
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--warn);
+}
+
+/* ===== LA CHARLA ===== */
+.charla {
+  min-height: 0;
+}
+
+.dichos {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 2px;
+}
+
+.charla-vacia {
   margin: 0;
-  padding: 10px 13px;
-  border-left: 3px solid var(--warn);
-  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.dicho {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.dicho .de {
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.dicho.mio .de {
+  color: var(--accent);
+}
+
+.dicho .texto {
   color: var(--text);
-  font-size: 12.5px;
+  word-break: break-word;
+}
+
+.decir {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.decir input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+.decir input:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 
 /* ===== TU MANO ===== */
+/**
+ * Tu mano, al pie.
+ *
+ * Todo junto y centrado. Con las fichas pegadas a la izquierda y los botones
+ * sueltos pegados a la derecha, en un monitor ancho quedaban dos islas
+ * separadas por medio metro de nada.
+ */
 .mano {
-  grid-area: mano;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-}
-
-/* ===== LAS FICHAS =====
-   Se suman: pulsas y se apilan hasta componer el número que quieres. Una
-   escala cerrada obliga a redondear a lo que haya en la baraja. */
-.apuesta {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
   justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, var(--bg-soft), var(--bg));
+  padding: 10px 14px;
 }
 
 .fichas {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 
+/**
+ * Las fichas con las que se apuesta.
+ *
+ * Son discos con el canto rayado, como las de verdad: el degradado hace el
+ * bulto y los trazos blancos del borde son las marcas del canto.
+ */
 .ficha {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
+  border: none;
   border-radius: 50%;
-  border: 3px dashed rgba(255, 255, 255, 0.5);
-  background:
-    radial-gradient(circle at 38% 32%, rgba(255, 255, 255, 0.28), transparent 55%),
-    var(--ficha, #444);
   color: #fff;
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  background:
+    repeating-conic-gradient(
+      from 0deg,
+      rgba(255, 255, 255, 0.85) 0deg 9deg,
+      transparent 9deg 45deg
+    ),
+    radial-gradient(circle at 50% 50%, var(--cara-ficha) 0 58%, var(--canto-ficha) 58%);
   box-shadow:
-    inset 0 0 0 5px rgba(0, 0, 0, 0.2),
-    0 5px 12px rgba(0, 0, 0, 0.55);
-  transition: transform 0.12s;
+    0 0 0 1px rgba(0, 0, 0, 0.55),
+    0 3px 7px rgba(0, 0, 0, 0.5);
+  transition:
+    transform 0.12s,
+    filter 0.12s;
+}
+
+.ficha span {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 40%, var(--cara-ficha), var(--canto-ficha) 130%);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4) inset;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  /* El disco de dentro deja ver el canto rayado por fuera. */
+  transform: scale(0.74);
 }
 
 .ficha:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
+  filter: brightness(1.12);
 }
 
-.ficha:active {
-  transform: translateY(-1px);
-}
-
-/* Cada valor con su color, como en un casino de verdad */
+/* Los colores de siempre en una mesa: blanco, rojo, verde, azul y negro. */
 .ficha.v1 {
-  --ficha: #8a8a8a;
-}
-.ficha.v2 {
-  --ficha: #2f6fb5;
-}
-.ficha.v3 {
-  --ficha: #2f8f5b;
-}
-.ficha.v5 {
-  --ficha: #b53f3f;
-}
-.ficha.v10 {
-  --ficha: #6b4bb5;
-}
-.ficha.v20 {
-  --ficha: #b58b2f;
+  --cara-ficha: #f2f2ee;
+  --canto-ficha: #b9b9ae;
+  color: #1a1a1a;
 }
 
-/* El montón: lo que llevas apostado, bien grande */
+.ficha.v1 span {
+  text-shadow: none;
+}
+
+.ficha.v2 {
+  --cara-ficha: #c4302b;
+  --canto-ficha: #7c1a17;
+}
+
+.ficha.v3 {
+  --cara-ficha: #2e7d46;
+  --canto-ficha: #17492a;
+}
+
+.ficha.v5 {
+  --cara-ficha: #2f5fa8;
+  --canto-ficha: #1a3866;
+}
+
+.ficha.v10 {
+  --cara-ficha: #6a3c9a;
+  --canto-ficha: #3d2159;
+}
+
+.ficha.v20 {
+  --cara-ficha: #1f2328;
+  --canto-ficha: #0c0e11;
+}
+
 .monton {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 8px 20px;
-  border: 1px dashed var(--border);
+  gap: 9px;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  min-width: 120px;
+  background: var(--bg);
+  padding: 6px 12px;
 }
 
 .monton.puesto {
-  border-style: solid;
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 
 .monton-etiqueta {
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--muted);
 }
 
 .monton-valor {
-  font-size: 32px;
-  line-height: 1.1;
+  font-size: 22px;
+  line-height: 1;
   color: var(--bright);
-}
-
-.monton.puesto .monton-valor {
-  color: var(--accent);
+  min-width: 28px;
+  text-align: center;
 }
 
 .quitar {
-  padding: 0;
-  background: none;
   border: none;
+  background: none;
   color: var(--muted);
   font: inherit;
   font-size: 11px;
@@ -564,246 +1080,117 @@
   color: var(--error);
 }
 
-.suelto,
-.mandos,
-.decir {
+.sueltos {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-input[type='number'],
-input[type='text'] {
-  padding: 9px 11px;
+.exacto {
+  width: 82px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 6px;
   color: var(--text);
-  font: inherit;
+  padding: 7px 9px;
+  font-family: inherit;
   font-size: 13px;
 }
 
-input[type='number'] {
-  width: 130px;
+.exacto:focus {
+  outline: none;
+  border-color: rgba(var(--accent-rgb), 0.6);
 }
 
-.asunto-nuevo {
-  flex: 1;
-  min-width: 200px;
-  max-width: 420px;
-}
-
-button.principal,
-button.secundario {
-  padding: 9px 15px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-button.principal {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.12);
+.especial.elegida {
+  border-color: rgba(var(--accent-rgb), 0.75);
   color: var(--accent);
 }
 
-button.principal:hover,
-button.secundario:hover:not(:disabled) {
-  background: var(--accent-soft);
-}
-
-button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.secundario.especial.elegida {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.12);
-}
-
-/* ===== CÓMO HA VOTADO LA MESA =====
-   Una media de ocho puede ser todos en ocho o media mesa en tres y media en
-   trece, y esas dos reuniones no se parecen en nada. */
-.reparto {
-  grid-area: reparto;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  max-width: 620px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.reparto h2 {
-  margin: 0 0 4px;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.reparto .fila {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.reparto .valor {
-  width: 42px;
-  text-align: right;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--bright);
-}
-
-.reparto .barra {
-  flex: 1;
-  height: 10px;
-  background: var(--bg-soft);
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.reparto .barra i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  border-radius: 5px;
-  transition: width 0.35s ease-out;
-}
-
-.reparto .cuantos {
-  width: 26px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* ===== LA CHARLA ===== */
-.charla {
-  grid-area: charla;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-  max-width: 760px;
-  width: 100%;
-  margin: 0 auto;
-}
-
-.dichos {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-height: 96px;
-  overflow-y: auto;
-}
-
-.dichos p {
+.mano-destapada {
   margin: 0;
-  font-size: 12.5px;
-  color: var(--text);
+  font-size: 13px;
+  color: var(--muted);
 }
 
-.dichos strong {
-  color: var(--accent);
-}
-
-.decir input {
-  flex: 1;
-  min-width: 200px;
-}
-
-.aviso {
-  margin: 0 0 12px;
-  padding: 9px 12px;
-  border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
-  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
-  color: var(--warn);
+.sentandose {
+  margin: auto;
+  color: var(--muted);
   font-size: 13px;
 }
 
-/* ===== PANTALLAS ESTRECHAS =====
-   El crupier baja debajo de la mesa: a lo ancho no cabe con dignidad. */
+/* =========================================================================
+   Pantallas estrechas: la charla baja debajo de la mesa y la mesa se queda
+   con el ancho entero. Aquí sí se hace scroll, porque en un móvil no cabe
+   todo de otra manera.
+   ========================================================================= */
 @media (max-width: 900px) {
-  .salon {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      'tapete'
-      'crupier'
-      'reparto'
-      'bandos'
-      'mano'
-      'charla';
-    padding-top: 60px;
+  :host {
+    height: auto;
   }
 
-  .crupier {
-    flex-direction: row;
-    align-items: flex-end;
-    width: auto;
+  .sala {
+    height: auto;
   }
 
-  .dealer {
-    width: 110px;
-    flex-shrink: 0;
+  .juego {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .dice::after {
-    left: -8px;
-    top: auto;
-    bottom: 18px;
-    transform: none;
-    border: 9px solid transparent;
-    border-right-color: color-mix(in srgb, var(--accent) 40%, var(--border));
-    border-left: 0;
+  .tapete {
+    min-height: 340px;
   }
 
-  .avatar {
-    width: 34px;
-    height: 34px;
+  .columna {
+    grid-template-rows: auto auto;
   }
 
-  .nombre {
-    max-width: 64px;
-    font-size: 11px;
+  .dichos {
+    max-height: 180px;
+  }
+
+  .banca {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .banca-mandos {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 560px) {
+  .placa {
+    width: 118px;
+    gap: 5px;
+  }
+
+  .retrato {
+    width: 30px;
+    height: 30px;
   }
 
   .carta {
-    width: 28px;
-    height: 40px;
-    font-size: 14px;
+    width: 24px;
+    height: 32px;
+    font-size: 13px;
   }
 
   .ficha {
-    width: 48px;
-    height: 48px;
-    font-size: 14px;
+    width: 38px;
+    height: 38px;
+    font-size: 13px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bocadillo,
-  .dice,
-  .carta,
-  .bote-fichas i {
-    animation: none;
+  .ficha,
+  .placa,
+  .banca::after {
+    transition: none;
   }
 
   .ficha:hover {
     transform: none;
-  }
-
-  .reparto .barra i {
-    transition: none;
   }
 }

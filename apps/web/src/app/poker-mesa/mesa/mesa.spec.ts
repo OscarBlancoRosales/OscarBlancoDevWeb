@@ -47,7 +47,9 @@ function salaFalsa() {
       bocadillos.set({ [seatId]: { texto } });
     },
     error: signal<string | null>(null),
-    chat: signal<readonly { kind: string; authorId: string; author: string; text: string }[]>([]),
+    chat: signal<
+      readonly { seq: number; kind: string; authorId: string; author: string; text: string }[]
+    >([]),
     miAsiento: 'yo',
     nombreDe: (seatId: string) => ASIENTOS.find((uno) => uno.id === seatId)?.displayName ?? '',
     avatarDe: (seatId: string) =>
@@ -115,7 +117,7 @@ describe('la mesa de poker', () => {
 
     it('cada uno con la cara que eligió', () => {
       pinta({});
-      const caras = Array.from(dom().querySelectorAll('.sitio .avatar')).map((una) =>
+      const caras = Array.from(dom().querySelectorAll('.sitio .retrato img')).map((una) =>
         una.getAttribute('src'),
       );
       expect(caras).toEqual([
@@ -127,7 +129,7 @@ describe('la mesa de poker', () => {
 
     it('y se ve quién ha votado ya', () => {
       pinta({ hanVotado: ['bea'] });
-      const votados = dom().querySelectorAll('.sitio.ha-votado');
+      const votados = dom().querySelectorAll('.sitio .placa.ha-votado');
       expect(votados).toHaveLength(1);
     });
   });
@@ -202,7 +204,7 @@ describe('la mesa de poker', () => {
           eva: { tipo: 'numero', valor: 21 },
         },
       });
-      expect(dom().querySelectorAll('.carta.leve, .carta.grave').length).toBeGreaterThan(0);
+      expect(dom().querySelectorAll('.placa.leve, .placa.grave').length).toBeGreaterThan(0);
     });
 
     it('con la mesa de acuerdo no se marca a nadie', () => {
@@ -215,7 +217,7 @@ describe('la mesa de poker', () => {
           eva: { tipo: 'numero', valor: 5 },
         },
       });
-      expect(dom().querySelectorAll('.carta.leve, .carta.grave')).toHaveLength(0);
+      expect(dom().querySelectorAll('.placa.leve, .placa.grave')).toHaveLength(0);
     });
 
     it('y se enseñan las cuentas de la ronda', () => {
@@ -246,14 +248,14 @@ describe('la mesa de poker', () => {
   describe('el crupier', () => {
     it('pone la cara de lo que está diciendo', () => {
       pinta({ dice: 'Explícate, anda', momento: 'elDesviado' });
-      expect(dom().querySelector('.dealer')?.getAttribute('src')).toBe(
+      expect(dom().querySelector('.banca-cara')?.getAttribute('src')).toBe(
         '/assets/poker/dealer/sarcastic.png',
       );
     });
 
     it('y otra cuando mete prisa', () => {
       pinta({ dice: 'Espabilad', momento: 'espabila' });
-      expect(dom().querySelector('.dealer')?.getAttribute('src')).toBe(
+      expect(dom().querySelector('.banca-cara')?.getAttribute('src')).toBe(
         '/assets/poker/dealer/angry.png',
       );
     });
@@ -263,10 +265,20 @@ describe('la mesa de poker', () => {
       expect(dom().querySelector('.dice')?.textContent).toContain('Cartas en la mesa.');
     });
 
-    it('y si no ha dicho nada, está pero callado', () => {
+    /**
+     * Antes, sin nada que decir, el hueco del crupier se quedaba vacío. Ahora
+     * cuenta cómo va la ronda: la zona de la banca nunca está muda.
+     */
+    it('y si no ha dicho nada, cuenta cómo va la ronda', () => {
       pinta({ dice: '' });
-      expect(dom().querySelector('.crupier')?.classList.contains('callado')).toBe(true);
-      expect(dom().querySelector('.dice')).toBeNull();
+      expect(dom().querySelector('.banca')?.classList.contains('hablando')).toBe(false);
+      expect(dom().querySelector('.dice')?.classList.contains('callado')).toBe(true);
+      expect(dom().querySelector('.dice')?.textContent).toContain('Nadie ha puesto');
+    });
+
+    it('y cuando habla, se le nota', () => {
+      pinta({ dice: 'Espabilad', momento: 'espabila' });
+      expect(dom().querySelector('.banca')?.classList.contains('hablando')).toBe(true);
     });
   });
 
@@ -347,7 +359,7 @@ describe('la mesa de poker', () => {
         },
       });
 
-      const filas = Array.from(dom().querySelectorAll('.reparto .fila')).map((fila) => [
+      const filas = Array.from(dom().querySelectorAll('.resultado .fila')).map((fila) => [
         fila.querySelector('.valor')?.textContent.trim(),
         fila.querySelector('.cuantos')?.textContent.trim(),
       ]);
@@ -364,7 +376,7 @@ describe('la mesa de poker', () => {
         hanVotado: ['yo', 'bea'],
         votos: { yo: { tipo: 'numero', valor: 3 }, bea: { tipo: 'numero', valor: 8 } },
       });
-      const anchos = Array.from(dom().querySelectorAll<HTMLElement>('.reparto .barra i')).map(
+      const anchos = Array.from(dom().querySelectorAll<HTMLElement>('.resultado .barra i')).map(
         (barra) => barra.style.width,
       );
       expect(anchos).toEqual(['50%', '50%']);
@@ -372,7 +384,109 @@ describe('la mesa de poker', () => {
 
     it('sin destapar no se enseña nada', () => {
       pinta({ hanVotado: ['yo'] });
-      expect(dom().querySelector('.reparto')).toBeNull();
+      expect(dom().querySelector('.resultado')).toBeNull();
+    });
+  });
+  /**
+   * Lo que la mesa nueva añade: tu sitio abajo, la banca arriba llevada por
+   * quien abrió la sala, y la charla dentro de la sala en vez de al pie.
+   */
+  describe('la mesa como una mesa', () => {
+    it('tú te sientas abajo en el centro, no enfrente de ti mismo', () => {
+      const mio = fixture.componentInstance.sentados.find((uno) => uno.eresTu);
+      expect(mio?.x).toBe(50);
+      expect(mio?.y).toBeGreaterThan(80);
+    });
+
+    it('y los demás dan la vuelta sin repetir sitio', () => {
+      const sitios = fixture.componentInstance.sentados.map((uno) => `${uno.x},${uno.y}`);
+      expect(new Set(sitios).size).toBe(sitios.length);
+    });
+
+    /** El disco blanco que en una mesa de verdad marca quién reparte. */
+    it('quien abrió la sala lleva el botón de la banca', () => {
+      expect(dom().querySelectorAll('.boton-de-banca')).toHaveLength(1);
+      const conBoton = fixture.componentInstance.sentados.filter((uno) => uno.esAnfitrion);
+      expect(conBoton.map((uno) => uno.nombre)).toEqual(['Óscar']);
+    });
+
+    it('debajo de cada nombre pone lo que está haciendo', () => {
+      pinta({ hanVotado: ['bea'], votos: { bea: { tipo: 'cafe' } } });
+      const estados = fixture.componentInstance.sentados.map((uno) => [uno.nombre, uno.estado]);
+      expect(estados).toContainEqual(['Bea', 'Pide café']);
+      expect(estados).toContainEqual(['Óscar', 'Pensando…']);
+    });
+
+    it('a quien se ha ido se le nota', () => {
+      sala.mesa.set(ASIENTOS.map((uno) => ({ ...uno, connected: uno.id !== 'eva' })));
+      fixture.detectChanges();
+      expect(dom().querySelectorAll('.placa.fuera')).toHaveLength(1);
+    });
+  });
+
+  describe('quién lleva la ronda', () => {
+    it('la lleva el anfitrión, y es quien ve los mandos', () => {
+      pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
+      expect(fixture.componentInstance.puedesLlevarLaRonda).toBe(true);
+      expect(dom().textContent).toContain('Destapar');
+    });
+
+    it('quien no la lleva ve a quién espera, no un botón que no es suyo', () => {
+      sala.mesa.set(ASIENTOS.map((uno) => ({ ...uno, isOwner: uno.id === 'bea' })));
+      pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
+
+      expect(fixture.componentInstance.puedesLlevarLaRonda).toBe(false);
+      expect(dom().textContent).toContain('La lleva Bea');
+      expect(dom().textContent).not.toContain('Destapar');
+    });
+
+    /** Si el anfitrión se va, la mesa no se queda encallada esperándole. */
+    it('si el anfitrión se ha ido, puede repartir cualquiera', () => {
+      sala.mesa.set(
+        ASIENTOS.map((uno) => ({
+          ...uno,
+          isOwner: uno.id === 'bea',
+          connected: uno.id !== 'bea',
+        })),
+      );
+      pinta({ hanVotado: ['yo'], votos: { yo: { tipo: 'numero', valor: 5 } } });
+      expect(fixture.componentInstance.puedesLlevarLaRonda).toBe(true);
+    });
+
+    it('sin un solo voto no se destapa nada', () => {
+      pinta({});
+      const destapar = Array.from(dom().querySelectorAll<HTMLButtonElement>('button')).find(
+        (boton) => boton.textContent.includes('Destapar'),
+      );
+      expect(destapar?.disabled).toBe(true);
+    });
+  });
+
+  describe('la charla', () => {
+    it('vive en la sala y se lee entera, sin recortar a los últimos', () => {
+      sala.chat.set(
+        Array.from({ length: 12 }, (_, i) => ({
+          seq: i + 1,
+          kind: 'player',
+          authorId: i % 2 === 0 ? 'yo' : 'bea',
+          author: i % 2 === 0 ? 'Óscar' : 'Bea',
+          text: `mensaje ${i + 1}`,
+        })),
+      );
+      fixture.detectChanges();
+
+      expect(dom().querySelectorAll('.charla .dicho')).toHaveLength(12);
+      expect(dom().textContent).toContain('mensaje 1');
+      expect(dom().textContent).toContain('mensaje 12');
+    });
+
+    it('lo tuyo se distingue de lo de los demás', () => {
+      sala.chat.set([
+        { seq: 1, kind: 'player', authorId: 'yo', author: 'Óscar', text: 'voto 5' },
+        { seq: 2, kind: 'player', authorId: 'bea', author: 'Bea', text: 'pues yo 13' },
+      ]);
+      fixture.detectChanges();
+      expect(dom().querySelectorAll('.dicho.mio')).toHaveLength(1);
     });
   });
 });

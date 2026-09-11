@@ -214,27 +214,127 @@ function primeroLibreDesde(desde: AvatarDeMesa, cogidas: ReadonlySet<string>): A
 }
 
 /**
+ * La forma de la mesa, en por cientos del hueco que ocupa.
+ *
+ * Un rectángulo con las esquinas redondeadas, que es la forma de una mesa de
+ * poker de verdad: lados rectos y esquinas comidas. Y es **la misma forma que
+ * dibuja el CSS** con su `border-radius`, no una parecida: si aquí se repartiera
+ * por un óvalo y allí se pintara un rectángulo, la gente se sentaría flotando
+ * fuera del tapete por las esquinas.
+ */
+const CENTRO_X = 50;
+const CENTRO_Y = 50;
+const RADIO_X = 46;
+const RADIO_Y = 40;
+/** Lo redondas que son las esquinas, en por cientos de cada eje. */
+const ESQUINA_X = 16;
+const ESQUINA_Y = 18;
+
+/** Cuántos trozos se parte cada esquina para medirla. Más, ni se nota. */
+const TROZOS_DE_ESQUINA = 48;
+
+/**
  * Dónde se sienta cada uno alrededor de la mesa.
  *
- * Reparte los asientos por el óvalo dejando la parte de abajo libre para ti:
- * en una mesa de verdad uno no se ve a sí mismo enfrente. Devuelve tantos por
- * cientos, que es lo que la pantalla necesita para colocarlos.
+ * El primero es **tu sitio**: abajo en el centro, que es donde se sienta uno en
+ * una mesa de verdad. A partir de ahí se reparte el resto por el borde en el
+ * sentido de las agujas del reloj, repartidos por distancia recorrida y no por
+ * ángulo: en un rectángulo, repartir por ángulo amontona a la gente en las
+ * esquinas y deja los lados largos vacíos.
+ *
+ * Devuelve por cientos, que es lo que la pantalla necesita para colocarlos.
  */
 export function sitiosEnLaMesa(cuantos: number): { x: number; y: number }[] {
   if (cuantos <= 0) return [];
 
+  const borde = medirElBorde();
+  // `.at()` dice la verdad -una lista puede estar vacía- y así la comprobación
+  // que de verdad hace falta no parece que sobre.
+  const vuelta = borde.at(-1)?.recorrido ?? 0;
+
   const sitios: { x: number; y: number }[] = [];
   for (let i = 0; i < cuantos; i++) {
-    // Una herradura: se empieza abajo a la izquierda, se sube por el lado, se
-    // cruza por arriba y se baja por la derecha. El hueco de abajo en medio se
-    // queda libre a propósito, que es donde estás tú.
-    const angulo = Math.PI * (1.15 - (1.3 * i) / Math.max(1, cuantos - 1));
-    sitios.push({
-      x: redondearPorciento(50 + 42 * Math.cos(angulo)),
-      y: redondearPorciento(52 - 40 * Math.sin(angulo)),
-    });
+    sitios.push(enElBorde(borde, (vuelta * i) / cuantos));
   }
   return sitios;
+}
+
+/** Un punto del borde con lo que se lleva recorrido hasta él. */
+interface PuntoDelBorde {
+  readonly x: number;
+  readonly y: number;
+  readonly recorrido: number;
+}
+
+/**
+ * Recorre el borde de la mesa midiéndolo.
+ *
+ * Empieza abajo en el centro y da la vuelta en el sentido de las agujas del
+ * reloj: media base hacia la izquierda, el lado izquierdo hacia arriba, el
+ * techo hacia la derecha, el lado derecho hacia abajo y la otra media base.
+ */
+function medirElBorde(): PuntoDelBorde[] {
+  const izquierda = CENTRO_X - RADIO_X;
+  const derecha = CENTRO_X + RADIO_X;
+  const arriba = CENTRO_Y - RADIO_Y;
+  const abajo = CENTRO_Y + RADIO_Y;
+
+  const camino: { x: number; y: number }[] = [{ x: CENTRO_X, y: abajo }];
+  const recta = (x: number, y: number): void => void camino.push({ x, y });
+  const esquina = (cx: number, cy: number, desde: number, hasta: number): void => {
+    for (let i = 1; i <= TROZOS_DE_ESQUINA; i++) {
+      const angulo = desde + ((hasta - desde) * i) / TROZOS_DE_ESQUINA;
+      camino.push({
+        x: cx + ESQUINA_X * Math.cos(angulo),
+        y: cy + ESQUINA_Y * Math.sin(angulo),
+      });
+    }
+  };
+
+  recta(izquierda + ESQUINA_X, abajo);
+  esquina(izquierda + ESQUINA_X, abajo - ESQUINA_Y, Math.PI / 2, Math.PI);
+  recta(izquierda, arriba + ESQUINA_Y);
+  esquina(izquierda + ESQUINA_X, arriba + ESQUINA_Y, Math.PI, (3 * Math.PI) / 2);
+  recta(derecha - ESQUINA_X, arriba);
+  esquina(derecha - ESQUINA_X, arriba + ESQUINA_Y, (3 * Math.PI) / 2, 2 * Math.PI);
+  recta(derecha, abajo - ESQUINA_Y);
+  esquina(derecha - ESQUINA_X, abajo - ESQUINA_Y, 0, Math.PI / 2);
+  recta(CENTRO_X, abajo);
+
+  const medidos: PuntoDelBorde[] = [];
+  let recorrido = 0;
+  let anterior: { x: number; y: number } | null = null;
+
+  for (const punto of camino) {
+    if (anterior !== null) recorrido += Math.hypot(punto.x - anterior.x, punto.y - anterior.y);
+    medidos.push({ ...punto, recorrido });
+    anterior = punto;
+  }
+  return medidos;
+}
+
+/** El punto que queda a esa distancia del arranque, interpolando entre muestras. */
+function enElBorde(borde: readonly PuntoDelBorde[], distancia: number): { x: number; y: number } {
+  for (let i = 1; i < borde.length; i++) {
+    const antes = borde[i - 1];
+    const ahora = borde[i];
+    if (ahora.recorrido < distancia) continue;
+
+    const tramo = ahora.recorrido - antes.recorrido;
+    const cuanto = tramo > 0 ? (distancia - antes.recorrido) / tramo : 0;
+    return {
+      x: redondearPorciento(antes.x + (ahora.x - antes.x) * cuanto),
+      y: redondearPorciento(antes.y + (ahora.y - antes.y) * cuanto),
+    };
+  }
+
+  // Pasado el final se devuelve el último punto. No debería llegar aquí -las
+  // distancias salen de la propia vuelta- pero un sitio en el centro de la mesa
+  // se ve raro y una excepción se ve peor.
+  const ultimo = borde.at(-1);
+  return ultimo
+    ? { x: redondearPorciento(ultimo.x), y: redondearPorciento(ultimo.y) }
+    : { x: CENTRO_X, y: CENTRO_Y };
 }
 
 function redondearPorciento(valor: number): number {

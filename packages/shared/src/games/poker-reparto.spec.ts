@@ -133,7 +133,7 @@ describe('los sitios alrededor de la mesa', () => {
     expect(sitiosEnLaMesa(1)).toHaveLength(1);
   });
 
-  /** Si alguien cae fuera del óvalo, se sienta en el aire. */
+  /** Si alguien cae fuera de la mesa, se sienta en el aire. */
   it('todos caen dentro de la mesa', () => {
     for (const sitio of sitiosEnLaMesa(8)) {
       expect(sitio.x).toBeGreaterThanOrEqual(0);
@@ -148,16 +148,52 @@ describe('los sitios alrededor de la mesa', () => {
     expect(new Set(sitios).size).toBe(6);
   });
 
-  /** El hueco de abajo en medio es el tuyo: uno no se ve a sí mismo enfrente. */
-  it('deja libre el centro de abajo, que es donde estás tú', () => {
-    const enMiSitio = sitiosEnLaMesa(6).filter((uno) => uno.y > 78 && uno.x > 35 && uno.x < 65);
-    expect(enMiSitio).toHaveLength(0);
+  /** En una mesa de verdad uno se sienta abajo, no enfrente de sí mismo. */
+  it('el primer sitio es el tuyo: abajo y en el centro', () => {
+    for (const cuantos of [1, 2, 5, 9]) {
+      const tuyo = sitiosEnLaMesa(cuantos)[0];
+      expect(tuyo.x, `con ${cuantos}`).toBe(50);
+      expect(tuyo.y, `con ${cuantos}`).toBeGreaterThan(80);
+    }
   });
 
-  it('y se reparten a los lados y por arriba', () => {
-    const sitios = sitiosEnLaMesa(5);
-    expect(sitios[0].x).toBeLessThan(30);
-    expect(sitios[sitios.length - 1].x).toBeGreaterThan(70);
-    expect(Math.min(...sitios.map((uno) => uno.y))).toBeLessThan(25);
+  it('el resto da la vuelta en el sentido de las agujas del reloj', () => {
+    const [, segundo, , cuarto] = sitiosEnLaMesa(4);
+    // Desde abajo se tira hacia la izquierda, se sube y se vuelve por la derecha.
+    expect(segundo.x).toBeLessThan(20);
+    expect(cuarto.x).toBeGreaterThan(80);
+  });
+
+  it('con cuatro, uno queda justo enfrente', () => {
+    const enfrente = sitiosEnLaMesa(4)[2];
+    expect(enfrente.x).toBe(50);
+    expect(enfrente.y).toBeLessThan(20);
+  });
+
+  /**
+   * Lo que distingue una mesa rectangular de un óvalo: los de un mismo lado
+   * caen en línea, no escalonados por la curva. En el óvalo de antes, tres
+   * personas por arriba salían a tres alturas distintas.
+   */
+  it('los lados son rectos, así que los de un lado se alinean', () => {
+    const sitios = sitiosEnLaMesa(12);
+
+    const porArriba = sitios.filter((uno) => uno.y < 15);
+    expect(porArriba.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(porArriba.map((uno) => uno.y)).size, 'todos a la misma altura').toBe(1);
+
+    const porAbajo = sitios.filter((uno) => uno.y > 85);
+    expect(porAbajo.length).toBeGreaterThanOrEqual(3);
+    expect(new Set(porAbajo.map((uno) => uno.y)).size, 'y los de la base igual').toBe(1);
+  });
+
+  /** Repartir por ángulo amontona en las esquinas; por distancia, no. */
+  it('quedan repartidos a distancias parecidas', () => {
+    const sitios = sitiosEnLaMesa(8);
+    const saltos = sitios.map((uno, i) => {
+      const siguiente = sitios[(i + 1) % sitios.length];
+      return Math.hypot(siguiente.x - uno.x, siguiente.y - uno.y);
+    });
+    expect(Math.max(...saltos) / Math.min(...saltos)).toBeLessThan(1.35);
   });
 });
