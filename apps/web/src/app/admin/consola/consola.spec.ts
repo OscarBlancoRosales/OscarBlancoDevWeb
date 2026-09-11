@@ -41,6 +41,22 @@ describe('la consola contra tu sesión', () => {
   });
 
   /**
+   * Estaba dentro del bloque de «no hay canal», así que en el propio ordenador
+   * —donde siempre hay uno— desaparecía, y no había manera de apuntar a otra
+   * máquina para probar la red privada.
+   */
+  it('la dirección se puede cambiar aunque el canal esté aquí mismo', async () => {
+    const fixture = await montar({
+      canales: () => Promise.resolve(UNO),
+      emparejado: true,
+      conversacion: () => Promise.resolve(VACIA),
+    });
+
+    expect(fixture.nativeElement.querySelector('.con-donde')).not.toBeNull();
+    fixture.destroy();
+  });
+
+  /**
    * El emparejamiento es la frontera entera: sin él no se escribe. Y el código
    * sale por el terminal, no por la red, así que hay que estar delante del
    * ordenador una vez.

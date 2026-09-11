@@ -7,25 +7,6 @@
     <p>{{ i18n.t('con.sinCanalTexto') }}</p>
     <code>claude --dangerously-load-development-channels server:devweb</code>
     <button type="button" class="btn" (click)="arrancar()">{{ i18n.t('con.reintentar') }}</button>
-
-    <!--
-      Desde el móvil, 127.0.0.1 es el móvil. Para llegar al ordenador hay que
-      decir por dónde: una red privada tipo Tailscale, con su nombre en HTTPS.
-    -->
-    <div class="con-donde">
-      <label for="donde">{{ i18n.t('con.dondeEtiqueta') }}</label>
-      <div class="con-fila">
-        <input
-          id="donde"
-          type="url"
-          name="donde"
-          [(ngModel)]="donde"
-          [placeholder]="i18n.t('con.dondePh')"
-        />
-        <button type="button" class="btn" (click)="apuntarA()">{{ i18n.t('con.guardar') }}</button>
-      </div>
-      <small>{{ i18n.t('con.dondeAyuda') }}</small>
-    </div>
   </div>
 } @else if (!emparejado()) {
   <!--
@@ -138,6 +119,28 @@
   <button type="button" class="con-salir" (click)="desemparejar()">
     {{ i18n.t('con.desemparejar') }}
   </button>
+}
+
+<!--
+  Dónde buscar el agente. Fuera del bloque de arriba a propósito: cuando el
+  canal se encuentra aquí mismo el campo desaparecía, y entonces no había
+  manera de apuntar a otra máquina desde el ordenador de siempre.
+-->
+@if (!cargando()) {
+  <div class="con-donde">
+    <label for="donde">{{ i18n.t('con.dondeEtiqueta') }}</label>
+    <div class="con-fila">
+      <input
+        id="donde"
+        type="url"
+        name="donde"
+        [(ngModel)]="donde"
+        [placeholder]="i18n.t('con.dondePh')"
+      />
+      <button type="button" class="btn" (click)="apuntarA()">{{ i18n.t('con.guardar') }}</button>
+    </div>
+    <small>{{ i18n.t('con.dondeAyuda') }}</small>
+  </div>
 }
 
 @if (error()) {
