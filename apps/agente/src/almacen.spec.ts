@@ -83,6 +83,30 @@ describe('el almacén de sesiones', () => {
     expect(pagina?.total).toBe(2);
   });
 
+  /**
+   * Se lee como un chat: lo último dicho es lo que se quiere ver, y lo de antes
+   * se pide luego. Abrirla por la tanda cero obligaba a paginar hacia adelante
+   * hasta el final para leer lo que acababa de pasar.
+   */
+  it('sin decir por dónde, se abre por el final', async () => {
+    const almacen = new Almacen(raiz);
+
+    const cola = await almacen.abrir('nueva', -1, 1);
+
+    expect(cola?.tandas).toHaveLength(1);
+    expect(cola?.tandas[0].autor).toBe('claude');
+    expect(cola?.desde).toBe(1);
+    expect(cola?.total).toBe(2);
+  });
+
+  /** Para pedir lo de antes hay que saber dónde cae el tramo que ya se tiene. */
+  it('y dice por dónde empieza el tramo que devuelve', async () => {
+    const almacen = new Almacen(raiz);
+
+    expect((await almacen.abrir('nueva', 0, 1))?.desde).toBe(0);
+    expect((await almacen.abrir('nueva', -1, 10))?.desde).toBe(0);
+  });
+
   it('un directorio que no existe no es un error: es que no hay sesiones', async () => {
     expect(await new Almacen(join(raiz, 'no-existe')).listar()).toEqual([]);
   });

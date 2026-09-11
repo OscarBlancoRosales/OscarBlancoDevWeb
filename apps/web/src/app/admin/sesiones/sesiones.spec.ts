@@ -16,9 +16,11 @@ const RESUMEN: ResumenDeSesion = {
   bytes: 4096,
 };
 
+/** Abierta por el final: las dos últimas de tres, empezando en la 1. */
 const ABIERTA: SesionAbierta = {
   resumen: RESUMEN,
   total: 3,
+  desde: 1,
   tandas: [
     {
       id: 't1',
@@ -91,7 +93,7 @@ describe('el visor de sesiones', () => {
     });
     const panel = fixture.componentInstance;
 
-    panel.busqueda = 'escritorio';
+    panel.busqueda.set('escritorio');
 
     expect(panel.listadas.map((s) => s.id)).toEqual(['s1']);
     fixture.destroy();
@@ -132,21 +134,41 @@ describe('el visor de sesiones', () => {
     fixture.destroy();
   });
 
+  /**
+   * Una sesión se lee como un chat: se abre por lo último y lo de antes se
+   * pide después. Pedir la tanda cero obligaba a paginar hacia adelante hasta
+   * el final para ver lo que acababa de pasar.
+   */
+  it('se abre por el final, no por el principio', async () => {
+    const sesion = vi.fn().mockResolvedValue(ABIERTA);
+    const fixture = await montar({
+      disponible: () => Promise.resolve(true),
+      sesiones: () => Promise.resolve([RESUMEN]),
+      sesion,
+    });
+
+    await fixture.componentInstance.abrir(RESUMEN);
+
+    expect(sesion).toHaveBeenCalledWith('s1', -1, expect.any(Number));
+    fixture.destroy();
+  });
+
   /** Hay sesiones de cinco mil tandas: se leen por tramos y se van pegando. */
-  it('trae más tandas sin perder las que ya estaban', async () => {
-    const segunda = {
+  it('lo de antes se pide hacia atrás y se pega por arriba', async () => {
+    const anterior = {
       ...ABIERTA,
+      desde: 0,
       tandas: [
         {
-          id: 't3',
+          id: 't0',
           autor: 'claude' as const,
           cuando: RESUMEN.empezo,
           deSubagente: false,
-          partes: [{ clase: 'texto' as const, texto: 'ya está' }],
+          partes: [{ clase: 'texto' as const, texto: 'lo de antes' }],
         },
       ],
     };
-    const sesion = vi.fn().mockResolvedValueOnce(ABIERTA).mockResolvedValueOnce(segunda);
+    const sesion = vi.fn().mockResolvedValueOnce(ABIERTA).mockResolvedValueOnce(anterior);
     const fixture = await montar({
       disponible: () => Promise.resolve(true),
       sesiones: () => Promise.resolve([RESUMEN]),
@@ -160,9 +182,11 @@ describe('el visor de sesiones', () => {
     await panel.masTandas();
     fixture.detectChanges();
 
-    expect(panel.abierta()?.tandas).toHaveLength(3);
+    expect(sesion).toHaveBeenLastCalledWith('s1', 0, 1);
+    expect(panel.abierta()?.tandas.map((t) => t.id)).toEqual(['t0', 't1', 't2']);
+    expect(panel.quedanPorLeer).toBe(0);
+    expect(texto(fixture)).toContain('lo de antes');
     expect(texto(fixture)).toContain('arregla el icono');
-    expect(texto(fixture)).toContain('ya está');
     fixture.destroy();
   });
 

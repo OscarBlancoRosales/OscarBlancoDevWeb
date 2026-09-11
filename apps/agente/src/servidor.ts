@@ -55,7 +55,8 @@ const ORIGENES_POR_DEFECTO = [
 const Params = Type.Object({ id: Type.String({ minLength: 1, maxLength: 120 }) });
 const NoExiste = Type.Object({ code: Type.String(), message: Type.String() });
 const Query = Type.Object({
-  desde: Type.Integer({ minimum: 0, default: 0 }),
+  /** Negativo es «el final», que es por donde se abre una sesión. */
+  desde: Type.Integer({ minimum: -1, default: -1 }),
   cuantas: Type.Integer({ minimum: 1, maximum: 200, default: 60 }),
 });
 

@@ -91,7 +91,7 @@
     </div>
   }
 
-  <div class="con-hilo">
+  <div class="con-hilo" #hilo>
     @for (mensaje of conversacion().mensajes; track $index) {
       <div class="con-mensaje" [class.mio]="mensaje.de === 'yo'">
         <span class="con-quien">{{ mensaje.de === 'yo' ? i18n.t('con.tu') : 'Claude' }}</span>

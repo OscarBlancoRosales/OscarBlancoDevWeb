@@ -473,6 +473,7 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
   'ses.tandas': { es: 'tandas', en: 'turns' },
   'ses.cuando': { es: 'Última', en: 'Last' },
   'ses.abrir': { es: 'Abrir', en: 'Open' },
+  'ses.elige': { es: 'Elige una sesión de la lista.', en: 'Pick a session from the list.' },
   'ses.ninguna': { es: 'Ninguna sesión por aquí.', en: 'No sessions here.' },
   'ses.volver': { es: '← Volver', en: '← Back' },
   'ses.verPensamientos': { es: 'Ver lo que piensa', en: 'Show its thinking' },

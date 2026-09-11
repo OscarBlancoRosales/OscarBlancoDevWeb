@@ -3,11 +3,14 @@
   font-size: 12px;
 }
 
+/* Un recuadro de aviso de lado a lado de la pantalla no se lee: se topa. */
 .con-apagado,
 .con-emparejar {
+  max-width: 560px;
+  margin: 0 auto;
   border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 20px;
+  border-radius: var(--radius);
+  padding: var(--sp-5);
   text-align: center;
 }
 
@@ -53,8 +56,9 @@
 
 /* Para llegar desde otro aparato: solo aparece cuando no hay canal aquí. */
 .con-donde {
-  margin-top: 18px;
-  padding-top: 14px;
+  max-width: 560px;
+  margin: var(--sp-5) auto 0;
+  padding-top: var(--sp-3);
   border-top: 1px solid var(--border);
 }
 
@@ -161,14 +165,23 @@
 
 /* ===== LA CONVERSACIÓN ===== */
 
+/*
+  Se lee como un chat: lo último abajo y el desliz dentro del hilo, no en la
+  página. Ocupa lo que sobra de pantalla en vez de un alto fijo que dejaba la
+  mitad en negro con la conversación apretada arriba.
+*/
 .con-hilo {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  max-height: 420px;
+  gap: var(--sp-3);
+  height: calc(100vh - 300px);
+  min-height: 220px;
   overflow-y: auto;
-  padding-right: 4px;
-  margin-bottom: 12px;
+  padding-right: var(--sp-1);
+  margin-bottom: var(--sp-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
 }
 
 .con-mensaje {
@@ -198,6 +211,7 @@
 
 .con-texto {
   margin: 2px 0 0 0;
+  max-width: 82ch;
   font-size: 12px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -233,4 +247,16 @@
   border-left: 2px solid currentColor;
   padding: 8px 12px;
   font-size: 12px;
+}
+
+/* Los permisos no se leen a lo ancho de una pantalla entera. */
+.con-permisos {
+  max-width: 900px;
+}
+
+@media (max-width: 860px) {
+  .con-hilo {
+    height: auto;
+    max-height: 60vh;
+  }
 }

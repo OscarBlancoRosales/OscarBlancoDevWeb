@@ -12,110 +12,127 @@
     <code>npm run start -w &#64;devweb/agente</code>
     <button type="button" class="btn" (click)="arrancar()">{{ i18n.t('ses.reintentar') }}</button>
   </div>
-} @else if (abierta(); as sesion) {
-  <div class="ses-cabecera">
-    <button type="button" class="btn" (click)="cerrar()">{{ i18n.t('ses.volver') }}</button>
-    <div class="ses-titulo">
-      <strong>{{ sesion.resumen.titulo }}</strong>
-      <span class="ses-meta">
-        {{ sesion.resumen.rama }} · {{ sesion.total }} {{ i18n.t('ses.tandas') }} ·
-        {{ fecha(sesion.resumen.empezo) }}
-      </span>
-    </div>
-    <label class="ses-conmutador">
-      <input
-        type="checkbox"
-        [checked]="verPensamientos()"
-        (change)="verPensamientos.set(!verPensamientos())"
-      />
-      {{ i18n.t('ses.verPensamientos') }}
-    </label>
-  </div>
+} @else {
+  <!--
+    Lista y conversación a la vez mientras quepan. En pantalla estrecha manda
+    la que estés mirando: abrir una sesión tapa la lista y «volver» la trae.
+  -->
+  <div class="ses-dos" [class.ses-dos--abierta]="abierta() !== null">
+    <aside class="ses-lista">
+      <div class="barra">
+        <input
+          class="input input--sm"
+          type="search"
+          name="busqueda"
+          [ngModel]="busqueda()"
+          (ngModelChange)="busqueda.set($event)"
+          [placeholder]="i18n.t('ses.buscar')"
+        />
+        <button type="button" class="btn btn--sm" (click)="recargar()">
+          {{ i18n.t('ses.recargar') }}
+        </button>
+      </div>
+      <p class="ses-cuenta">{{ listadas.length }} / {{ sesiones().length }}</p>
 
-  <div class="ses-hilo">
-    @for (tanda of tandasVisibles(sesion); track trackTanda($index, tanda)) {
-      <article class="tanda" [class.mia]="tanda.autor === 'yo'">
-        <header class="tanda-quien">
-          <span class="tanda-autor">{{ tanda.autor === 'yo' ? i18n.t('ses.tu') : 'Claude' }}</span>
-          @if (tanda.deSubagente) {
-            <span class="tanda-sub">{{ i18n.t('ses.subagente') }}</span>
-          }
-          <span class="tanda-hora">{{ fecha(tanda.cuando) }}</span>
+      <ul class="ses-fichas">
+        @for (sesion of listadas; track trackSesion($index, sesion)) {
+          <li>
+            <button
+              type="button"
+              class="ses-ficha"
+              [class.activa]="esLaAbierta(sesion)"
+              (click)="abrir(sesion)">
+              <span class="ses-ficha-titulo">{{ sesion.titulo }}</span>
+              <span class="ses-ficha-meta">
+                {{ sesion.proyecto }}
+                @if (sesion.rama) {
+                  · {{ sesion.rama }}
+                }
+              </span>
+              <span class="ses-ficha-pie">
+                {{ fecha(sesion.termino) }} · {{ sesion.tandas }} {{ i18n.t('ses.tandas') }} ·
+                {{ tamano(sesion.bytes) }}
+              </span>
+            </button>
+          </li>
+        } @empty {
+          <li class="ses-nota">{{ i18n.t('ses.ninguna') }}</li>
+        }
+      </ul>
+    </aside>
+
+    <section class="ses-panel">
+      @if (abierta(); as sesion) {
+        <header class="ses-cabecera">
+          <button type="button" class="btn btn--sm ses-volver" (click)="cerrar()">
+            {{ i18n.t('ses.volver') }}
+          </button>
+          <div class="ses-titulo">
+            <strong>{{ sesion.resumen.titulo }}</strong>
+            <span class="ses-meta">
+              {{ sesion.resumen.rama }} · {{ sesion.total }} {{ i18n.t('ses.tandas') }} ·
+              {{ fecha(sesion.resumen.empezo) }}
+            </span>
+          </div>
+          <label class="ses-conmutador">
+            <input
+              type="checkbox"
+              [checked]="verPensamientos()"
+              (change)="verPensamientos.set(!verPensamientos())"
+            />
+            {{ i18n.t('ses.verPensamientos') }}
+          </label>
         </header>
 
-        @for (parte of tanda.partes; track $index) {
-          @switch (parte.clase) {
-            @case ('texto') {
-              <p class="parte-texto">{{ parte.texto }}</p>
-            }
-            @case ('pensamiento') {
-              <p class="parte-pensamiento">{{ parte.texto }}</p>
-            }
-            @case ('herramienta') {
-              <div class="parte-herramienta">
-                <span class="herr-nombre">{{ parte.nombre }}</span>
-                <code class="herr-entrada">{{ parte.entrada }}</code>
-              </div>
-            }
-            @case ('resultado') {
-              <pre class="parte-resultado" [class.malo]="parte.error">{{ parte.texto }}</pre>
-            }
+        <div class="ses-hilo" #hilo>
+          @if (quedanPorLeer > 0) {
+            <!-- Lo de antes va arriba, que es de donde viene. -->
+            <button
+              type="button"
+              class="btn ses-mas"
+              (click)="masTandas()"
+              [disabled]="cargandoMas()">
+              {{ cargandoMas() ? i18n.t('ses.leyendo') : i18n.t('ses.verMas') + ' (' + quedanPorLeer + ')' }}
+            </button>
           }
-        }
-      </article>
-    }
-  </div>
 
-  @if (quedanPorLeer > 0) {
-    <button type="button" class="btn btn-full" (click)="masTandas()" [disabled]="cargandoMas()">
-      {{ cargandoMas() ? i18n.t('ses.leyendo') : i18n.t('ses.verMas') + ' (' + quedanPorLeer + ')' }}
-    </button>
-  }
-} @else {
-  <div class="ses-barra">
-    <input
-      type="text"
-      class="ses-buscar"
-      name="busqueda"
-      [(ngModel)]="busqueda"
-      [placeholder]="i18n.t('ses.buscar')"
-    />
-    <span class="ses-cuenta">{{ listadas.length }} / {{ sesiones().length }}</span>
-    <button type="button" class="btn" (click)="recargar()">{{ i18n.t('ses.recargar') }}</button>
-  </div>
+          @for (tanda of tandasVisibles(sesion); track trackTanda($index, tanda)) {
+            <article class="tanda" [class.mia]="tanda.autor === 'yo'">
+              <header class="tanda-quien">
+                <span class="tanda-autor">{{ tanda.autor === 'yo' ? i18n.t('ses.tu') : 'Claude' }}</span>
+                @if (tanda.deSubagente) {
+                  <span class="badge">{{ i18n.t('ses.subagente') }}</span>
+                }
+                <span class="tanda-hora">{{ fecha(tanda.cuando) }}</span>
+              </header>
 
-  <table class="ses-tabla">
-    <thead>
-      <tr>
-        <th>{{ i18n.t('ses.sesion') }}</th>
-        <th>{{ i18n.t('ses.rama') }}</th>
-        <th>{{ i18n.t('ses.tandas') }}</th>
-        <th>{{ i18n.t('ses.cuando') }}</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (sesion of listadas; track trackSesion($index, sesion)) {
-        <tr>
-          <td class="ses-nombre">
-            {{ sesion.titulo }}
-            <span class="ses-proyecto">{{ sesion.proyecto }}</span>
-          </td>
-          <td>{{ sesion.rama || '—' }}</td>
-          <td>{{ sesion.tandas }}</td>
-          <td>{{ fecha(sesion.termino) }}</td>
-          <td class="ses-acciones">
-            <span class="ses-peso">{{ tamano(sesion.bytes) }}</span>
-            <button type="button" class="btn" (click)="abrir(sesion)">{{ i18n.t('ses.abrir') }}</button>
-          </td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="5" class="ses-vacio">{{ i18n.t('ses.ninguna') }}</td>
-        </tr>
+              @for (parte of tanda.partes; track $index) {
+                @switch (parte.clase) {
+                  @case ('texto') {
+                    <p class="parte-texto">{{ parte.texto }}</p>
+                  }
+                  @case ('pensamiento') {
+                    <p class="parte-pensamiento">{{ parte.texto }}</p>
+                  }
+                  @case ('herramienta') {
+                    <div class="parte-herramienta">
+                      <span class="herr-nombre">{{ parte.nombre }}</span>
+                      <code class="herr-entrada">{{ parte.entrada }}</code>
+                    </div>
+                  }
+                  @case ('resultado') {
+                    <pre class="parte-resultado" [class.malo]="parte.error">{{ parte.texto }}</pre>
+                  }
+                }
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="ses-nota ses-elige">{{ i18n.t('ses.elige') }}</p>
       }
-    </tbody>
-  </table>
+    </section>
+  </div>
 }
 
 @if (error()) {

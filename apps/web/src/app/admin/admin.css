@@ -1,7 +1,12 @@
+/*
+  De lado a lado.
+
+  Estaba a 1040 px centrados, que en la ventana maximizada dejaba media
+  pantalla en negro con las tablas apretadas en el medio. Lo que sí se topa es
+  el texto largo, y eso se hace donde hay texto largo, no aquí.
+*/
 .admin {
-  padding: var(--sp-6) var(--sp-5);
-  max-width: 1040px;
-  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-5) var(--sp-6);
 }
 
 /* Cuatro cosas en una página la hacían interminable: se reparten en pestañas. */
