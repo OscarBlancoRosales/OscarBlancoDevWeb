@@ -14,7 +14,6 @@ import type { GameModule, RuleError, Seat, SeatId } from '../module';
 
 const NIVELES: readonly NivelBot[] = ['pardillo', 'apanado', 'sabelotodo'];
 
-
 const TERMINADA: RuleError = {
   code: 'partida-terminada',
   message: 'El concurso ya ha acabado.',
@@ -185,27 +184,8 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         return { ...cerrarSiProcede(state, conRespuesta, action.valor), jugadas };
       }
 
-      case 'siguiente': {
-        const ronda = rondaActual(state);
-        const cerrada = ronda && !ronda.cerrada ? cerrar(state, ronda) : state;
-        const siguiente = cerrada.actual + 1;
-
-        if (siguiente >= cerrada.rondas.length) {
-          return { ...cerrada, jugadas, fase: 'fin', turno: null };
-        }
-        return {
-          ...conBomba(cerrada, siguiente),
-          jugadas,
-          actual: siguiente,
-          // A la final se entra apostando, no contestando.
-          fase: rondaEn(cerrada, siguiente)?.pregunta.tipo === 'final' ? 'apuestas' : 'ronda',
-          // Lo votado es de la pregunta que se va, no de la que entra.
-          impugnan: [],
-          // El reloj de la ronda nueva lo pone el regidor con la hora de
-          // verdad. Heredar el de la anterior la haría nacer vencida.
-          cierraEn: 0,
-        };
-      }
+      case 'siguiente':
+        return avanzar(state, jugadas);
 
       case 'presenta':
         return {
@@ -257,6 +237,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         if (state.fase === 'apuestas') {
           return { ...state, jugadas, fase: 'ronda', cierraEn: 0 };
         }
+        // La bomba no espera a que nadie pulse: en cuanto se ve quién ha
+        // acertado, pasa. Que haya que darle a «siguiente» entre pase y pase
+        // es lo contrario de una patata caliente.
+        if (laBombaPasaSola(state)) return avanzar(state, jugadas);
+
         const ronda = rondaActual(state);
         // Una ronda ya cerrada no se vuelve a cerrar. Devolver el mismo objeto
         // es lo que hace que esta jugada no se escriba en el registro: el
@@ -425,6 +410,46 @@ function cerrarSiProcede(state: TrivialState, ronda: Ronda, valor: number): Triv
 
   const faltan = state.orden.filter((seat) => !(seat in ronda.respuestas));
   return faltan.length === 0 ? cerrar(state, ronda) : conRondaActual(state, ronda);
+}
+
+/**
+ * Si lo que hay en pantalla es una bomba ya resuelta esperando a pasar.
+ *
+ * Es la única prueba que avanza sola, y por eso se pregunta aquí y no en el
+ * servidor: quien decide cómo se juega cada prueba es el juego.
+ */
+export function laBombaPasaSola(state: TrivialState): boolean {
+  const ronda = rondaActual(state);
+  return !!ronda && ronda.cerrada && ronda.pregunta.tipo === 'bomba';
+}
+
+/**
+ * Pasa a la ronda siguiente, cerrando la de ahora si seguía viva.
+ *
+ * Es lo mismo tanto si lo pide alguien con el botón como si lo pide el reloj
+ * de la bomba, y por eso está escrito una sola vez: dos caminos distintos para
+ * avanzar acabarían avanzando distinto.
+ */
+function avanzar(state: TrivialState, jugadas: number): TrivialState {
+  const ronda = rondaActual(state);
+  const cerrada = ronda && !ronda.cerrada ? cerrar(state, ronda) : state;
+  const siguiente = cerrada.actual + 1;
+
+  if (siguiente >= cerrada.rondas.length) {
+    return { ...cerrada, jugadas, fase: 'fin', turno: null };
+  }
+  return {
+    ...conBomba(cerrada, siguiente),
+    jugadas,
+    actual: siguiente,
+    // A la final se entra apostando, no contestando.
+    fase: rondaEn(cerrada, siguiente)?.pregunta.tipo === 'final' ? 'apuestas' : 'ronda',
+    // Lo votado es de la pregunta que se va, no de la que entra.
+    impugnan: [],
+    // El reloj de la ronda nueva lo pone el regidor con la hora de verdad.
+    // Heredar el de la anterior la haría nacer vencida.
+    cierraEn: 0,
+  };
 }
 
 /**

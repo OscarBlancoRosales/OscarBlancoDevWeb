@@ -196,6 +196,38 @@ describe('la bomba', () => {
     expect(state.puntos['ana']).toBeGreaterThanOrEqual(PUNTOS_BOMBA);
   });
 
+  /**
+   * Que la bomba avance sola es parte de la prueba, no una comodidad.
+   *
+   * Tener que darle a «siguiente» entre pase y pase le regala a quien la tiene
+   * todo el tiempo del mundo justo cuando la gracia es no tenerlo, y además
+   * deja la mecha corriendo en manos de quien más tarde en pulsar.
+   */
+  it('una vez resuelta, pasa sola en cuanto se acaba el rato', () => {
+    let state = conBombaEnMarcha();
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+    state = siguiente(state);
+
+    const antes = state.actual;
+    state = responde(state, 'ana', ACIERTO);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(state.actual).toBe(antes + 1);
+    expect(state.turno).toBe('bea');
+  });
+
+  it('y ese mismo rato, fuera de la bomba, no adelanta nada', () => {
+    // En las demás pruebas se lee la explicación y se sigue cuando la mesa
+    // quiera: el reloj solo sirve para cerrar la ronda, no para saltársela.
+    let state = conBombaEnMarcha([pregunta('test', 't1')]);
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+
+    const cerrada = state.actual;
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(state.actual).toBe(cerrada);
+  });
+
   it('la ronda se cierra sin esperar a los demás: los demás miran', () => {
     let state = conBombaEnMarcha();
     for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);

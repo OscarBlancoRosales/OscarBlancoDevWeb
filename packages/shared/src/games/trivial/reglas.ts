@@ -170,3 +170,15 @@ export const SEGUNDOS_POR_PRUEBA: Readonly<Record<TipoPrueba, number>> = {
  * mirando el marcador.
  */
 export const SEGUNDOS_PARA_APOSTAR = 45;
+
+/**
+ * Lo que se espera entre un pase de la bomba y el siguiente.
+ *
+ * La bomba no se pulsa: pasa. Pararse a darle a «siguiente» entre pase y pase
+ * es exactamente lo contrario de una patata caliente, y además le da a quien
+ * la tiene todo el tiempo del mundo justo cuando la gracia es no tenerlo.
+ *
+ * Tres segundos son los que se tarda en ver quién ha acertado y a quién le
+ * cae encima. Menos no da tiempo a leerlo; más deja de quemar.
+ */
+export const SEGUNDOS_PARA_PASAR_LA_BOMBA = 3;

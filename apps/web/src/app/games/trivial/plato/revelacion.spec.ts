@@ -10,6 +10,7 @@ import {
   seExplica,
   turnoDeCantar,
 } from './revelacion';
+import { SEGUNDOS_PARA_PASAR_LA_BOMBA } from '@devweb/shared/games/trivial/reglas';
 import type { Paso } from './revelacion';
 
 describe('el destape de la respuesta', () => {
@@ -55,6 +56,12 @@ describe('el destape de la respuesta', () => {
     // Un destape que se hace largo deja de ser un efecto y pasa a ser una
     // espera. En la ronda quince se nota mucho.
     expect(LO_QUE_DURA).toBeLessThan(2_000);
+  });
+
+  it('y da tiempo a verlo antes de que la bomba pase sola', () => {
+    // La bomba avanza sin que nadie pulse. Si el destape durase más que ese
+    // plazo, la ronda cambiaría con la respuesta todavía sin enseñar.
+    expect(LO_QUE_DURA).toBeLessThan(SEGUNDOS_PARA_PASAR_LA_BOMBA * 1_000);
   });
 
   it('y mucho después sigue estando destapada', () => {

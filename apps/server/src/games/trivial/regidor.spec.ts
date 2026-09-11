@@ -50,6 +50,17 @@ function enRonda(tipo: TipoPrueba): TrivialState {
   return trivialModule.apply(conAna, { tipo: 'empezar' }, 'bea', SEATS);
 }
 
+/** Una sección de bomba de verdad: dos rondas, para que haya a dónde pasar. */
+function enBomba(): TrivialState {
+  const preguntas: Pregunta[] = [
+    { ...preguntaDe('bomba'), id: 'bomba-1' },
+    { ...preguntaDe('bomba'), id: 'bomba-2' },
+  ];
+  const inicial = trivialModule.createState(SEATS, { preguntas, semilla: 7 });
+  const conAna = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+  return trivialModule.apply(conAna, { tipo: 'empezar' }, 'bea', SEATS);
+}
+
 describe('el regidor', () => {
   it('pone el reloj al abrirse una ronda, con los segundos de esa prueba', () => {
     const { actor, puestas } = actorFalso();
@@ -117,6 +128,80 @@ describe('el regidor', () => {
 
     expect(puestas).toEqual([{ tipo: 'reloj', hasta: 10_000 }]);
     vi.useRealTimers();
+  });
+
+  /**
+   * La bomba.
+   *
+   * Es la única prueba que avanza sola, y tiene que ser así: quien la tiene
+   * contesta, se ve a quién le cae encima y sigue. Pararlo ahí a esperar un
+   * clic le da todo el tiempo del mundo al que la tiene justo cuando la gracia
+   * es no tenerlo.
+   */
+  describe('la bomba', () => {
+    /** El estado tras contestar quien la tiene, que cierra la ronda al vuelo. */
+    function contestada(): { antes: TrivialState; ahora: TrivialState } {
+      const antes = enBomba();
+      const quien = antes.turno ?? 'ana';
+      return {
+        antes,
+        ahora: trivialModule.apply(antes, { tipo: 'responder', valor: 1 }, quien, SEATS),
+      };
+    }
+
+    it('pasa sola, sin que nadie pulse nada', () => {
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const { antes, ahora } = contestada();
+
+      new RegidorDeSala(() => 0).trasJugada(actor, antes, ahora);
+      vi.advanceTimersByTime(3_000);
+
+      expect(puestas).toEqual([{ tipo: 'tiempo' }]);
+      vi.useRealTimers();
+    });
+
+    it('y ese tiempo es el que hace avanzar la ronda', () => {
+      const { ahora } = contestada();
+      const pasada = trivialModule.apply(ahora, { tipo: 'tiempo' }, 'ana', SEATS);
+
+      expect(pasada.actual).toBe(ahora.actual + 1);
+      expect(pasada.turno).not.toBe(ahora.turno);
+    });
+
+    it('no espera a que venza la cuenta de la ronda que ya está resuelta', () => {
+      // Quien contesta en dos segundos deja viva una cuenta atrás de doce. Si
+      // esa cuenta mandara, la bomba pasaría diez segundos tarde.
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const regidor = new RegidorDeSala(() => 0);
+      const { antes, ahora } = contestada();
+
+      regidor.trasJugada(actor, null, antes);
+      regidor.trasJugada(actor, antes, ahora);
+      vi.advanceTimersByTime(3_000);
+
+      expect(puestas.at(-1)).toEqual({ tipo: 'tiempo' });
+      expect(puestas.filter((una) => una.tipo === 'tiempo')).toHaveLength(1);
+      vi.useRealTimers();
+    });
+
+    it('y por muchas veces que se le avise, pasa una sola vez', () => {
+      // Al narrador se le llama en cada jugada: sin guarda, cada una pondría
+      // otro pase y la sección entera se iría de golpe.
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const regidor = new RegidorDeSala(() => 0);
+      const { antes, ahora } = contestada();
+
+      regidor.trasJugada(actor, antes, ahora);
+      regidor.trasJugada(actor, ahora, ahora);
+      regidor.trasJugada(actor, ahora, ahora);
+      vi.advanceTimersByTime(3_000);
+
+      expect(puestas).toEqual([{ tipo: 'tiempo' }]);
+      vi.useRealTimers();
+    });
   });
 
   it('y al salir de la ronda, tampoco', () => {

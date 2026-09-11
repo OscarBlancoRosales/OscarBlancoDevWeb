@@ -275,6 +275,39 @@ describe('la mesa del concurso', () => {
       pinta({ tipo: 'bomba', turno: 'yo', mecha: 2, cerrada: true, resultados: [] });
       expect((fixture.nativeElement as HTMLElement).querySelector('.bomba')).toBeNull();
     });
+
+    /**
+     * Aquí no se pulsa «siguiente»: la bomba pasa sola.
+     *
+     * El botón le daba a quien la tiene todo el tiempo del mundo justo cuando
+     * la gracia es no tenerlo, y encima dejaba la mecha esperando a que al más
+     * lento le apeteciera seguir.
+     */
+    it('no ofrece pasar de ronda a mano: la bomba pasa sola', () => {
+      const texto = pintaDestapada({
+        tipo: 'bomba',
+        turno: 'yo',
+        mecha: 2,
+        cerrada: true,
+        explicacion: 'Pues eso.',
+        resultados: [{ seatId: 'yo', valor: 1, ganados: 100 }],
+      });
+      const dom = fixture.nativeElement as HTMLElement;
+
+      expect(texto).not.toContain('Siguiente ronda');
+      expect(dom.querySelector('.pasando')).not.toBeNull();
+    });
+
+    it('pero en las demás pruebas sí, que ahí se sigue cuando la mesa quiere', () => {
+      const texto = pintaDestapada({
+        tipo: 'test',
+        cerrada: true,
+        explicacion: 'Pues eso.',
+        resultados: [{ seatId: 'yo', valor: 1, ganados: 100 }],
+      });
+
+      expect(texto).toContain('Siguiente ronda');
+    });
   });
 
   describe('la ráfaga', () => {
