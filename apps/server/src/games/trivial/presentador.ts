@@ -200,10 +200,14 @@ export function ajustesDeIa(config: {
   AI_PROVIDER: string;
   AI_MODEL: string;
   AI_FREE_ONLY?: boolean;
+  AI_PRESENTADOR?: boolean;
 }): AiSettings | null {
   if (!config.AI_KEY) return null;
   return {
-    enabled: true,
+    // `enabled` es solo la voz del presentador, y viene apagada: la cuota se
+    // gasta en inventar preguntas, no en frases de relleno. Quien lea esto
+    // buscando por qué el presentador no improvisa, es por aquí.
+    enabled: config.AI_PRESENTADOR === true,
     provider: proveedor(config.AI_PROVIDER),
     apiKey: config.AI_KEY,
     model: config.AI_MODEL,

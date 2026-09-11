@@ -232,10 +232,13 @@ describe('la clave del presentador', () => {
     expect(ajustesDeIa({ AI_KEY: '', AI_PROVIDER: 'openrouter', AI_MODEL: 'x' })).toBeNull();
   });
 
-  it('con clave se monta el ajuste', () => {
+  it('con clave se monta el ajuste, con la voz del presentador apagada', () => {
+    // `enabled` dejó de significar «hay IA» y pasó a significar «el presentador
+    // improvisa». Lo segundo viene apagado; la clave sigue ahí, que es lo que
+    // el inventor de preguntas necesita.
     const ajustes = ajustesDeIa({ AI_KEY: 'k', AI_PROVIDER: 'groq', AI_MODEL: 'm' });
     expect(ajustes).toEqual({
-      enabled: true,
+      enabled: false,
       provider: 'groq',
       apiKey: 'k',
       model: 'm',
@@ -343,3 +346,59 @@ describe('lo que el presentador se atreve a decir', () => {
     expect(ajustes.timeoutMs).toBeLessThan(25_000);
   });
 });
+
+/**
+ * El presentador habla de guion salvo que se le encienda la IA.
+ *
+ * La cuota gratuita es de la cuenta y del día, y un programa entero son veinte
+ * momentos: gastarla en frases de relleno la deja sin nada para lo único que
+ * una máquina hace mejor que un guion escrito, que es inventarse las
+ * preguntas. Por eso viene apagado.
+ */
+describe('el interruptor del presentador', () => {
+  it('viene apagado: con clave y sin encenderlo, no llama a nadie', () => {
+    const { actor, dicho } = actorFalso();
+    const { antes, ahora } = empezada();
+    const modelo = vi.fn().mockResolvedValue({ text: 'Buenas noches.', model: 'x' });
+
+    new PresentadorDeSala(sinEncender(CON_CLAVE), NOMBRES, modelo).trasJugada(actor, antes, ahora);
+
+    expect(modelo).not.toHaveBeenCalled();
+    // Y aun así habla: el guion escrito es el presentador, no un plan B.
+    expect(dicho).toHaveLength(1);
+    expect(dicho[0].accion.frase.length).toBeGreaterThan(10);
+  });
+
+  it('encendido, vuelve a florear', async () => {
+    const { actor, dicho } = actorFalso();
+    const { antes, ahora } = empezada();
+    const modelo = vi.fn().mockResolvedValue({ text: 'Buenas noches, criaturas.', model: 'x' });
+
+    new PresentadorDeSala(CON_CLAVE, NOMBRES, modelo).trasJugada(actor, antes, ahora);
+
+    await vi.waitFor(() => {
+      expect(dicho).toHaveLength(2);
+    });
+  });
+
+  it('la configuración lo deja apagado mientras no se pida', () => {
+    const base = { AI_KEY: 'k', AI_PROVIDER: 'groq', AI_MODEL: 'openai/gpt-oss-20b' };
+
+    expect(ajustesDeIa(base)?.enabled).toBe(false);
+    expect(ajustesDeIa({ ...base, AI_PRESENTADOR: true })?.enabled).toBe(true);
+  });
+
+  it('pero las preguntas se inventan igual, que es en lo que sí se gasta', () => {
+    // `enabled` es solo la voz del presentador. La clave sigue ahí para que el
+    // inventor de preguntas la use.
+    const ajustes = ajustesDeIa({ AI_KEY: 'k', AI_PROVIDER: 'groq', AI_MODEL: 'openai/gpt-oss-20b' });
+
+    expect(ajustes).not.toBeNull();
+    expect(ajustes?.apiKey).toBe('k');
+  });
+});
+
+/** Los mismos ajustes, pero con la voz del presentador apagada. */
+function sinEncender(ajustes: AiSettings): AiSettings {
+  return { ...ajustes, enabled: false };
+}
