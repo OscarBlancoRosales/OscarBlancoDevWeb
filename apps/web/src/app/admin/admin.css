@@ -1,12 +1,35 @@
 /*
-  De lado a lado.
+  De lado a lado, y midiendo por la ventana, no por la pantalla.
 
-  Estaba a 1040 px centrados, que en la ventana maximizada dejaba media
-  pantalla en negro con las tablas apretadas en el medio. Lo que sí se topa es
-  el texto largo, y eso se hace donde hay texto largo, no aquí.
+  Estaba a 1040 px centrados: en la ventana maximizada dejaba media pantalla en
+  negro con las tablas apretadas en el medio. Lo que sí se topa es el texto
+  largo, y eso se hace donde hay texto largo, no aquí.
+
+  El `container-type` es lo que hace que lo de dentro se adapte de verdad: esto
+  vive en una ventana del escritorio que se puede encoger a mano, y una consulta
+  contra el viewport seguiría viendo la pantalla entera mientras la ventana ya
+  está estrecha. Lo de dentro pregunta por el ancho de aquí.
 */
 .admin {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  box-sizing: border-box;
   padding: var(--sp-5) var(--sp-5) var(--sp-6);
+}
+
+/*
+  Las pestañas que se leen como una conversación ocupan el alto que queda.
+  Una altura en `vh` mediría la pantalla, no la ventana, y en una ventana
+  pequeña el hilo se saldría por abajo.
+*/
+app-sesiones,
+app-consola {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 /* Cuatro cosas en una página la hacían interminable: se reparten en pestañas. */

@@ -44,8 +44,8 @@
   grid-template-columns: minmax(240px, 320px) 1fr;
   gap: var(--sp-4);
   align-items: start;
-  /* Lo que sobra bajo la barra de pestañas: el hilo se desliza dentro, no la página. */
-  height: calc(100vh - 190px);
+  /* Lo que sobra de la ventana: el hilo se desliza dentro, no la página. */
+  flex: 1 1 auto;
   min-height: 420px;
 }
 
@@ -291,20 +291,16 @@
   font-size: 12px;
 }
 
-/* Estrecho: manda lo que estés mirando, y «volver» trae la lista. */
-@media (max-width: 860px) {
+/*
+  Estrecho: manda lo que estés mirando, y «volver» trae la lista.
+
+  Sigue ocupando el alto de la ventana, con el desliz dentro de la columna que
+  toque: es la misma pantalla, no una versión recortada.
+*/
+@container (max-width: 860px) {
   .ses-dos {
     grid-template-columns: 1fr;
-    height: auto;
-  }
-
-  .ses-lista,
-  .ses-panel {
-    height: auto;
-  }
-
-  .ses-fichas {
-    max-height: 60vh;
+    min-height: 260px;
   }
 
   .ses-dos--abierta .ses-lista {
@@ -317,10 +313,6 @@
 
   .ses-volver {
     display: inline-flex;
-  }
-
-  .ses-hilo {
-    max-height: 70vh;
   }
 
   .tanda {
