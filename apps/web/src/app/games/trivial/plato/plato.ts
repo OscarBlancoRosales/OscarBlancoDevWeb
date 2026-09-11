@@ -1,4 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Escenario3d } from './escenario3d/escenario3d';
+import type { Cuadro } from './escenario3d/escenario';
 
 /**
  * El escenario: fondo, focos y suelo.
@@ -13,12 +15,15 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
  */
 @Component({
   selector: 'app-plato',
-  imports: [],
+  imports: [Escenario3d],
   templateUrl: './plato.html',
   styleUrl: './plato.css',
 })
 export class Plato {
   @Input() callado = true;
+
+  /** Lo que hay que enseñar en el escenario 3D, si es que se puede pintar. */
+  @Input() cuadro: Cuadro = { puestos: [], tono: '250 204 21', golpe: null };
   /** Lo que se lee arriba a la izquierda: «Ronda 7 de 21», o lo que toque. */
   @Input() rotulo = '';
 

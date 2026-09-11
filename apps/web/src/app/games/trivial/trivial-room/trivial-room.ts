@@ -8,6 +8,8 @@ import { PanelPregunta } from '../plato/panel-pregunta/panel-pregunta';
 import { Cronometro } from '../plato/cronometro/cronometro';
 import { Rotulo, SECCIONES } from '../plato/rotulo/rotulo';
 import { DURACION, golpeEntre } from '../plato/escena';
+import type { Golpe } from '../plato/escena';
+import type { Cuadro } from '../plato/escenario3d/escenario';
 import { MandoDeApuesta } from '../plato/apuesta/apuesta';
 import { Podio } from '../plato/podio/podio';
 import { Sonido } from '../plato/sonido';
@@ -53,6 +55,9 @@ export class TrivialRoom implements OnInit, OnDestroy {
 
   /** La sección que está anunciándose. `null` cuando el rótulo ya se fue. */
   readonly anunciando = signal<Seccion | null>(null);
+
+  /** El golpe que se está contando ahora mismo, para que la cámara reaccione. */
+  readonly contando = signal<Golpe | null>(null);
 
   /** La vista anterior: el director decide comparando dos. */
   private anterior: TrivialView | null = null;
@@ -119,6 +124,13 @@ export class TrivialRoom implements OnInit, OnDestroy {
 
     const cambio = golpeEntre(antes, v);
     if (!cambio) return;
+
+    // La cámara del escenario reacciona a todos los golpes, aunque el rótulo
+    // solo salga en algunos.
+    this.contando.set(cambio.golpe);
+    setTimeout(() => {
+      if (this.contando() === cambio.golpe) this.contando.set(null);
+    }, DURACION[cambio.golpe]);
 
     // De momento solo la cortinilla para el juego. Los demás golpes los pintan
     // las piezas por su cuenta, con sus propias animaciones de entrada.
@@ -243,6 +255,30 @@ export class TrivialRoom implements OnInit, OnDestroy {
     if (!v) return 0;
     if (v.fase === 'apuestas') return SEGUNDOS_PARA_APOSTAR * 1000;
     return v.tipo ? SEGUNDOS_POR_PRUEBA[v.tipo] * 1000 : 0;
+  }
+
+  /**
+   * Lo que ve el escenario 3D.
+   *
+   * Se le da masticado: quién está, cómo está cada uno y de qué color va la
+   * prueba. El escenario no sabe nada del juego, solo pinta lo que le llega.
+   */
+  get cuadro(): Cuadro {
+    const v = this.vista();
+    const seccion = v?.tipo ? SECCIONES[v.tipo] : null;
+
+    return {
+      puestos: this.puestos.map((puesto) => ({
+        seatId: puesto.seatId,
+        foto: puesto.foto,
+        atento: puesto.haContestado || puesto.haApostado,
+        acierta: (puesto.gano ?? 0) > 0,
+        falla: (puesto.gano ?? 0) < 0,
+        tiembla: puesto.tieneLaBomba,
+      })),
+      tono: seccion?.color ?? '250 204 21',
+      golpe: this.contando(),
+    };
   }
 
   get rotuloDeArriba(): string {
