@@ -6,11 +6,15 @@ import { AuthApiService } from '../api/auth-api.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { Sesiones } from './sesiones/sesiones';
 import { Consola } from './consola/consola';
+import { Salas } from './salas/salas';
 import { I18nService } from '../services/i18n.service';
 import type { CreatedInvitation, Invitation } from '@devweb/shared/contracts/admin';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
 
 const DIAS_POR_DEFECTO = 7;
+
+const PESTANAS = ['gente', 'salas', 'sesiones', 'consola'] as const;
+type Pestana = (typeof PESTANAS)[number];
 
 /**
  * El panel de quien manda: quién hay dentro y a quién se deja entrar.
@@ -22,7 +26,7 @@ const DIAS_POR_DEFECTO = 7;
  */
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones, Consola],
+  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones, Consola, Salas],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
 })
@@ -49,10 +53,11 @@ export class Admin implements OnInit {
   /**
    * Qué se está mirando.
    *
-   * Tres cosas en una sola página la hacían interminable, y las sesiones no se
-   * consultan a la vez que se reparten invitaciones.
+   * Todo junto en una sola página la hacía interminable, y no se cierran salas
+   * a la vez que se reparten invitaciones.
    */
-  readonly pestana = signal<'gente' | 'sesiones' | 'consola'>('gente');
+  readonly pestana = signal<Pestana>('gente');
+  readonly PESTANAS = PESTANAS;
 
   nota = '';
   dias = DIAS_POR_DEFECTO;
@@ -143,6 +148,23 @@ export class Admin implements OnInit {
     if (invitacion.usadaEn !== null) return this.i18n.t('admin.used');
     if (invitacion.expiraEn < Date.now()) return this.i18n.t('admin.expired');
     return this.i18n.t('admin.pending');
+  }
+
+  /** Gastada, caducada o a la espera: cada una con su color. */
+  claseDe(invitacion: Invitation): string {
+    if (invitacion.usadaEn !== null) return '';
+    if (invitacion.expiraEn < Date.now()) return 'badge--error';
+    return 'badge--ok';
+  }
+
+  get pendientes(): number {
+    return this.invitaciones().filter(
+      (una) => una.usadaEn === null && una.expiraEn >= Date.now(),
+    ).length;
+  }
+
+  get bloqueados(): number {
+    return this.usuarios().filter((uno) => uno.status === 'blocked').length;
   }
 
   private async intentar(accion: () => Promise<void>): Promise<void> {

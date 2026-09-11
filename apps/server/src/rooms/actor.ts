@@ -19,6 +19,14 @@ export const CHAT_MAXIMO = 200;
 export interface Suscriptor {
   readonly seatId: SeatId;
   send(message: ServerMessage): void;
+  /**
+   * Corta la conexión diciendo por qué.
+   *
+   * A quien le quitan el asiento se le deja mirando una mesa en la que ya no
+   * está, y cada cosa que intente le saldrá rechazada sin explicación. Cerrar
+   * con un motivo permite que su pantalla diga qué ha pasado.
+   */
+  cerrar?(motivo: string): void;
 }
 
 export interface RoomActorOptions {
@@ -444,13 +452,29 @@ export class RoomActor {
   }
 
   /** Saca a alguien de la mesa y deja que el juego decida qué hacer con lo suyo. */
-  removeSeat(seatId: SeatId): void {
+  removeSeat(seatId: SeatId, motivo = 'asiento-retirado'): void {
     this.repository.deleteSeat(this.roomId, seatId);
     if (this.state !== null && this.module.onSeatLeave) {
       this.state = this.module.onSeatLeave(this.state, seatId);
     }
     this.refreshSeats();
     this.broadcast();
+
+    // Después de avisar a la mesa, no antes: el que se va también merece ver
+    // el último reparto, y cerrando primero se quedaría sin él.
+    this.expulsar(seatId, motivo);
+  }
+
+  /**
+   * Corta la conexión de un asiento sin tocar la partida.
+   *
+   * Se usa al cerrar la sala entera, cuando borrar asiento por asiento sería
+   * escribir en una tabla que va a desaparecer en la línea siguiente.
+   */
+  expulsar(seatId: SeatId, motivo: string): void {
+    for (const suscriptor of [...this.suscriptores]) {
+      if (suscriptor.seatId === seatId) suscriptor.cerrar?.(motivo);
+    }
   }
 
   /**

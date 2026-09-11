@@ -43,21 +43,6 @@
   justify-content: center;
 }
 
-.con-fila input {
-  padding: 8px 10px;
-  background: var(--bg-chrome);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--bright);
-  font-family: inherit;
-  font-size: 13px;
-  outline: none;
-}
-
-.con-fila input:focus {
-  border-color: var(--accent);
-}
-
 /* Seis cifras que se leen del terminal: grandes y separadas. */
 .con-codigo {
   width: 140px;
@@ -174,16 +159,6 @@
   justify-content: flex-end;
 }
 
-.btn-si {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.btn-no {
-  border-color: var(--error);
-  color: var(--error);
-}
-
 /* ===== LA CONVERSACIÓN ===== */
 
 .con-hilo {
@@ -235,22 +210,11 @@
   align-items: flex-end;
 }
 
-.con-escribir textarea {
+.con-escribir .textarea {
   flex: 1 1 auto;
   padding: 8px 10px;
-  background: var(--bg-chrome);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--bright);
-  font-family: inherit;
-  font-size: 12px;
   line-height: 1.5;
   resize: vertical;
-  outline: none;
-}
-
-.con-escribir textarea:focus {
-  border-color: var(--accent);
 }
 
 .con-salir {

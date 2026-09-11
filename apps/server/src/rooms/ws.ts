@@ -64,7 +64,13 @@ export function roomSocket(service: RoomService): FastifyPluginCallbackTypebox {
           return null;
         }
 
-        const suscriptor: Suscriptor = { seatId, send: responder };
+        const suscriptor: Suscriptor = {
+          seatId,
+          send: responder,
+          cerrar: (motivo) => {
+            socket.close(4403, motivo);
+          },
+        };
         actor.subscribe(suscriptor);
         return { seatId, actor, suscriptor };
       };

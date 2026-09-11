@@ -1,0 +1,148 @@
+@if (cargando()) {
+  <p class="sal-nota">{{ i18n.t('salas.cargando') }}</p>
+} @else {
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-dato">{{ salas().length }}</div><div class="kpi-que">{{ i18n.t('salas.kpiTotal') }}</div></div>
+    <div class="kpi"><div class="kpi-dato">{{ abiertas() }}</div><div class="kpi-que">{{ i18n.t('salas.kpiAbiertas') }}</div></div>
+    <div class="kpi"><div class="kpi-dato">{{ jugando() }}</div><div class="kpi-que">{{ i18n.t('salas.kpiJugando') }}</div></div>
+    <div class="kpi" [class.kpi--vivo]="conectados() > 0">
+      <div class="kpi-dato">{{ conectados() }}</div>
+      <div class="kpi-que">{{ i18n.t('salas.kpiConectados') }}</div>
+    </div>
+  </div>
+
+  <div class="barra">
+    <input
+      class="input input--sm"
+      type="search"
+      name="busqueda"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+      [placeholder]="i18n.t('salas.buscar')"
+    />
+    <select class="select" name="juego" [ngModel]="juego()" (ngModelChange)="juego.set($event)">
+      <option value="">{{ i18n.t('salas.todosJuegos') }}</option>
+      @for (uno of JUEGOS; track uno) {
+        <option [value]="uno">{{ i18n.t('salas.juego.' + uno) }}</option>
+      }
+    </select>
+    <select class="select" name="estado" [ngModel]="estado()" (ngModelChange)="estado.set($event)">
+      <option value="">{{ i18n.t('salas.todosEstados') }}</option>
+      @for (uno of ESTADOS; track uno) {
+        <option [value]="uno">{{ i18n.t('salas.estado.' + uno) }}</option>
+      }
+    </select>
+    <button type="button" class="btn btn--sm barra-fin" (click)="refrescar()">
+      {{ i18n.t('salas.refrescar') }}
+    </button>
+  </div>
+
+  <div class="tabla-marco">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th class="col-ancha">{{ i18n.t('salas.sala') }}</th>
+          <th>{{ i18n.t('salas.juego') }}</th>
+          <th>{{ i18n.t('admin.state') }}</th>
+          <th>{{ i18n.t('salas.duenyo') }}</th>
+          <th>{{ i18n.t('salas.gente') }}</th>
+          <th>{{ i18n.t('salas.actividad') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (sala of filtradas(); track sala.id) {
+          <tr>
+            <td class="col-ancha">{{ sala.name }}</td>
+            <td>{{ i18n.t('salas.juego.' + sala.game) }}</td>
+            <td>
+              <span class="badge" [class]="'badge ' + claseDe(sala.status)">
+                {{ i18n.t('salas.estado.' + sala.status) }}
+              </span>
+            </td>
+            <td>{{ sala.duenyo?.email ?? '—' }}</td>
+            <td>
+              <button type="button" class="sal-gente" (click)="desplegar(sala)">
+                {{ personas(sala) }}/{{ sala.asientos.length }}
+                @if (conectadosEn(sala) > 0) {
+                  <span class="sal-vivos">· {{ conectadosEn(sala) }} {{ i18n.t('salas.enLinea') }}</span>
+                }
+              </button>
+            </td>
+            <td>{{ cuando(sala.updatedAt) }}</td>
+            <td class="col-acciones">
+              <button type="button" class="btn btn--sm btn--danger" (click)="cerrar(sala)">
+                {{ confirmando() === sala.id ? i18n.t('admin.sure') : i18n.t('salas.cerrar') }}
+              </button>
+            </td>
+          </tr>
+
+          @if (abierta() === sala.id) {
+            <tr class="sal-detalle">
+              <td colspan="7">
+                @for (asiento of sala.asientos; track asiento.id) {
+                  <div class="sal-asiento">
+                    <span class="sal-punto" [class.sal-punto--vivo]="asiento.connected"></span>
+                    <span class="sal-nombre">{{ asiento.displayName }}</span>
+                    @if (asiento.isBot) {
+                      <span class="badge">{{ i18n.t('salas.bot') }}</span>
+                    }
+                    <button type="button" class="btn btn--sm btn--danger" (click)="echar(sala, asiento)">
+                      {{ i18n.t('salas.echar') }}
+                    </button>
+                  </div>
+                } @empty {
+                  <p class="sal-nota">{{ i18n.t('salas.sinAsientos') }}</p>
+                }
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="7" class="tabla-vacio">{{ i18n.t('salas.ninguna') }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!--
+    El borrado en bloque se lleva partidas de otra gente por delante, así que
+    no basta con un clic: hay que leer cuántas caen y escribirlo.
+  -->
+  <section class="sal-bloque">
+    <h3 class="sal-titulo">{{ i18n.t('salas.bloqueTitulo') }}</h3>
+    <p class="sal-aviso">{{ i18n.t('salas.bloqueAviso', { cuantas: enElFiltro() }) }}</p>
+    <div class="barra">
+      <input
+        class="input input--sm"
+        type="number"
+        name="dias"
+        min="1"
+        max="365"
+        [ngModel]="inactivasDias()"
+        (ngModelChange)="inactivasDias.set($event)"
+        [placeholder]="i18n.t('salas.inactivas')"
+      />
+      <input
+        class="input input--sm"
+        type="text"
+        name="palabra"
+        [ngModel]="palabra()"
+        (ngModelChange)="palabra.set($event)"
+        [placeholder]="PALABRA"
+      />
+      <button
+        type="button"
+        class="btn btn--danger"
+        [disabled]="!puedeBorrarEnBloque()"
+        (click)="cerrarEnBloque()">
+        {{ i18n.t('salas.cerrarTodas') }}
+      </button>
+    </div>
+  </section>
+}
+
+@if (error()) {
+  <p class="sal-error">{{ error() }}</p>
+}

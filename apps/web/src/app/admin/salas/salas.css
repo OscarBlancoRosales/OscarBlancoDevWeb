@@ -1,0 +1,85 @@
+.sal-nota {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Los asientos se cuentan pulsando: la fila no crece hasta que hace falta. */
+.sal-gente {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--bright);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--border);
+}
+
+.sal-gente:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.sal-vivos {
+  color: var(--accent);
+}
+
+.sal-detalle td {
+  background: var(--bg-soft);
+  white-space: normal;
+  padding: var(--sp-3);
+}
+
+.sal-asiento {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) 0;
+  font-size: 12px;
+}
+
+.sal-nombre {
+  flex: 1 1 auto;
+  color: var(--bright);
+}
+
+/* Verde si hay alguien al otro lado ahora mismo. */
+.sal-punto {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  flex: 0 0 auto;
+}
+
+.sal-punto--vivo {
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--glow);
+}
+
+.sal-bloque {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px solid var(--border);
+}
+
+.sal-titulo {
+  margin: 0 0 var(--sp-1) 0;
+  color: var(--error);
+  font-size: 13px;
+}
+
+.sal-aviso {
+  margin: 0 0 var(--sp-3) 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sal-error {
+  margin-top: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid currentColor;
+  color: var(--error);
+  font-size: 12px;
+}

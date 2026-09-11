@@ -26,6 +26,18 @@ export const CADUCIDAD_SALAS_MS = 30 * DIA;
 /** Cuánto se conserva una sala en memoria después de que se vaya el último. */
 export const MARGEN_DESCARGA_MS = 60 * 1000;
 
+/**
+ * Una sala y de quién es.
+ *
+ * `RoomInfo` no lleva dueño porque a los jugadores no les hace falta: saben si
+ * el asiento es suyo por `isOwner`. El panel sí necesita ponerle cara y correo,
+ * y eso solo se puede cruzar con el id de la cuenta.
+ */
+export interface SalaConDuenyo {
+  readonly info: RoomInfo;
+  readonly ownerId: string | null;
+}
+
 export interface RoomServiceOptions {
   readonly repository: RoomRepository;
   readonly maxSeats?: number;
@@ -170,6 +182,89 @@ export class RoomService {
       this.repository.deleteRoom(sala.id);
     }
     return salas.length;
+  }
+
+  // ===== EL PANEL: lo de abajo no pregunta de quién es la sala =====
+
+  /**
+   * Todas las salas que hay, para quien manda.
+   *
+   * El resto del servicio solo sabe listar las de un dueño, que es lo correcto
+   * para jugar: nadie tiene por qué ver las mesas de los demás. El panel es la
+   * excepción, y por eso el corte está aquí y no en el repositorio.
+   */
+  listarTodas(): readonly SalaConDuenyo[] {
+    return this.repository
+      .listAllRooms()
+      .map((room) => ({ info: this.toInfo(room), ownerId: room.ownerId }));
+  }
+
+  /**
+   * Cierra y borra una sala sin preguntar de quién es.
+   *
+   * `borrar` exige ser el dueño, que es lo que protege a unos jugadores de
+   * otros. Esto se salta esa comprobación a propósito y por eso vive detrás de
+   * `requireAdmin`: quien manda tiene que poder cerrar una mesa abandonada
+   * aunque la abriera otro.
+   */
+  borrarComoAdmin(roomId: string): void {
+    const sala = this.repository.findRoom(roomId);
+    if (!sala) throw new AppError('no-encontrado', 'Esa sala no existe.');
+
+    this.echarATodos(roomId, 'sala-cerrada');
+    this.actores.get(roomId)?.flush();
+    this.olvidar(roomId);
+    this.repository.deleteRoom(roomId);
+  }
+
+  /** Levanta a alguien de su asiento sin preguntar de quién es la sala. */
+  echarComoAdmin(roomId: string, seatId: string): RoomInfo {
+    const sala = this.repository.findRoom(roomId);
+    if (!sala) throw new AppError('no-encontrado', 'Esa sala no existe.');
+    if (!this.repository.findSeat(roomId, seatId)) {
+      throw new AppError('no-encontrado', 'Ese asiento no existe.');
+    }
+
+    const actor = this.actores.get(roomId);
+    if (actor) actor.removeSeat(seatId, 'expulsado');
+    else this.repository.deleteSeat(roomId, seatId);
+
+    this.repository.touchRoom(roomId, this.now());
+    return this.info(roomId);
+  }
+
+  /**
+   * Borra en bloque lo que encaje con el filtro. Devuelve cuántas cayeron.
+   *
+   * Un filtro vacío son todas, y eso es una decisión de quien llama: aquí no se
+   * inventa una red de seguridad que el panel ya pone pidiendo confirmación.
+   */
+  borrarVarias(filtro: {
+    juego?: GameId;
+    estado?: RoomStatus;
+    inactivasDias?: number;
+  }): number {
+    const limite =
+      filtro.inactivasDias === undefined ? null : this.now() - filtro.inactivasDias * DIA;
+
+    const condenadas = this.repository.listAllRooms().filter((sala) => {
+      if (filtro.juego !== undefined && sala.game !== filtro.juego) return false;
+      if (filtro.estado !== undefined && sala.status !== filtro.estado) return false;
+      if (limite !== null && sala.updatedAt >= limite) return false;
+      return true;
+    });
+
+    for (const sala of condenadas) this.borrarComoAdmin(sala.id);
+    return condenadas.length;
+  }
+
+  /** Suelta a todo el mundo antes de que la sala deje de existir. */
+  private echarATodos(roomId: string, motivo: string): void {
+    const actor = this.actores.get(roomId);
+    if (!actor) return;
+    for (const seat of this.repository.listSeats(roomId)) {
+      actor.expulsar(seat.seatId, motivo);
+    }
   }
 
   /** Devuelve el asiento al que corresponde un pase, o `null` si no vale. */

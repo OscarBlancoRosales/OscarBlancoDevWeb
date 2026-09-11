@@ -105,7 +105,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
 
   await app.register(healthRoutes(db, ajustesDeIa(config)));
   await app.register(authRoutes({ service, config }));
-  await app.register(adminRoutes(service));
+  await app.register(adminRoutes(service, rooms));
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
   await app.register(kvRoutes(db, config.JWT_SECRET));

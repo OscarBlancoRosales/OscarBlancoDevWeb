@@ -701,3 +701,156 @@ body {
     min-height: 150px;
   }
 }
+
+/* ===== PANELES DE GESTIÓN =====
+
+   Lo que comparten las pestañas del panel. Vive aquí y no en `admin.css`
+   porque cada pestaña es un componente con estilos encapsulados: dejarlo allí
+   obligaba a copiar la misma tabla cuatro veces. */
+
+/* Los números de un vistazo, antes de bajar a la tabla. */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-5);
+}
+
+.kpi {
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.kpi-dato {
+  color: var(--bright);
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.kpi--vivo .kpi-dato {
+  color: var(--accent);
+}
+
+.kpi-que {
+  margin-top: var(--sp-1);
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Filtros y acciones de una sección, en una línea que sabe partirse. */
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.barra-fin {
+  margin-left: auto;
+}
+
+/* Una tabla ancha no puede empujar la página: se desplaza ella sola. */
+.tabla-marco {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tabla th,
+.tabla td {
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  white-space: nowrap;
+}
+
+.tabla thead th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-chrome);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: normal;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabla tbody tr {
+  border-bottom: 1px solid var(--border);
+}
+
+.tabla tbody tr:last-child {
+  border-bottom: none;
+}
+
+.tabla tbody tr:hover {
+  background: var(--bg-soft);
+}
+
+/* La columna ancha es la que puede partirse; las demás mandan su ancho. */
+.tabla .col-ancha {
+  white-space: normal;
+  word-break: break-word;
+  min-width: 180px;
+}
+
+/*
+  Las acciones, a la derecha y pegadas a su contenido.
+
+  Nada de `display: flex` en el `<td>`: una celda que deja de ser celda se sale
+  del reparto de columnas, y entonces el borde de la fila se queda corto y los
+  botones se salen por el lado. La separación va por margen.
+*/
+.tabla .col-acciones {
+  width: 1%;
+  text-align: right;
+}
+
+.tabla .col-acciones .btn + .btn {
+  margin-left: var(--sp-2);
+}
+
+.tabla-vacio {
+  padding: var(--sp-5);
+  color: var(--muted);
+  text-align: center;
+}
+
+/* El estado de algo, en una palabra y con color. */
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.badge--ok {
+  color: var(--ok);
+}
+
+.badge--warn {
+  color: var(--warn);
+}
+
+.badge--error {
+  color: var(--error);
+}
+
+.badge--vivo {
+  color: var(--accent);
+}

@@ -20,13 +20,14 @@
       <p>{{ i18n.t('con.emparejarTexto') }}</p>
       <div class="con-fila">
         <input
+          class="input"
           type="text"
           name="nombre"
           [(ngModel)]="nombre"
           maxlength="40"
           [placeholder]="i18n.t('con.nombrePh')"
         />
-        <button type="button" class="btn btn-primary" (click)="pedirCodigo()">
+        <button type="button" class="btn btn--primary" (click)="pedirCodigo()">
           {{ i18n.t('con.pedirCodigo') }}
         </button>
       </div>
@@ -34,15 +35,15 @@
       <p>{{ i18n.t('con.miraElTerminal') }}</p>
       <div class="con-fila">
         <input
+          class="input con-codigo"
           type="text"
           name="codigo"
           [(ngModel)]="codigo"
           maxlength="6"
           inputmode="numeric"
-          class="con-codigo"
           placeholder="000000"
         />
-        <button type="button" class="btn btn-primary" (click)="emparejar()">
+        <button type="button" class="btn btn--primary" (click)="emparejar()">
           {{ i18n.t('con.confirmar') }}
         </button>
       </div>
@@ -78,10 +79,10 @@
           </div>
           <code class="permiso-detalle">{{ permiso.detalle }}</code>
           <div class="permiso-botones">
-            <button type="button" class="btn btn-si" (click)="decidir(permiso.id, 'allow')">
+            <button type="button" class="btn btn--primary" (click)="decidir(permiso.id, 'allow')">
               {{ i18n.t('con.permitir') }}
             </button>
-            <button type="button" class="btn btn-no" (click)="decidir(permiso.id, 'deny')">
+            <button type="button" class="btn btn--danger" (click)="decidir(permiso.id, 'deny')">
               {{ i18n.t('con.denegar') }}
             </button>
           </div>
@@ -104,6 +105,7 @@
 
   <div class="con-escribir">
     <textarea
+      class="textarea"
       name="texto"
       [(ngModel)]="texto"
       (keydown)="alTeclear($event)"
@@ -111,7 +113,7 @@
       maxlength="4000"
       [placeholder]="i18n.t('con.escribePh')"
     ></textarea>
-    <button type="button" class="btn btn-primary" (click)="enviar()" [disabled]="enviando()">
+    <button type="button" class="btn btn--primary" (click)="enviar()" [disabled]="enviando()">
       {{ enviando() ? i18n.t('con.enviando') : i18n.t('con.enviar') }}
     </button>
   </div>
@@ -131,6 +133,7 @@
     <label for="donde">{{ i18n.t('con.dondeEtiqueta') }}</label>
     <div class="con-fila">
       <input
+        class="input"
         id="donde"
         type="url"
         name="donde"

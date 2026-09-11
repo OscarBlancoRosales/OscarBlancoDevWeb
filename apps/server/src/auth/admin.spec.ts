@@ -4,7 +4,14 @@ import { loadConfig } from '../config';
 import { openDatabase } from '../db/index';
 import { invitacionDePrueba } from './testing';
 import type { FastifyInstance } from 'fastify';
-import type { CreatedInvitation, InvitationList, UserList } from '@devweb/shared/contracts/admin';
+import type {
+  AdminRoomList,
+  CreatedInvitation,
+  InvitationList,
+  SalasBorradas,
+  UserList,
+} from '@devweb/shared/contracts/admin';
+import type { SeatGrant } from '@devweb/shared/contracts/rooms';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
 import type { Db } from '../db/index';
 
@@ -278,6 +285,125 @@ describe('el panel de administración', () => {
 
     it('quien no manda no puede repartirlas', async () => {
       expect((await crear(cualquiera)).statusCode).toBe(404);
+    });
+  });
+
+  describe('las salas', () => {
+    /** La abre quien no manda: el panel tiene que poder tocarla igual. */
+    async function abrirMesa(token: string, nombre = 'La mesa'): Promise<SeatGrant> {
+      const creada = await app.inject({
+        method: 'POST',
+        url: '/salas',
+        headers: como(token),
+        payload: { game: 'scrum', name: nombre, displayName: 'Ana' },
+      });
+      return creada.json<SeatGrant>();
+    }
+
+    const listar = async (token: string) =>
+      app.inject({ method: 'GET', url: '/admin/salas', headers: como(token) });
+
+    it('se ven todas, con su dueño y quién está sentado', async () => {
+      await abrirMesa(cualquiera, 'Mesa de Ana');
+
+      const salas = (await listar(jefe)).json<AdminRoomList>().salas;
+
+      expect(salas).toHaveLength(1);
+      expect(salas[0]?.name).toBe('Mesa de Ana');
+      expect(salas[0]?.duenyo?.email).toBe(CUALQUIERA.email);
+      expect(salas[0]?.asientos).toHaveLength(1);
+    });
+
+    /**
+     * En el Trivial la configuración son las preguntas con sus respuestas.
+     * Repartirlas en cada listado del panel sería dar el examen resuelto.
+     */
+    it('pero la configuración de la partida no viaja', async () => {
+      await abrirMesa(cualquiera);
+
+      const salas = (await listar(jefe)).json<AdminRoomList>().salas;
+
+      expect(salas[0]).not.toHaveProperty('config');
+    });
+
+    it('quien no manda no las ve', async () => {
+      expect((await listar(cualquiera)).statusCode).toBe(404);
+    });
+
+    it('quien manda cierra la sala de otro', async () => {
+      const mesa = await abrirMesa(cualquiera);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/admin/salas/${mesa.room.id}`,
+        headers: como(jefe),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect((await listar(jefe)).json<AdminRoomList>().salas).toHaveLength(0);
+    });
+
+    it('y levanta a alguien de su asiento', async () => {
+      const mesa = await abrirMesa(cualquiera);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/admin/salas/${mesa.room.id}/asientos/${mesa.seatId}`,
+        headers: como(jefe),
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect((await listar(jefe)).json<AdminRoomList>().salas[0]?.asientos).toHaveLength(0);
+    });
+
+    it('un asiento que no existe es un 404, no un borrado silencioso', async () => {
+      const mesa = await abrirMesa(cualquiera);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/admin/salas/${mesa.room.id}/asientos/no-existe`,
+        headers: como(jefe),
+      });
+
+      expect(response.statusCode).toBe(404);
+    });
+
+    it('el borrado en bloque respeta el filtro', async () => {
+      await abrirMesa(cualquiera, 'Una');
+      await abrirMesa(cualquiera, 'Otra');
+
+      const nada = await app.inject({
+        method: 'DELETE',
+        url: '/admin/salas',
+        headers: como(jefe),
+        payload: { estado: 'finished' },
+      });
+
+      expect(nada.json<SalasBorradas>().borradas).toBe(0);
+      expect((await listar(jefe)).json<AdminRoomList>().salas).toHaveLength(2);
+
+      const todas = await app.inject({
+        method: 'DELETE',
+        url: '/admin/salas',
+        headers: como(jefe),
+        payload: { estado: 'lobby' },
+      });
+
+      expect(todas.json<SalasBorradas>().borradas).toBe(2);
+      expect((await listar(jefe)).json<AdminRoomList>().salas).toHaveLength(0);
+    });
+
+    it('quien no manda no puede cerrar nada', async () => {
+      const mesa = await abrirMesa(cualquiera);
+
+      const response = await app.inject({
+        method: 'DELETE',
+        url: `/admin/salas/${mesa.room.id}`,
+        headers: como(cualquiera),
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect((await listar(jefe)).json<AdminRoomList>().salas).toHaveLength(1);
     });
   });
 });

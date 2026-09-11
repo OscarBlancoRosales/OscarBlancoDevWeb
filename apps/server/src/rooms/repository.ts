@@ -52,6 +52,8 @@ export interface RoomRepository {
   insertRoom(room: RoomRow): void;
   findRoom(id: string): RoomRow | null;
   listRoomsByOwner(ownerId: string): readonly RoomRow[];
+  /** Todas, para el panel. Solo lo llama quien manda. */
+  listAllRooms(): readonly RoomRow[];
   updateRoomStatus(id: string, status: RoomStatus, at: number): void;
   updateRoom(id: string, cambios: { name?: string; config?: Readonly<Record<string, unknown>> }, at: number): void;
   touchRoom(id: string, at: number): void;
@@ -125,6 +127,7 @@ export function createRoomRepository(db: Db): RoomRepository {
     ),
     findRoom: db.prepare('SELECT * FROM rooms WHERE id = ?'),
     listRoomsByOwner: db.prepare('SELECT * FROM rooms WHERE owner_id = ? ORDER BY updated_at DESC'),
+    listAllRooms: db.prepare('SELECT * FROM rooms ORDER BY updated_at DESC'),
     updateRoomStatus: db.prepare('UPDATE rooms SET status = ?, updated_at = ? WHERE id = ?'),
     touchRoom: db.prepare('UPDATE rooms SET updated_at = ? WHERE id = ?'),
     deleteRoom: db.prepare('DELETE FROM rooms WHERE id = ?'),
@@ -187,10 +190,10 @@ export function createRoomRepository(db: Db): RoomRepository {
       return toRoom(s.findRoom.get(id) as RoomRecord | undefined);
     },
     listRoomsByOwner(ownerId) {
-      return (s.listRoomsByOwner.all(ownerId) as RoomRecord[]).flatMap((row) => {
-        const room = toRoom(row);
-        return room ? [room] : [];
-      });
+      return filas(s.listRoomsByOwner.all(ownerId) as RoomRecord[]);
+    },
+    listAllRooms() {
+      return filas(s.listAllRooms.all() as RoomRecord[]);
     },
     updateRoomStatus(id, status, at) {
       s.updateRoomStatus.run(status, at, id);
@@ -299,6 +302,13 @@ export function createRoomRepository(db: Db): RoomRepository {
       return { upToSeq: row.up_to_seq, state: JSON.parse(row.state_json) as unknown };
     },
   };
+}
+
+function filas(rows: readonly RoomRecord[]): readonly RoomRow[] {
+  return rows.flatMap((row) => {
+    const room = toRoom(row);
+    return room ? [room] : [];
+  });
 }
 
 function toRoom(row: RoomRecord | undefined): RoomRow | null {

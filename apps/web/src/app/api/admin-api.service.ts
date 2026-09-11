@@ -1,9 +1,13 @@
 import { Injectable } from '@angular/core';
 import { ApiClient } from './api-client';
 import type {
+  AdminRoom,
+  AdminRoomList,
+  BorrarSalasRequest,
   CreatedInvitation,
   Invitation,
   InvitationList,
+  SalasBorradas,
   UserList,
 } from '@devweb/shared/contracts/admin';
 import type { OkResponse, PublicUser } from '@devweb/shared/contracts/auth';
@@ -50,5 +54,27 @@ export class AdminApiService {
 
   async revocarInvitacion(id: string): Promise<void> {
     await this.api.request<OkResponse>({ method: 'DELETE', path: `/admin/invitaciones/${id}` });
+  }
+
+  async salas(): Promise<readonly AdminRoom[]> {
+    return (await this.api.request<AdminRoomList>({ method: 'GET', path: '/admin/salas' })).salas;
+  }
+
+  async cerrarSala(roomId: string): Promise<void> {
+    await this.api.request<OkResponse>({ method: 'DELETE', path: `/admin/salas/${roomId}` });
+  }
+
+  async echarAsiento(roomId: string, seatId: string): Promise<void> {
+    await this.api.request<OkResponse>({
+      method: 'DELETE',
+      path: `/admin/salas/${roomId}/asientos/${seatId}`,
+    });
+  }
+
+  /** Devuelve cuántas se ha llevado por delante. */
+  async cerrarSalas(filtro: BorrarSalasRequest): Promise<number> {
+    return (
+      await this.api.request<SalasBorradas>({ method: 'DELETE', path: '/admin/salas', body: filtro })
+    ).borradas;
   }
 }
