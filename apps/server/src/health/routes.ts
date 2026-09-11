@@ -17,6 +17,15 @@ const HealthResponse = Type.Object({
    */
   ia: Type.Object({
     configurada: Type.Boolean(),
+    /**
+     * Si además el presentador improvisa sus frases con el modelo.
+     *
+     * Son dos cosas distintas y conviene no confundirlas: «hay clave» es lo que
+     * decide si se pueden inventar las preguntas de una sala, y eso es lo que
+     * mira el lóbby. Que el presentador improvise viene apagado porque se come
+     * la cuota del día en frases de relleno.
+     */
+    presentador: Type.Boolean(),
     proveedor: Type.String(),
     modelo: Type.String(),
     soloGratis: Type.Boolean(),
@@ -56,7 +65,8 @@ export function healthRoutes(
           database,
           uptimeSeconds: Math.round(process.uptime()),
           ia: {
-            configurada: !!ia?.enabled,
+            configurada: !!ia,
+            presentador: !!ia?.enabled,
             proveedor: ia?.provider ?? '',
             modelo: ia?.model ?? '(los gratuitos por defecto)',
             soloGratis: ia?.freeOnly !== false,

@@ -1,0 +1,9 @@
+<div class="presentador" [class.callado]="!dice">
+  <img class="host" [src]="cara" alt="El presentador del concurso" decoding="async" />
+  @if (dice) {
+    <blockquote class="bocadillo" [attr.data-turno]="turnoDePalabra">
+      <span class="quien">EL PRESENTADOR</span>
+      <p>{{ dice }}</p>
+    </blockquote>
+  }
+</div>

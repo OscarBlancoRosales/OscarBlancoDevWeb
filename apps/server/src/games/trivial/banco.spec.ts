@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BANCO, ESCALETA, RONDAS_POR_PROGRAMA, repartir } from './banco';
-import { BOMBA, PULSA, RAFAGA } from './pruebas';
+import { BOMBA, FINAL, PULSA, RAFAGA } from './pruebas';
 import { BANCO_RESCATADO } from './banco-rescatado';
 import { OPCIONES } from '@devweb/shared/games/trivial/tipos';
 
@@ -146,28 +146,38 @@ describe('la escaleta del programa', () => {
     expect(tanda).toHaveLength(desde);
   });
 
-  it('están las seis pruebas, que es de lo que va el programa', () => {
+  it('están las seis pruebas y la final, que es de lo que va el programa', () => {
     const clases = new Set(repartir(7).map((pregunta) => pregunta.tipo));
-    expect(clases).toEqual(new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba']));
+    expect(clases).toEqual(
+      new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba', 'final']),
+    );
   });
 
   /** Sin preguntas de sobra, dos partidas seguidas traen lo mismo. */
   it('hay más preguntas de las que caben en una partida', () => {
     for (const seccion of ESCALETA) {
-      const hay = [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA].filter(
+      const hay = [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...FINAL].filter(
         (una) => una.tipo === seccion.tipo,
       );
       expect(hay.length, seccion.tipo).toBeGreaterThan(seccion.cuantas);
     }
   });
 
-  it('la bomba cierra el programa, que es donde están los vuelcos', () => {
-    expect(repartir(5).at(-1)?.tipo).toBe('bomba');
+  /**
+   * La bomba ya no cierra: cierra la final.
+   *
+   * Los vuelcos siguen estando en la bomba, pero el programa acaba apostando,
+   * que es lo único que puede dar la vuelta a un marcador entero de golpe.
+   */
+  it('la bomba deja paso a la final, que es la que cierra', () => {
+    const programa = repartir(5);
+    expect(programa.at(-1)?.tipo).toBe('final');
+    expect(programa.at(-2)?.tipo).toBe('bomba');
   });
 });
 
 describe('las preguntas de las pruebas nuevas', () => {
-  const nuevas = [...PULSA, ...RAFAGA, ...BOMBA];
+  const nuevas = [...PULSA, ...RAFAGA, ...BOMBA, ...FINAL];
 
   it('todas explican la respuesta', () => {
     for (const pregunta of nuevas) {

@@ -63,6 +63,19 @@ const ConfigSchema = Type.Object({
    * cada partida factura.
    */
   AI_FREE_ONLY: Type.Boolean({ default: true }),
+  /**
+   * Si el presentador del concurso habla con un modelo. Apagado por defecto.
+   *
+   * La cuota gratuita se cuenta por cuenta y por día -cincuenta peticiones en
+   * OpenRouter, sin ir más lejos- y un programa entero son veinte momentos en
+   * los que el presentador abre la boca. Gastarla ahí la deja sin nada para lo
+   * único que una máquina hace mejor que un guion escrito: inventarse las
+   * preguntas.
+   *
+   * Apagado, el presentador habla igual: el guion escrito no es un plan B, es
+   * el presentador. Esto solo decide si además se le da el tono de un modelo.
+   */
+  AI_PRESENTADOR: Type.Boolean({ default: false }),
 });
 
 export type Config = Static<typeof ConfigSchema> & { readonly corsOrigins: readonly string[] };

@@ -1,33 +1,23 @@
-<app-terminal-layout title="El Concurso">
-  <div class="mesa">
-    @if (error()) {
-      <p class="aviso">{{ error() }}</p>
-    }
+<app-plato
+  [callado]="callado()"
+  [rotulo]="rotuloDeArriba"
+  (alterna)="alternarSonido()"
+  (sale)="volver()"
+>
+  @if (error()) {
+    <p class="aviso">{{ error() }}</p>
+  }
 
-    @if (vista(); as v) {
-      <!-- El presentador. Lo que dice y la cara que pone los manda el
-           servidor, así que los cinco de la mesa ven y leen lo mismo. -->
-      <div class="plato" [class.callado]="!dice">
-        <img
-          class="host"
-          [src]="caraDelPresentador"
-          alt="El presentador del concurso"
-          decoding="async"
-        />
-        @if (dice) {
-          <blockquote class="bocadillo" [attr.data-turno]="turnoDePalabra">
-            <span class="quien">EL PRESENTADOR</span>
-            <p>{{ dice }}</p>
-          </blockquote>
-        }
-      </div>
+  @if (vista(); as v) {
+    <!-- Arriba: el presentador. Lo que dice y la cara que pone los manda el
+         servidor, así que los cinco de la mesa ven y leen lo mismo. -->
+    <app-presentador [dice]="v.dice" [momento]="v.momento" />
 
+    <div class="medio">
       @if (v.fase === 'presentacion') {
-        <section class="fase">
-          <header class="titular">
-            <h1><span class="prompt">&gt;</span> Antes de empezar</h1>
-            <p class="pie">{{ v.rondas }} rondas. Cuando estéis, se arranca.</p>
-          </header>
+        <section class="antes">
+          <h1>Antes de empezar</h1>
+          <p class="pie">{{ v.rondas }} rondas. Cuando estéis, se arranca.</p>
           <div class="botones">
             <button type="button" class="principal" (click)="empezar()">Estoy listo</button>
             <button type="button" class="enlace" (click)="copiarEnlace()">
@@ -36,153 +26,74 @@
           </div>
         </section>
       } @else if (v.fase === 'fin') {
-        <section class="fase">
-          <header class="titular">
-            <h1><span class="prompt">&gt;</span> Se acabó el concurso</h1>
-            @if (ganador; as primero) {
-              <p class="pie">
-                Gana <strong>{{ primero.nombre }}</strong> con {{ primero.puntos }} puntos.
-              </p>
-            }
-          </header>
-          <div class="botones">
-            <button type="button" class="principal" (click)="volver()">Otro concurso</button>
-          </div>
-        </section>
+        <app-podio [clasificacion]="clasificacion" (otra)="volver()" />
+      } @else if (v.fase === 'apuestas') {
+        <!-- La pregunta no se enseña hasta que se cierran las apuestas: verla
+             antes sería apostar sobre seguro. -->
+        <app-apuesta
+          [tienes]="loQueLlevas"
+          [tuApuesta]="v.tuApuesta"
+          [hanApostado]="v.hanApostado.length"
+          [sonPersonas]="personas"
+          (apuesta)="apostar($event)"
+        />
       } @else {
-        <section class="fase">
-          <header class="titular">
-            @if (seccion; as parte) {
-              <div class="rotulo" [class.peligro]="esBomba">
-                <span class="parte">{{ parte.nombre }}</span>
-                <span class="pista">{{ parte.pista }}</span>
-              </div>
+        @if (v.cierraEn !== 0 && !v.cerrada) {
+          <app-cronometro [cierraEn]="v.cierraEn" [duracionMs]="duracionMs" />
+        }
+
+        @if (v.tipo === 'bomba' && !v.cerrada) {
+          <p class="bomba" [class.tuya]="v.tuTurno">
+            @if (v.tuTurno) {
+              <strong>¡La bomba la tienes tú!</strong> Contesta y pásala.
+            } @else {
+              La tiene <strong>{{ quienTieneLaBomba }}</strong>. Tú mira.
             }
-            <h1><span class="prompt">&gt;</span> Ronda {{ v.ronda }} de {{ v.rondas }}</h1>
-            <p class="enunciado">{{ v.enunciado }}</p>
-          </header>
+            <span class="mecha">Mecha: {{ v.mecha }}</span>
+          </p>
+        }
 
-          <!-- La bomba: de quién es y cuánto le queda -->
-          @if (esBomba && !v.cerrada) {
-            <div class="bomba" [class.tuya]="v.tuTurno">
-              <span class="mecha" aria-hidden="true">
-                @for (paso of [].constructor(mecha); track $index) {
-                  <i></i>
-                }
-              </span>
-              @if (v.turno) {
-                <img
-                  class="avatar grande"
-                  [src]="fotoDe(v.turno)"
-                  [alt]="quienTieneLaBomba"
-                  loading="lazy"
-                />
-              }
-              <p class="quien-la-tiene">
-                @if (v.tuTurno) {
-                  <strong>¡La tienes tú!</strong> Contesta y pásala.
-                } @else {
-                  La tiene <strong>{{ quienTieneLaBomba }}</strong>. Tú mira.
-                }
-              </p>
-            </div>
-          }
+        @if (v.tipo === 'rafaga' && v.racha > 0) {
+          <p class="racha">Llevas <strong>{{ v.racha }}</strong> seguidas. Multiplicador activo.</p>
+        }
 
-          <!-- La racha de la ráfaga, que es lo que multiplica -->
-          @if (esRafaga && racha > 0) {
-            <p class="racha">Llevas <strong>{{ racha }}</strong> seguidas. Multiplicador activo.</p>
-          }
+        <app-panel-pregunta
+          [enunciado]="v.enunciado"
+          [codigo]="v.codigo"
+          [opciones]="v.opciones"
+          [dificultad]="v.dificultad"
+          [esEstimacion]="v.tipo === 'estimacion'"
+          [puedesContestar]="puedesContestar"
+          [cerrada]="v.cerrada"
+          [correcta]="v.correcta"
+          [tuRespuesta]="v.tuRespuesta"
+          [explicacion]="v.explicacion"
+          [sePuedeImpugnar]="v.inventadas"
+          [impugnan]="v.impugnan"
+          [hacenFalta]="v.hacenFalta"
+          [tuImpugnas]="v.tuImpugnas"
+          (responde)="responder($event)"
+          (impugna)="impugnar()"
+        />
 
-          @if (v.codigo) {
-            <pre class="codigo"><code>{{ v.codigo }}</code></pre>
-          }
-
-          @if (v.tipo === 'estimacion') {
-            <div class="estimacion">
-              <label>
-                Tu número
-                <input
-                  type="number"
-                  [(ngModel)]="estimacion"
-                  [disabled]="!puedesContestar"
-                />
-              </label>
-              <button
-                type="button"
-                class="principal"
-                [disabled]="estimacion === null || !puedesContestar"
-                (click)="responderEstimacion()"
-              >
-                Va
-              </button>
-            </div>
-          } @else {
-            <ul class="opciones">
-              @for (opcion of v.opciones; track $index) {
-                <li>
-                  <button
-                    type="button"
-                    class="opcion"
-                    [class.buena]="v.cerrada && esLaBuena($index)"
-                    [class.tuya]="esLaTuya($index)"
-                    [disabled]="!puedesContestar"
-                    (click)="responder($index)"
-                  >
-                    <span class="letra">{{ letras[$index] }}</span>
-                    <span class="texto">{{ opcion }}</span>
-                  </button>
-                </li>
-              }
-            </ul>
-          }
-
-          @if (v.cerrada) {
-            <div class="solucion">
-              <p class="explicacion">{{ v.explicacion }}</p>
-              <ul class="resultados">
-                @for (resultado of v.resultados; track resultado.seatId) {
-                  <li>
-                    <img
-                      class="avatar"
-                      [src]="fotoDe(resultado.seatId)"
-                      [alt]="nombreDe(resultado.seatId)"
-                      loading="lazy"
-                    />
-                    <span class="nombre">{{ nombreDe(resultado.seatId) }}</span>
-                    <span
-                      class="ganados"
-                      [class.cero]="resultado.ganados === 0"
-                      [class.resta]="resultado.ganados < 0"
-                    >
-                      {{ resultado.ganados > 0 ? '+' : '' }}{{ resultado.ganados }}
-                    </span>
-                  </li>
-                }
-              </ul>
-              <button type="button" class="principal" (click)="siguiente()">
-                {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
-              </button>
-            </div>
-          } @else if (esperandoAlResto && !esBomba) {
-            <p class="pie">Contestado. Esperando al resto…</p>
-          }
-        </section>
+        @if (v.cerrada) {
+          <button type="button" class="principal" (click)="siguiente()">
+            {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
+          </button>
+        } @else if (esperandoAlResto) {
+          <p class="pie">Contestado. Esperando al resto…</p>
+        }
       }
+    </div>
 
-      <!-- El marcador acompaña toda la partida -->
-      @if (v.fase !== 'presentacion') {
-        <ol class="clasificacion">
-          @for (puesto of clasificacion; track puesto.seatId) {
-            <li [class.tu]="puesto.eresTu">
-              <img class="avatar" [src]="puesto.foto" [alt]="puesto.nombre" loading="lazy" />
-              <span class="nombre">{{ puesto.nombre }}</span>
-              <span class="puntos">{{ puesto.puntos }}</span>
-            </li>
-          }
-        </ol>
-      }
-    } @else {
-      <p class="pie">Entrando en la mesa…</p>
+    <!-- Abajo: la gente, en sus atriles. -->
+    @if (v.fase !== 'fin') {
+      <app-atriles [puestos]="puestos" />
     }
-  </div>
-</app-terminal-layout>
+  } @else {
+    <p class="pie">Entrando en el plató…</p>
+  }
+
+  <!-- La cortinilla, por encima de todo lo demás. -->
+  <app-rotulo [seccion]="anunciando()" (salta)="saltarRotulo()" />
+</app-plato>

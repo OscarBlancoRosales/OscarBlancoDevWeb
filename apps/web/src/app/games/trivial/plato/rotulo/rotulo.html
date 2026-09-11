@@ -1,0 +1,9 @@
+@if (seccion; as parte) {
+  <button type="button" class="rotulo" (click)="salta.emit()" title="Pulsa para saltar">
+    <span class="marco">
+      <span class="nombre">{{ parte.nombre }}</span>
+      <span class="pista">{{ parte.pista }}</span>
+      <span class="premio">{{ parte.premio }}</span>
+    </span>
+  </button>
+}

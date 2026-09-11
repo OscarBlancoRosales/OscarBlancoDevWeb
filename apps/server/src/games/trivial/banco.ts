@@ -1,5 +1,5 @@
 import { createRng, shuffle } from '@devweb/shared/engine/rng';
-import { BOMBA, PULSA, RAFAGA } from './pruebas';
+import { BOMBA, FINAL, PULSA, RAFAGA } from './pruebas';
 import { BANCO_RESCATADO } from './banco-rescatado';
 import type { Pregunta, TipoPrueba } from '@devweb/shared/games/trivial/tipos';
 
@@ -19,6 +19,9 @@ export const ESCALETA: readonly { tipo: TipoPrueba; cuantas: number }[] = [
   { tipo: 'fallo', cuantas: 2 },
   { tipo: 'estimacion', cuantas: 2 },
   { tipo: 'bomba', cuantas: 6 },
+  // Y se cierra apostando. Va la última porque es la única prueba que puede dar
+  // la vuelta al marcador entero, y eso solo tiene gracia al final.
+  { tipo: 'final', cuantas: 1 },
 ];
 
 /** Cuántas rondas tiene un programa. Sale de la escaleta, no al revés. */
@@ -379,7 +382,7 @@ export const BANCO: readonly Pregunta[] = [
 
 /** Todo lo que hay para repartir, junto: el banco de siempre y las pruebas. */
 function todas(): readonly Pregunta[] {
-  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...BANCO_RESCATADO];
+  return [...BANCO, ...PULSA, ...RAFAGA, ...BOMBA, ...FINAL, ...BANCO_RESCATADO];
 }
 
 /**

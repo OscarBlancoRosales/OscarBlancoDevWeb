@@ -82,16 +82,14 @@ export const FREE_MODELS: Record<AiProvider, ModelOption[]> = {
       note: 'De otra casa, que es su gracia: se satura cuando los NVIDIA no.',
     },
   ],
+  // Comprobado contra la API de Groq el 11 de septiembre de 2026: los Llama que
+  // había aquí -3.3-70b-versatile y 3.1-8b-instant- devuelven 404. Los retiran
+  // sin avisar, así que esta lista hay que mirarla de vez en cuando.
   groq: [
-    {
-      id: 'llama-3.3-70b-versatile',
-      label: 'Llama 3.3 70B',
-      note: 'Capa gratuita de Groq. Respuestas casi instantáneas.',
-    },
     {
       id: 'openai/gpt-oss-120b',
       label: 'GPT-OSS 120B',
-      note: 'El más capaz de Groq, y sigue contestando en menos de un segundo.',
+      note: 'El más capaz de Groq, y medido, también el más rápido: 150 ms.',
     },
     {
       id: 'openai/gpt-oss-20b',
@@ -99,9 +97,9 @@ export const FREE_MODELS: Record<AiProvider, ModelOption[]> = {
       note: 'Más ligero. Para una frase de tres líneas va sobrado.',
     },
     {
-      id: 'llama-3.1-8b-instant',
-      label: 'Llama 3.1 8B',
-      note: 'El más rápido; suficiente para el chat de la partida.',
+      id: 'qwen/qwen3.8-27b',
+      label: 'Qwen 3.8 27B',
+      note: 'De otra casa, por si los dos GPT-OSS caen a la vez.',
     },
   ],
   gemini: [
@@ -229,6 +227,11 @@ function bodyFor(settings: AiSettings, messages: ChatMessage[], maxTokens: numbe
     // local sin decir por qué. Excluyendo el razonamiento contestan en menos de
     // 400 ms con el JSON limpio.
     ...(settings.provider === 'openrouter' ? { reasoning: { exclude: true } } : {}),
+    // Lo mismo en Groq, que lo pide con otro nombre: los GPT-OSS razonan por
+    // defecto y con 120 tokens de presupuesto devolvían el contenido vacío.
+    ...(settings.provider === 'groq'
+      ? { reasoning_effort: 'low', include_reasoning: false }
+      : {}),
   });
 }
 
@@ -251,11 +254,14 @@ function bajar(valor: unknown, ...ruta: (string | number)[]): unknown {
 function extractText(settings: AiSettings, payload: unknown): string {
   if (settings.provider === 'gemini') {
     const text = bajar(payload, 'candidates', 0, 'content', 'parts', 0, 'text');
-    if (typeof text === 'string') return text;
+    if (typeof text === 'string' && text.trim()) return text;
     throw new AiError('bad-response', 'Respuesta de Gemini sin texto');
   }
   const text = bajar(payload, 'choices', 0, 'message', 'content');
-  if (typeof text === 'string') return text;
+  // En blanco cuenta como sin contenido: un modelo de razonamiento que se ha
+  // gastado el presupuesto pensando contesta 200 con la cadena vacía, y darla
+  // por buena dejaba la mesa muda con la cadena de reserva sin estrenar.
+  if (typeof text === 'string' && text.trim()) return text;
   throw new AiError('bad-response', 'Respuesta sin contenido');
 }
 
@@ -284,7 +290,13 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
   // En Groq y Gemini la cuota gratuita se cuenta por modelo, así que un 429 en
   // uno no dice nada del siguiente. Estaban vacías y no debían: el mismo 429
   // que aquí se esquiva dejaba la mesa sin frase.
-  groq: ['openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b'],
+  // Los Llama van delante porque no razonan: para una frase de tres líneas son
+  // la reserva más segura cuando el que falla es un modelo de razonamiento.
+  // Los dos Llama que encabezaban esto estaban retirados: 404 los dos, o sea
+  // dos peticiones quemadas antes de llegar a un modelo vivo. El 120B va
+  // primero porque es el más capaz y, medido contra Groq, también el más
+  // rápido: 149 ms frente a los 403 del pequeño.
+  groq: ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'],
   gemini: ['gemini-2.0-flash-lite', 'gemini-2.0-flash'],
   // Un servidor propio no tiene a quién recurrir: o está levantado o no está.
   'openai-compatible': [],
