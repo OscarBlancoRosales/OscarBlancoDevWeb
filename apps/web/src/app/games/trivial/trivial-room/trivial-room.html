@@ -9,6 +9,10 @@
   }
 
   @if (vista(); as v) {
+    @if (v.cierraEn !== 0 && !v.cerrada) {
+      <app-cronometro [cierraEn]="v.cierraEn" [duracionMs]="duracionMs" />
+    }
+
     <!-- Arriba: el presentador. Lo que dice y la cara que pone los manda el
          servidor, así que los cinco de la mesa ven y leen lo mismo. -->
     <app-presentador [dice]="v.dice" [momento]="v.momento" />
@@ -38,10 +42,6 @@
           (apuesta)="apostar($event)"
         />
       } @else {
-        @if (v.cierraEn !== 0 && !v.cerrada) {
-          <app-cronometro [cierraEn]="v.cierraEn" [duracionMs]="duracionMs" />
-        }
-
         @if (v.tipo === 'bomba' && !v.cerrada) {
           <p class="bomba" [class.tuya]="v.tuTurno">
             @if (v.tuTurno) {

@@ -16,11 +16,11 @@
   flex-direction: column;
   align-items: center;
   min-width: 0;
-  flex: 0 1 9rem;
+  flex: 0 1 10rem;
   padding: 0.5rem 0.4rem 0.6rem;
   border-radius: 0.6rem 0.6rem 0.2rem 0.2rem;
-  background: linear-gradient(180deg, rgb(30 41 59 / 85%), rgb(15 23 42 / 95%));
-  border: 1px solid rgb(148 163 184 / 25%);
+  background: linear-gradient(180deg, rgb(59 26 106 / 85%), rgb(20 12 46 / 95%));
+  border: 1px solid rgb(232 121 249 / 28%);
   box-shadow: 0 10px 20px rgb(0 0 0 / 45%);
   transition:
     transform 220ms ease,
@@ -31,7 +31,7 @@
 
 .cara {
   width: 100%;
-  max-width: 5.5rem;
+  max-width: 6rem;
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 50%;
@@ -155,16 +155,22 @@
 
 /* En el móvil, dos filas antes que atriles de un centímetro. */
 @media (max-width: 560px) {
+  /* En el móvil los atriles se arrastran en una fila en vez de apilarse en
+     dos: apilados se comían media pantalla y aun así se veían pequeños. */
   .fila {
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 0 0.2rem 0.3rem;
   }
   .atril {
-    flex: 0 1 5.5rem;
+    flex: 0 0 5.6rem;
+    scroll-snap-align: center;
   }
   .cara {
-    max-width: 3.2rem;
+    max-width: 3.4rem;
   }
   .puntos {
-    font-size: 1rem;
+    font-size: 1.15rem;
   }
 }

@@ -4,6 +4,14 @@
 
   <header class="marquesina">
     <span class="donde">{{ rotulo }}</span>
+
+    <!-- El reloj vive en la cabecera y no en medio del juego: ahí no le quita
+         sitio a la pregunta ni se le monta encima al bocadillo, que es lo que
+         pasaba en el móvil. -->
+    <span class="reloj">
+      <ng-content select="app-cronometro" />
+    </span>
+
     <span class="mandos">
       <button
         type="button"

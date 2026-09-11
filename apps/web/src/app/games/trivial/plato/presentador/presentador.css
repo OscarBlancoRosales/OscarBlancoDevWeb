@@ -23,8 +23,8 @@
   max-width: min(42rem, 60vw);
   padding: 0.7rem 1rem;
   border-radius: 0.9rem;
-  background: rgb(248 250 252 / 96%);
-  color: rgb(15 23 42);
+  background: linear-gradient(180deg, rgb(253 252 255), rgb(237 233 254));
+  color: rgb(24 12 52);
   box-shadow: 0 10px 24px rgb(0 0 0 / 45%);
   animation: entra 260ms ease;
 }
@@ -36,7 +36,7 @@
   left: -0.55rem;
   top: 1.4rem;
   border: 0.55rem solid transparent;
-  border-right-color: rgb(248 250 252 / 96%);
+  border-right-color: rgb(253 252 255);
   border-left: 0;
 }
 
@@ -66,18 +66,32 @@
   }
 }
 
+/*
+ * En el móvil, el presentador es una tira y no un retrato.
+ *
+ * Apilado ocupaba doscientos píxeles -un cuarto de la pantalla- para una cara
+ * que no hay que mirar. De lado, con el bocadillo al costado, cabe en noventa
+ * y el juego se queda con el resto.
+ */
 @media (max-width: 700px) {
   .presentador {
-    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  .host {
+    width: 4.2rem;
+    flex: 0 0 auto;
   }
   .bocadillo {
-    max-width: 92vw;
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    padding: 0.45rem 0.65rem;
+    max-height: 5.6rem;
+    overflow-y: auto;
   }
-  .bocadillo::before {
-    left: 1.6rem;
-    top: -0.55rem;
-    border-color: transparent;
-    border-bottom-color: rgb(248 250 252 / 96%);
-    border-top: 0;
+  .bocadillo p {
+    font-size: 0.82rem;
+    line-height: 1.3;
   }
 }

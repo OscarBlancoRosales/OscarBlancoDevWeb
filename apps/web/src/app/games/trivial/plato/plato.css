@@ -7,9 +7,12 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Morado de plató en vez de azul marino plano: es lo que separa un decorado
+     de televisión de una pantalla oscura cualquiera. */
   background:
-    radial-gradient(ellipse 80% 55% at 50% 0%, rgb(30 41 59), transparent 70%),
-    linear-gradient(180deg, rgb(2 6 23), rgb(8 14 34) 60%, rgb(2 6 23));
+    radial-gradient(ellipse 70% 45% at 50% -5%, rgb(126 34 206 / 45%), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 110%, rgb(30 64 175 / 35%), transparent 70%),
+    linear-gradient(180deg, rgb(23 8 46), rgb(15 10 40) 55%, rgb(8 6 26));
   color: rgb(226 232 240);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
@@ -21,19 +24,21 @@
   height: 60%;
   pointer-events: none;
   background:
-    conic-gradient(from 200deg at 18% -10%, transparent 0deg, rgb(250 204 21 / 9%) 12deg, transparent 26deg),
-    conic-gradient(from 160deg at 82% -10%, transparent 0deg, rgb(56 189 248 / 9%) 12deg, transparent 26deg),
-    conic-gradient(from 175deg at 50% -14%, transparent 0deg, rgb(248 250 252 / 7%) 18deg, transparent 36deg);
+    conic-gradient(from 200deg at 18% -10%, transparent 0deg, rgb(250 204 21 / 16%) 10deg, transparent 24deg),
+    conic-gradient(from 160deg at 82% -10%, transparent 0deg, rgb(56 189 248 / 16%) 10deg, transparent 24deg),
+    conic-gradient(from 175deg at 50% -14%, transparent 0deg, rgb(248 250 252 / 10%) 16deg, transparent 32deg);
 }
 
 /* La banda de suelo donde se apoyan los atriles. */
 .suelo {
   position: absolute;
   inset: auto 0 0;
-  height: 26%;
+  height: 30%;
   pointer-events: none;
-  background: linear-gradient(180deg, transparent, rgb(56 189 248 / 7%));
-  border-top: 1px solid rgb(148 163 184 / 12%);
+  /* El suelo del plató: una banda de luz donde se apoyan los atriles. Sin ella
+     los concursantes flotan en negro y no parecen estar en ningún sitio. */
+  background: linear-gradient(180deg, transparent, rgb(168 85 247 / 14%) 55%, rgb(250 204 21 / 10%));
+  border-top: 1px solid rgb(232 121 249 / 22%);
 }
 
 .marquesina {
@@ -43,10 +48,18 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.5rem 0.9rem;
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  color: rgb(148 163 184);
+  padding: 0.4rem 0.7rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+  color: rgb(216 180 254);
+}
+
+/* El reloj se queda con el hueco central de la cabecera. */
+.reloj {
+  flex: 1;
+  min-width: 0;
+  max-width: 26rem;
 }
 
 .mandos {
