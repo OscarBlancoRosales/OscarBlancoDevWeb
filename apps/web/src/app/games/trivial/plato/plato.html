@@ -1,0 +1,26 @@
+<section class="escenario">
+  <div class="focos" aria-hidden="true"></div>
+  <div class="suelo" aria-hidden="true"></div>
+
+  <header class="marquesina">
+    <span class="donde">{{ rotulo }}</span>
+    <span class="mandos">
+      <button
+        type="button"
+        class="silencio"
+        [attr.aria-pressed]="!callado"
+        [title]="callado ? 'Poner sonido' : 'Silenciar'"
+        (click)="alterna.emit()"
+      >
+        {{ callado ? '&#9834;' : '&#9835;' }}
+      </button>
+      <button type="button" class="salir" title="Salir del concurso" (click)="sale.emit()">
+        &#10005;
+      </button>
+    </span>
+  </header>
+
+  <div class="tablas">
+    <ng-content />
+  </div>
+</section>

@@ -1,0 +1,108 @@
+.ceremonia {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.confeti {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.3rem, 4vw, 2.2rem);
+}
+
+.cajones {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cajon {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  width: clamp(5rem, 22vw, 9rem);
+  padding: 0.7rem 0.5rem;
+  border-radius: 0.5rem 0.5rem 0 0;
+  background: linear-gradient(180deg, rgb(51 65 85), rgb(15 23 42));
+  border: 1px solid rgb(148 163 184 / 30%);
+}
+
+/* La altura del cajón es el puesto: el primero arriba del todo. */
+.cajon[data-puesto='1'] {
+  padding-bottom: 3.5rem;
+  border-color: rgb(250 204 21);
+  box-shadow: 0 0 30px rgb(250 204 21 / 30%);
+}
+.cajon[data-puesto='2'] {
+  padding-bottom: 2.2rem;
+}
+.cajon[data-puesto='3'] {
+  padding-bottom: 1.2rem;
+}
+
+.cajon .cara {
+  width: 100%;
+  max-width: 4.5rem;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.cajon .puntos {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cajon .numero {
+  position: absolute;
+  bottom: 0.3rem;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: rgb(148 163 184 / 60%);
+}
+
+.resto {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+  color: rgb(203 213 225);
+}
+.resto li {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+.resto .puntos {
+  font-variant-numeric: tabular-nums;
+}
+
+.otra {
+  padding: 0.6rem 1.6rem;
+  border-radius: 0.6rem;
+  border: 0;
+  background: rgb(250 204 21);
+  color: rgb(15 23 42);
+  font-weight: 700;
+  cursor: pointer;
+}

@@ -1,0 +1,28 @@
+<ol class="fila">
+  @for (puesto of puestos; track puesto.seatId) {
+    <li
+      class="atril"
+      [class.tu]="puesto.eresTu"
+      [class.contestado]="puesto.haContestado"
+      [class.acierta]="puesto.gano !== null && puesto.gano > 0"
+      [class.falla]="puesto.gano !== null && puesto.gano < 0"
+      [class.con-bomba]="puesto.tieneLaBomba"
+      [class.lidera]="puesto.lidera"
+    >
+      @if (puesto.lidera) {
+        <span class="corona" title="Va primero">&#9819;</span>
+      }
+      <span class="foco" aria-hidden="true"></span>
+      <img class="cara" [src]="puesto.foto" [alt]="puesto.nombre" loading="lazy" />
+      <span class="nombre">{{ puesto.nombre }}</span>
+      <span class="puntos">{{ puesto.puntos }}</span>
+
+      @if (puesto.gano !== null && puesto.gano !== 0) {
+        <span class="gano">{{ conSigno(puesto.gano) }}</span>
+      }
+      @if (puesto.haApostado) {
+        <span class="apostado" title="Ya ha apostado">&#9679;</span>
+      }
+    </li>
+  }
+</ol>

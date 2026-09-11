@@ -1,0 +1,154 @@
+:host {
+  display: block;
+  width: min(60rem, 94vw);
+  margin: 0 auto;
+}
+
+.cabecera {
+  text-align: center;
+}
+
+.dificultad {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  color: rgb(248 113 113);
+  font-size: 0.75rem;
+}
+.dificultad .lectura {
+  color: rgb(148 163 184);
+  margin-left: 0.4rem;
+}
+
+.enunciado {
+  margin: 0.3rem 0 0.8rem;
+  font-size: clamp(1.05rem, 2.6vw, 1.7rem);
+  line-height: 1.25;
+}
+
+.codigo {
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0 0 0.8rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.6rem;
+  background: rgb(2 6 23 / 90%);
+  border: 1px solid rgb(148 163 184 / 25%);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.opciones {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgb(148 163 184 / 35%);
+  background: rgb(30 41 59 / 85%);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.opcion:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgb(250 204 21 / 70%);
+}
+
+.opcion:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.letra {
+  display: grid;
+  place-items: center;
+  flex: 0 0 1.7rem;
+  height: 1.7rem;
+  border-radius: 0.35rem;
+  background: rgb(250 204 21);
+  color: rgb(15 23 42);
+  font-weight: 700;
+}
+
+.opcion.buena {
+  border-color: rgb(34 197 94);
+  background: rgb(34 197 94 / 25%);
+}
+
+.opcion.tuya {
+  outline: 2px solid rgb(56 189 248);
+  outline-offset: 1px;
+}
+
+.estimacion {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.6rem;
+}
+.estimacion input {
+  margin-left: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 40%);
+  background: rgb(15 23 42);
+  color: inherit;
+  font-size: 1.1rem;
+  width: 9rem;
+}
+.va {
+  padding: 0.55rem 1.4rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background: rgb(250 204 21);
+  color: rgb(15 23 42);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.explicacion {
+  margin: 0.8rem 0 0;
+  font-size: 0.9rem;
+  color: rgb(203 213 225);
+  text-align: center;
+}
+
+.impugnar {
+  display: block;
+  margin: 0.8rem auto 0;
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 35%);
+  background: transparent;
+  color: rgb(148 163 184);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.impugnar:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 620px) {
+  .opciones {
+    grid-template-columns: 1fr;
+  }
+}

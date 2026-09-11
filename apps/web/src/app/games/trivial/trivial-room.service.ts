@@ -111,6 +111,21 @@ export class TrivialRoomService {
     this.socket.enviar({ tipo: 'siguiente' });
   }
 
+  /** Lo que te juegas en la final. El servidor no deja pasarse de lo que llevas. */
+  apostar(cuanto: number): void {
+    this.socket.enviar({ tipo: 'apostar', cuanto });
+  }
+
+  /**
+   * Dice que esta pregunta está mal.
+   *
+   * Solo vale en el modo de preguntas inventadas, y hacen falta todas las
+   * personas de la mesa para tumbarla.
+   */
+  impugnar(): void {
+    this.socket.enviar({ tipo: 'impugnar' });
+  }
+
   desconectar(): void {
     this.socket.cerrar();
     this.estado.set(null);

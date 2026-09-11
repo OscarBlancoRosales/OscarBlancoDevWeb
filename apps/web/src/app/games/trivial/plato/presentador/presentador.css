@@ -1,0 +1,83 @@
+.presentador {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+.host {
+  width: clamp(6rem, 14vw, 11rem);
+  aspect-ratio: 1;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 24px rgb(0 0 0 / 55%));
+  transition: filter 200ms ease;
+}
+
+.presentador.callado .host {
+  filter: drop-shadow(0 12px 24px rgb(0 0 0 / 55%)) brightness(0.8);
+}
+
+.bocadillo {
+  position: relative;
+  margin: 0;
+  max-width: min(42rem, 60vw);
+  padding: 0.7rem 1rem;
+  border-radius: 0.9rem;
+  background: rgb(248 250 252 / 96%);
+  color: rgb(15 23 42);
+  box-shadow: 0 10px 24px rgb(0 0 0 / 45%);
+  animation: entra 260ms ease;
+}
+
+/* El pico del bocadillo, apuntando al presentador. */
+.bocadillo::before {
+  content: '';
+  position: absolute;
+  left: -0.55rem;
+  top: 1.4rem;
+  border: 0.55rem solid transparent;
+  border-right-color: rgb(248 250 252 / 96%);
+  border-left: 0;
+}
+
+.quien {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
+  color: rgb(100 116 139);
+}
+
+.bocadillo p {
+  margin: 0.15rem 0 0;
+  font-size: clamp(0.9rem, 1.6vw, 1.1rem);
+  line-height: 1.35;
+}
+
+@keyframes entra {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bocadillo {
+    animation: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .presentador {
+    flex-direction: column;
+  }
+  .bocadillo {
+    max-width: 92vw;
+  }
+  .bocadillo::before {
+    left: 1.6rem;
+    top: -0.55rem;
+    border-color: transparent;
+    border-bottom-color: rgb(248 250 252 / 96%);
+    border-top: 0;
+  }
+}
