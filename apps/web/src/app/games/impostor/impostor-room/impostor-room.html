@@ -10,10 +10,7 @@
           <span class="etiqueta">{{ modo }}</span>
           <span class="etiqueta">{{ v.tema }}</span>
           @if (v.fase !== 'sala' && v.fase !== 'repartiendo') {
-            <span class="etiqueta">Quedan {{ quedan }}</span>
-          }
-          @if (v.fase === 'pistas') {
-            <span class="etiqueta">Vuelta {{ v.vuelta }}/{{ v.vueltas }}</span>
+            <span class="etiqueta">Quedan {{ quedan }} · hasta 2</span>
           }
         </p>
         <div class="botones-cabecera">

@@ -69,12 +69,14 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   /** Vacío o todos = mezcla. Si no, los ids marcados, juntos. */
   readonly elegidos = signal<ReadonlySet<string>>(new Set());
   modo: Modo = 'clasico';
-  vueltas: 1 | 2 = 1;
   impostores: 1 | 2 = 1;
   /** Lo que se deja hablar antes de votar. Cero es «hasta que yo diga». */
   segundosDebate = SEGUNDOS_DE_DEBATE;
-  /** Cuántos asientos rellena la casa. Con menos de tres no hay juego. */
-  bots = 2;
+  /**
+   * Cinco bots: seis en mesa. Con tres, echar a un inocente ya es 1 contra 1
+   * y la caza dura un voto. Aquí hay varias expulsiones de verdad.
+   */
+  bots = 5;
   /** La cara con la que te sientas. Empieza elegida para no dar pereza. */
   cara: string = ELENCO[0]?.id ?? 'troll';
 
@@ -157,7 +159,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
         {
           tema: this.tema,
           modo: this.modo,
-          vueltas: this.vueltas,
+          vueltas: 1,
           impostores: this.cabenDos ? this.impostores : 1,
           segundosDebate: this.segundosDebate,
           bots: this.bots,
