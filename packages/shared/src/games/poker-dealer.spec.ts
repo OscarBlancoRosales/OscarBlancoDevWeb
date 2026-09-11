@@ -4,6 +4,7 @@ import { fraseDelDealer } from './poker-dealer';
 import { encargoDelDealer, instruccionesDelDealer } from './poker-prompts';
 import { MOMENTOS_DEALER } from './poker-reparto';
 import type { ContextoDelDealer } from './poker-prompts';
+import type { MomentoDealer } from './poker-reparto';
 
 /**
  * El dealer de la mesa: lo que dice escrito, y lo que se le pide al modelo.
@@ -65,6 +66,56 @@ describe('el guion escrito', () => {
       [...Array(20)].map((_uno, i) => fraseDelDealer('espabila', DATOS, createRng(i))),
     );
     expect(dichas.size).toBeGreaterThan(1);
+  });
+
+  /** Todo el repertorio de un momento, sacado a base de insistir. */
+  function repertorioDe(momento: MomentoDealer): Set<string> {
+    return new Set([...Array(400)].map((_uno, i) => fraseDelDealer(momento, DATOS, createRng(i))));
+  }
+
+  /**
+   * Con cuatro frases por momento, una mesa normal se las sabe en una ronda.
+   *
+   * El guion no es un adorno: es lo que se lee siempre que el modelo no llega,
+   * y con un repertorio corto la mesa nota el bucle antes de la segunda tarea.
+   */
+  it('tiene repertorio de sobra en cada momento', () => {
+    for (const momento of MOMENTOS_DEALER) {
+      expect(repertorioDe(momento).size, momento).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  /**
+   * Elegir al azar con reemplazo repite mucho antes de lo que parece: con doce
+   * frases, en cinco tiradas hay más de un 60% de ver una dos veces. Y el
+   * bucle que canta no es el de dentro de media hora, es el inmediato.
+   */
+  it('y nunca repite la frase que acaba de decir', () => {
+    for (const momento of MOMENTOS_DEALER) {
+      for (const anterior of repertorioDe(momento)) {
+        for (let semilla = 0; semilla < 12; semilla++) {
+          const frase = fraseDelDealer(momento, DATOS, createRng(semilla), anterior);
+          expect(frase, `${momento}/${semilla}`).not.toBe(anterior);
+        }
+      }
+    }
+  });
+
+  /** Un momento con una sola frase se quedaría mudo al evitar la anterior. */
+  it('y aun evitándola siempre dice algo', () => {
+    for (const momento of MOMENTOS_DEALER) {
+      for (const anterior of repertorioDe(momento)) {
+        const frase = fraseDelDealer(momento, DATOS, createRng(7), anterior);
+        expect(frase.length, momento).toBeGreaterThan(15);
+      }
+    }
+  });
+
+  /** La tarea se nombra siempre al repartir, salga la frase que salga. */
+  it('al repartir siempre se nombra la tarea', () => {
+    for (const frase of repertorioDe('reparte')) {
+      expect(frase).toContain('migrar el login a OAuth');
+    }
   });
 });
 

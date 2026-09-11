@@ -275,3 +275,87 @@ describe('lo que hace un asiento sin nadie detras', () => {
     expect(trivialModule.botAction?.(state, 'maquina', CON_BOT)).toBeNull();
   });
 });
+
+/** Una partida con la bomba en marcha: hay turno repartido y mecha encendida. */
+function enLaBomba(): TrivialState {
+  const conBomba: Pregunta[] = [
+    PREGUNTAS[0],
+    {
+      id: 'b1',
+      tipo: 'bomba',
+      enunciado: '¿Cuántos bits tiene un byte?',
+      opciones: ['4', '8', '16', 'depende'],
+      correcta: 1,
+      explicacion: 'Ocho, por convenio universal.',
+    },
+  ];
+  const inicial = trivialModule.createState(SEATS, { preguntas: conBomba, semilla: 7 });
+  let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+  state = trivialModule.apply(state, { tipo: 'empezar' }, 'bea', SEATS);
+  // Al entrar en la sección se reparte la bomba y se enciende la mecha.
+  return trivialModule.apply(state, { tipo: 'siguiente' }, 'ana', SEATS);
+}
+
+describe('el reloj de la ronda', () => {
+  it('la sala guarda cuándo se cierra y lo manda en la vista', () => {
+    const conReloj = trivialModule.apply(enRonda(), { tipo: 'reloj', hasta: 1_700 }, 'ana', SEATS);
+
+    expect(conReloj.cierraEn).toBe(1_700);
+    expect(vistaDe(conReloj, 'ana').cierraEn).toBe(1_700);
+  });
+
+  it('al vencer, la ronda se cierra sola', () => {
+    const vencida = trivialModule.apply(enRonda(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.fase).toBe('resultado');
+    expect(vistaDe(vencida, 'ana').cerrada).toBe(true);
+  });
+
+  it('quien no contestó a tiempo no suma, pero tampoco pierde', () => {
+    const vencida = trivialModule.apply(enRonda(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.puntos['ana'] ?? 0).toBe(0);
+    expect(vencida.puntos['bea'] ?? 0).toBe(0);
+  });
+
+  it('el tiempo que llega tarde no rompe nada y no se apunta', () => {
+    // Que el temporizador salte cuando la mesa ya ha cerrado la ronda a mano no
+    // es la excepción: es lo normal. Devolver el mismo objeto es la señal de
+    // que no hay nada que escribir en el registro de la partida.
+    const cerrada = trivialModule.apply(enRonda(), { tipo: 'tiempo' }, 'ana', SEATS);
+    const otraVez = trivialModule.apply(cerrada, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(otraVez).toBe(cerrada);
+  });
+
+  it('al pasar de ronda, el reloj se apaga hasta que lo pongan otra vez', () => {
+    // Lo pone el regidor desde el servidor, con la hora de verdad. Si se
+    // quedara el de la ronda anterior, la nueva nacería vencida.
+    const conReloj = trivialModule.apply(enRonda(), { tipo: 'reloj', hasta: 1_700 }, 'ana', SEATS);
+    const siguiente = trivialModule.apply(conReloj, { tipo: 'siguiente' }, 'ana', SEATS);
+
+    expect(siguiente.cierraEn).toBe(0);
+  });
+
+  it('con la bomba en la mano, no contestar es que te estalle', () => {
+    // Sin esto, la jugada ganadora en la bomba es quedarse quieto: se pierde la
+    // mecha pero no los puntos del castigo, que es justo lo que la prueba cobra
+    // por fallar.
+    const conBomba = enLaBomba();
+    const tenia = conBomba.turno ?? 'ana';
+    const antes = conBomba.puntos[tenia] ?? 0;
+
+    const vencida = trivialModule.apply(conBomba, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.puntos[tenia]).toBeLessThan(antes);
+  });
+
+  it('y a quien no la tenía no le cuesta nada', () => {
+    const conBomba = enLaBomba();
+    const mirando = conBomba.orden.find((seat) => seat !== conBomba.turno) ?? 'bea';
+
+    const vencida = trivialModule.apply(conBomba, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.puntos[mirando] ?? 0).toBe(0);
+  });
+});

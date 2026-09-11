@@ -139,6 +139,7 @@ export class AiError extends Error {
       | 'disabled'
       | 'paid-model'
       | 'rate-limited'
+      | 'sin-cuota'
       | 'unavailable'
       | 'retirado',
     message: string,
@@ -146,6 +147,17 @@ export class AiError extends Error {
     super(message);
     this.name = 'AiError';
   }
+}
+
+/**
+ * Si ese 429 es el tope diario de la cuenta y no un modelo ocupado.
+ *
+ * Se mira el cuerpo porque el código es el mismo en los dos casos y la
+ * diferencia lo es todo: uno se arregla preguntando a otro modelo y el otro
+ * solo se arregla esperando a mañana.
+ */
+function esTopeDeLaCuenta(detalle: string): boolean {
+  return detalle.includes('free-models-per-day') || detalle.includes('openrouter_free_tier_daily');
 }
 
 function endpointFor(settings: AiSettings): string {
@@ -357,6 +369,15 @@ export async function chat(
     });
 
     if (response.status === 429) {
+      const detail = await response.text().catch(() => '');
+      // El tope diario de la cuenta no es lo mismo que un modelo saturado.
+      // Cambiar de modelo no lo levanta -es de la cuenta entera- y probar con
+      // los otros cuatro quema cuatro peticiones más contra el mismo tope.
+      // Visto en producción: 50 al día, cero restantes, y una sola partida
+      // gastándolas todas.
+      if (esTopeDeLaCuenta(detail)) {
+        throw new AiError('sin-cuota', 'Se ha agotado la cuota gratuita del día');
+      }
       throw new AiError('rate-limited', 'El modelo está saturado ahora mismo');
     }
     if (response.status === 503 || response.status === 502) {

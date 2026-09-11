@@ -387,6 +387,18 @@ describe('cadena de reserva', () => {
       headers: { 'content-type': 'application/json' },
     });
   const busy = () => new Response(JSON.stringify({ error: 'busy' }), { status: 429 });
+  /** El 429 de OpenRouter cuando se acaba la cuota gratuita del día. */
+  const sinCuotaDiaria = () =>
+    new Response(
+      JSON.stringify({
+        error: {
+          message: 'Rate limit exceeded: free-models-per-day',
+          code: 429,
+          metadata: { limit_source: 'openrouter_free_tier_daily' },
+        },
+      }),
+      { status: 429 },
+    );
 
   it('si el primero contesta, no prueba más', async () => {
     const seen: string[] = [];
@@ -488,6 +500,39 @@ describe('cadena de reserva', () => {
     await expect(chatWithFallback(base, [], { fetchImpl })).rejects.toMatchObject({
       code: 'rate-limited',
     });
+  });
+
+  /**
+   * El tope diario es de la cuenta, no del modelo.
+   *
+   * Visto en producción el 11 de septiembre: 50 peticiones gratuitas al día y
+   * cero restantes. Recorriendo la cadena, cada frase del presentador quemaba
+   * cinco peticiones contra ese mismo tope -que no puede levantarse cambiando
+   * de modelo- y agotaba la cuota del día en una sola partida.
+   */
+  it('si se ha agotado la cuota del día, no prueba con los demás', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(JSON.parse(init.body as string).model as string);
+      return sinCuotaDiaria();
+    }) as unknown as typeof fetch;
+
+    await expect(chatWithFallback(base, [], { fetchImpl })).rejects.toMatchObject({
+      code: 'sin-cuota',
+    });
+    expect(seen).toHaveLength(1);
+  });
+
+  it('pero un modelo saturado suelto sí deja pasar al siguiente', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (_url: string, init: RequestInit) => {
+      seen.push(JSON.parse(init.body as string).model as string);
+      return seen.length === 1 ? busy() : ok('hola');
+    }) as unknown as typeof fetch;
+
+    const result = await chatWithFallback(base, [], { fetchImpl });
+    expect(result.text).toBe('hola');
+    expect(seen.length).toBeGreaterThan(1);
   });
 
   it('la cadena nunca cuela un modelo de pago', async () => {

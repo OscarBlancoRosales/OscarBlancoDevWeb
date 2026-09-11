@@ -1,4 +1,4 @@
-import type { Pregunta, Respuesta } from './tipos';
+import type { Pregunta, Respuesta, TipoPrueba } from './tipos';
 import type { SeatId } from '../module';
 
 export const PUNTOS_ACIERTO = 100;
@@ -136,3 +136,20 @@ function puntosPorCercania(pregunta: Pregunta, valor: number): number {
   const margen = Math.max(1, pregunta.margen ?? Math.abs(pregunta.correcta));
   return Math.max(0, Math.round(PUNTOS_ACIERTO * (1 - error / margen)));
 }
+
+/**
+ * Lo que dura cada prueba, en segundos.
+ *
+ * No es el mismo número para todas porque no cuesta lo mismo: en «encuentra el
+ * fallo» hay que leer código y en la ráfaga se contesta con el estómago. La
+ * prisa es parte de la prueba, así que estos números son reglas del juego y no
+ * una preferencia de la pantalla.
+ */
+export const SEGUNDOS_POR_PRUEBA: Readonly<Record<TipoPrueba, number>> = {
+  test: 25,
+  fallo: 40,
+  estimacion: 30,
+  pulsa: 15,
+  rafaga: 10,
+  bomba: 12,
+};

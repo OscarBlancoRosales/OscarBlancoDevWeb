@@ -23,9 +23,10 @@ const TERMINADA: RuleError = {
 export const trivialModule: GameModule<TrivialState, TrivialAction> = {
   id: 'trivial',
   actionSchema: TrivialAction,
-  // La voz del presentador la pone el servidor. Si la pudiera mandar un
-  // cliente, cualquiera hablaría por su boca al resto de la mesa.
-  accionesDeSistema: ['presenta'],
+  // La voz del presentador y el reloj los pone el servidor. Si los pudiera
+  // mandar un cliente, cualquiera hablaría por boca del presentador al resto de
+  // la mesa, o se daría a sí mismo todo el tiempo del mundo.
+  accionesDeSistema: ['presenta', 'reloj', 'tiempo'],
 
   /**
    * Las preguntas llegan por la configuración de la sala, no de un banco que
@@ -47,6 +48,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       racha: {},
       turno: null,
       mecha: 0,
+      cierraEn: 0,
       dice: '',
       momento: '',
     };
@@ -99,9 +101,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         return null;
       }
 
-      // La dice el servidor por boca del presentador. No la valida nadie más
-      // porque nadie más la manda: al cliente no se le ofrece esta acción.
+      // Las pone el servidor. No las valida nadie más porque nadie más las
+      // manda: al cliente no se le ofrecen estas acciones.
       case 'presenta':
+      case 'reloj':
+      case 'tiempo':
         return null;
     }
   },
@@ -148,11 +152,26 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
           jugadas,
           actual: siguiente,
           fase: 'ronda',
+          // El reloj de la ronda nueva lo pone el regidor con la hora de
+          // verdad. Heredar el de la anterior la haría nacer vencida.
+          cierraEn: 0,
         };
       }
 
       case 'presenta':
         return { ...state, jugadas, dice: action.frase, momento: action.momento };
+
+      case 'reloj':
+        return { ...state, jugadas, cierraEn: action.hasta };
+
+      case 'tiempo': {
+        const ronda = rondaActual(state);
+        // Una ronda ya cerrada no se vuelve a cerrar. Devolver el mismo objeto
+        // es lo que hace que esta jugada no se escriba en el registro: el
+        // temporizador salta a menudo sobre rondas que la mesa acaba de cortar.
+        if (!ronda || ronda.cerrada || state.fase !== 'ronda') return state;
+        return { ...cerrar(state, conLaBombaPerdida(state, ronda)), jugadas };
+      }
     }
   },
 
@@ -186,6 +205,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       resultados: cerrada && ronda ? resultadosDe(state, ronda) : null,
       turno: state.turno,
       mecha: state.mecha,
+      cierraEn: state.cierraEn,
       tuTurno: pregunta?.tipo === 'bomba' ? state.turno === forSeat : !cerrada,
       racha: state.racha[forSeat] ?? 0,
       dice: state.dice,
@@ -220,6 +240,30 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
     return state;
   },
 };
+
+/** El valor que se apunta por quien no llegó a contestar. Nunca acierta. */
+const NO_CONTESTO = -1;
+
+/**
+ * La bomba de quien no contestó a tiempo, ya estallada.
+ *
+ * Fuera de la bomba, dejar de contestar solo cuesta los puntos que no se ganan.
+ * Con la bomba en la mano es distinto: si no contestar saliera gratis, la
+ * jugada ganadora sería quedarse quieto y ahorrarse el castigo, que es
+ * exactamente lo que la prueba cobra por fallar.
+ */
+function conLaBombaPerdida(state: TrivialState, ronda: Ronda): Ronda {
+  if (ronda.pregunta.tipo !== 'bomba' || !state.turno) return ronda;
+  if (respuestaDe(ronda.respuestas, state.turno)) return ronda;
+
+  return {
+    ...ronda,
+    respuestas: {
+      ...ronda.respuestas,
+      [state.turno]: { valor: NO_CONTESTO, orden: Object.keys(ronda.respuestas).length },
+    },
+  };
+}
 
 function primeraRonda(pregunta: Pregunta): Ronda {
   return { pregunta, cerrada: false, respuestas: {} };

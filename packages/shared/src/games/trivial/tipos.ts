@@ -90,6 +90,15 @@ export interface TrivialState {
    */
   readonly mecha: number;
 
+  /**
+   * Cuándo se cierra sola la ronda, en milisegundos de reloj de servidor.
+   *
+   * Viaja el instante y no los segundos que quedan: es lo único que los cinco
+   * navegadores de la mesa pueden compartir, porque cada uno tiene su hora y
+   * ninguna coincide. Cero es «esta ronda no lleva reloj».
+   */
+  readonly cierraEn: number;
+
   /** Lo último que dijo el presentador, para que la mesa lo lea a la vez. */
   readonly dice: string;
   /** El momento del programa al que corresponde esa frase. */
@@ -114,6 +123,14 @@ export const TrivialAction = Type.Union([
     SIN_EXTRAS,
   ),
   Type.Object({ tipo: Type.Literal('siguiente') }, SIN_EXTRAS),
+  // Las pone el servidor: la hora de cierre la decide él porque es el único
+  // reloj que la mesa comparte, y porque un cronómetro que corre en el
+  // navegador es un cronómetro que se para con las devtools abiertas.
+  Type.Object(
+    { tipo: Type.Literal('reloj'), hasta: Type.Integer({ minimum: 0 }) },
+    SIN_EXTRAS,
+  ),
+  Type.Object({ tipo: Type.Literal('tiempo') }, SIN_EXTRAS),
   // La dice el servidor, no una persona: es la voz del presentador entrando
   // en la partida para que todos la lean a la vez.
   Type.Object(
@@ -163,6 +180,8 @@ export interface TrivialView {
   /** Quién tiene la bomba, y cuánto le queda. Fuera de la bomba, `null` y 0. */
   readonly turno: SeatId | null;
   readonly mecha: number;
+  /** Cuándo se cierra la ronda. Cero mientras no haya reloj puesto. */
+  readonly cierraEn: number;
   /** Si te toca a ti contestar. En las demás pruebas contestan todos. */
   readonly tuTurno: boolean;
 
