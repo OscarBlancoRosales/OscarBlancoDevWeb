@@ -108,6 +108,48 @@ describe('cliente de modelos de lenguaje', () => {
       expect(text).toBe('hola mesa');
     });
 
+    /**
+     * Un modelo de razonamiento con poco presupuesto devuelve 200 y el
+     * contenido en blanco: se ha gastado los tokens pensando. Eso no es una
+     * respuesta, y darla por buena deja a la mesa muda con la cadena de
+     * reserva entera sin estrenar.
+     */
+    it('una respuesta en blanco no es una respuesta', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: '' } }] }),
+      );
+      await expect(
+        chat(settings(), [], { fetchImpl: fetchImpl as unknown as typeof fetch }),
+      ).rejects.toMatchObject({ code: 'bad-response' });
+    });
+
+    it('ni aunque traiga espacios', async () => {
+      const fetchImpl = vi.fn(async () =>
+        jsonResponse({ choices: [{ message: { content: '   \n  ' } }] }),
+      );
+      await expect(
+        chat(settings(), [], { fetchImpl: fetchImpl as unknown as typeof fetch }),
+      ).rejects.toMatchObject({ code: 'bad-response' });
+    });
+
+    /**
+     * Los GPT-OSS de Groq razonan por defecto, y ese monólogo se come el
+     * presupuesto: pedir 120 tokens para una frase daba contenido vacío. Es el
+     * mismo problema que en OpenRouter se resuelve con `reasoning.exclude`.
+     */
+    it('a Groq se le pide que no se enrolle pensando', async () => {
+      let body: Record<string, unknown> = {};
+      const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+        body = JSON.parse(init.body as string) as Record<string, unknown>;
+        return jsonResponse({ choices: [{ message: { content: 'ok' } }] });
+      });
+      await chat(settings({ provider: 'groq', model: 'openai/gpt-oss-20b' }), [], {
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+      expect(body['reasoning_effort']).toBe('low');
+      expect(body['include_reasoning']).toBe(false);
+    });
+
     it('extrae el texto de una respuesta de Gemini', async () => {
       const fetchImpl = vi.fn(async () =>
         jsonResponse({ candidates: [{ content: { parts: [{ text: 'hola' }] } }] }),
@@ -127,7 +169,7 @@ describe('cliente de modelos de lenguaje', () => {
       await chat(settings({ provider: 'openrouter' }), [], {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       });
-      await chat(settings({ provider: 'groq', model: 'llama-3.3-70b-versatile' }), [], {
+      await chat(settings({ provider: 'groq', model: 'openai/gpt-oss-120b' }), [], {
         fetchImpl: fetchImpl as unknown as typeof fetch,
       });
       expect(calls[0]).toContain('openrouter.ai');
@@ -548,6 +590,26 @@ describe('cadena de reserva', () => {
       }),
     ).rejects.toBeTruthy();
     for (const model of seen) expect(isFreeModel('openrouter', model), model).toBe(true);
+  });
+
+  it('un modelo que contesta en blanco cede el turno al siguiente', async () => {
+    const pedidos: string[] = [];
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { model: string };
+      pedidos.push(body.model);
+      return jsonResponse({
+        choices: [{ message: { content: pedidos.length === 1 ? '' : 'ya voy' } }],
+      });
+    });
+
+    const salida = await chatWithFallback(
+      { ...DEFAULT_AI_SETTINGS, enabled: true, apiKey: 'k' },
+      [],
+      { fetchImpl: fetchImpl as unknown as typeof fetch },
+    );
+
+    expect(salida.text).toBe('ya voy');
+    expect(pedidos).toHaveLength(2);
   });
 
   it('la reserva solo se aplica donde tiene sentido', () => {

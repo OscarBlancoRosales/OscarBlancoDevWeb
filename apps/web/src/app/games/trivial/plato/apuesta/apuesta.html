@@ -1,0 +1,34 @@
+<section class="mando">
+  @if (tuApuesta === null) {
+    <h2>¿Cuánto te juegas?</h2>
+    <p class="tienes">Llevas <strong>{{ tienes }}</strong> puntos</p>
+
+    <output class="cifra">{{ cuanto }}</output>
+
+    <input
+      type="range"
+      min="0"
+      [max]="tienes"
+      step="10"
+      [(ngModel)]="cuanto"
+      aria-label="Cuánto apuestas"
+    />
+
+    <div class="atajos">
+      <button type="button" (click)="pon(0)">Me planto</button>
+      <button type="button" (click)="pon(0.5)">La mitad</button>
+      <button type="button" (click)="pon(1)">Todo</button>
+    </div>
+
+    <button type="button" class="apostar" (click)="apostar()">Apostar</button>
+    <p class="pie">Aciertas y lo doblas. Fallas y lo pierdes.</p>
+  } @else {
+    <h2>Apuesta puesta</h2>
+    <output class="cifra">{{ tuApuesta }}</output>
+    <p class="pie">Ya no se puede cambiar. A ver esa pregunta.</p>
+  }
+
+  <p class="cuantos">
+    Han apostado {{ hanApostado }} de {{ sonPersonas }}
+  </p>
+</section>

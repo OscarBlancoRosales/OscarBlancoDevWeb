@@ -1,0 +1,85 @@
+/* Ocupa la pantalla entera, por encima del escritorio simulado. El concurso, y
+   solo el concurso, se sale del marco de terminal del resto del sitio. */
+.escenario {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 0%, rgb(30 41 59), transparent 70%),
+    linear-gradient(180deg, rgb(2 6 23), rgb(8 14 34) 60%, rgb(2 6 23));
+  color: rgb(226 232 240);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+/* Los haces de luz que caen del techo. Decorado puro, sin interacción. */
+.focos {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 60%;
+  pointer-events: none;
+  background:
+    conic-gradient(from 200deg at 18% -10%, transparent 0deg, rgb(250 204 21 / 9%) 12deg, transparent 26deg),
+    conic-gradient(from 160deg at 82% -10%, transparent 0deg, rgb(56 189 248 / 9%) 12deg, transparent 26deg),
+    conic-gradient(from 175deg at 50% -14%, transparent 0deg, rgb(248 250 252 / 7%) 18deg, transparent 36deg);
+}
+
+/* La banda de suelo donde se apoyan los atriles. */
+.suelo {
+  position: absolute;
+  inset: auto 0 0;
+  height: 26%;
+  pointer-events: none;
+  background: linear-gradient(180deg, transparent, rgb(56 189 248 / 7%));
+  border-top: 1px solid rgb(148 163 184 / 12%);
+}
+
+.marquesina {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: rgb(148 163 184);
+}
+
+.mandos {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.marquesina button {
+  display: grid;
+  place-items: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 30%);
+  background: rgb(15 23 42 / 80%);
+  color: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.marquesina button:hover {
+  border-color: rgb(250 204 21 / 70%);
+  color: rgb(250 204 21);
+}
+
+.tablas {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.4rem 0.9rem 1rem;
+  overflow-y: auto;
+}

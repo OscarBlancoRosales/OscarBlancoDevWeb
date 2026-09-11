@@ -1,0 +1,11 @@
+@if (cierraEn !== 0) {
+  <div
+    class="barra"
+    [class.apurando]="apurando"
+    role="timer"
+    [attr.aria-label]="quedan + ' segundos'"
+  >
+    <span class="relleno" [style.width.%]="porcentaje"></span>
+    <span class="marca">{{ quedan }}</span>
+  </div>
+}

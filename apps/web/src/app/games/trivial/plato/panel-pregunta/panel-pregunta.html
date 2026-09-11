@@ -1,0 +1,62 @@
+<header class="cabecera">
+  @if (dificultad !== null) {
+    <span class="dificultad" [attr.data-nivel]="dificultad">
+      @for (chile of chiles; track chile) {
+        <i aria-hidden="true">&#9670;</i>
+      }
+      <span class="lectura">Dificultad {{ dificultad }} de 5</span>
+    </span>
+  }
+  <h1 class="enunciado">{{ enunciado }}</h1>
+</header>
+
+@if (codigo) {
+  <pre class="codigo"><code>{{ codigo }}</code></pre>
+}
+
+@if (esEstimacion) {
+  <div class="estimacion">
+    <label>
+      Tu número
+      <input type="number" [(ngModel)]="estimacion" [disabled]="!puedesContestar" />
+    </label>
+    <button
+      type="button"
+      class="va"
+      [disabled]="estimacion === null || !puedesContestar"
+      (click)="enviarEstimacion()"
+    >
+      Va
+    </button>
+  </div>
+} @else {
+  <ul class="opciones">
+    @for (opcion of opciones; track $index) {
+      <li>
+        <button
+          type="button"
+          class="opcion"
+          [class.buena]="cerrada && correcta === $index"
+          [class.tuya]="tuRespuesta === $index"
+          [disabled]="!puedesContestar"
+          (click)="responde.emit($index)"
+        >
+          <span class="letra">{{ letras[$index] }}</span>
+          <span class="texto">{{ opcion }}</span>
+        </button>
+      </li>
+    }
+  </ul>
+}
+
+@if (cerrada && explicacion) {
+  <p class="explicacion">{{ explicacion }}</p>
+}
+
+<!-- Solo en el modo IA, y por unanimidad: si bastara la mayoría, quien no se
+     sabe la respuesta lo usaría para no perder puntos. -->
+@if (sePuedeImpugnar && !cerrada) {
+  <button type="button" class="impugnar" [disabled]="tuImpugnas" (click)="impugna.emit()">
+    &#9873; Esta está mal ({{ impugnan }}/{{ hacenFalta }})
+  </button>
+}

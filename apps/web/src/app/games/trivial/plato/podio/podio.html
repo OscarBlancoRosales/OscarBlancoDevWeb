@@ -1,0 +1,30 @@
+<section class="ceremonia">
+  <canvas #lienzo class="confeti" aria-hidden="true"></canvas>
+
+  <h1>Se acabó el concurso</h1>
+
+  <ol class="cajones">
+    @for (uno of cajones; track uno.seatId) {
+      <li class="cajon" [attr.data-puesto]="puestoDe(uno)">
+        <img class="cara" [src]="uno.foto" [alt]="uno.nombre" loading="lazy" />
+        <span class="nombre">{{ uno.nombre }}</span>
+        <span class="puntos">{{ uno.puntos }}</span>
+        <span class="numero">{{ puestoDe(uno) }}</span>
+      </li>
+    }
+  </ol>
+
+  @if (resto.length > 0) {
+    <ol class="resto">
+      @for (uno of resto; track uno.seatId) {
+        <li>
+          <span class="puesto">{{ puestoDe(uno) }}.</span>
+          <span class="nombre">{{ uno.nombre }}</span>
+          <span class="puntos">{{ uno.puntos }}</span>
+        </li>
+      }
+    </ol>
+  }
+
+  <button type="button" class="otra" (click)="otra.emit()">Otro concurso</button>
+</section>

@@ -51,8 +51,8 @@ function partidaEntera(): TrivialState {
   return state;
 }
 
-function vistaDe(state: TrivialState, seat: string): TrivialView {
-  return trivialModule.view(state, seat, SEATS) as TrivialView;
+function vistaDe(state: TrivialState, seat: string, asientos: readonly Seat[] = SEATS): TrivialView {
+  return trivialModule.view(state, seat, asientos) as TrivialView;
 }
 
 describe('empezar', () => {
@@ -357,5 +357,260 @@ describe('el reloj de la ronda', () => {
     const vencida = trivialModule.apply(conBomba, { tipo: 'tiempo' }, 'ana', SEATS);
 
     expect(vencida.puntos[mirando] ?? 0).toBe(0);
+  });
+});
+
+/** Una partida que llega a la final con puntos repartidos para poder apostar. */
+function hastaLaFinal(): TrivialState {
+  const conFinal: Pregunta[] = [
+    PREGUNTAS[0],
+    {
+      id: 'f1',
+      tipo: 'final',
+      enunciado: '¿Por qué "👨‍👩‍👧".length devuelve 8?',
+      opciones: ['Cuenta bytes', 'Son tres emojis unidos y algunos ocupan dos', 'Está mal formado', 'Siempre son potencias de dos'],
+      correcta: 1,
+      explicacion: 'Tres personas fuera del plano básico más dos uniones invisibles.',
+    },
+  ];
+  const inicial = trivialModule.createState(SEATS, { preguntas: conFinal, semilla: 7 });
+  let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+  state = trivialModule.apply(state, { tipo: 'empezar' }, 'bea', SEATS);
+  // Las dos aciertan la primera, así que llegan a la final con puntos.
+  state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+  state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+  return state;
+}
+
+/** Ya en la fase de apuestas, con la pregunta de la final por jugar. */
+function apostando(): TrivialState {
+  return trivialModule.apply(hastaLaFinal(), { tipo: 'siguiente' }, 'ana', SEATS);
+}
+
+describe('la final a doble o nada', () => {
+  it('a la final se entra apostando, no contestando', () => {
+    expect(apostando().fase).toBe('apuestas');
+  });
+
+  it('nadie ve lo que apuestan los demás hasta que se cierra', () => {
+    // La misma regla que la respuesta correcta: lo que no se manda, no se puede
+    // mirar con las herramientas de desarrollo abiertas.
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    const vista = vistaDe(conApuesta, 'ana');
+
+    expect(vista.hanApostado).toContain('bea');
+    expect(vista.apuestas).toBeNull();
+  });
+
+  it('pero tú sí ves la tuya', () => {
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    expect(vistaDe(conApuesta, 'bea').tuApuesta).toBe(50);
+  });
+
+  it('no puedes apostar más de lo que llevas', () => {
+    const enJuego = apostando();
+    const sobran = (enJuego.puntos['bea'] ?? 0) + 1;
+
+    expect(trivialModule.validate(enJuego, { tipo: 'apostar', cuanto: sobran }, 'bea', SEATS))
+      .toMatchObject({ code: 'no-tienes-tanto' });
+  });
+
+  it('ni apostar dos veces', () => {
+    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 10 }, 'bea', SEATS);
+
+    expect(trivialModule.validate(conApuesta, { tipo: 'apostar', cuanto: 20 }, 'bea', SEATS))
+      .toMatchObject({ code: 'ya-apostaste' });
+  });
+
+  it('ni contestar mientras se apuesta', () => {
+    expect(trivialModule.validate(apostando(), { tipo: 'responder', valor: 1 }, 'ana', SEATS))
+      .toMatchObject({ code: 'aun-se-apuesta' });
+  });
+
+  it('cuando han apostado todos, se cantan y se juega la pregunta', () => {
+    let state = apostando();
+    for (const quien of state.orden) {
+      state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 50 }, quien, SEATS);
+    }
+
+    expect(state.fase).toBe('ronda');
+    expect(vistaDe(state, 'ana').apuestas).not.toBeNull();
+  });
+
+  it('quien no apuesta a tiempo se planta', () => {
+    // Cero es una apuesta: no perder nada. Bloquear la final esperando a
+    // alguien que se ha ido a por un café es peor que darle un cero.
+    const vencida = trivialModule.apply(apostando(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(vencida.fase).toBe('ronda');
+    expect(vencida.apuestas['ana'] ?? 0).toBe(0);
+  });
+
+  it('acertar te lleva lo que te jugabas', () => {
+    let state = apostando();
+    const tenia = state.puntos['ana'] ?? 0;
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana']).toBe(tenia + 100);
+  });
+
+  it('y fallar te lo quita, pero te deja a cero y no en rojo', () => {
+    // No hace falta ningún suelo: la apuesta ya está topada por lo que llevas.
+    let state = apostando();
+    const todo = state.puntos['ana'] ?? 0;
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: todo }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 0 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana']).toBe(0);
+  });
+
+  it('acertar el primero no vale más que acertar el último', () => {
+    // En una apuesta, correr no es la gracia: lo que se premia es lo que te
+    // jugabas. Un bonus por rapidez aquí la convertiría en otra ronda normal.
+    let state = apostando();
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'apostar', cuanto: 100 }, 'bea', SEATS);
+    const antes = { ...state.puntos };
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
+
+    expect(state.puntos['ana'] - (antes['ana'] ?? 0)).toBe(
+      state.puntos['bea'] - (antes['bea'] ?? 0),
+    );
+  });
+
+  it('un bot apuesta solo, que si no la final no arranca', () => {
+    const conBot = apostando();
+    const jugada = trivialModule.botAction?.(conBot, 'bea', SEATS);
+
+    expect(jugada).toMatchObject({ tipo: 'apostar' });
+  });
+});
+
+const CON_BOT: Seat[] = [
+  { id: 'ana', displayName: 'Ana', isBot: false, connected: true, order: 0 },
+  { id: 'bot', displayName: 'Sabelotodo', isBot: true, connected: true, order: 1 },
+];
+
+const TRES: Seat[] = [
+  ...SEATS,
+  { id: 'caco', displayName: 'Caco', isBot: false, connected: true, order: 2 },
+];
+
+/** Una partida del modo IA, empezada, con la primera pregunta abierta. */
+function inventada(asientos: readonly Seat[] = SEATS): TrivialState {
+  const inicial = trivialModule.createState(asientos, {
+    preguntas: PREGUNTAS,
+    semilla: 7,
+    origen: 'ia',
+  });
+  let state = inicial;
+  for (const asiento of asientos) {
+    state = trivialModule.apply(state, { tipo: 'empezar' }, asiento.id, asientos);
+  }
+  return state;
+}
+
+describe('impugnar una pregunta que la IA se inventó mal', () => {
+  it('hace falta que le den todas las personas de la mesa', () => {
+    // Por unanimidad y no por mayoría: con mayoría, quien no se sabe la
+    // respuesta impugna para no perder puntos, y el botón deja de arreglar
+    // preguntas malas para ser una jugada más.
+    let state = inventada(TRES);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'bea', TRES);
+
+    expect(state.fase).toBe('ronda');
+
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'caco', TRES);
+
+    expect(state.fase).toBe('resultado');
+  });
+
+  it('anulada, el marcador se queda exactamente como estaba', () => {
+    let state = inventada();
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    const antes = { ...state.puntos };
+
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'bea', SEATS);
+
+    expect(state.puntos).toEqual(antes);
+    expect(vistaDe(state, 'ana').resultados?.every((uno) => uno.ganados === 0)).toBe(true);
+  });
+
+  it('los bots no votan', () => {
+    // Un bot no sabe si la pregunta está mal, y esperar su voto sería esperar
+    // para siempre.
+    const state = trivialModule.apply(inventada(CON_BOT), { tipo: 'impugnar' }, 'ana', CON_BOT);
+    expect(state.fase).toBe('resultado');
+  });
+
+  it('en el modo del banco no se puede impugnar', () => {
+    // El banco está escrito a mano y revisado. Abrir ahí la puerta a anular
+    // rondas es invitar a usarla para no perder puntos.
+    expect(trivialModule.validate(enRonda(), { tipo: 'impugnar' }, 'ana', SEATS))
+      .toMatchObject({ code: 'no-se-impugna' });
+  });
+
+  it('no se impugna dos veces', () => {
+    const state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+
+    expect(trivialModule.validate(state, { tipo: 'impugnar' }, 'ana', TRES))
+      .toMatchObject({ code: 'ya-impugnaste' });
+  });
+
+  it('ni con la ronda ya cerrada', () => {
+    const cerrada = trivialModule.apply(inventada(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(trivialModule.validate(cerrada, { tipo: 'impugnar' }, 'ana', SEATS))
+      .toMatchObject({ code: 'ronda-cerrada' });
+  });
+
+  it('la mesa ve cuántos van y cuántos hacen falta, no quiénes', () => {
+    const state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+    const vista = vistaDe(state, 'bea', TRES);
+
+    expect(vista.impugnan).toBe(1);
+    expect(vista.hacenFalta).toBe(3);
+    expect(vista.tuImpugnas).toBe(false);
+    expect(vista.inventadas).toBe(true);
+  });
+
+  it('y al pasar de ronda se olvida lo votado', () => {
+    let state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'siguiente' }, 'ana', TRES);
+
+    expect(state.impugnan).toEqual([]);
+  });
+});
+
+describe('la dificultad', () => {
+  it('viaja en la vista cuando la pregunta la trae', () => {
+    const conNivel: Pregunta[] = [{ ...PREGUNTAS[0], dificultad: 4 }];
+    const inicial = trivialModule.createState(SEATS, { preguntas: conNivel, semilla: 7 });
+    let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'empezar' }, 'bea', SEATS);
+
+    expect(vistaDe(state, 'ana').dificultad).toBe(4);
+  });
+
+  it('y es null cuando la pregunta no la declara', () => {
+    // El banco escrito a mano no la rellena, y no pasa nada: el crescendo es
+    // cosa del modo IA, que sí la encarga por posición.
+    expect(vistaDe(enRonda(), 'ana').dificultad).toBeNull();
+  });
+
+  it('no se enseña antes de empezar', () => {
+    const conNivel: Pregunta[] = [{ ...PREGUNTAS[0], dificultad: 5 }];
+    const sinEmpezar = trivialModule.createState(SEATS, { preguntas: conNivel, semilla: 7 });
+
+    expect(vistaDe(sinEmpezar, 'ana').dificultad).toBeNull();
   });
 });

@@ -4,6 +4,8 @@ import { generateToken, hashToken } from '../auth/tokens';
 import { RoomActor } from './actor';
 import { repartir } from '../games/trivial/banco';
 import { PresentadorDeSala, nombresDe } from '../games/trivial/presentador';
+import { RegidorDeSala } from '../games/trivial/regidor';
+import { coro } from './coro';
 import { VozDeLaSala } from '../games/impostor/voz';
 import { DealerDeMesa } from '../games/poker/dealer';
 import type { AiSettings } from '@devweb/shared/engine/ai/ai-client';
@@ -461,20 +463,26 @@ export class RoomService {
       );
     }
     if (game !== 'trivial') return null;
-    return new PresentadorDeSala(
-      this.ia,
-      () => nombresDe(this.repository.listSeats(roomId)),
-      undefined,
-      () =>
-        new Set(
-          this.repository
-            .listSeats(roomId)
-            .filter((asiento) => asiento.isBot)
-            .map((asiento) => asiento.seatId),
-        ),
-      (motivo) => {
-        this.avisar(`El presentador no pudo hablar con el modelo: ${motivo}`);
-      },
+    // Dos trabajos distintos por el mismo hueco: el regidor lleva el reloj y el
+    // presentador habla. El regidor va SIEMPRE, tenga o no clave de IA: una
+    // sala sin modelo sigue necesitando cronómetro.
+    return coro(
+      new RegidorDeSala(),
+      new PresentadorDeSala(
+        this.ia,
+        () => nombresDe(this.repository.listSeats(roomId)),
+        undefined,
+        () =>
+          new Set(
+            this.repository
+              .listSeats(roomId)
+              .filter((asiento) => asiento.isBot)
+              .map((asiento) => asiento.seatId),
+          ),
+        (motivo) => {
+          this.avisar(`El presentador no pudo hablar con el modelo: ${motivo}`);
+        },
+      ),
     );
   }
 

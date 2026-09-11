@@ -49,6 +49,7 @@ export function puntosDe(
   respuestas: Readonly<Record<SeatId, Respuesta>>,
   seat: SeatId,
   racha = 0,
+  apuesta = 0,
 ): number {
   const suya = respuestaDe(respuestas, seat);
   if (!suya) return 0;
@@ -56,6 +57,10 @@ export function puntosDe(
   if (pregunta.tipo === 'estimacion') return puntosPorCercania(pregunta, suya.valor);
 
   const acierta = aciertaCon(pregunta, suya.valor);
+
+  // La final no reparte bonus por rapidez: lo que se premia es lo que te
+  // jugabas, no lo pronto que lo dijiste. Con bonus sería otra ronda normal.
+  if (pregunta.tipo === 'final') return acierta ? apuesta : -apuesta;
 
   if (pregunta.tipo === 'pulsa') {
     // Solo cobra el primero que acierta; los demás llegan tarde aunque acierten.
@@ -95,11 +100,12 @@ export function repartoDe(
   pregunta: Pregunta,
   respuestas: Readonly<Record<SeatId, Respuesta>>,
   rachas: Readonly<Record<SeatId, number>> = {},
+  apuestas: Readonly<Record<SeatId, number>> = {},
 ): Record<SeatId, number> {
   return Object.fromEntries(
     Object.keys(respuestas).map((seat) => [
       seat,
-      puntosDe(pregunta, respuestas, seat, rachas[seat] ?? 0),
+      puntosDe(pregunta, respuestas, seat, rachas[seat] ?? 0, apuestas[seat] ?? 0),
     ]),
   );
 }
@@ -152,4 +158,15 @@ export const SEGUNDOS_POR_PRUEBA: Readonly<Record<TipoPrueba, number>> = {
   pulsa: 15,
   rafaga: 10,
   bomba: 12,
+  // Con todo en juego se piensa, así que algo más que una pregunta normal.
+  final: 30,
 };
+
+/**
+ * Lo que se da para apostar en la final.
+ *
+ * Más que cualquier pregunta: aquí no se está contestando, se está decidiendo
+ * cuánto del programa entero te juegas, y esa cuenta la hace todo el mundo
+ * mirando el marcador.
+ */
+export const SEGUNDOS_PARA_APOSTAR = 45;

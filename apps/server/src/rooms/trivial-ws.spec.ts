@@ -174,6 +174,16 @@ describe('un concurso de trivial contra el bot', () => {
       if (vista.dice) dichas.add(vista.dice);
       if (vista.momento) momentos.add(vista.momento);
 
+      // A la final se entra apostando, no contestando: sin poner algo, la fase
+      // se queda abierta esperando y la ronda no llega a jugarse nunca.
+      if (vista.fase === 'apuestas') {
+        // Cero: este cliente contesta a bulto y puede llegar a la final sin un
+        // punto, y apostar lo que no se tiene se rechaza -con razón-.
+        if (vista.tuApuesta === null) cliente.enviar({ tipo: 'apostar', cuanto: 0 });
+        vista = await cliente.hasta((v) => v.fase !== 'apuestas', 'el cierre de las apuestas');
+        continue;
+      }
+
       if (!vista.cerrada && vista.tuTurno && vista.tuRespuesta === null) {
         cliente.enviar({ tipo: 'responder', valor: vista.tipo === 'estimacion' ? 2000 : 0 });
       }
@@ -191,9 +201,9 @@ describe('un concurso de trivial contra el bot', () => {
     }
 
     expect(vista.fase, 'el programa tiene que acabar').toBe('fin');
-    // Las seis pruebas, que es de lo que va el programa.
+    // Las seis pruebas y la final, que es de lo que va el programa.
     expect(secciones).toEqual(
-      new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba']),
+      new Set(['test', 'pulsa', 'rafaga', 'fallo', 'estimacion', 'bomba', 'final']),
     );
     // Y el presentador, que ha ido diciendo cosas distintas por el camino.
     expect(dichas.size).toBeGreaterThan(3);

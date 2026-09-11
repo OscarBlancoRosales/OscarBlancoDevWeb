@@ -1,0 +1,65 @@
+.mando {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 1.2rem;
+  border-radius: 1rem;
+  background: rgb(15 23 42 / 85%);
+  border: 1px solid rgb(250 204 21 / 40%);
+}
+
+h2 {
+  margin: 0;
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+}
+
+.cifra {
+  font-size: clamp(2.4rem, 9vw, 4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: rgb(250 204 21);
+  line-height: 1;
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: rgb(250 204 21);
+}
+
+.atajos {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.atajos button {
+  padding: 0.35rem 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(148 163 184 / 40%);
+  background: rgb(30 41 59);
+  color: inherit;
+  cursor: pointer;
+}
+
+.apostar {
+  padding: 0.6rem 2rem;
+  border-radius: 0.6rem;
+  border: 0;
+  background: rgb(250 204 21);
+  color: rgb(15 23 42);
+  font-weight: 700;
+  font-size: 1.05rem;
+  cursor: pointer;
+}
+
+.tienes,
+.pie,
+.cuantos {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgb(148 163 184);
+}

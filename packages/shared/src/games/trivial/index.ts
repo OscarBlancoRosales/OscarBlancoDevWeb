@@ -10,7 +10,7 @@ import type {
   TrivialState,
   TrivialView,
 } from './tipos';
-import type { GameModule, RuleError, SeatId } from '../module';
+import type { GameModule, RuleError, Seat, SeatId } from '../module';
 
 const NIVELES: readonly NivelBot[] = ['pardillo', 'apanado', 'sabelotodo'];
 
@@ -46,9 +46,13 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       semilla: typeof config['semilla'] === 'number' ? config['semilla'] : 1,
       nivelBot: esNivel(config['nivelBot']) ? config['nivelBot'] : 'apanado',
       racha: {},
+      apuestas: {},
+      inventadas: config['origen'] === 'ia',
+      impugnan: [],
       turno: null,
       mecha: 0,
       cierraEn: 0,
+      dichos: {},
       dice: '',
       momento: '',
     };
@@ -69,6 +73,11 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
 
       case 'responder': {
         if (state.fase === 'fin') return TERMINADA;
+        // En la final se apuesta antes de ver la pregunta. Contestar mientras
+        // tanto sería apostar sobre seguro.
+        if (state.fase === 'apuestas') {
+          return { code: 'aun-se-apuesta', message: 'Primero se apuesta.' };
+        }
         const ronda = rondaActual(state);
         if (!ronda || state.fase === 'presentacion') {
           return { code: 'aun-no-hay-pregunta', message: 'Todavía no hay pregunta.' };
@@ -99,6 +108,43 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
           return { code: 'ronda-en-marcha', message: 'La ronda sigue abierta.' };
         }
         return null;
+      }
+
+      case 'apostar': {
+        if (state.fase !== 'apuestas') {
+          return { code: 'no-toca-apostar', message: 'Todavía no se apuesta.' };
+        }
+        if (!state.orden.includes(by)) {
+          return { code: 'no-juegas', message: 'No estás jugando este concurso.' };
+        }
+        if (by in state.apuestas) {
+          return { code: 'ya-apostaste', message: 'Ya has puesto lo tuyo.' };
+        }
+        // Contra lo que se tiene, y nunca contra un número rojo: quien llegue
+        // aquí en negativo por una bomba tiene que poder al menos plantarse.
+        const tiene = Math.max(0, state.puntos[by] ?? 0);
+        return action.cuanto <= tiene
+          ? null
+          : { code: 'no-tienes-tanto', message: 'No llevas tantos puntos.' };
+      }
+
+      case 'impugnar': {
+        // Solo en el modo IA. El banco está escrito a mano y revisado; abrir
+        // ahí la puerta a anular rondas es invitar a usarla para no perder
+        // puntos.
+        if (!state.inventadas) {
+          return { code: 'no-se-impugna', message: 'Estas preguntas están revisadas.' };
+        }
+        const ronda = rondaActual(state);
+        if (!ronda || ronda.cerrada || state.fase !== 'ronda') {
+          return { code: 'ronda-cerrada', message: 'Esa ronda ya se cerró.' };
+        }
+        if (!state.orden.includes(by)) {
+          return { code: 'no-juegas', message: 'No estás jugando este concurso.' };
+        }
+        return state.impugnan.includes(by)
+          ? { code: 'ya-impugnaste', message: 'Ya has dicho que está mal.' }
+          : null;
       }
 
       // Las pone el servidor. No las valida nadie más porque nadie más las
@@ -151,7 +197,10 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
           ...conBomba(cerrada, siguiente),
           jugadas,
           actual: siguiente,
-          fase: 'ronda',
+          // A la final se entra apostando, no contestando.
+          fase: rondaEn(cerrada, siguiente)?.pregunta.tipo === 'final' ? 'apuestas' : 'ronda',
+          // Lo votado es de la pregunta que se va, no de la que entra.
+          impugnan: [],
           // El reloj de la ronda nueva lo pone el regidor con la hora de
           // verdad. Heredar el de la anterior la haría nacer vencida.
           cierraEn: 0,
@@ -159,12 +208,55 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       }
 
       case 'presenta':
-        return { ...state, jugadas, dice: action.frase, momento: action.momento };
+        return {
+          ...state,
+          jugadas,
+          dice: action.frase,
+          momento: action.momento,
+          // Se apunta para que la próxima vez que toque este momento salga otra
+          // frase. Quien la elige lee esta cuenta antes de aplicar la acción.
+          dichos: {
+            ...state.dichos,
+            [action.momento]: (state.dichos[action.momento] ?? 0) + 1,
+          },
+        };
 
       case 'reloj':
         return { ...state, jugadas, cierraEn: action.hasta };
 
+      case 'apostar': {
+        const apuestas = { ...state.apuestas, [by]: action.cuanto };
+        const faltan = state.orden.filter((seat) => !(seat in apuestas));
+        const cerrada = faltan.length === 0;
+
+        return {
+          ...state,
+          jugadas,
+          apuestas,
+          // Cuando han apostado todos se cantan y se juega la pregunta.
+          fase: cerrada ? 'ronda' : 'apuestas',
+          cierraEn: cerrada ? 0 : state.cierraEn,
+        };
+      }
+
+      case 'impugnar': {
+        const impugnan = [...state.impugnan, by];
+        const personas = state.orden.filter((seat) => !esBot(seats, seat));
+
+        // Por unanimidad de las personas. Los bots no opinan: no saben si la
+        // pregunta está mal y esperar su voto sería esperar para siempre.
+        if (personas.some((seat) => !impugnan.includes(seat))) {
+          return { ...state, jugadas, impugnan };
+        }
+        return { ...anular(state), jugadas, impugnan };
+      }
+
       case 'tiempo': {
+        // Vencido el plazo de apostar, quien no puso nada se planta. Bloquear
+        // la final esperando a alguien que se ha ido es peor que darle un cero.
+        if (state.fase === 'apuestas') {
+          return { ...state, jugadas, fase: 'ronda', cierraEn: 0 };
+        }
         const ronda = rondaActual(state);
         // Una ronda ya cerrada no se vuelve a cerrar. Devolver el mismo objeto
         // es lo que hace que esta jugada no se escriba en el registro: el
@@ -182,7 +274,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
    * concurso entre programadores, mandar la respuesta al navegador y confiar en
    * que nadie mire es no tener concurso.
    */
-  view(state, forSeat) {
+  view(state, forSeat, seats) {
     const ronda = rondaActual(state);
     const cerrada = ronda?.cerrada ?? false;
     const pregunta = ronda?.pregunta;
@@ -195,6 +287,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       tipo: pregunta && state.fase !== 'presentacion' ? pregunta.tipo : null,
       enunciado: pregunta && state.fase !== 'presentacion' ? pregunta.enunciado : '',
       codigo: (state.fase !== 'presentacion' ? pregunta?.codigo : undefined) ?? null,
+      dificultad: (state.fase !== 'presentacion' ? pregunta?.dificultad : undefined) ?? null,
       opciones: state.fase !== 'presentacion' ? (pregunta?.opciones ?? []) : [],
       cerrada,
       hanRespondido: ronda ? Object.keys(ronda.respuestas) : [],
@@ -206,6 +299,15 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       turno: state.turno,
       mecha: state.mecha,
       cierraEn: state.cierraEn,
+      inventadas: state.inventadas,
+      impugnan: state.impugnan.length,
+      hacenFalta: state.orden.filter((seat) => !esBot(seats, seat)).length,
+      tuImpugnas: state.impugnan.includes(forSeat),
+      hanApostado: Object.keys(state.apuestas),
+      tuApuesta: state.apuestas[forSeat] ?? null,
+      // Se cantan cuando ya no se puede apostar. Antes no salen de aquí, por la
+      // misma razón por la que no sale la respuesta correcta.
+      apuestas: state.fase === 'apuestas' ? null : state.apuestas,
       tuTurno: pregunta?.tipo === 'bomba' ? state.turno === forSeat : !cerrada,
       racha: state.racha[forSeat] ?? 0,
       dice: state.dice,
@@ -225,6 +327,12 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
 
     if (state.fase === 'presentacion') {
       return state.orden.includes(seat) ? null : { tipo: 'empezar' };
+    }
+    if (state.fase === 'apuestas') {
+      if (seat in state.apuestas) return null;
+      // Un tercio de lo suyo: ni se planta ni se lo juega todo. Un bot que
+      // apostara al azar ganaría o perdería el concurso por sorteo.
+      return { tipo: 'apostar', cuanto: Math.floor(Math.max(0, state.puntos[seat] ?? 0) / 3) };
     }
     if (state.fase !== 'ronda' || !state.orden.includes(seat)) return null;
 
@@ -262,6 +370,28 @@ function conLaBombaPerdida(state: TrivialState, ronda: Ronda): Ronda {
       ...ronda.respuestas,
       [state.turno]: { valor: NO_CONTESTO, orden: Object.keys(ronda.respuestas).length },
     },
+  };
+}
+
+function esBot(seats: readonly Seat[], seat: SeatId): boolean {
+  return seats.find((asiento) => asiento.id === seat)?.isBot ?? false;
+}
+
+/**
+ * Cierra la ronda sin repartir nada.
+ *
+ * No es lo mismo que cerrarla: una pregunta anulada no la ha fallado nadie, así
+ * que el marcador se queda exactamente como estaba. Las respuestas sí se
+ * conservan, para poder ver quién había contestado qué.
+ */
+function anular(state: TrivialState): TrivialState {
+  const ronda = rondaActual(state);
+  if (!ronda) return state;
+
+  return {
+    ...conRondaActual(state, { ...ronda, cerrada: true, anulada: true }),
+    fase: 'resultado',
+    cierraEn: 0,
   };
 }
 
@@ -304,7 +434,7 @@ function cerrarSiProcede(state: TrivialState, ronda: Ronda, valor: number): Triv
  * vista, el marcador cambiaría según quién mira.
  */
 function cerrar(state: TrivialState, ronda: Ronda): TrivialState {
-  const ganados = repartoDe(ronda.pregunta, ronda.respuestas, state.racha);
+  const ganados = repartoDe(ronda.pregunta, ronda.respuestas, state.racha, state.apuestas);
   const puntos = { ...state.puntos };
   for (const [seat, suma] of Object.entries(ganados)) {
     puntos[seat] = (puntos[seat] ?? 0) + suma;
@@ -386,7 +516,10 @@ function siguienteDe(orden: readonly SeatId[], actual: SeatId | null): SeatId | 
 }
 
 function resultadosDe(state: TrivialState, ronda: Ronda): ResultadoDeRonda[] {
-  const ganados = repartoDe(ronda.pregunta, ronda.respuestas, state.racha);
+  // Una anulada no reparte: cero para todos, y se ve que se contestó.
+  const ganados = ronda.anulada
+    ? {}
+    : repartoDe(ronda.pregunta, ronda.respuestas, state.racha, state.apuestas);
   return Object.entries(ronda.respuestas).map(([seatId, respuesta]) => ({
     seatId,
     valor: respuesta.valor,
