@@ -169,9 +169,12 @@ export class TrivialRoom implements OnInit, OnDestroy {
     if (!v) return [];
 
     const ganados = new Map((v.resultados ?? []).map((uno) => [uno.seatId, uno.ganados]));
-    const lider = this.clasificacion.at(0)?.seatId;
+    const tabla = this.clasificacion;
+    // Nadie lidera mientras estén todos a cero: una corona en la ronda uno no
+    // dice nada y además se la queda quien salga primero en la lista.
+    const lider = (tabla.at(0)?.puntos ?? 0) > 0 ? tabla.at(0)?.seatId : undefined;
 
-    return this.clasificacion.map((puesto) => ({
+    return tabla.map((puesto) => ({
       ...puesto,
       haContestado: v.hanRespondido.includes(puesto.seatId),
       gano: ganados.get(puesto.seatId) ?? null,
@@ -181,17 +184,27 @@ export class TrivialRoom implements OnInit, OnDestroy {
     }));
   }
 
-  /** La clasificación, de más a menos puntos. */
+  /**
+   * La clasificación, de más a menos puntos.
+   *
+   * Quién está en la mesa sale de los asientos y no del marcador: el marcador
+   * está vacío hasta que alguien puntúa, así que sacándolo de ahí el plató se
+   * pasaba la primera ronda entera sin un solo concursante. Los atriles son el
+   * reparto, no la tabla de puntos.
+   */
   get clasificacion(): PuestoEnAtril[] {
     const v = this.vista();
     if (!v) return [];
 
-    return Object.entries(v.puntos)
-      .map(([seatId, puntos]) => ({
+    const sentados = this.sala.mesa.map((asiento) => asiento.id);
+    const quienes = sentados.length > 0 ? sentados : Object.keys(v.puntos);
+
+    return quienes
+      .map((seatId) => ({
         seatId,
         nombre: this.sala.nombreDe(seatId),
         foto: fotoDelPersonaje(this.sala.personajeDe(seatId)),
-        puntos,
+        puntos: v.puntos[seatId] ?? 0,
         eresTu: seatId === this.sala.miAsiento,
         haContestado: false,
         gano: null,

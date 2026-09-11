@@ -54,6 +54,10 @@ function salaFalsa() {
     vista,
     error: signal<string | null>(null),
     miAsiento: 'yo',
+    mesa: [
+      { id: 'yo', displayName: 'Óscar' },
+      { id: 'otra', displayName: 'Bea' },
+    ] as unknown as readonly { id: string }[],
     nombreDe: (seatId: string) => (seatId === 'yo' ? 'Óscar' : 'Bea'),
     personajeDe: (seatId: string) => (seatId === 'yo' ? 'bolt' : 'viper'),
     reconectar: () => undefined,
@@ -199,6 +203,24 @@ describe('la mesa del concurso', () => {
       pinta({});
       const dom = fixture.nativeElement as HTMLElement;
       expect(dom.querySelectorAll('.atril .corona')).toHaveLength(1);
+    });
+
+    it('pero con todos a cero no corona a nadie', () => {
+      // Una corona en la ronda uno no dice nada, y se la quedaría quien salga
+      // primero en la lista por casualidad.
+      pinta({ puntos: { yo: 0, otra: 0 } });
+      const dom = fixture.nativeElement as HTMLElement;
+
+      expect(dom.querySelectorAll('.atril .corona')).toHaveLength(0);
+    });
+
+    it('la mesa se ve desde antes de que nadie puntúe', () => {
+      // El marcador está vacío hasta que alguien acierta. Si los atriles
+      // salieran de ahí, la primera ronda no tendría concursantes.
+      pinta({ fase: 'ronda', puntos: {} });
+      const dom = fixture.nativeElement as HTMLElement;
+
+      expect(dom.querySelectorAll('.atril')).toHaveLength(2);
     });
   });
 
