@@ -75,6 +75,13 @@ export const Sesion = Type.Object({
   tandas: Type.Array(Tanda),
   /** Cuántas tandas hay en total, si esta página no las trae todas. */
   total: Type.Integer(),
+  /**
+   * Por dónde empieza este tramo dentro de la sesión entera.
+   *
+   * Una sesión se abre por el final, como un chat, así que la primera página no
+   * es la cero: sin saber dónde cae, la pantalla no puede pedir lo de antes.
+   */
+  desde: Type.Integer(),
 });
 
 export type Autor = Static<typeof Autor>;

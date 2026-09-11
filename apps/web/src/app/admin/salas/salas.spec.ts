@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
-import { PALABRA_PARA_BORRAR, Salas } from './salas';
+import { Salas } from './salas';
 import { AdminApiService } from '../../api/admin-api.service';
 import { I18nService } from '../../services/i18n.service';
 import type { AdminRoom } from '@devweb/shared/contracts/admin';
@@ -85,11 +85,8 @@ describe('el gestor de salas', () => {
     fixture.destroy();
   });
 
-  /**
-   * El botón de bloque se lleva partidas de otra gente, así que no basta con
-   * pulsarlo: hay que escribir la palabra.
-   */
-  it('el borrado en bloque no se dispara sin escribir la palabra', async () => {
+  /** El botón de bloque se lleva partidas de otra gente: el primer clic avisa. */
+  it('el borrado en bloque pide un segundo clic', async () => {
     const cerrarSalas = vi.fn().mockResolvedValue(0);
     const fixture = await montar({ salas: () => Promise.resolve([sala()]), cerrarSalas });
     const componente = fixture.componentInstance;
@@ -97,14 +94,51 @@ describe('el gestor de salas', () => {
     await componente.cerrarEnBloque();
     expect(cerrarSalas).not.toHaveBeenCalled();
 
-    componente.palabra.set(PALABRA_PARA_BORRAR);
     await componente.cerrarEnBloque();
     expect(cerrarSalas).toHaveBeenCalled();
     fixture.destroy();
   });
 
+  /** El número va en el botón, que es lo que hay que leer antes de pulsarlo. */
+  it('el botón dice cuántas caen, y luego pregunta', async () => {
+    const fixture = await montar({
+      salas: () => Promise.resolve([sala(), sala({ id: 'sala-2' })]),
+      cerrarSalas: () => Promise.resolve(0),
+    });
+    const componente = fixture.componentInstance;
+
+    expect(componente.aviso).toContain('2');
+
+    await componente.cerrarEnBloque();
+    expect(componente.aviso).toContain('¿Seguro?');
+    fixture.destroy();
+  });
+
+  /**
+   * Entre los dos clics puede abrirse una mesa. Confirmar un número y
+   * llevarse otro es exactamente lo que no puede pasar.
+   */
+  it('si cambia la cuenta entre los dos clics, vuelve a preguntar', async () => {
+    const cerrarSalas = vi.fn().mockResolvedValue(0);
+    const fixture = await montar({
+      salas: () => Promise.resolve([sala(), sala({ id: 'sala-2', status: 'finished' })]),
+      cerrarSalas,
+    });
+    const componente = fixture.componentInstance;
+
+    await componente.cerrarEnBloque();
+    componente.estado.set('finished');
+
+    await componente.cerrarEnBloque();
+    expect(cerrarSalas).not.toHaveBeenCalled();
+
+    await componente.cerrarEnBloque();
+    expect(cerrarSalas).toHaveBeenCalledWith({ estado: 'finished' });
+    fixture.destroy();
+  });
+
   /** Lo que dice el botón y lo que manda el filtro tienen que ser lo mismo. */
-  it('la cuenta del aviso sigue al filtro, no a la búsqueda', async () => {
+  it('la cuenta sigue al filtro, no a la búsqueda', async () => {
     const cerrarSalas = vi.fn().mockResolvedValue(0);
     const fixture = await montar({
       salas: () => Promise.resolve([sala(), sala({ id: 'sala-2', status: 'finished' })]),
@@ -113,13 +147,12 @@ describe('el gestor de salas', () => {
     const componente = fixture.componentInstance;
 
     componente.estado.set('finished');
-    expect(componente.enElFiltro()).toBe(1);
-
     componente.busqueda.set('no existe esto');
+
     expect(componente.filtradas()).toHaveLength(0);
     expect(componente.enElFiltro()).toBe(1);
 
-    componente.palabra.set(PALABRA_PARA_BORRAR);
+    await componente.cerrarEnBloque();
     await componente.cerrarEnBloque();
     expect(cerrarSalas).toHaveBeenCalledWith({ estado: 'finished' });
     fixture.destroy();

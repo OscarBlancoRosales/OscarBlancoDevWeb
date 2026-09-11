@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgenteApiService } from '../../api/agente-api.service';
 import { I18nService } from '../../services/i18n.service';
@@ -13,6 +13,9 @@ const POR_TANDA = 60;
  * Las escribe Claude Code en `~/.claude/projects` y las sirve el agente que
  * corre en tu máquina; aquí solo se pintan. Si el agente no está, esta
  * pantalla lo dice y explica cómo abrirlo, en vez de quedarse en blanco.
+ *
+ * Se lee como un chat: la sesión se abre por el final, lo último abajo, y «ver
+ * lo de antes» va añadiendo por arriba sin mover lo que estabas leyendo.
  */
 @Component({
   selector: 'app-sesiones',
@@ -30,9 +33,11 @@ export class Sesiones implements OnInit {
   readonly cargandoMas = signal(false);
 
   /** Para filtrar la lista: son doscientas y pico. */
-  busqueda = '';
+  readonly busqueda = signal('');
   /** Lo que Claude se dice a sí mismo va plegado: ocupa más que lo que dice. */
   readonly verPensamientos = signal(false);
+
+  @ViewChild('hilo') hilo?: ElementRef<HTMLElement>;
 
   constructor(
     private readonly agente: AgenteApiService,
@@ -61,31 +66,57 @@ export class Sesiones implements OnInit {
 
   /** Las que casan con lo que estás buscando: por título, rama o proyecto. */
   get listadas(): readonly ResumenDeSesion[] {
-    const q = this.busqueda.trim().toLowerCase();
+    const q = this.busqueda().trim().toLowerCase();
     if (!q) return this.sesiones();
     return this.sesiones().filter((s) =>
       `${s.titulo} ${s.rama} ${s.proyecto}`.toLowerCase().includes(q),
     );
   }
 
+  esLaAbierta(sesion: ResumenDeSesion): boolean {
+    return this.abierta()?.resumen.id === sesion.id;
+  }
+
   async abrir(resumen: ResumenDeSesion): Promise<void> {
     this.error.set('');
     this.abierta.set(null);
     try {
-      this.abierta.set(await this.agente.sesion(resumen.id, 0, POR_TANDA));
+      this.abierta.set(await this.agente.sesion(resumen.id, -1, POR_TANDA));
+      this.alFinal();
     } catch (fallo) {
       this.error.set(fallo instanceof Error ? fallo.message : 'No se ha podido abrir.');
     }
   }
 
-  /** Trae el siguiente tramo y lo pega al final, sin perder lo leído. */
+  /**
+   * Trae el tramo anterior y lo pega por arriba.
+   *
+   * Se guarda cuánto medía el hilo antes de crecer y se recoloca el desliz por
+   * esa diferencia: sin eso, cargar lo de antes empuja hacia abajo lo que
+   * estabas leyendo y pierdes el sitio.
+   */
   async masTandas(): Promise<void> {
     const actual = this.abierta();
-    if (!actual || this.cargandoMas()) return;
+    if (!actual || this.cargandoMas() || actual.desde === 0) return;
+
     this.cargandoMas.set(true);
+    const caja = this.hilo?.nativeElement;
+    const altoAntes = caja?.scrollHeight ?? 0;
+
     try {
-      const siguiente = await this.agente.sesion(actual.resumen.id, actual.tandas.length, POR_TANDA);
-      this.abierta.set({ ...siguiente, tandas: [...actual.tandas, ...siguiente.tandas] });
+      const principio = Math.max(0, actual.desde - POR_TANDA);
+      const anterior = await this.agente.sesion(
+        actual.resumen.id,
+        principio,
+        actual.desde - principio,
+      );
+      this.abierta.set({ ...anterior, tandas: [...anterior.tandas, ...actual.tandas] });
+
+      if (caja) {
+        requestAnimationFrame(() => {
+          caja.scrollTop += caja.scrollHeight - altoAntes;
+        });
+      }
     } catch (fallo) {
       this.error.set(fallo instanceof Error ? fallo.message : 'No se ha podido seguir leyendo.');
     }
@@ -96,9 +127,9 @@ export class Sesiones implements OnInit {
     this.abierta.set(null);
   }
 
+  /** Cuántas quedan por leer hacia atrás. Hacia adelante ya no queda nada. */
   get quedanPorLeer(): number {
-    const actual = this.abierta();
-    return actual ? actual.total - actual.tandas.length : 0;
+    return this.abierta()?.desde ?? 0;
   }
 
   /** Las tandas que se pintan, según si quieres ver lo que piensa. */
@@ -126,4 +157,12 @@ export class Sesiones implements OnInit {
 
   trackSesion = (_: number, sesion: ResumenDeSesion): string => sesion.id;
   trackTanda = (indice: number, tanda: Tanda): string => `${indice}:${tanda.id}`;
+
+  /** Lo último dicho es lo primero que se quiere ver. */
+  private alFinal(): void {
+    requestAnimationFrame(() => {
+      const caja = this.hilo?.nativeElement;
+      if (caja) caja.scrollTop = caja.scrollHeight;
+    });
+  }
 }

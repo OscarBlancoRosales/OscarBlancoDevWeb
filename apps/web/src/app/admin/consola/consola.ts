@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AgenteApiService } from '../../api/agente-api.service';
 import { I18nService } from '../../services/i18n.service';
@@ -6,6 +6,9 @@ import type { CanalVivo, Conversacion } from '../../api/agente-api.service';
 
 /** Cada cuánto se mira si Claude ha contestado o pide permiso para algo. */
 const LATIDO_MS = 2000;
+
+/** Hasta dónde se considera que sigues abajo del todo, en píxeles. */
+const CERCA_DEL_FINAL_PX = 120;
 
 /**
  * Hablar con tu sesión de Claude Code desde la web.
@@ -51,7 +54,10 @@ export class Consola implements OnInit, OnDestroy {
   /** Dónde buscar el agente. Vacío = en este mismo ordenador. */
   donde = '';
 
+  @ViewChild('hilo') hilo?: ElementRef<HTMLElement>;
+
   private latido?: ReturnType<typeof setInterval>;
+  private cuantosMensajes = 0;
 
   constructor(
     private readonly agente: AgenteApiService,
@@ -114,8 +120,13 @@ export class Consola implements OnInit, OnDestroy {
 
   async refrescar(): Promise<void> {
     try {
-      this.conversacion.set(await this.agente.conversacion());
+      const nueva = await this.agente.conversacion();
+      const hayMasQueAntes = nueva.mensajes.length > this.cuantosMensajes;
+      this.cuantosMensajes = nueva.mensajes.length;
+
+      this.conversacion.set(nueva);
       this.error.set('');
+      if (hayMasQueAntes) this.alFinal();
     } catch (fallo) {
       this.error.set(fallo instanceof Error ? fallo.message : 'Se ha perdido el canal.');
       // Si el canal ya no nos reconoce, dejar de insistir cada dos segundos.
@@ -189,6 +200,24 @@ export class Consola implements OnInit, OnDestroy {
       this.error.set(fallo instanceof Error ? fallo.message : '');
       await this.refrescar();
     }
+  }
+
+  /**
+   * Baja al último mensaje, salvo que estés leyendo más arriba.
+   *
+   * Un chat que salta al final mientras relees lo de antes es tan molesto como
+   * uno que no se mueve cuando llega algo nuevo. Se sigue solo a quien ya
+   * estaba abajo.
+   */
+  private alFinal(): void {
+    const caja = this.hilo?.nativeElement;
+    if (!caja) return;
+    const lejos = caja.scrollHeight - caja.scrollTop - caja.clientHeight > CERCA_DEL_FINAL_PX;
+    if (lejos) return;
+
+    requestAnimationFrame(() => {
+      caja.scrollTop = caja.scrollHeight;
+    });
   }
 
   hora(marca: number): string {

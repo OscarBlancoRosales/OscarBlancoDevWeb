@@ -109,7 +109,15 @@ export class Almacen {
    * Se pagina porque las hay de mil doscientas tandas: mandarlas juntas es un
    * mordisco de memoria en el agente y un navegador atascado en la otra punta.
    */
-  async abrir(id: string, desde = 0, cuantas = 60): Promise<Sesion | null> {
+  /**
+   * Un tramo de una sesión.
+   *
+   * `desde` negativo significa el final, que es por donde se abre: lo último
+   * dicho es lo que se quiere leer, y lo de antes se pide después. Quien llama
+   * no sabe cuántas tandas hay hasta que contesta esto, así que el recorte lo
+   * hace aquí quien sí lo sabe.
+   */
+  async abrir(id: string, desde = -1, cuantas = 60): Promise<Sesion | null> {
     const fichero = (await this.ficheros()).find((f) => f.id === id);
     if (!fichero) return null;
 
@@ -117,10 +125,13 @@ export class Almacen {
     const todas = leerTandas(lineas);
     const resumen = await this.resumir(fichero);
 
+    const principio = desde < 0 ? Math.max(0, todas.length - cuantas) : Math.min(desde, todas.length);
+
     return {
       resumen,
-      tandas: todas.slice(desde, desde + cuantas),
+      tandas: todas.slice(principio, principio + cuantas),
       total: todas.length,
+      desde: principio,
     };
   }
 }

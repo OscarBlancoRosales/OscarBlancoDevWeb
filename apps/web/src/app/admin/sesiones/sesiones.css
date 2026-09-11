@@ -1,5 +1,4 @@
-.ses-nota,
-.ses-vacio {
+.ses-nota {
   color: var(--muted);
   font-size: 12px;
 }
@@ -7,112 +6,140 @@
 /* El agente apagado es el estado normal, no un error: se explica con calma. */
 .ses-apagado {
   border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 20px;
+  border-radius: var(--radius);
+  padding: var(--sp-5);
   text-align: center;
 }
 
 .ses-apagado h3 {
   color: var(--accent);
   font-size: 14px;
-  margin: 0 0 6px 0;
+  margin: 0 0 var(--sp-1) 0;
 }
 
 .ses-apagado p {
   color: var(--muted);
   font-size: 12px;
-  margin: 0 0 12px 0;
+  margin: 0 0 var(--sp-3) 0;
 }
 
 .ses-apagado code {
   display: inline-block;
   background: var(--bg-chrome);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 6px 10px;
+  border-radius: var(--radius);
+  padding: var(--sp-1) var(--sp-2);
   color: var(--bright);
   font-size: 12px;
-  margin-bottom: 12px;
+  margin-bottom: var(--sp-3);
 }
 
-.ses-barra {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
+/* ===== LISTA Y CONVERSACIÓN, A LA VEZ =====
 
-.ses-buscar {
+   Una sesión se lee saltando entre ella y las de al lado. Teniendo pantalla,
+   esconder la lista para enseñar el hilo obliga a ir y volver por un botón. */
+
+.ses-dos {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+  /* Lo que sobra de la ventana: el hilo se desliza dentro, no la página. */
   flex: 1 1 auto;
-  padding: 8px 10px;
-  background: var(--bg-chrome);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--bright);
-  font-family: inherit;
-  font-size: 13px;
-  outline: none;
+  min-height: 420px;
 }
 
-.ses-buscar:focus {
-  border-color: var(--accent);
+.ses-lista {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
 }
 
 .ses-cuenta {
+  margin: 0 0 var(--sp-2) 0;
   color: var(--muted);
   font-size: 11px;
 }
 
-.ses-tabla {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
+.ses-fichas {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
-.ses-tabla th,
-.ses-tabla td {
-  text-align: left;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--border);
-}
-
-.ses-tabla th {
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  font-size: 10px;
-  font-weight: normal;
-}
-
-.ses-nombre {
+.ses-ficha {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  color: var(--bright);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-left: 2px solid transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
-.ses-proyecto,
-.ses-peso {
+.ses-ficha:hover {
+  background: var(--bg-soft);
+}
+
+.ses-ficha.activa {
+  background: var(--bg-soft);
+  border-left-color: var(--accent);
+}
+
+.ses-ficha-titulo {
+  color: var(--bright);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.ses-ficha.activa .ses-ficha-titulo {
+  color: var(--accent);
+}
+
+.ses-ficha-meta,
+.ses-ficha-pie {
   color: var(--muted);
   font-size: 10px;
-}
-
-.ses-acciones {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
 }
 
 /* ===== UNA SESIÓN ABIERTA ===== */
 
+.ses-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.ses-elige {
+  margin: auto;
+}
+
 .ses-cabecera {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
+}
+
+/* Con las dos columnas a la vista, volver no lleva a ninguna parte. */
+.ses-volver {
+  display: none;
 }
 
 .ses-titulo {
@@ -136,22 +163,32 @@
 .ses-conmutador {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-1);
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
   cursor: pointer;
 }
 
+/* El hilo se lee como un chat: lo último abajo y el desliz, dentro. */
 .ses-hilo {
+  flex: 1 1 auto;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+}
+
+.ses-mas {
+  align-self: center;
 }
 
 .tanda {
   border-left: 2px solid var(--border);
-  padding-left: 12px;
+  padding-left: var(--sp-3);
+  /* Una línea de mil pixeles no se lee: el texto para donde se deja de seguir. */
+  max-width: 82ch;
 }
 
 /* Lo tuyo se distingue de un vistazo al recorrer una sesión de mil tandas. */
@@ -162,8 +199,8 @@
 .tanda-quien {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 4px;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
 }
 
 .tanda-autor {
@@ -176,20 +213,13 @@
   color: var(--accent);
 }
 
-.tanda-sub,
 .tanda-hora {
   color: var(--muted);
   font-size: 10px;
 }
 
-.tanda-sub {
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 0 4px;
-}
-
 .parte-texto {
-  margin: 0 0 6px 0;
+  margin: 0 0 var(--sp-1) 0;
   font-size: 12px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -198,8 +228,8 @@
 
 /* Lo que Claude se dice a sí mismo: presente, pero sin robar la atención. */
 .parte-pensamiento {
-  margin: 0 0 6px 0;
-  padding-left: 10px;
+  margin: 0 0 var(--sp-1) 0;
+  padding-left: var(--sp-2);
   border-left: 1px dotted var(--border);
   color: var(--muted);
   font-size: 11px;
@@ -211,8 +241,8 @@
 .parte-herramienta {
   display: flex;
   align-items: baseline;
-  gap: 8px;
-  margin: 0 0 6px 0;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-1) 0;
   font-size: 11px;
   min-width: 0;
 }
@@ -233,13 +263,13 @@
 }
 
 .parte-resultado {
-  margin: 0 0 6px 0;
-  padding: 6px 8px;
+  margin: 0 0 var(--sp-1) 0;
+  padding: var(--sp-1) var(--sp-2);
   max-height: 220px;
   overflow: auto;
   background: var(--bg-chrome);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius);
   color: var(--muted);
   font-family: inherit;
   font-size: 11px;
@@ -254,17 +284,38 @@
 }
 
 .ses-error {
+  margin-top: var(--sp-3);
   color: var(--error);
   border-left: 2px solid currentColor;
-  padding: 8px 12px;
+  padding: var(--sp-2) var(--sp-3);
   font-size: 12px;
 }
 
-@media (max-width: 700px) {
-  .ses-tabla th:nth-child(2),
-  .ses-tabla td:nth-child(2),
-  .ses-tabla th:nth-child(4),
-  .ses-tabla td:nth-child(4) {
+/*
+  Estrecho: manda lo que estés mirando, y «volver» trae la lista.
+
+  Sigue ocupando el alto de la ventana, con el desliz dentro de la columna que
+  toque: es la misma pantalla, no una versión recortada.
+*/
+@container (max-width: 860px) {
+  .ses-dos {
+    grid-template-columns: 1fr;
+    min-height: 260px;
+  }
+
+  .ses-dos--abierta .ses-lista {
     display: none;
+  }
+
+  .ses-dos:not(.ses-dos--abierta) .ses-panel {
+    display: none;
+  }
+
+  .ses-volver {
+    display: inline-flex;
+  }
+
+  .tanda {
+    max-width: none;
   }
 }
