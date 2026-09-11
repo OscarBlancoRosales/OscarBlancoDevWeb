@@ -66,7 +66,9 @@ Hay dos fallos más, menores, detrás de ese:
 5. Un **podio** con ceremonia y confeti.
 6. Un **presentador que habla de verdad**, con un encargo y una medida por
    cada momento del programa.
-7. **Sonido**, callado hasta que lo pidas.
+7. Un **modo con las preguntas inventadas por la IA**, en crescendo de
+   dificultad, con botón para impugnar la que salga mal.
+8. **Sonido**, callado hasta que lo pidas.
 
 ## Qué NO se construye
 
@@ -382,7 +384,151 @@ const PLAZO_POR_MODELO_MS = 8_000;  // tres caben dentro
 
 ---
 
-## 7. El sonido
+## 7. El modo IA: un programa escrito en el momento
+
+### La idea
+
+En vez de repartir el banco, se le pide a la IA que **escriba el programa
+entero**: 21 preguntas, una tanda por prueba, de temas repartidos y con la
+dificultad subiendo de la primera a la última. Nosotros recogemos ese JSON y
+lo pintamos en nuestro plató como cualquier otra pregunta.
+
+### Por qué cabe sin tocar nada
+
+Porque ya hay un sitio, y solo uno, por donde entran las preguntas a una sala:
+
+```ts
+function conLoQueElJuegoNecesite(game, config) {
+  const semilla = randomInt(0, 2 ** 31);
+  return { ...config, semilla, preguntas: repartir(semilla) };
+}
+```
+
+Está en el servidor, las congela en la sala al crearla y no las deja acercarse
+al bundle de la web. El modo IA es cambiar `repartir(semilla)` por
+`inventar(...)` ahí dentro —y volver la función `async`, que es el único
+cambio que se propaga—.
+
+Que se generen **una vez, al crear la sala**, no es un detalle: es lo que
+mantiene la partida reconstruible desde su log y lo que impide pedir otra tanda
+a mitad de programa porque esta no gustó.
+
+### Una llamada por prueba
+
+Nada de pedir veintiuna preguntas de golpe. Una llamada por sección, en
+paralelo, cada una con su encargo —igual que el presentador tiene un encargo
+por momento—:
+
+| Sección | Qué se le pide |
+|---|---|
+| Test | Cuatro opciones, una buena, de rarezas que se recuerdan |
+| Encuentra el fallo | Código corto con **un** error real, y en qué línea está |
+| A ojo | Un número comprobable, con su margen de error declarado |
+| El primero que pulse | Cortas, de las que se saben o no se saben |
+| Ráfaga | Verdadero o falso, sin medias tintas |
+| La bomba | Cortísimas, que se contesten con la mecha corriendo |
+| La final | Gorda, de las que se recuerdan al salir |
+
+Los temas se reparten **a la fuerza** —redes, SQL, CSS, sistemas, control de
+versiones, historia de la informática, seguridad, rendimiento—, porque a un
+modelo al que le pides preguntas de programación te da diez de JavaScript.
+
+### La dificultad, en crescendo
+
+`Pregunta` gana un campo opcional:
+
+```ts
+/** Del 1 al 5. La 1 se contesta de memoria; la 5 la falla casi todo el mundo. */
+readonly dificultad?: 1 | 2 | 3 | 4 | 5;
+```
+
+Opcional a propósito: el banco escrito a mano no tiene que rellenarlo para que
+esto funcione. En el modo IA se pide por posición, así que la ronda 1 entra
+blanda y la 21 muerde. En el plató se ve, que si no, no sirve de nada: una
+fila de chiles junto al rótulo de sección.
+
+### El formato, y cómo se valida
+
+Se le pide JSON con un esquema estricto, y se valida con TypeBox —que ya es lo
+que este repositorio usa para todo lo que llega de fuera—. Dos decisiones que
+cambian mucho cuántas sobreviven:
+
+- **La respuesta va escrita, no numerada.** Los modelos cuentan fatal: te dicen
+  «la 2» queriendo decir la tercera, o cuentan desde uno. Escribiendo cuál es
+  aciertan. Nosotros la buscamos entre las opciones y sacamos el índice.
+- **Barajamos las opciones nosotros.** Un modelo pone la buena la primera
+  mucho más de lo que el azar permitiría. Contar sin leer no puede ser una
+  estrategia ganadora.
+
+### Cuando la IA falle, que falle hacia el banco
+
+Lo que no valida, se sustituye por una del banco. Si se cae una sección
+entera, esa sección sale del banco completa. Si se cae la llamada, el programa
+entero sale del banco y se avisa en la sala.
+
+**Nunca se abre una sala con menos de 21 rondas jugables.** Un programa a
+medias es peor que un programa del banco.
+
+Mientras se monta, la sala enseña una pantalla de «escribiendo el programa…»,
+con un plazo global: pasado ese plazo, se juega con lo que haya y el resto del
+banco.
+
+### Que alguna estará mal, y qué se hace
+
+La forma se puede garantizar. **La verdad no.** Un modelo gratuito va a colar
+preguntas mal contestadas, y esto se asume: el modo va marcado como
+experimental y el presentador avisa de que las preguntas las ha escrito una
+máquina.
+
+Para lo que escueza de verdad, hay botón:
+
+```
+┌──────────────────────────────────┐
+│ ¿Qué puerto usa SMTP por defecto?│
+│  [A 25] [B 465] [C 587] [D 110]  │
+│                                  │
+│          ⚑ esta está mal (2/4)   │
+└──────────────────────────────────┘
+```
+
+- Acción nueva `{ tipo: 'impugnar' }`, mientras la ronda está abierta.
+- Se anula **por unanimidad de las personas de la mesa**. No por mayoría: con
+  mayoría, quien no se sabe la respuesta impugna para no perder puntos, y el
+  botón pasa de arreglar preguntas malas a ser una jugada más. Teniendo que
+  darle todos, nadie la anula por interés propio.
+- Los bots no opinan. En una mesa de una persona contra bots, esa persona
+  anula sola —y allá ella, que juega consigo misma—.
+- Anulada: nadie gana ni pierde puntos y se pasa a la siguiente. El presentador
+  lo canta y le echa la culpa a la máquina (momento nuevo `anulada`, 160
+  letras).
+- El botón **solo existe en el modo IA**. El banco está escrito a mano y
+  revisado; abrir ahí la puerta a anular rondas es invitar a usarla.
+
+### Dónde se elige
+
+En el lóbby, al abrir la sala, junto a «contra quién»:
+
+```
+┌─ Nuevo concurso ────────────────────┐
+│ Preguntas                           │
+│  (●) Del banco                      │
+│  ( ) Inventadas por la IA  ⚠ nuevo  │
+└─────────────────────────────────────┘
+```
+
+Es una elección de quien abre la sala y queda congelada en ella: no se cambia
+a mitad de programa. El mismo programa de 21 rondas y las mismas seis pruebas
+en los dos modos —lo único que cambia es de dónde salen las preguntas—, que es
+lo que permite compararlos.
+
+### Sin clave de IA
+
+El modo no aparece. No se ofrece un botón que va a fallar: en el lóbby se
+explica en una línea que hace falta una clave configurada en el servidor.
+
+---
+
+## 8. El sonido
 
 Efectos cortos generados en el navegador con la API de audio —nada de
 descargar megas de MP3—: golpe de rótulo, pulsación, acierto, fallo, tic-tac
@@ -393,7 +539,7 @@ recuerda. Una web que empieza a pitar sola es una pestaña que se cierra.
 
 ---
 
-## 8. Cómo se prueba
+## 9. Cómo se prueba
 
 El motor y el servidor se prueban como todo lo demás del repositorio, en
 `vitest`:
@@ -411,6 +557,14 @@ El motor y el servidor se prueban como todo lo demás del repositorio, en
   los logs del día 10** —495, 484, 409 letras— para que este fallo concreto no
   pueda volver.
 - **Los momentos nuevos:** se detectan cuando toca y no cuando no toca.
+- **El modo IA:** lo que no valida se sustituye por el banco; una respuesta que
+  no está entre las opciones tira la pregunta; las opciones acaban barajadas;
+  una sección entera caída sale del banco completa; y **de una llamada que
+  devuelve basura sale igualmente un programa de 21 rondas jugables**. Todo
+  esto se prueba con dobles, sin tocar la red.
+- **La impugnación:** con unanimidad se anula y nadie gana ni pierde puntos;
+  faltando uno, no; los bots no cuentan para la unanimidad; y en el modo del
+  banco la acción se rechaza.
 
 Las piezas del plató se prueban con `TestBed`: que cada una pinte lo que le
 entra, que el atril reaccione al estado que le dan, y que el director enseñe la
@@ -421,7 +575,7 @@ luego en producción.
 
 ---
 
-## 9. Riesgos
+## 10. Riesgos
 
 | Riesgo | Qué se hace |
 |---|---|
@@ -431,8 +585,11 @@ luego en producción.
 | Veinte rondas con rótulos se hacen largas | El rótulo dura lo que la frase y se puede saltar pulsando |
 | El confeti marea | `prefers-reduced-motion`, y se para solo |
 | `AI_MODEL` del VPS sigue retirado | Se anota para el dueño del servidor. La cadena lo salva igual |
+| La IA escribe preguntas mal contestadas | Se asume y se avisa: modo experimental. Para lo que escueza, el botón de impugnar por unanimidad |
+| Montar el programa con IA tarda demasiado | Una llamada por sección en paralelo, plazo global, y lo que no llegue sale del banco |
+| La IA devuelve JSON roto o a medias | Validación estricta con TypeBox y sustitución por el banco pregunta a pregunta |
 
-## 10. Por dónde se empieza
+## 11. Por dónde se empieza
 
 En este orden, porque cada paso se puede ver funcionando antes del siguiente:
 
@@ -442,4 +599,8 @@ En este orden, porque cada paso se puede ver funcionando antes del siguiente:
 3. **El plató:** escenario, atriles y panel de pregunta.
 4. **Los rótulos** y el cronómetro en pantalla.
 5. **La final** y el podio.
-6. **El sonido**, al final, que es la guinda.
+6. **El modo IA**: generación, validación, dificultad e impugnación. Va aquí y
+   no antes porque se apoya en el presentador ya arreglado —misma cadena de
+   modelos, mismos plazos— y porque hasta que el plató no está en pie no se
+   puede ver si una pregunta inventada luce como una del banco.
+7. **El sonido**, al final, que es la guinda.
