@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import { Contador } from '../contador/contador';
 
 /** Cómo está un concursante en su puesto, ya decidido antes de la plantilla. */
 export interface PuestoEnAtril {
@@ -28,7 +29,7 @@ export interface PuestoEnAtril {
  */
 @Component({
   selector: 'app-atriles',
-  imports: [],
+  imports: [Contador],
   templateUrl: './atriles.html',
   styleUrl: './atriles.css',
 })

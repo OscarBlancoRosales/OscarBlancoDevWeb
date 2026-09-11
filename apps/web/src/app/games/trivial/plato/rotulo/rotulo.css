@@ -1,6 +1,8 @@
 /* Ocupa la pantalla: una cortinilla que cabe en una esquina no es una
    cortinilla, es una etiqueta. */
+/* El tono de la prueba. Si no llega ninguno, el oro de la casa. */
 .rotulo {
+  --tono: 250 204 21;
   position: fixed;
   inset: 0;
   z-index: 30;
@@ -8,7 +10,9 @@
   place-items: center;
   border: 0;
   padding: 1rem;
-  background: rgb(2 6 23 / 92%);
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 50%, rgb(var(--tono) / 28%), transparent 70%),
+    rgb(2 6 23 / 94%);
   color: inherit;
   font: inherit;
   cursor: pointer;
@@ -21,8 +25,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: clamp(1.2rem, 5vw, 3rem) clamp(1.5rem, 8vw, 5rem);
-  border-top: 3px solid rgb(250 204 21);
-  border-bottom: 3px solid rgb(250 204 21);
+  border-top: 3px solid rgb(var(--tono));
+  border-bottom: 3px solid rgb(var(--tono));
   background: linear-gradient(180deg, rgb(30 41 59 / 70%), rgb(2 6 23 / 70%));
   animation: crece 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
 }
@@ -32,8 +36,8 @@
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgb(250 204 21);
-  text-shadow: 0 4px 18px rgb(250 204 21 / 35%);
+  color: rgb(var(--tono));
+  text-shadow: 0 4px 22px rgb(var(--tono) / 45%);
 }
 
 .pista {

@@ -7,6 +7,14 @@ export interface Seccion {
   readonly pista: string;
   /** Lo que se gana y lo que se pierde. Cantar las normas es media cortinilla. */
   readonly premio: string;
+  /**
+   * El color de la prueba.
+   *
+   * No es decoración: al entrar una sección, el plató entero se tiñe de esto.
+   * Es lo que hace que se note el cambio de parte sin leer nada, que es como
+   * funcionan las cortinillas en televisión.
+   */
+  readonly color: string;
 }
 
 /**
@@ -21,36 +29,43 @@ export const SECCIONES: Readonly<Record<TipoPrueba, Seccion>> = {
     nombre: 'Test',
     pista: 'Cuatro opciones, una buena.',
     premio: 'Acertar +100 · Acertar pronto, más',
+    color: '56 132 246',
   },
   estimacion: {
     nombre: 'A ojo',
     pista: 'Sin opciones: escribe el número.',
     premio: 'Cuanto más cerca, más · Clavarlo, +20',
+    color: '168 85 247',
   },
   fallo: {
     nombre: 'Encuentra el fallo',
     pista: 'Está ahí. Míralo bien.',
     premio: 'Acertar +100',
+    color: '34 197 94',
   },
   pulsa: {
     nombre: 'El primero que pulse',
     pista: 'Solo cobra el primero que acierta.',
     premio: 'Acertar +150 · Fallar −50',
+    color: '239 68 68',
   },
   rafaga: {
     nombre: 'Ráfaga',
     pista: 'Verdadero o falso. Encadenar multiplica.',
     premio: 'Hasta ×5',
+    color: '236 72 153',
   },
   bomba: {
     nombre: 'La bomba',
     pista: 'Contesta y pásala. Que no te pille.',
     premio: 'Acertar +60 · Estallar −120',
+    color: '249 115 22',
   },
   final: {
     nombre: 'La final',
     pista: 'Apuesta lo que llevas. Una pregunta decide.',
     premio: 'Doble o nada',
+    color: '250 204 21',
   },
 };
 

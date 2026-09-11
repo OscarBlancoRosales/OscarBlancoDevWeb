@@ -7,6 +7,7 @@ import { PresentadorEnPlato } from '../plato/presentador/presentador';
 import { PanelPregunta } from '../plato/panel-pregunta/panel-pregunta';
 import { Cronometro } from '../plato/cronometro/cronometro';
 import { Rotulo, SECCIONES } from '../plato/rotulo/rotulo';
+import { DURACION, golpeEntre } from '../plato/escena';
 import { MandoDeApuesta } from '../plato/apuesta/apuesta';
 import { Podio } from '../plato/podio/podio';
 import { Sonido } from '../plato/sonido';
@@ -16,7 +17,7 @@ import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
 import type { PuestoEnAtril } from '../plato/atriles/atriles';
 import type { Seccion } from '../plato/rotulo/rotulo';
-import type { TipoPrueba, TrivialView } from '@devweb/shared/games/trivial/tipos';
+import type { TrivialView } from '@devweb/shared/games/trivial/tipos';
 
 /**
  * El director del plató.
@@ -53,11 +54,11 @@ export class TrivialRoom implements OnInit, OnDestroy {
   /** La sección que está anunciándose. `null` cuando el rótulo ya se fue. */
   readonly anunciando = signal<Seccion | null>(null);
 
-  /** El tipo de la ronda anterior, para saber cuándo cambia la sección. */
-  private veniaDe: TipoPrueba | null = null;
+  /** La vista anterior: el director decide comparando dos. */
+  private anterior: TrivialView | null = null;
   /** Lo último que dijo el presentador, para no repetir efecto de sonido. */
   private ultimoMomento = '';
-  private seFue?: ReturnType<typeof setTimeout>;
+  private seFue: ReturnType<typeof setTimeout> | null = null;
 
   readonly callado: Signal<boolean>;
 
@@ -78,7 +79,7 @@ export class TrivialRoom implements OnInit, OnDestroy {
     effect(() => {
       const v = this.vista();
       if (!v) return;
-      this.miraSiCambiaLaSeccion(v);
+      this.dirige(v);
       this.miraSiSuena(v);
     });
   }
@@ -105,18 +106,33 @@ export class TrivialRoom implements OnInit, OnDestroy {
 
   // --- Lo que decide qué está en pantalla ---------------------------------
 
-  private miraSiCambiaLaSeccion(v: TrivialView): void {
-    if (v.fase === 'presentacion' || v.fase === 'fin' || !v.tipo) return;
-    if (v.tipo === this.veniaDe) return;
+  /**
+   * Monta el golpe de efecto que pida la vista que acaba de llegar.
+   *
+   * Quién decide el golpe es una función pura -`golpeEntre`- que compara dos
+   * vistas; aquí solo se le pone el reloj encima. Así la coreografía se prueba
+   * sin navegador y sale igual en las cinco pantallas de la mesa.
+   */
+  private dirige(v: TrivialView): void {
+    const antes = this.anterior;
+    this.anterior = v;
 
-    this.veniaDe = v.tipo;
-    this.anunciando.set(SECCIONES[v.tipo]);
+    const cambio = golpeEntre(antes, v);
+    if (!cambio) return;
+
+    // De momento solo la cortinilla para el juego. Los demás golpes los pintan
+    // las piezas por su cuenta, con sus propias animaciones de entrada.
+    if (cambio.golpe !== 'seccion' && cambio.golpe !== 'arranca') return;
+    if (!cambio.seccion) return;
+
+    this.anunciando.set(SECCIONES[cambio.seccion]);
     this.sonido.suena('rotulo');
 
     if (this.seFue) clearTimeout(this.seFue);
     this.seFue = setTimeout(() => {
       this.anunciando.set(null);
-    }, 3_200);
+      this.seFue = null;
+    }, DURACION[cambio.golpe]);
   }
 
   private miraSiSuena(v: TrivialView): void {
@@ -130,6 +146,7 @@ export class TrivialRoom implements OnInit, OnDestroy {
 
   saltarRotulo(): void {
     if (this.seFue) clearTimeout(this.seFue);
+    this.seFue = null;
     this.anunciando.set(null);
   }
 
