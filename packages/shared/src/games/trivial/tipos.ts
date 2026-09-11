@@ -54,6 +54,14 @@ export interface Pregunta {
    */
   readonly margen?: number;
   readonly explicacion: string;
+  /**
+   * Del 1 al 5. La 1 se contesta de memoria; la 5 la falla casi todo el mundo.
+   *
+   * Opcional a propósito: el banco escrito a mano no tiene que rellenarlo para
+   * que el juego funcione. La pide el modo IA, que encarga las preguntas por
+   * posición para que el programa vaya subiendo de la primera a la última.
+   */
+  readonly dificultad?: 1 | 2 | 3 | 4 | 5;
 }
 
 /**
@@ -72,6 +80,13 @@ export interface Ronda {
   readonly pregunta: Pregunta;
   readonly cerrada: boolean;
   readonly respuestas: Readonly<Record<SeatId, Respuesta>>;
+  /**
+   * Si la mesa la tumbó por estar mal. Entonces no reparte puntos.
+   *
+   * Solo pasa en el modo de preguntas inventadas: el banco está escrito a mano
+   * y revisado, y ahí no se anula nada.
+   */
+  readonly anulada?: boolean;
 }
 
 export interface TrivialState {
@@ -107,6 +122,18 @@ export interface TrivialState {
    * ninguna coincide. Cero es «esta ronda no lleva reloj».
    */
   readonly cierraEn: number;
+
+  /**
+   * Si las preguntas de esta sala las escribió la IA.
+   *
+   * Se guarda en la partida y no se mira de la configuración cada vez porque
+   * decide una regla -si se puede impugnar- y las reglas quedan fijadas al
+   * crear la sala.
+   */
+  readonly inventadas: boolean;
+
+  /** Quién ha dicho que esta pregunta está mal. Se anula por unanimidad. */
+  readonly impugnan: readonly SeatId[];
 
   /**
    * Lo que se juega cada uno en la final.
@@ -163,6 +190,7 @@ export const TrivialAction = Type.Union([
     { tipo: Type.Literal('apostar'), cuanto: Type.Integer({ minimum: 0, maximum: 1_000_000 }) },
     SIN_EXTRAS,
   ),
+  Type.Object({ tipo: Type.Literal('impugnar') }, SIN_EXTRAS),
   // La dice el servidor, no una persona: es la voz del presentador entrando
   // en la partida para que todos la lean a la vez.
   Type.Object(
@@ -199,6 +227,8 @@ export interface TrivialView {
   readonly tipo: TipoPrueba | null;
   readonly enunciado: string;
   readonly codigo: string | null;
+  /** Del 1 al 5, cuando la pregunta la declara. Un crescendo que no se ve, no existe. */
+  readonly dificultad: number | null;
   readonly opciones: readonly string[];
   readonly cerrada: boolean;
   /** Quién ha contestado ya. Nunca qué, mientras la ronda siga abierta. */
@@ -219,6 +249,12 @@ export interface TrivialView {
   readonly tuApuesta: number | null;
   /** Todas las apuestas, cuando ya se pueden cantar. Antes, `null`. */
   readonly apuestas: Readonly<Record<SeatId, number>> | null;
+  /** Si en esta sala se puede impugnar, que es solo en el modo IA. */
+  readonly inventadas: boolean;
+  /** Cuántos han impugnado y cuántos hacen falta. Nunca quiénes. */
+  readonly impugnan: number;
+  readonly hacenFalta: number;
+  readonly tuImpugnas: boolean;
   /** Si te toca a ti contestar. En las demás pruebas contestan todos. */
   readonly tuTurno: boolean;
 

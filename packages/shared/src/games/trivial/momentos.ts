@@ -31,9 +31,20 @@ export type Nombres = Readonly<Record<SeatId, string>>;
  * que acaba de pasar manda sobre lo que viene, y el final manda sobre todo.
  */
 export function comentarioDe(antes: TrivialState, ahora: TrivialState): Comentario | null {
+  // El final del programa manda sobre todo lo demás.
   if (ahora.fase === 'fin' && antes.fase !== 'fin') {
     const [quien, puntos] = lider(ahora);
-    return { momento: 'despedida', quien, puntos };
+    return { momento: 'podio', quien, puntos };
+  }
+
+  // Se abre la fase de apuestas de la final.
+  if (ahora.fase === 'apuestas' && antes.fase !== 'apuestas') {
+    return { momento: 'presentaApuestas', quien: null, puntos: 0 };
+  }
+
+  // Y se cierra: de apostar se pasa a contestar, y las apuestas ya se ven.
+  if (antes.fase === 'apuestas' && ahora.fase === 'ronda') {
+    return { momento: 'apuestasCerradas', quien: null, puntos: 0 };
   }
 
   if (antes.fase === 'presentacion' && ahora.fase === 'ronda') {
@@ -56,6 +67,15 @@ export function comentarioDe(antes: TrivialState, ahora: TrivialState): Comentar
 function trasLaRonda(antes: TrivialState, ahora: TrivialState): Comentario {
   const ronda = rondaEn(ahora, ahora.actual);
   const tipo = ronda?.pregunta.tipo;
+
+  // Una ronda anulada no la ha fallado nadie: lo que hay que contar es que la
+  // mesa ha tumbado una pregunta, no quién sumó más.
+  if (ronda?.anulada) return { momento: 'anulada', quien: null, puntos: 0 };
+
+  if (tipo === 'final') {
+    const [quien, puntos] = lider(ahora);
+    return { momento: 'resultadoFinal', quien, puntos };
+  }
 
   if (tipo === 'bomba') {
     const quien = antes.turno;
@@ -122,6 +142,8 @@ function seccionDe(tipo: string): Momento {
       return 'seccionBomba';
     case 'estimacion':
       return 'seccionEstimacion';
+    case 'final':
+      return 'seccionFinal';
     case 'fallo':
       return 'seccionFallo';
     default:

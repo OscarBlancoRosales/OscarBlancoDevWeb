@@ -51,8 +51,8 @@ function partidaEntera(): TrivialState {
   return state;
 }
 
-function vistaDe(state: TrivialState, seat: string): TrivialView {
-  return trivialModule.view(state, seat, SEATS) as TrivialView;
+function vistaDe(state: TrivialState, seat: string, asientos: readonly Seat[] = SEATS): TrivialView {
+  return trivialModule.view(state, seat, asientos) as TrivialView;
 }
 
 describe('empezar', () => {
@@ -489,5 +489,128 @@ describe('la final a doble o nada', () => {
     const jugada = trivialModule.botAction?.(conBot, 'bea', SEATS);
 
     expect(jugada).toMatchObject({ tipo: 'apostar' });
+  });
+});
+
+const CON_BOT: Seat[] = [
+  { id: 'ana', displayName: 'Ana', isBot: false, connected: true, order: 0 },
+  { id: 'bot', displayName: 'Sabelotodo', isBot: true, connected: true, order: 1 },
+];
+
+const TRES: Seat[] = [
+  ...SEATS,
+  { id: 'caco', displayName: 'Caco', isBot: false, connected: true, order: 2 },
+];
+
+/** Una partida del modo IA, empezada, con la primera pregunta abierta. */
+function inventada(asientos: readonly Seat[] = SEATS): TrivialState {
+  const inicial = trivialModule.createState(asientos, {
+    preguntas: PREGUNTAS,
+    semilla: 7,
+    origen: 'ia',
+  });
+  let state = inicial;
+  for (const asiento of asientos) {
+    state = trivialModule.apply(state, { tipo: 'empezar' }, asiento.id, asientos);
+  }
+  return state;
+}
+
+describe('impugnar una pregunta que la IA se inventó mal', () => {
+  it('hace falta que le den todas las personas de la mesa', () => {
+    // Por unanimidad y no por mayoría: con mayoría, quien no se sabe la
+    // respuesta impugna para no perder puntos, y el botón deja de arreglar
+    // preguntas malas para ser una jugada más.
+    let state = inventada(TRES);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'bea', TRES);
+
+    expect(state.fase).toBe('ronda');
+
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'caco', TRES);
+
+    expect(state.fase).toBe('resultado');
+  });
+
+  it('anulada, el marcador se queda exactamente como estaba', () => {
+    let state = inventada();
+    state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS);
+    const antes = { ...state.puntos };
+
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'impugnar' }, 'bea', SEATS);
+
+    expect(state.puntos).toEqual(antes);
+    expect(vistaDe(state, 'ana').resultados?.every((uno) => uno.ganados === 0)).toBe(true);
+  });
+
+  it('los bots no votan', () => {
+    // Un bot no sabe si la pregunta está mal, y esperar su voto sería esperar
+    // para siempre.
+    const state = trivialModule.apply(inventada(CON_BOT), { tipo: 'impugnar' }, 'ana', CON_BOT);
+    expect(state.fase).toBe('resultado');
+  });
+
+  it('en el modo del banco no se puede impugnar', () => {
+    // El banco está escrito a mano y revisado. Abrir ahí la puerta a anular
+    // rondas es invitar a usarla para no perder puntos.
+    expect(trivialModule.validate(enRonda(), { tipo: 'impugnar' }, 'ana', SEATS))
+      .toMatchObject({ code: 'no-se-impugna' });
+  });
+
+  it('no se impugna dos veces', () => {
+    const state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+
+    expect(trivialModule.validate(state, { tipo: 'impugnar' }, 'ana', TRES))
+      .toMatchObject({ code: 'ya-impugnaste' });
+  });
+
+  it('ni con la ronda ya cerrada', () => {
+    const cerrada = trivialModule.apply(inventada(), { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(trivialModule.validate(cerrada, { tipo: 'impugnar' }, 'ana', SEATS))
+      .toMatchObject({ code: 'ronda-cerrada' });
+  });
+
+  it('la mesa ve cuántos van y cuántos hacen falta, no quiénes', () => {
+    const state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+    const vista = vistaDe(state, 'bea', TRES);
+
+    expect(vista.impugnan).toBe(1);
+    expect(vista.hacenFalta).toBe(3);
+    expect(vista.tuImpugnas).toBe(false);
+    expect(vista.inventadas).toBe(true);
+  });
+
+  it('y al pasar de ronda se olvida lo votado', () => {
+    let state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', TRES);
+    state = trivialModule.apply(state, { tipo: 'siguiente' }, 'ana', TRES);
+
+    expect(state.impugnan).toEqual([]);
+  });
+});
+
+describe('la dificultad', () => {
+  it('viaja en la vista cuando la pregunta la trae', () => {
+    const conNivel: Pregunta[] = [{ ...PREGUNTAS[0], dificultad: 4 }];
+    const inicial = trivialModule.createState(SEATS, { preguntas: conNivel, semilla: 7 });
+    let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
+    state = trivialModule.apply(state, { tipo: 'empezar' }, 'bea', SEATS);
+
+    expect(vistaDe(state, 'ana').dificultad).toBe(4);
+  });
+
+  it('y es null cuando la pregunta no la declara', () => {
+    // El banco escrito a mano no la rellena, y no pasa nada: el crescendo es
+    // cosa del modo IA, que sí la encarga por posición.
+    expect(vistaDe(enRonda(), 'ana').dificultad).toBeNull();
+  });
+
+  it('no se enseña antes de empezar', () => {
+    const conNivel: Pregunta[] = [{ ...PREGUNTAS[0], dificultad: 5 }];
+    const sinEmpezar = trivialModule.createState(SEATS, { preguntas: conNivel, semilla: 7 });
+
+    expect(vistaDe(sinEmpezar, 'ana').dificultad).toBeNull();
   });
 });

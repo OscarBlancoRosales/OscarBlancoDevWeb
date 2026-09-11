@@ -151,6 +151,45 @@ function tarea(ctx: ContextoDelPresentador): string {
 
     case 'empate':
       return 'Van empatados. Coméntalo con guasa.';
+
+    case 'seccionFinal':
+      return [
+        'Anuncia la final. Explica en una frase que cada uno apuesta parte de sus puntos,',
+        'que acertar los dobla y fallar los quita, y que una sola pregunta decide el programa.',
+        'Súbelo: esto es el clímax.',
+      ].join(' ');
+
+    case 'presentaApuestas':
+      return [
+        'Pide las apuestas. Mira el marcador y pincha a quien va primero -que tiene mucho que perder-',
+        'y a quien va último -que no tiene nada-. Nombra a alguno por su nombre.',
+      ].join(' ');
+
+    case 'apuestasCerradas':
+      return [
+        'Las apuestas ya están cerradas y a la vista. Cántalas: quién se ha jugado mucho y quién se ha escondido.',
+        'Usa solo las cifras que te dan.',
+      ].join(' ');
+
+    case 'resultadoFinal':
+      return [
+        'Se ha resuelto la final. Cuenta cómo ha quedado el marcador y si ha habido vuelco.',
+        'No te despidas todavía: eso es lo siguiente.',
+      ].join(' ');
+
+    case 'podio':
+      return [
+        `Sube al podio. Gana ${quien} con ${ctx.cifra} puntos.`,
+        'Nombra al segundo y al último con los datos que tienes, y despídete del público.',
+        'Es lo último que se oye en el programa, así que remata bien.',
+      ].join(' ');
+
+    case 'anulada':
+      return [
+        'La mesa ha tumbado la pregunta por unanimidad: la escribió una máquina y estaba mal.',
+        'Cántalo con guasa, échale la culpa a la máquina y pasa a la siguiente.',
+        'Nadie gana ni pierde puntos.',
+      ].join(' ');
   }
 }
 
@@ -211,6 +250,13 @@ const LARGOS: Readonly<Record<Momento, number>> = {
 
   pasaLaBomba: 90,
   explota: 120,
+
+  seccionFinal: 280,
+  presentaApuestas: 260,
+  apuestasCerradas: 200,
+  resultadoFinal: 300,
+  podio: 380,
+  anulada: 160,
 };
 
 /** Las letras que puede gastar en este momento del programa. */

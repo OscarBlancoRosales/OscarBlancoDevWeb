@@ -60,13 +60,19 @@ describe('cuándo habla el presentador', () => {
     expect(comentarioDe(antes, ahora)?.momento).toBe('bienvenida');
   });
 
-  it('se despide al acabar', () => {
+  /**
+   * Al acabar ya no se despide sin más: sube al podio.
+   *
+   * Es el mismo instante del programa, pero ahora hay ceremonia detrás, y el
+   * presentador tiene que nombrar al segundo y al último además del ganador.
+   */
+  it('sube al podio al acabar', () => {
     let state = empezada([pregunta('test', 't0')]);
     const antes = state;
     state = responde(state, 'ana', ACIERTO);
     state = responde(state, 'bea', ACIERTO);
     state = siguiente(state);
-    expect(comentarioDe(antes, state)?.momento).toBe('despedida');
+    expect(comentarioDe(antes, state)?.momento).toBe('podio');
   });
 
   it('y en la despedida dice quién ha ganado', () => {

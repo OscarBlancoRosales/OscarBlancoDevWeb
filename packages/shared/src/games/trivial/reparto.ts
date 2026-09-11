@@ -46,6 +46,13 @@ const GESTO_POR_MOMENTO: Readonly<Record<Momento, Gesto>> = {
 
   pasaLaBomba: 'talk2',
   explota: 'wrong',
+
+  seccionFinal: 'talk2',
+  presentaApuestas: 'talk2',
+  apuestasCerradas: 'think',
+  resultadoFinal: 'yes',
+  podio: 'yes',
+  anulada: 'wrong',
 };
 
 /**

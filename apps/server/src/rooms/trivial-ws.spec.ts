@@ -177,7 +177,9 @@ describe('un concurso de trivial contra el bot', () => {
       // A la final se entra apostando, no contestando: sin poner algo, la fase
       // se queda abierta esperando y la ronda no llega a jugarse nunca.
       if (vista.fase === 'apuestas') {
-        if (vista.tuApuesta === null) cliente.enviar({ tipo: 'apostar', cuanto: 10 });
+        // Cero: este cliente contesta a bulto y puede llegar a la final sin un
+        // punto, y apostar lo que no se tiene se rechaza -con razón-.
+        if (vista.tuApuesta === null) cliente.enviar({ tipo: 'apostar', cuanto: 0 });
         vista = await cliente.hasta((v) => v.fase !== 'apuestas', 'el cierre de las apuestas');
         continue;
       }

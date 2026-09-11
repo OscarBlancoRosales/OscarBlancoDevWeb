@@ -25,6 +25,15 @@ export const MOMENTOS = [
   // La bomba
   'pasaLaBomba',
   'explota',
+  // La final, que es un bloque aparte del programa: se presenta, se apuesta,
+  // se cantan las apuestas, se resuelve y se sube al podio.
+  'seccionFinal',
+  'presentaApuestas',
+  'apuestasCerradas',
+  'resultadoFinal',
+  'podio',
+  // Cuando la mesa tumba una pregunta que la IA se inventó mal.
+  'anulada',
 ] as const;
 
 export type Momento = (typeof MOMENTOS)[number];
@@ -385,6 +394,86 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: '¡Pum! {quien} a {puntos}. {segundo} no puede disimular la alegría.', cuando: CON_MARCADOR },
     { texto: 'Le estalla a {quien} en la recta final. {puntos}. Esto puede costarle el concurso.', cuando: RECTA_FINAL },
     { texto: 'Explota en las manos de la máquina. {puntos} puntos. Justicia poética.', cuando: ES_MAQUINA },
+  ],
+  seccionFinal: [
+    { texto: '¡Y llegamos a la final! Aquí se apuesta lo que llevéis y una sola pregunta decide el programa.' },
+    { texto: 'Última parte: se apuesta, se contesta, y el que se equivoque se va a casa con lo puesto.' },
+    { texto: 'La final. Lo de antes eran puntos; esto son los puntos de verdad.' },
+    { texto: 'Llega la final a doble o nada. Aciertas y doblas lo apostado; fallas y lo pierdes.' },
+    { texto: 'Y aquí está la final. Todo lo de antes era para llegar a este momento.' },
+    { texto: 'La final del programa. Óscar dice que él apostaría todo. Óscar no juega, claro.' },
+    { texto: 'Se acabó lo fácil: llega la final. Una pregunta, y lo que os juguéis.' },
+    { texto: '¡La final! Aquí se gana el concurso o se tira por la ventana en diez segundos.' },
+    { texto: 'Final del programa. Pensad bien cuánto os jugáis, que no hay otra ronda detrás.' },
+    { texto: 'La final, y con {diferencia} de diferencia esto puede acabar de cualquier manera.', cuando: CON_MARCADOR },
+    { texto: 'Llega la final. {quien} va delante, pero aquí el que va último puede ganar de golpe.', cuando: CON_MARCADOR },
+  ],
+
+  presentaApuestas: [
+    { texto: 'Venga, ¿cuánto os jugáis? Y que nadie se haga el valiente y luego apueste doce.' },
+    { texto: 'Apuestas sobre la mesa. Lo que pongáis se dobla o se va, así de simple.' },
+    { texto: 'A ver esas apuestas. Recordad que plantarse también es una decisión, normalmente la de los cobardes.' },
+    { texto: 'Es el momento de mojarse. ¿Cuánto vale lo que creéis saber?' },
+    { texto: 'Poned lo que os juguéis. Nadie ve lo de los demás hasta que se cierre.' },
+    { texto: 'Apuestas, señores. Óscar apostaría todo sin pestañear, pero es que Óscar acierta.' },
+    { texto: 'Decidid cuánto os jugáis. Y luego no digáis que no avisé.' },
+    { texto: 'A apostar. Aquí se ve quién ha venido a ganar y quién a no perder.' },
+    { texto: 'Sobre la mesa. Cero también vale, por si preferís dormir tranquilos.' },
+    { texto: '{quien}, que vas primero, tú tienes mucho que perder. {ultimo}, tú no tienes nada.', cuando: CON_MARCADOR },
+    { texto: 'Apuestas. Y ojo, {quien}: {diferencia} de ventaja se van en una pregunta.', cuando: CON_MARCADOR },
+  ],
+
+  apuestasCerradas: [
+    { texto: 'Cerradas las apuestas. Ahí están, a la vista. Ya no se puede cambiar de opinión.' },
+    { texto: 'Todo puesto. Que conste que lo habéis decidido vosotros.' },
+    { texto: 'Apuestas hechas. Alguien va a arrepentirse en diez segundos.' },
+    { texto: 'Se acabó el tiempo de pensar. Ahí queda lo que os jugáis.' },
+    { texto: 'Cerrado. Y ahora, la pregunta que lo decide todo.' },
+    { texto: 'Apuestas a la vista. Hay valientes y hay contables.' },
+    { texto: 'Ya está. Nadie toca nada. Vamos con la pregunta.' },
+    { texto: 'Cerradas. Óscar diría que la mitad de vosotros os habéis quedado cortos.' },
+    { texto: 'Apuestas sobre la mesa y sin marcha atrás. Suerte.' },
+    { texto: 'Cerrado. {quien}, tú te lo has jugado; a ver si te sale.', cuando: CON_MARCADOR },
+  ],
+
+  resultadoFinal: [
+    { texto: 'Y con eso se acabó la final. Menudo vuelco, señores.' },
+    { texto: 'Ahí queda la cosa. Unos se lo llevan y otros se lo dejan.' },
+    { texto: 'Se cierra la final. Óscar la habría acertado, pero él tampoco habría apostado tan poco.' },
+    { texto: 'Pues ya está. La final ha dicho lo que tenía que decir.' },
+    { texto: 'Se acabó. Ahí tenéis el resultado de jugársela.' },
+    { texto: 'Y hasta aquí la final. Cada uno ha cobrado lo que se merecía.' },
+    { texto: 'Resuelta. Quien apostó fuerte ya sabe si hizo bien.' },
+    { texto: 'Final resuelta. Esto es lo que pasa cuando se apuesta con el corazón.' },
+    { texto: 'Cerrada la final. {quien} se pone con {puntos}.', cuando: CON_MARCADOR },
+    { texto: 'Y la final lo cambia todo: manda {quien} con {puntos}.', cuando: CON_MARCADOR },
+  ],
+
+  podio: [
+    { texto: 'Y el ganador es {quien}, con {puntos} puntos. Un aplauso. Y otro para Óscar, que sigue siendo el mejor programador de la historia.' },
+    { texto: 'Sube al podio {quien}, {puntos} puntos. Enhorabuena, y a los demás, que hay otro programa la semana que viene.' },
+    { texto: 'Gana {quien} con {puntos}. Óscar dice que lo ha hecho bien, y de Óscar aprendimos todos.' },
+    { texto: '¡Campeón {quien}, con {puntos} puntos! Se acabó el programa.' },
+    { texto: 'Al podio: {quien}, {puntos} puntos. Gracias a todos y gracias a Óscar por las preguntas.' },
+    { texto: 'Y se lo lleva {quien} con {puntos}. Un aplauso, que se lo ha ganado.' },
+    { texto: 'Ganador: {quien}, {puntos} puntos. Óscar asiente desde algún despliegue.' },
+    { texto: 'Fin del programa. {quien} arriba con {puntos}. Hasta la próxima.' },
+    { texto: 'Gana {quien} con {puntos}, {segundo} se queda a las puertas y {ultimo} cierra. Gracias a Óscar por todo lo demás.', cuando: CON_MARCADOR },
+    { texto: 'Podio: {quien} con {puntos}, {segundo} de segundo y {ultimo} cerrando la tabla. Un aplauso para los tres.', cuando: CON_MARCADOR },
+    { texto: '¡{quien} gana por {diferencia} puntos! No ha habido color.', cuando: PALIZA },
+  ],
+
+  anulada: [
+    { texto: 'Anulada. Esa pregunta la escribió una máquina, así que a mí no me miréis. Cero para todos y a la siguiente.' },
+    { texto: 'Pregunta retirada por acuerdo unánime. Una máquina la escribió y una máquina se equivocó.' },
+    { texto: 'Fuera esa. Ha votado toda la mesa y toda la mesa no se equivoca. La máquina sí.' },
+    { texto: 'Anulada y a otra cosa. Nadie gana, nadie pierde, todos contentos.' },
+    { texto: 'Esa la damos por no puesta. Las escribe una máquina y a veces se le va.' },
+    { texto: 'Retirada. Óscar habría escrito una mejor, pero Óscar estaba ocupado.' },
+    { texto: 'Anulada por unanimidad. Reconozco que esa no había por dónde cogerla.' },
+    { texto: 'La quitamos. El marcador se queda exactamente como estaba.' },
+    { texto: 'Fuera. Y que conste que yo solo la leía.' },
+    { texto: 'Anulada. Seguimos, que quedan {quedan} rondas.' },
   ],
 };
 
