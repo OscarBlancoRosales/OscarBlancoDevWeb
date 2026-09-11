@@ -48,6 +48,8 @@ export class Consola implements OnInit, OnDestroy {
   texto = '';
   codigo = '';
   nombre = '';
+  /** Dónde buscar el agente. Vacío = en este mismo ordenador. */
+  donde = '';
 
   private latido?: ReturnType<typeof setInterval>;
 
@@ -57,7 +59,18 @@ export class Consola implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.donde = this.agente.donde;
     void this.arrancar();
+  }
+
+  /**
+   * Desde el móvil, `127.0.0.1` es el móvil: hay que decir por dónde se llega
+   * al ordenador. La dirección se guarda por aparato, así que el del
+   * escritorio sigue hablando con su propia máquina sin tocar nada.
+   */
+  async apuntarA(): Promise<void> {
+    this.agente.donde = this.donde;
+    await this.arrancar();
   }
 
   ngOnDestroy(): void {

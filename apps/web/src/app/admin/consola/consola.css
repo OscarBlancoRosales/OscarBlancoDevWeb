@@ -66,6 +66,32 @@
   font-size: 16px !important;
 }
 
+/* Para llegar desde otro aparato: solo aparece cuando no hay canal aquí. */
+.con-donde {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.con-donde label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.con-donde input {
+  min-width: 240px;
+}
+
+.con-donde small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
 /* Una pestaña por repositorio con sesión abierta. */
 .con-canales {
   display: flex;

@@ -142,6 +142,12 @@ export async function arrancarCanal(): Promise<void> {
     acceso,
     buzon,
     proyecto: basename(process.cwd()),
+    // Para llegar desde el móvil por una red privada hay que decir por qué
+    // nombre se va a llamar: HOSTS_DEL_CANAL=mi-pc.tu-tailnet.ts.net
+    hosts: (process.env['HOSTS_DEL_CANAL'] ?? '')
+      .split(',')
+      .map((h) => h.trim().toLowerCase())
+      .filter((h) => h !== ''),
     /**
      * Enseñar el código donde de verdad se está mirando.
      *

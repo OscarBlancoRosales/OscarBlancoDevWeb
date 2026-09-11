@@ -7,6 +7,25 @@
     <p>{{ i18n.t('con.sinCanalTexto') }}</p>
     <code>claude --dangerously-load-development-channels server:devweb</code>
     <button type="button" class="btn" (click)="arrancar()">{{ i18n.t('con.reintentar') }}</button>
+
+    <!--
+      Desde el móvil, 127.0.0.1 es el móvil. Para llegar al ordenador hay que
+      decir por dónde: una red privada tipo Tailscale, con su nombre en HTTPS.
+    -->
+    <div class="con-donde">
+      <label for="donde">{{ i18n.t('con.dondeEtiqueta') }}</label>
+      <div class="con-fila">
+        <input
+          id="donde"
+          type="url"
+          name="donde"
+          [(ngModel)]="donde"
+          [placeholder]="i18n.t('con.dondePh')"
+        />
+        <button type="button" class="btn" (click)="apuntarA()">{{ i18n.t('con.guardar') }}</button>
+      </div>
+      <small>{{ i18n.t('con.dondeAyuda') }}</small>
+    </div>
   </div>
 } @else if (!emparejado()) {
   <!--

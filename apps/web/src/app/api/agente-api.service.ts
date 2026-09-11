@@ -31,6 +31,27 @@ const LLAVE = 'devweb_canal_token';
 const AGENTE = 'http://127.0.0.1:4319';
 
 /**
+ * Dónde buscar el agente, si no es en este mismo ordenador.
+ *
+ * Por defecto `127.0.0.1`, que es lo que hace que esto sea seguro sin más
+ * discusión: no hay nada expuesto. Desde el móvil, en cambio, `127.0.0.1` es
+ * el propio móvil, así que hay que decirle por dónde llegar al PC — por una
+ * red privada tipo Tailscale, con su nombre en HTTPS.
+ *
+ * Se guarda por navegador porque es una decisión de este aparato: el del
+ * escritorio sigue hablando con su propia máquina.
+ */
+const DONDE = 'devweb_agente_url';
+
+function baseGuardada(): string {
+  try {
+    return localStorage.getItem(DONDE) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Los puertos donde puede haber un canal.
  *
  * Hay uno por sesión de Claude Code abierta, así que con dos repositorios en
@@ -79,11 +100,17 @@ export class AgenteApiService {
    * máquina, y las que no contestan fallan en milisegundos.
    */
   async canales(): Promise<CanalVivo[]> {
+    // Con una dirección puesta a mano hay un solo sitio al que preguntar.
+    const guardada = baseGuardada();
+    const sitios = guardada
+      ? [{ url: guardada, puerto: 0 }]
+      : PUERTOS.map((puerto) => ({ url: `http://127.0.0.1:${puerto}`, puerto }));
+
     const encontrados = await Promise.all(
-      PUERTOS.map(async (puerto) => {
+      sitios.map(async ({ url, puerto }) => {
         try {
-          const respuesta = await fetch(`http://127.0.0.1:${puerto}/salud`, {
-            signal: AbortSignal.timeout(1500),
+          const respuesta = await fetch(`${url}/salud`, {
+            signal: AbortSignal.timeout(4000),
           });
           if (!respuesta.ok) return null;
           const salud = (await respuesta.json()) as { canal?: boolean; proyecto?: string };
@@ -98,10 +125,29 @@ export class AgenteApiService {
   }
 
   /** A cuál de las sesiones se le está hablando. */
-  private elegido = AGENTE;
+  private elegido = baseGuardada() || AGENTE;
 
   hablarCon(puerto: number): void {
-    this.elegido = `http://127.0.0.1:${puerto}`;
+    const guardada = baseGuardada();
+    // Con una dirección puesta a mano se respeta tal cual: al otro lado hay un
+    // solo canal publicado, no cinco puertos que recorrer.
+    this.elegido = guardada || `http://127.0.0.1:${puerto}`;
+  }
+
+  /** Dónde está el agente para ESTE aparato. Vacío significa «aquí mismo». */
+  get donde(): string {
+    return baseGuardada();
+  }
+
+  set donde(url: string) {
+    const limpia = url.trim().replace(/\/$/, '');
+    try {
+      if (limpia) localStorage.setItem(DONDE, limpia);
+      else localStorage.removeItem(DONDE);
+    } catch {
+      // Sin almacenamiento se queda con el de siempre.
+    }
+    this.elegido = limpia || AGENTE;
   }
 
   async sesiones(): Promise<ListaDeSesiones['sesiones']> {

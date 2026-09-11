@@ -374,6 +374,16 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
     en: 'The channel is started by Claude Code on your computer. Start it like this and come back:',
   },
   'con.reintentar': { es: 'Volver a mirar', en: 'Look again' },
+  'con.dondeEtiqueta': {
+    es: '¿Estás en otro aparato? Di por dónde se llega al ordenador:',
+    en: 'On another device? Say how to reach the computer:',
+  },
+  'con.dondePh': { es: 'https://mi-pc.tu-red.ts.net', en: 'https://my-pc.your-net.ts.net' },
+  'con.dondeAyuda': {
+    es: 'Vacío significa este mismo ordenador. Desde el móvil hace falta una red privada: 127.0.0.1 allí es el propio móvil.',
+    en: 'Empty means this computer. From a phone you need a private network: 127.0.0.1 there is the phone itself.',
+  },
+  'con.guardar': { es: 'Guardar', en: 'Save' },
   'con.emparejarTitulo': { es: 'Este aparato no está emparejado', en: 'This device is not paired' },
   'con.emparejarTexto': {
     es: 'Pide un código y léelo en el terminal donde corre Claude Code. Hay que hacerlo una vez: después este aparato entra siempre.',

@@ -35,6 +35,15 @@ export interface OpcionesDelAgente {
   readonly mostrarCodigo?: (codigo: string, nombre: string) => void;
   /** En qué repositorio corre esta sesión, para distinguirla de las demás. */
   readonly proyecto?: string;
+  /**
+   * Otros nombres por los que se acepta que llamen a esta máquina.
+   *
+   * Por defecto solo los locales. Si llegas por una red privada —Tailscale y
+   * parecidos— hay que añadir ese nombre a mano: la comprobación existe para
+   * que una web cualquiera no pueda apuntar su dominio a tu 127.0.0.1, y
+   * aceptar cualquier nombre la dejaría sin sentido.
+   */
+  readonly hosts?: readonly string[];
 }
 
 const ORIGENES_POR_DEFECTO = [
@@ -72,9 +81,10 @@ export async function construirAgente(opciones: OpcionesDelAgente = {}): Promise
    *
    * Esto es lo que hace que «escucha solo en local» signifique algo de verdad.
    */
+  const permitidos = new Set(['127.0.0.1', 'localhost', '[::1]', ...(opciones.hosts ?? [])]);
   app.addHook('onRequest', async (peticion, respuesta) => {
     const host = (peticion.headers.host ?? '').split(':')[0].toLowerCase();
-    if (host !== '127.0.0.1' && host !== 'localhost' && host !== '[::1]') {
+    if (!permitidos.has(host)) {
       await respuesta.status(403).send({ code: 'host-raro', message: 'Aquí no se llama así' });
     }
   });
