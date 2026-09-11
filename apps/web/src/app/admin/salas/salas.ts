@@ -6,9 +6,6 @@ import { I18nService } from '../../services/i18n.service';
 import type { AdminRoom, AdminSeat } from '@devweb/shared/contracts/admin';
 import type { GameId, RoomStatus } from '@devweb/shared/contracts/rooms';
 
-/** Lo que hay que escribir para el borrado en bloque. */
-export const PALABRA_PARA_BORRAR = 'BORRAR';
-
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 /** Los juegos y los estados, para los desplegables. En el orden de siempre. */
@@ -49,7 +46,6 @@ const COLOR_DEL_ESTADO: Readonly<Record<RoomStatus, string>> = {
 export class Salas implements OnInit {
   readonly JUEGOS = JUEGOS;
   readonly ESTADOS = ESTADOS;
-  readonly PALABRA = PALABRA_PARA_BORRAR;
 
   readonly salas = signal<readonly AdminRoom[]>([]);
   readonly cargando = signal(true);
@@ -64,7 +60,15 @@ export class Salas implements OnInit {
   readonly estado = signal<RoomStatus | ''>('');
   readonly inactivasDias = signal<number | null>(null);
   readonly busqueda = signal('');
-  readonly palabra = signal('');
+
+  /**
+   * Cuántas salas había en el filtro cuando se pidió cerrar en bloque.
+   *
+   * Se guarda el número, no un sí o un no: entre los dos clics alguien puede
+   * abrir una mesa, y entonces el segundo clic se llevaría algo que nadie ha
+   * visto. Si la cuenta ha cambiado, se vuelve a preguntar.
+   */
+  readonly confirmandoBloque = signal<number | null>(null);
 
   readonly filtradas = computed(() => {
     const texto = this.busqueda().trim().toLowerCase();
@@ -89,10 +93,6 @@ export class Salas implements OnInit {
       (total, sala) => total + sala.asientos.filter((asiento) => asiento.connected).length,
       0,
     ),
-  );
-
-  readonly puedeBorrarEnBloque = computed(
-    () => this.palabra().trim().toUpperCase() === PALABRA_PARA_BORRAR && this.enElFiltro() > 0,
   );
 
   constructor(
@@ -135,9 +135,23 @@ export class Salas implements OnInit {
     });
   }
 
+  /**
+   * Dos clics, como borrar un usuario. El primero solo avisa.
+   *
+   * Antes pedía escribir una palabra que solo aparecía como marca de agua del
+   * campo: un acertijo delante de un botón desactivado. El número va ahora en
+   * el propio botón, que es lo que había que leer.
+   */
   async cerrarEnBloque(): Promise<void> {
-    if (!this.puedeBorrarEnBloque()) return;
-    this.palabra.set('');
+    const cuantas = this.enElFiltro();
+    if (cuantas === 0) return;
+
+    if (this.confirmandoBloque() !== cuantas) {
+      this.confirmandoBloque.set(cuantas);
+      return;
+    }
+    this.confirmandoBloque.set(null);
+
     await this.intentar(async () => {
       const juego = this.juego();
       const estado = this.estado();
@@ -163,10 +177,13 @@ export class Salas implements OnInit {
     return COLOR_DEL_ESTADO[estado];
   }
 
-  /** El aviso del bloque, sin «sala(s)». */
+  /** Lo que dice el botón: siempre con el número delante. */
   get aviso(): string {
     const cuantas = this.enElFiltro();
-    return this.i18n.t(cuantas === 1 ? 'salas.bloqueAvisoUna' : 'salas.bloqueAviso', { cuantas });
+    if (cuantas === 0) return this.i18n.t('salas.bloqueNinguna');
+
+    const clave = this.confirmandoBloque() === cuantas ? 'salas.bloqueSeguro' : 'salas.bloqueCerrar';
+    return this.i18n.t(cuantas === 1 ? `${clave}Una` : clave, { cuantas });
   }
 
   cuando(marca: number): string {

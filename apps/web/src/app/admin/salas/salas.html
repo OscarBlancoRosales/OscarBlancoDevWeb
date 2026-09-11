@@ -32,6 +32,16 @@
         <option [value]="uno">{{ i18n.t('salas.estado.' + uno) }}</option>
       }
     </select>
+    <input
+      class="input input--sm"
+      type="number"
+      name="dias"
+      min="1"
+      max="365"
+      [ngModel]="inactivasDias()"
+      (ngModelChange)="inactivasDias.set($event)"
+      [placeholder]="i18n.t('salas.inactivas')"
+    />
     <button type="button" class="btn btn--sm barra-fin" (click)="refrescar()">
       {{ i18n.t('salas.refrescar') }}
     </button>
@@ -107,39 +117,21 @@
   </div>
 
   <!--
-    El borrado en bloque se lleva partidas de otra gente por delante, así que
-    no basta con un clic: hay que leer cuántas caen y escribirlo.
+    Se lleva partidas de otra gente por delante, así que el número va en el
+    propio botón y hace falta pulsarlo dos veces. Los filtros son los de
+    arriba, los mismos que está enseñando la tabla: no hay un segundo juego de
+    filtros escondido aquí abajo.
   -->
   <section class="sal-bloque">
     <h3 class="sal-titulo">{{ i18n.t('salas.bloqueTitulo') }}</h3>
-    <p class="sal-aviso">{{ aviso }}</p>
-    <div class="barra">
-      <input
-        class="input input--sm"
-        type="number"
-        name="dias"
-        min="1"
-        max="365"
-        [ngModel]="inactivasDias()"
-        (ngModelChange)="inactivasDias.set($event)"
-        [placeholder]="i18n.t('salas.inactivas')"
-      />
-      <input
-        class="input input--sm"
-        type="text"
-        name="palabra"
-        [ngModel]="palabra()"
-        (ngModelChange)="palabra.set($event)"
-        [placeholder]="PALABRA"
-      />
-      <button
-        type="button"
-        class="btn btn--danger"
-        [disabled]="!puedeBorrarEnBloque()"
-        (click)="cerrarEnBloque()">
-        {{ i18n.t('salas.cerrarTodas') }}
-      </button>
-    </div>
+    <p class="sal-aviso">{{ i18n.t('salas.bloqueQue') }}</p>
+    <button
+      type="button"
+      class="btn btn--danger"
+      [disabled]="enElFiltro() === 0"
+      (click)="cerrarEnBloque()">
+      {{ aviso }}
+    </button>
   </section>
 }
 
