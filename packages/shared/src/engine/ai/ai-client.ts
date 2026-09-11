@@ -67,14 +67,19 @@ export const FREE_MODELS: Record<AiProvider, ModelOption[]> = {
       note: 'El ligero que sí cumple: rápido y sin salirse del guion.',
     },
     {
+      id: 'nvidia/nemotron-3.5-lightning:free',
+      label: 'Nemotron 3.5 Lightning (free)',
+      note: 'El más rápido de la casa. Es el primero de la reserva.',
+    },
+    {
       id: 'dots-studio/dots-3-note-preview:free',
       label: 'Dots3-Note Preview (free)',
       note: 'Correcto, algo más lento y se le cuela alguna palabra en inglés.',
     },
     {
-      id: 'z-ai/glm-5.2:free',
-      label: 'GLM 5.2 (free)',
-      note: 'Bueno cuando responde, pero se satura a menudo.',
+      id: 'google/gemma-4-31b-it:free',
+      label: 'Gemma 4 31B (free)',
+      note: 'De otra casa, que es su gracia: se satura cuando los NVIDIA no.',
     },
   ],
   groq: [
@@ -82,6 +87,16 @@ export const FREE_MODELS: Record<AiProvider, ModelOption[]> = {
       id: 'llama-3.3-70b-versatile',
       label: 'Llama 3.3 70B',
       note: 'Capa gratuita de Groq. Respuestas casi instantáneas.',
+    },
+    {
+      id: 'openai/gpt-oss-120b',
+      label: 'GPT-OSS 120B',
+      note: 'El más capaz de Groq, y sigue contestando en menos de un segundo.',
+    },
+    {
+      id: 'openai/gpt-oss-20b',
+      label: 'GPT-OSS 20B',
+      note: 'Más ligero. Para una frase de tres líneas va sobrado.',
     },
     {
       id: 'llama-3.1-8b-instant',
@@ -262,9 +277,16 @@ export const FALLBACK_CHAIN: Record<AiProvider, string[]> = {
     'nvidia/nemotron-3-super-120b-a12b:free',
     'nvidia/nemotron-3-ultra-550b-a55b:free',
     'dots-studio/dots-3-note-preview:free',
+    // El último es de otra casa a propósito: cuando lo que está saturado es la
+    // infraestructura de NVIDIA, los cuatro de arriba caen a la vez.
+    'google/gemma-4-31b-it:free',
   ],
-  groq: [],
-  gemini: [],
+  // En Groq y Gemini la cuota gratuita se cuenta por modelo, así que un 429 en
+  // uno no dice nada del siguiente. Estaban vacías y no debían: el mismo 429
+  // que aquí se esquiva dejaba la mesa sin frase.
+  groq: ['openai/gpt-oss-20b', 'llama-3.1-8b-instant', 'openai/gpt-oss-120b'],
+  gemini: ['gemini-2.0-flash-lite', 'gemini-2.0-flash'],
+  // Un servidor propio no tiene a quién recurrir: o está levantado o no está.
   'openai-compatible': [],
 };
 

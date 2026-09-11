@@ -96,7 +96,14 @@ export class DealerDeMesa implements Narrador {
 
   private soltar(actor: RoomActor, state: ScrumState, momento: MomentoDealer): void {
     const contexto = this.contexto(state, momento, actor);
-    const guionada = fraseDelDealer(momento, this.datosDeLaFrase(contexto), createRng(Date.now()));
+    // `state.dice` es todavía la frase de antes: se le pasa para que el guion
+    // no repita dos veces seguidas lo mismo.
+    const guionada = fraseDelDealer(
+      momento,
+      this.datosDeLaFrase(contexto),
+      createRng(Date.now()),
+      state.dice,
+    );
 
     actor.aplicarDelSistema(this.locutor(state), {
       tipo: 'dice',
