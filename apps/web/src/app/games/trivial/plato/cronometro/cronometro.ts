@@ -27,12 +27,22 @@ export class Cronometro implements OnInit, OnDestroy {
   /** Inyectable para poder probar el paso del tiempo sin esperarlo. */
   @Input() ahora: () => number = Date.now;
 
-  private readonly late = signal(0);
+  /**
+   * El instante desde el que se cuenta, congelado en cada latido.
+   *
+   * Antes los getters llamaban al reloj directamente, y eso pintaba un número
+   * distinto cada vez que se les preguntaba. Angular comprueba dos veces lo
+   * que acaba de pintar, así que la barra cambiaba de ancho entre las dos
+   * comprobaciones y saltaba un NG0100. Congelarlo hace que dentro de un mismo
+   * repintado el tiempo no se mueva, que es lo que Angular espera.
+   */
+  private readonly instante = signal(0);
   private latido?: ReturnType<typeof setInterval>;
 
   ngOnInit(): void {
+    this.instante.set(this.ahora());
     this.latido = setInterval(() => {
-      this.late.update((cuantos) => cuantos + 1);
+      this.instante.set(this.ahora());
     }, LATIDO_MS);
   }
 
@@ -44,21 +54,20 @@ export class Cronometro implements OnInit, OnDestroy {
   get quedan(): number {
     // Leer la señal es lo que ata el redibujado al latido en una aplicación
     // sin zonas: sin esta lectura, el reloj cambia y nadie se entera.
-    this.late();
+    const ahora = this.instante();
     if (this.cierraEn === 0) return 0;
-    return Math.max(0, Math.ceil((this.cierraEn - this.ahora()) / 1000));
+    return Math.max(0, Math.ceil((this.cierraEn - ahora) / 1000));
   }
 
   get apurando(): boolean {
-    this.late();
-    return this.cierraEn !== 0 && this.cierraEn - this.ahora() <= APURANDO_MS;
+    return this.cierraEn !== 0 && this.cierraEn - this.instante() <= APURANDO_MS;
   }
 
   /** Lo que queda de barra, de 0 a 100. */
   get porcentaje(): number {
-    this.late();
+    const ahora = this.instante();
     if (this.cierraEn === 0 || this.duracionMs <= 0) return 0;
-    const restante = this.cierraEn - this.ahora();
+    const restante = this.cierraEn - ahora;
     return Math.min(100, Math.max(0, (restante / this.duracionMs) * 100));
   }
 }

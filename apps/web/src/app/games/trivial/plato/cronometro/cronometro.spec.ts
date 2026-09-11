@@ -47,6 +47,22 @@ describe('el cronómetro', () => {
     expect(fixture.componentInstance.porcentaje).toBe(50);
   });
 
+  /**
+   * Angular comprueba dos veces lo que acaba de pintar. Con el reloj de verdad
+   * y la barra leyéndolo en cada pregunta, las dos comprobaciones no coinciden
+   * y salta un NG0100 — en la sala real igual que aquí.
+   */
+  it('con el reloj de verdad, el ancho no cambia entre comprobación y comprobación', () => {
+    const fixture = TestBed.createComponent(Cronometro);
+    fixture.componentInstance.cierraEn = Date.now() + 9_000;
+    fixture.componentInstance.duracionMs = 25_000;
+    fixture.detectChanges();
+
+    const antes = fixture.componentInstance.porcentaje;
+    expect(fixture.componentInstance.porcentaje).toBe(antes);
+    fixture.destroy();
+  });
+
   it('deja de latir al destruirse', () => {
     // Aquí se abre y se cierra una ronda cada pocos segundos: un intervalo que
     // sobrevive a la sala es una fuga con patas.
