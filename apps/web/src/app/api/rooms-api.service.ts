@@ -48,6 +48,7 @@ export class RoomsApiService {
         game: input.game,
         name: input.name,
         displayName: input.displayName,
+        ...(input.meta !== undefined && { meta: input.meta }),
         ...(input.config !== undefined && { config: input.config }),
         ...(input.bots !== undefined && { bots: input.bots }),
       },
