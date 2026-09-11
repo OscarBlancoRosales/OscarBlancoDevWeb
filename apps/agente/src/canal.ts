@@ -137,6 +137,22 @@ export async function arrancarCanal(): Promise<void> {
     },
   });
 
-  await app.listen({ port: PUERTO, host: '127.0.0.1' });
+  try {
+    await app.listen({ port: PUERTO, host: '127.0.0.1' });
+  } catch (fallo) {
+    // El visor a secas usa este mismo puerto. Si se quedó abierto, el canal no
+    // puede tomarlo, y morir aquí en silencio se ve desde Claude Code como un
+    // servidor que no arranca y ya está: sin esto, se pierde media tarde.
+    const ocupado = (fallo as { code?: string }).code === 'EADDRINUSE';
+    process.stderr.write(
+      ocupado
+        ? `\n  El puerto ${PUERTO} ya está ocupado, seguramente por el visor.\n` +
+            `  Ciérralo (Ctrl+C donde corra «npm run start -w @devweb/agente») y vuelve\n` +
+            `  a arrancar Claude Code. El canal ya trae el visor dentro: no hacen falta\n` +
+            `  los dos.\n\n`
+        : `\n  El canal no ha podido escuchar en ${PUERTO}: ${String(fallo)}\n\n`,
+    );
+    return;
+  }
   process.stderr.write(`  Canal de DevWeb escuchando en 127.0.0.1:${PUERTO}\n`);
 }
