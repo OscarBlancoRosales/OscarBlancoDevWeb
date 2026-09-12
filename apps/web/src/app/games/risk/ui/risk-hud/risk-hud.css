@@ -15,8 +15,9 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
-  padding: 6px 14px 14px 8px;
+  gap: 4px;
+  min-width: 248px;
+  padding: 10px 18px 18px 12px;
   /* Veladura en dos direcciones: legible sobre el mapa sin dibujar un marco. */
   background: radial-gradient(
     ellipse at top left,
@@ -40,17 +41,43 @@
   gap: 8px;
 }
 
+.hud-kicker {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.hud-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.hud-live.active {
+  background: #00e676;
+  box-shadow: 0 0 10px #00e676;
+}
+
 .hud-round {
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  font-size: 11px;
-  opacity: 0.7;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 4px;
+  color: var(--ink-dim);
+  font-size: 10px;
+  opacity: 0.9;
 }
 
 .hud-phase {
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 
@@ -61,7 +88,7 @@ button.hud-phase {
   gap: 8px;
   background: rgba(0, 255, 140, 0.12);
   border: 1px solid rgba(0, 255, 140, 0.55);
-  border-radius: 999px;
+  border-radius: 6px;
   color: #00e676;
   cursor: pointer;
   padding: 0 12px;
@@ -74,6 +101,9 @@ button.hud-phase {
 }
 
 .hud-reserve {
+  padding: 2px 7px;
+  border-left: 2px solid var(--neon);
+  background: rgba(0, 230, 118, 0.07);
   font-size: 15px;
   font-weight: 700;
   color: #00e676;
@@ -118,8 +148,25 @@ button.hud-phase {
 }
 
 .hud-line.tools {
-  margin-top: -6px;
-  opacity: 0.7;
+  margin-top: 2px;
+  opacity: 0.78;
+}
+
+.hud-history,
+.hud-settings {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  width: auto;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.tool-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hud-line.tools:hover,
@@ -146,7 +193,12 @@ button.hud-phase {
   .hud {
     font-size: 12px;
     padding-right: 10px;
-    max-width: 50vw;
+    min-width: 0;
+    max-width: 52vw;
+  }
+
+  .tool-label {
+    display: none;
   }
 
   .hud-line {
@@ -164,4 +216,21 @@ button.hud-phase {
   opacity: 0.65;
   font-size: 12px;
   max-width: 46vw;
+}
+
+.hud button:focus-visible {
+  outline: 2px solid var(--bright, #fff);
+  outline-offset: 2px;
+}
+
+@media (orientation: landscape) and (max-height: 540px) {
+  .hud {
+    gap: 0;
+    font-size: 11px;
+  }
+
+  .hud-hint,
+  .hud-line.secondary {
+    display: none;
+  }
 }

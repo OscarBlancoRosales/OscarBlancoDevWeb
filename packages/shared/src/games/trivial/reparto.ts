@@ -45,6 +45,7 @@ const GESTO_POR_MOMENTO: Readonly<Record<Momento, Gesto>> = {
   rachaBuena: 'yes',
 
   pasaLaBomba: 'talk2',
+  seLaQueda: 'wrong',
   explota: 'wrong',
 
   seccionFinal: 'talk2',

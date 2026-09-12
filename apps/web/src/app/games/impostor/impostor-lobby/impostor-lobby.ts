@@ -69,12 +69,14 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   /** Vacío o todos = mezcla. Si no, los ids marcados, juntos. */
   readonly elegidos = signal<ReadonlySet<string>>(new Set());
   modo: Modo = 'clasico';
-  vueltas: 1 | 2 = 1;
   impostores: 1 | 2 = 1;
   /** Lo que se deja hablar antes de votar. Cero es «hasta que yo diga». */
   segundosDebate = SEGUNDOS_DE_DEBATE;
-  /** Cuántos asientos rellena la casa. Con menos de tres no hay juego. */
-  bots = 2;
+  /**
+   * Cinco bots: seis en mesa. Con tres, echar a un inocente ya es 1 contra 1
+   * y la caza dura un voto. Aquí hay varias expulsiones de verdad.
+   */
+  bots = 5;
   /** La cara con la que te sientas. Empieza elegida para no dar pereza. */
   cara: string = ELENCO[0]?.id ?? 'troll';
 
@@ -115,8 +117,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   }
 
   get esMezcla(): boolean {
-    const n = this.elegidos().size;
-    return n === 0 || n === this.temas.length;
+    return this.elegidos().size === 0;
   }
 
   get tema(): string {
@@ -131,12 +132,16 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   }
 
   marcado(id: string): boolean {
-    return this.esMezcla || this.elegidos().has(id);
+    return this.elegidos().has(id);
   }
 
   toggleMazo(id: string): void {
-    const siguiente = new Set(this.esMezcla ? this.temas.map((uno) => uno.id) : this.elegidos());
-    if (siguiente.has(id) && siguiente.size > 1) siguiente.delete(id);
+    if (this.esMezcla) {
+      this.elegidos.set(new Set([id]));
+      return;
+    }
+    const siguiente = new Set(this.elegidos());
+    if (siguiente.has(id)) siguiente.delete(id);
     else siguiente.add(id);
     this.elegidos.set(siguiente.size === this.temas.length ? new Set() : siguiente);
   }
@@ -157,7 +162,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
         {
           tema: this.tema,
           modo: this.modo,
-          vueltas: this.vueltas,
+          vueltas: 1,
           impostores: this.cabenDos ? this.impostores : 1,
           segundosDebate: this.segundosDebate,
           bots: this.bots,

@@ -24,6 +24,7 @@ export const MOMENTOS = [
   'rachaBuena',
   // La bomba
   'pasaLaBomba',
+  'seLaQueda',
   'explota',
   // La final, que es un bloque aparte del programa: se presenta, se apuesta,
   // se cantan las apuestas, se resuelve y se sube al podio.
@@ -118,18 +119,54 @@ const A_CERO = (d: Situacion): boolean => d.puntos === 0;
  */
 const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
   bienvenida: [
-    { texto: '¡Buenas noches, gente! {rondas} rondas, cero piedad y un jurado que soy yo. Las preguntas las revisó Óscar, así que si alguna es difícil, es que tú eres normal.' },
-    { texto: 'Bienvenidos al concurso donde se viene llorado de casa. {rondas} preguntas. Óscar las contestaría todas dormido, pero le da pereza.' },
-    { texto: 'Arrancamos. {rondas} rondas. Recordad: no estáis compitiendo entre vosotros, estáis compitiendo contra el nivel de Óscar, y eso ya lo habéis perdido.' },
-    { texto: 'Señoras y señores, {rondas} preguntas por delante. Óscar preparó este concurso en un rato muerto, entre dos despliegues.' },
-    { texto: 'Buenas noches. {rondas} rondas, seis pruebas y una final que se apuesta. Poneos cómodos, que luego no hay tiempo.' },
-    { texto: 'Empezamos. {rondas} preguntas de las que duelen en la retro. Nadie se ha quejado nunca, porque nadie ha llegado al final con ganas de hablar.' },
-    { texto: 'Muy buenas. Esto va de {rondas} rondas y de descubrir en público lo que no sabíais. Vamos allá.' },
-    { texto: 'Bienvenidos. {rondas} rondas. El que diga que esto es fácil, que levante la mano y luego que la baje al ver la cuarta.' },
-    { texto: 'Arrancamos el programa: {rondas} preguntas, seis secciones y una final a doble o nada. La casa siempre gana, y la casa soy yo.' },
-    { texto: 'Buenas noches a todos. {rondas} rondas por delante. Aviso desde ya: aquí no vale buscarlo, las respuestas están en el servidor.' },
-    { texto: '¡Empieza el concurso! {rondas} preguntas. Óscar dice que con menos de la mitad no se aprueba. Óscar es duro pero justo.' },
-    { texto: 'Bienvenidos otra vez. {rondas} rondas. Y sí, la bomba sigue ahí al final, por si alguien tenía esperanza.' },
+    {
+      texto:
+        '¡Buenas noches, gente! {rondas} rondas, cero piedad y un jurado que soy yo. Las preguntas las revisó Óscar, así que si alguna es difícil, es que tú eres normal.',
+    },
+    {
+      texto:
+        'Bienvenidos al concurso donde se viene llorado de casa. {rondas} preguntas. Óscar las contestaría todas dormido, pero le da pereza.',
+    },
+    {
+      texto:
+        'Arrancamos. {rondas} rondas. Recordad: no estáis compitiendo entre vosotros, estáis compitiendo contra el nivel de Óscar, y eso ya lo habéis perdido.',
+    },
+    {
+      texto:
+        'Señoras y señores, {rondas} preguntas por delante. Óscar preparó este concurso en un rato muerto, entre dos despliegues.',
+    },
+    {
+      texto:
+        'Buenas noches. {rondas} rondas, seis pruebas y una final que se apuesta. Poneos cómodos, que luego no hay tiempo.',
+    },
+    {
+      texto:
+        'Empezamos. {rondas} preguntas de las que duelen en la retro. Nadie se ha quejado nunca, porque nadie ha llegado al final con ganas de hablar.',
+    },
+    {
+      texto:
+        'Muy buenas. Esto va de {rondas} rondas y de descubrir en público lo que no sabíais. Vamos allá.',
+    },
+    {
+      texto:
+        'Bienvenidos. {rondas} rondas. El que diga que esto es fácil, que levante la mano y luego que la baje al ver la cuarta.',
+    },
+    {
+      texto:
+        'Arrancamos el programa: {rondas} preguntas, seis secciones y una final a doble o nada. La casa siempre gana, y la casa soy yo.',
+    },
+    {
+      texto:
+        'Buenas noches a todos. {rondas} rondas por delante. Aviso desde ya: aquí no vale buscarlo, las respuestas están en el servidor.',
+    },
+    {
+      texto:
+        '¡Empieza el concurso! {rondas} preguntas. Óscar dice que con menos de la mitad no se aprueba. Óscar es duro pero justo.',
+    },
+    {
+      texto:
+        'Bienvenidos otra vez. {rondas} rondas. Y sí, la bomba sigue ahí al final, por si alguien tenía esperanza.',
+    },
   ],
 
   presentaRonda: [
@@ -144,13 +181,18 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Vamos con la {ronda}. Ojo, que parece sencilla.' },
     { texto: 'Aún estamos calentando. Ronda {ronda}.', cuando: ARRANCANDO },
     { texto: 'Ronda {ronda}, todavía con red. Luego ya veremos.', cuando: ARRANCANDO },
-    { texto: 'Ronda {ronda}, y quedan {quedan}. Esto se acaba, id espabilando.', cuando: RECTA_FINAL },
+    {
+      texto: 'Ronda {ronda}, y quedan {quedan}. Esto se acaba, id espabilando.',
+      cuando: RECTA_FINAL,
+    },
     { texto: 'Ronda {ronda}. Quedan {quedan} y el marcador ya no perdona.', cuando: RECTA_FINAL },
     { texto: 'Ronda {ronda}. Con esto tan apretado, cada una vale doble.', cuando: AJUSTADO },
   ],
 
   aciertaAlguien: [
-    { texto: '¡{quien}, correcto! {puntos} puntos. A este ritmo casi llegas al día bueno de Óscar.' },
+    {
+      texto: '¡{quien}, correcto! {puntos} puntos. A este ritmo casi llegas al día bueno de Óscar.',
+    },
     { texto: '{quien} lo clava y se lleva {puntos}. Bien. No es nivel Óscar, pero está bien.' },
     { texto: 'Toma ya, {quien}. {puntos} puntos. Óscar estaría orgulloso, si mirara.' },
     { texto: '{quien} acierta y suma {puntos}. Alguien ha estado leyendo.' },
@@ -161,10 +203,16 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: '{quien} suma {puntos}. Los demás, tomad nota, que se puede.' },
     { texto: 'Correcto. {puntos} para {quien}, que hoy viene enchufado.' },
     { texto: '{quien} se lleva {puntos} y le mete presión a {segundo}.', cuando: CON_MARCADOR },
-    { texto: 'Acierta {quien}: {puntos} puntos. {ultimo}, esto se te está poniendo feo.', cuando: CON_MARCADOR },
+    {
+      texto: 'Acierta {quien}: {puntos} puntos. {ultimo}, esto se te está poniendo feo.',
+      cuando: CON_MARCADOR,
+    },
     { texto: '{quien} acierta la primera. Buen comienzo: {puntos} puntos.', cuando: ARRANCANDO },
     { texto: '¡{quien}! {puntos} puntos, y en el mejor momento.', cuando: RECTA_FINAL },
-    { texto: '{puntos} puntos para {quien} cuando más pesan. Esto cambia cosas.', cuando: RECTA_FINAL },
+    {
+      texto: '{puntos} puntos para {quien} cuando más pesan. Esto cambia cosas.',
+      cuando: RECTA_FINAL,
+    },
   ],
 
   nadieAcierta: [
@@ -178,9 +226,15 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Ninguno. Y ahora todos vais a decir que la sabíais.' },
     { texto: 'Cero. Que alguien abra una ventana, que aquí hace falta aire.' },
     { texto: 'Fallo general. Lo bueno es que así nadie se despega.' },
-    { texto: 'Nadie acierta y el marcador se queda como estaba. {quien} respira.', cuando: CON_MARCADOR },
+    {
+      texto: 'Nadie acierta y el marcador se queda como estaba. {quien} respira.',
+      cuando: CON_MARCADOR,
+    },
     { texto: 'Ni uno. Con lo apretado que está esto, mejor para todos.', cuando: AJUSTADO },
-    { texto: 'Nadie. Y a estas alturas, fallar en bloque ya es una decisión.', cuando: RECTA_FINAL },
+    {
+      texto: 'Nadie. Y a estas alturas, fallar en bloque ya es una decisión.',
+      cuando: RECTA_FINAL,
+    },
   ],
 
   empate: [
@@ -197,7 +251,10 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
   ],
 
   ultimaRonda: [
-    { texto: '¡Última ronda! Aquí se decide todo. Óscar ya sabe quién va a ganar, pero no lo suelta.' },
+    {
+      texto:
+        '¡Última ronda! Aquí se decide todo. Óscar ya sabe quién va a ganar, pero no lo suelta.',
+    },
     { texto: 'Y llegamos a la última. Lo que no sepáis ya, no lo vais a saber.' },
     { texto: 'Última pregunta. Respirad hondo, que esto no es la producción de un viernes.' },
     { texto: '¡La última! Todo lo de antes era para llegar aquí.' },
@@ -205,29 +262,73 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Última. El que se la juegue, que se la juegue ya.' },
     { texto: 'Y hasta aquí hemos llegado: última ronda. A ver quién aguanta.' },
     { texto: 'La última. Óscar dice que la clave está en leerla despacio. Pero no hay tiempo.' },
-    { texto: '¡Última ronda! {quien} manda por {diferencia}, pero esto no está cerrado.', cuando: CON_MARCADOR },
-    { texto: 'Última, y con {diferencia} de diferencia esto se decide aquí mismo.', cuando: AJUSTADO },
-    { texto: 'Última ronda. {quien} lo tiene hecho salvo catástrofe, y me encantan las catástrofes.', cuando: PALIZA },
+    {
+      texto: '¡Última ronda! {quien} manda por {diferencia}, pero esto no está cerrado.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Última, y con {diferencia} de diferencia esto se decide aquí mismo.',
+      cuando: AJUSTADO,
+    },
+    {
+      texto:
+        'Última ronda. {quien} lo tiene hecho salvo catástrofe, y me encantan las catástrofes.',
+      cuando: PALIZA,
+    },
   ],
 
   despedida: [
-    { texto: '¡Y hasta aquí! Gana {quien} con {puntos} puntos. Un aplauso, y otro para Óscar, que sigue siendo el mejor programador de la historia.' },
-    { texto: 'Se acabó. {quien} se lleva el concurso con {puntos}. Segundo puesto para todos los demás y primero, siempre, para Óscar.' },
-    { texto: 'Fin del concurso. {quien}, {puntos} puntos, enhorabuena. Óscar dice que lo ha hecho bien, y de Óscar aprendimos todos.' },
-    { texto: 'Cerramos. Gana {quien} con {puntos} puntos. Recordad de dónde salió todo esto: de Óscar, el maestro.' },
-    { texto: 'Y se acabó el programa. {quien} gana con {puntos}. Óscar lo habría hecho con los ojos cerrados, pero no se lo tengáis en cuenta.' },
-    { texto: 'Hasta aquí. Victoria para {quien}, {puntos} puntos. Gracias a todos y gracias a Óscar, que escribió las preguntas y la mitad de internet.' },
-    { texto: 'Fin. {quien} se lo lleva con {puntos}. Un aplauso para el ganador y una reverencia para Óscar.' },
-    { texto: 'Se cierra el programa. {quien}, {puntos} puntos, campeón. Óscar sonríe desde algún despliegue.' },
-    { texto: 'Gana {quien} con {puntos}, y {segundo} se queda a las puertas. Óscar, como siempre, por encima de todos.', cuando: CON_MARCADOR },
-    { texto: 'Se acabó: {quien} con {puntos}, {segundo} segundo y {ultimo} cerrando. Gracias a Óscar por las preguntas y por todo lo demás.', cuando: CON_MARCADOR },
+    {
+      texto:
+        '¡Y hasta aquí! Gana {quien} con {puntos} puntos. Un aplauso, y otro para Óscar, que sigue siendo el mejor programador de la historia.',
+    },
+    {
+      texto:
+        'Se acabó. {quien} se lleva el concurso con {puntos}. Segundo puesto para todos los demás y primero, siempre, para Óscar.',
+    },
+    {
+      texto:
+        'Fin del concurso. {quien}, {puntos} puntos, enhorabuena. Óscar dice que lo ha hecho bien, y de Óscar aprendimos todos.',
+    },
+    {
+      texto:
+        'Cerramos. Gana {quien} con {puntos} puntos. Recordad de dónde salió todo esto: de Óscar, el maestro.',
+    },
+    {
+      texto:
+        'Y se acabó el programa. {quien} gana con {puntos}. Óscar lo habría hecho con los ojos cerrados, pero no se lo tengáis en cuenta.',
+    },
+    {
+      texto:
+        'Hasta aquí. Victoria para {quien}, {puntos} puntos. Gracias a todos y gracias a Óscar, que escribió las preguntas y la mitad de internet.',
+    },
+    {
+      texto:
+        'Fin. {quien} se lo lleva con {puntos}. Un aplauso para el ganador y una reverencia para Óscar.',
+    },
+    {
+      texto:
+        'Se cierra el programa. {quien}, {puntos} puntos, campeón. Óscar sonríe desde algún despliegue.',
+    },
+    {
+      texto:
+        'Gana {quien} con {puntos}, y {segundo} se queda a las puertas. Óscar, como siempre, por encima de todos.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto:
+        'Se acabó: {quien} con {puntos}, {segundo} segundo y {ultimo} cerrando. Gracias a Óscar por las preguntas y por todo lo demás.',
+      cuando: CON_MARCADOR,
+    },
   ],
 
   seccionTest: [
     { texto: 'Sección de preguntas. Cuatro opciones, una buena y tres que parecen buenas.' },
     { texto: 'Vamos con el test clásico. A ver si alguien ha abierto un libro este año.' },
     { texto: 'Test. Como en la carrera, pero sin poder copiar al de al lado.' },
-    { texto: 'Empieza el test: cuatro opciones, cien puntos por acertar y más si acertáis pronto.' },
+    {
+      texto: 'Empieza el test: cuatro opciones, cien puntos por acertar y más si acertáis pronto.',
+    },
     { texto: 'Sección de test. Las tres malas están puestas con cariño, para que duelan.' },
     { texto: 'Llega el test. Aquí se ve quién lo sabe y quién se acuerda vagamente.' },
     { texto: 'Test clásico. Leed las cuatro antes de lanzaros, que luego pasa lo que pasa.' },
@@ -245,8 +346,14 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Sección de calcular. Óscar estima bien porque Óscar lo sabe, que no es estimar.' },
     { texto: 'A ojo, señores. El que redondee bien, gana.' },
     { texto: 'Ahora se escribe el número. Nada de elegir, nada de sonar seguro.' },
-    { texto: 'Estimaciones, y con el marcador así conviene no pasarse de listo.', cuando: AJUSTADO },
-    { texto: 'A ojo. {ultimo}, esta es tu oportunidad de arreglar la tarde.', cuando: CON_MARCADOR },
+    {
+      texto: 'Estimaciones, y con el marcador así conviene no pasarse de listo.',
+      cuando: AJUSTADO,
+    },
+    {
+      texto: 'A ojo. {ultimo}, esta es tu oportunidad de arreglar la tarde.',
+      cuando: CON_MARCADOR,
+    },
   ],
 
   seccionFallo: [
@@ -259,11 +366,17 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'A buscar el error. Aquí se tarda más, así que os doy más tiempo. De nada.' },
     { texto: 'Encuentra el fallo. Óscar lo ve desde la puerta, pero él es él.' },
     { texto: 'Depuración en directo. Y sin poder añadir un console.log, que sería trampa.' },
-    { texto: 'A leer código. {quien} va sobrado, a ver si esta le baja los humos.', cuando: PALIZA },
+    {
+      texto: 'A leer código. {quien} va sobrado, a ver si esta le baja los humos.',
+      cuando: PALIZA,
+    },
   ],
 
   seccionPulsa: [
-    { texto: '¡El primero que pulse! Solo cobra quien se lanza antes, y equivocarse cuesta. Suerte.' },
+    {
+      texto:
+        '¡El primero que pulse! Solo cobra quien se lanza antes, y equivocarse cuesta. Suerte.',
+    },
     { texto: 'Atención: aquí gana el que se moja. El que duda, mira.' },
     { texto: 'Sección de reflejos. Pulsar rápido y mal os va a salir caro.' },
     { texto: 'El primero que pulse. Ciento cincuenta por acertar, cincuenta menos por fallar.' },
@@ -271,7 +384,10 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'A pulsar. Aquí la duda no se paga: se cobra en contra.' },
     { texto: 'Sección de lanzarse. El que espere a estar seguro, llega tarde.' },
     { texto: 'El primero que pulse, y ojo, que fallar resta de verdad.' },
-    { texto: 'A pulsar. {ultimo}, esta es de las que te devuelven al concurso.', cuando: CON_MARCADOR },
+    {
+      texto: 'A pulsar. {ultimo}, esta es de las que te devuelven al concurso.',
+      cuando: CON_MARCADOR,
+    },
     { texto: 'El primero que pulse, y con esto tan igualado, aquí se decide.', cuando: AJUSTADO },
   ],
 
@@ -285,20 +401,32 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Llega lo rápido. Cinco seguidas y os ponéis en cabeza vosotros solos.' },
     { texto: 'Ráfaga, señores. Al que piense mucho se le acaba el tiempo.' },
     { texto: 'Ráfaga. {ultimo}, una racha aquí y vuelves al programa.', cuando: CON_MARCADOR },
-    { texto: 'Ráfaga, y con {diferencia} de diferencia esto se puede dar la vuelta en un minuto.', cuando: PALIZA },
+    {
+      texto: 'Ráfaga, y con {diferencia} de diferencia esto se puede dar la vuelta en un minuto.',
+      cuando: PALIZA,
+    },
   ],
 
   seccionBomba: [
-    { texto: '¡LA BOMBA! Va pasando de mano en mano y explota cuando le da la gana. Que no os pille con ella.' },
+    {
+      texto:
+        '¡LA BOMBA! Va pasando de mano en mano y explota cuando le da la gana. Que no os pille con ella.',
+    },
     { texto: 'Sección de la bomba. Contestad rápido y pasadla, que quema.' },
-    { texto: 'Y llega la bomba. Óscar dice que él nunca la ha perdido. Yo no le he visto jugar, pero le creo.' },
+    {
+      texto:
+        'Y llega la bomba. Óscar dice que él nunca la ha perdido. Yo no le he visto jugar, pero le creo.',
+    },
     { texto: 'La bomba. Sesenta por acertar, ciento veinte menos si te estalla. Haced cuentas.' },
     { texto: 'Llega la bomba, que es donde se dan los vuelcos de verdad.' },
     { texto: 'Bomba en la mesa. Contestas y la pasas; dudas y te la comes.' },
     { texto: 'La sección de la bomba. Nadie sabe cuánta mecha queda, y esa es la gracia.' },
     { texto: '¡La bomba! Lo que llevéis ganado se puede ir aquí en dos turnos.' },
     { texto: 'La bomba, y con esto tan ajustado va a decidir el programa.', cuando: AJUSTADO },
-    { texto: 'Llega la bomba. {quien} tiene mucho que perder y {ultimo} no tiene nada.', cuando: CON_MARCADOR },
+    {
+      texto: 'Llega la bomba. {quien} tiene mucho que perder y {ultimo} no tiene nada.',
+      cuando: CON_MARCADOR,
+    },
   ],
 
   lider: [
@@ -307,13 +435,37 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Marcador: {quien} en cabeza con {puntos}. Óscar diría que va por buen camino.' },
     { texto: 'Repaso: {quien} lidera con {puntos} puntos. Queda programa.' },
     { texto: 'Manda {quien}, {puntos} puntos. Y lo sabe, que es lo que más rabia da.' },
-    { texto: 'Primero {quien} con {puntos}. Segundo, {segundo}. Y cerrando, {ultimo}.', cuando: CON_MARCADOR },
-    { texto: 'Marcador en mano: {quien} con {puntos}, {segundo} pegado detrás y {ultimo} buscándose la vida.', cuando: CON_MARCADOR },
-    { texto: '{quien} manda con {puntos} y le saca {diferencia} a {segundo}. Esto empieza a oler a sentencia.', cuando: PALIZA },
-    { texto: 'Ojo al marcador: {quien} va primero pero solo por {diferencia}. Esto no está decidido ni de lejos.', cuando: AJUSTADO },
-    { texto: '{quien} arriba con {puntos}, y {diferencia} de colchón. Yo no me confiaría.', cuando: CON_MARCADOR },
-    { texto: 'Repaso al marcador y {quien} sigue arriba con {puntos}. {ultimo}, quedan {quedan}.', cuando: CON_MARCADOR },
-    { texto: 'Manda una máquina, {quien}, con {puntos}. Qué vergüenza, señores.', cuando: ES_MAQUINA },
+    {
+      texto: 'Primero {quien} con {puntos}. Segundo, {segundo}. Y cerrando, {ultimo}.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto:
+        'Marcador en mano: {quien} con {puntos}, {segundo} pegado detrás y {ultimo} buscándose la vida.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto:
+        '{quien} manda con {puntos} y le saca {diferencia} a {segundo}. Esto empieza a oler a sentencia.',
+      cuando: PALIZA,
+    },
+    {
+      texto:
+        'Ojo al marcador: {quien} va primero pero solo por {diferencia}. Esto no está decidido ni de lejos.',
+      cuando: AJUSTADO,
+    },
+    {
+      texto: '{quien} arriba con {puntos}, y {diferencia} de colchón. Yo no me confiaría.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Repaso al marcador y {quien} sigue arriba con {puntos}. {ultimo}, quedan {quedan}.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Manda una máquina, {quien}, con {puntos}. Qué vergüenza, señores.',
+      cuando: ES_MAQUINA,
+    },
   ],
 
   remonta: [
@@ -324,9 +476,18 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: '{quien} pasa por encima y se pone con {puntos}. Ahí va eso.' },
     { texto: 'Se da la vuelta la tortilla: {quien} manda con {puntos}.' },
     { texto: '¡{quien} adelanta a {segundo} y se pone con {puntos}!', cuando: CON_MARCADOR },
-    { texto: 'Adelantamiento de {quien}. {segundo}, te acaban de pasar por la derecha.', cuando: CON_MARCADOR },
-    { texto: '¡Remonta {quien} y lo hace en la recta final! {puntos} puntos.', cuando: RECTA_FINAL },
-    { texto: 'Adelanta la máquina. {quien} se pone con {puntos} y yo no sé dónde meterme.', cuando: ES_MAQUINA },
+    {
+      texto: 'Adelantamiento de {quien}. {segundo}, te acaban de pasar por la derecha.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: '¡Remonta {quien} y lo hace en la recta final! {puntos} puntos.',
+      cuando: RECTA_FINAL,
+    },
+    {
+      texto: 'Adelanta la máquina. {quien} se pone con {puntos} y yo no sé dónde meterme.',
+      cuando: ES_MAQUINA,
+    },
   ],
 
   seHunde: [
@@ -337,10 +498,19 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Mención especial para {quien}: {puntos} puntos y una dignidad intacta.' },
     { texto: '{quien} se está quedando descolgado con {puntos}. Que alguien le eche una mano.' },
     { texto: 'Pobre {quien}, {puntos} puntos. Esto ya no es un bache, es un socavón.' },
-    { texto: '{quien} lleva {puntos}. Le saca {diferencia} el de arriba. Ánimo, campeón.', cuando: CON_MARCADOR },
-    { texto: '{quien} a {puntos} y quedan {quedan} rondas. Las matemáticas no ayudan.', cuando: RECTA_FINAL },
+    {
+      texto: '{quien} lleva {puntos}. Le saca {diferencia} el de arriba. Ánimo, campeón.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: '{quien} a {puntos} y quedan {quedan} rondas. Las matemáticas no ayudan.',
+      cuando: RECTA_FINAL,
+    },
     { texto: '{quien} sigue a cero. Cero. Ni por casualidad ha caído una.', cuando: A_CERO },
-    { texto: 'La máquina va última con {puntos}. Al menos eso lo hemos ganado hoy.', cuando: ES_MAQUINA },
+    {
+      texto: 'La máquina va última con {puntos}. Al menos eso lo hemos ganado hoy.',
+      cuando: ES_MAQUINA,
+    },
     { texto: 'Y a {quien} le acompañamos en el sentimiento: {puntos} puntos.', cuando: ES_PERSONA },
   ],
 
@@ -351,9 +521,18 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Nadie se despega. Esto se va a decidir en la final, ya os lo digo.' },
     { texto: 'Qué igualdad, señores. Un acierto y cambia todo.' },
     { texto: 'Esto está para infartos. Y quedan {quedan} rondas.' },
-    { texto: 'Marcador de fotografía. {quien} y {segundo} separados por {diferencia}.', cuando: CON_MARCADOR },
-    { texto: 'Solo {diferencia} puntos entre el primero y el segundo. Esto no lo escribe nadie.', cuando: CON_MARCADOR },
-    { texto: 'Apretadísimo y en la recta final. Que alguien traiga el desfibrilador.', cuando: RECTA_FINAL },
+    {
+      texto: 'Marcador de fotografía. {quien} y {segundo} separados por {diferencia}.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Solo {diferencia} puntos entre el primero y el segundo. Esto no lo escribe nadie.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Apretadísimo y en la recta final. Que alguien traiga el desfibrilador.',
+      cuando: RECTA_FINAL,
+    },
   ],
 
   rachaBuena: [
@@ -363,23 +542,47 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: '{quien} no falla una. {puntos} seguidas y subiendo.' },
     { texto: '¡Qué racha! {puntos} de {quien}, y el multiplicador echando humo.' },
     { texto: '{quien} está en modo máquina: {puntos} seguidas.' },
-    { texto: 'Van {puntos} encadenadas de {quien}. Esto empieza a ser un problema para los demás.' },
+    {
+      texto: 'Van {puntos} encadenadas de {quien}. Esto empieza a ser un problema para los demás.',
+    },
     { texto: '{puntos} seguidas. {quien} se está llevando la sección él solito.' },
-    { texto: '{quien} lleva {puntos} y le está sacando {diferencia} al segundo. Se acabó la igualdad.', cuando: CON_MARCADOR },
-    { texto: 'La máquina lleva {puntos} seguidas. Alguien humano que haga algo, por favor.', cuando: ES_MAQUINA },
+    {
+      texto:
+        '{quien} lleva {puntos} y le está sacando {diferencia} al segundo. Se acabó la igualdad.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'La máquina lleva {puntos} seguidas. Alguien humano que haga algo, por favor.',
+      cuando: ES_MAQUINA,
+    },
   ],
 
   pasaLaBomba: [
-    { texto: '{quien} la suelta a tiempo. Quedan {puntos} respuestas de mecha.' },
-    { texto: 'Bien, {quien}, fuera esa bomba. {puntos} de mecha. Corre.' },
-    { texto: 'Pasa la bomba {quien}. Quedan {puntos}. Que empiece el sudor.' },
-    { texto: '{quien} se la quita de encima. {puntos} de mecha.' },
-    { texto: 'Fuera. {quien} acierta y pasa. Quedan {puntos}.' },
-    { texto: 'Bomba entregada. {puntos} de mecha y bajando.' },
-    { texto: '{quien} sobrevive. {puntos} respuestas más y explota.' },
-    { texto: 'La suelta {quien}. Ojo, {puntos} de mecha, esto se acaba.' },
-    { texto: '{quien} la pasa con {puntos} de mecha. Aquí ya es cuestión de suerte.' },
-    { texto: 'Pasa {quien}. Queda {puntos}. La siguiente puede ser la última.' },
+    { texto: '{quien} la suelta a tiempo. Que corra.' },
+    { texto: 'Bien, {quien}, fuera esa bomba. Siguiente.' },
+    { texto: 'Pasa la bomba {quien}. Que empiece el sudor.' },
+    { texto: '{quien} se la quita de encima. Por ahora.' },
+    { texto: 'Fuera. {quien} acierta y pasa. Nadie sabe cuánto queda.' },
+    { texto: 'Bomba entregada. Y la mecha, corriendo.' },
+    { texto: '{quien} sobrevive a esta. A ver a la siguiente.' },
+    { texto: 'La suelta {quien}. Ojo, que esto no avisa.' },
+    { texto: '{quien} la pasa. Aquí ya es cuestión de suerte.' },
+    { texto: 'Pasa {quien}. La siguiente puede ser la última.' },
+    { texto: '{quien} se libra. La máquina ni se inmuta.', cuando: ES_MAQUINA },
+  ],
+
+  // Fallar con la bomba en la mano no te la quita: te la deja ahí.
+  seLaQueda: [
+    { texto: 'Falla {quien}. Y la bomba se queda donde está. Qué mal momento.' },
+    { texto: 'No. {quien} se la queda, que aquí solo se suelta acertando.' },
+    { texto: '{quien} no acierta y no suelta. La mecha sigue corriendo, eh.' },
+    { texto: 'Mal, {quien}. Sigue siendo tuya. Otra pregunta y a correr.' },
+    { texto: 'Pues no. {quien} se come otra con la bomba en la mano.' },
+    { texto: '{quien} falla. Y lo peor no es fallar, es lo que sigue sujetando.' },
+    { texto: 'Nada. {quien} se queda con ella. Esto empieza a oler a chamusquina.' },
+    { texto: 'Fallo de {quien}. La bomba ni se mueve. Ahí sigue.' },
+    { texto: '{quien} no la suelta. Y quedan tres rondas.', cuando: RECTA_FINAL },
+    { texto: 'La máquina falla y se queda la bomba. Algo es algo.', cuando: ES_MAQUINA },
   ],
 
   explota: [
@@ -391,13 +594,28 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: '¡Ahí va! Le revienta a {quien}. {puntos}. Qué mala suerte, o qué mal cálculo.' },
     { texto: 'Estalla. {quien}, {puntos} puntos y la cara de quien no se lo esperaba.' },
     { texto: '¡Se acabó! La bomba elige a {quien}. {puntos} puntos.' },
-    { texto: '¡Pum! {quien} a {puntos}. {segundo} no puede disimular la alegría.', cuando: CON_MARCADOR },
-    { texto: 'Le estalla a {quien} en la recta final. {puntos}. Esto puede costarle el concurso.', cuando: RECTA_FINAL },
-    { texto: 'Explota en las manos de la máquina. {puntos} puntos. Justicia poética.', cuando: ES_MAQUINA },
+    {
+      texto: '¡Pum! {quien} a {puntos}. {segundo} no puede disimular la alegría.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Le estalla a {quien} en la recta final. {puntos}. Esto puede costarle el concurso.',
+      cuando: RECTA_FINAL,
+    },
+    {
+      texto: 'Explota en las manos de la máquina. {puntos} puntos. Justicia poética.',
+      cuando: ES_MAQUINA,
+    },
   ],
   seccionFinal: [
-    { texto: '¡Y llegamos a la final! Aquí se apuesta lo que llevéis y una sola pregunta decide el programa.' },
-    { texto: 'Última parte: se apuesta, se contesta, y el que se equivoque se va a casa con lo puesto.' },
+    {
+      texto:
+        '¡Y llegamos a la final! Aquí se apuesta lo que llevéis y una sola pregunta decide el programa.',
+    },
+    {
+      texto:
+        'Última parte: se apuesta, se contesta, y el que se equivoque se va a casa con lo puesto.',
+    },
     { texto: 'La final. Lo de antes eran puntos; esto son los puntos de verdad.' },
     { texto: 'Llega la final a doble o nada. Aciertas y doblas lo apostado; fallas y lo pierdes.' },
     { texto: 'Y aquí está la final. Todo lo de antes era para llegar a este momento.' },
@@ -405,22 +623,37 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
     { texto: 'Se acabó lo fácil: llega la final. Una pregunta, y lo que os juguéis.' },
     { texto: '¡La final! Aquí se gana el concurso o se tira por la ventana en diez segundos.' },
     { texto: 'Final del programa. Pensad bien cuánto os jugáis, que no hay otra ronda detrás.' },
-    { texto: 'La final, y con {diferencia} de diferencia esto puede acabar de cualquier manera.', cuando: CON_MARCADOR },
-    { texto: 'Llega la final. {quien} va delante, pero aquí el que va último puede ganar de golpe.', cuando: CON_MARCADOR },
+    {
+      texto: 'La final, y con {diferencia} de diferencia esto puede acabar de cualquier manera.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Llega la final. {quien} va delante, pero aquí el que va último puede ganar de golpe.',
+      cuando: CON_MARCADOR,
+    },
   ],
 
   presentaApuestas: [
     { texto: 'Venga, ¿cuánto os jugáis? Y que nadie se haga el valiente y luego apueste doce.' },
     { texto: 'Apuestas sobre la mesa. Lo que pongáis se dobla o se va, así de simple.' },
-    { texto: 'A ver esas apuestas. Recordad que plantarse también es una decisión, normalmente la de los cobardes.' },
+    {
+      texto:
+        'A ver esas apuestas. Recordad que plantarse también es una decisión, normalmente la de los cobardes.',
+    },
     { texto: 'Es el momento de mojarse. ¿Cuánto vale lo que creéis saber?' },
     { texto: 'Poned lo que os juguéis. Nadie ve lo de los demás hasta que se cierre.' },
     { texto: 'Apuestas, señores. Óscar apostaría todo sin pestañear, pero es que Óscar acierta.' },
     { texto: 'Decidid cuánto os jugáis. Y luego no digáis que no avisé.' },
     { texto: 'A apostar. Aquí se ve quién ha venido a ganar y quién a no perder.' },
     { texto: 'Sobre la mesa. Cero también vale, por si preferís dormir tranquilos.' },
-    { texto: '{quien}, que vas primero, tú tienes mucho que perder. {ultimo}, tú no tienes nada.', cuando: CON_MARCADOR },
-    { texto: 'Apuestas. Y ojo, {quien}: {diferencia} de ventaja se van en una pregunta.', cuando: CON_MARCADOR },
+    {
+      texto: '{quien}, que vas primero, tú tienes mucho que perder. {ultimo}, tú no tienes nada.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto: 'Apuestas. Y ojo, {quien}: {diferencia} de ventaja se van en una pregunta.',
+      cuando: CON_MARCADOR,
+    },
   ],
 
   apuestasCerradas: [
@@ -439,7 +672,10 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
   resultadoFinal: [
     { texto: 'Y con eso se acabó la final. Menudo vuelco, señores.' },
     { texto: 'Ahí queda la cosa. Unos se lo llevan y otros se lo dejan.' },
-    { texto: 'Se cierra la final. Óscar la habría acertado, pero él tampoco habría apostado tan poco.' },
+    {
+      texto:
+        'Se cierra la final. Óscar la habría acertado, pero él tampoco habría apostado tan poco.',
+    },
     { texto: 'Pues ya está. La final ha dicho lo que tenía que decir.' },
     { texto: 'Se acabó. Ahí tenéis el resultado de jugársela.' },
     { texto: 'Y hasta aquí la final. Cada uno ha cobrado lo que se merecía.' },
@@ -450,22 +686,48 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
   ],
 
   podio: [
-    { texto: 'Y el ganador es {quien}, con {puntos} puntos. Un aplauso. Y otro para Óscar, que sigue siendo el mejor programador de la historia.' },
-    { texto: 'Sube al podio {quien}, {puntos} puntos. Enhorabuena, y a los demás, que hay otro programa la semana que viene.' },
-    { texto: 'Gana {quien} con {puntos}. Óscar dice que lo ha hecho bien, y de Óscar aprendimos todos.' },
+    {
+      texto:
+        'Y el ganador es {quien}, con {puntos} puntos. Un aplauso. Y otro para Óscar, que sigue siendo el mejor programador de la historia.',
+    },
+    {
+      texto:
+        'Sube al podio {quien}, {puntos} puntos. Enhorabuena, y a los demás, que hay otro programa la semana que viene.',
+    },
+    {
+      texto:
+        'Gana {quien} con {puntos}. Óscar dice que lo ha hecho bien, y de Óscar aprendimos todos.',
+    },
     { texto: '¡Campeón {quien}, con {puntos} puntos! Se acabó el programa.' },
-    { texto: 'Al podio: {quien}, {puntos} puntos. Gracias a todos y gracias a Óscar por las preguntas.' },
+    {
+      texto:
+        'Al podio: {quien}, {puntos} puntos. Gracias a todos y gracias a Óscar por las preguntas.',
+    },
     { texto: 'Y se lo lleva {quien} con {puntos}. Un aplauso, que se lo ha ganado.' },
     { texto: 'Ganador: {quien}, {puntos} puntos. Óscar asiente desde algún despliegue.' },
     { texto: 'Fin del programa. {quien} arriba con {puntos}. Hasta la próxima.' },
-    { texto: 'Gana {quien} con {puntos}, {segundo} se queda a las puertas y {ultimo} cierra. Gracias a Óscar por todo lo demás.', cuando: CON_MARCADOR },
-    { texto: 'Podio: {quien} con {puntos}, {segundo} de segundo y {ultimo} cerrando la tabla. Un aplauso para los tres.', cuando: CON_MARCADOR },
+    {
+      texto:
+        'Gana {quien} con {puntos}, {segundo} se queda a las puertas y {ultimo} cierra. Gracias a Óscar por todo lo demás.',
+      cuando: CON_MARCADOR,
+    },
+    {
+      texto:
+        'Podio: {quien} con {puntos}, {segundo} de segundo y {ultimo} cerrando la tabla. Un aplauso para los tres.',
+      cuando: CON_MARCADOR,
+    },
     { texto: '¡{quien} gana por {diferencia} puntos! No ha habido color.', cuando: PALIZA },
   ],
 
   anulada: [
-    { texto: 'Anulada. Esa pregunta la escribió una máquina, así que a mí no me miréis. Cero para todos y a la siguiente.' },
-    { texto: 'Pregunta retirada por acuerdo unánime. Una máquina la escribió y una máquina se equivocó.' },
+    {
+      texto:
+        'Anulada. Esa pregunta la escribió una máquina, así que a mí no me miréis. Cero para todos y a la siguiente.',
+    },
+    {
+      texto:
+        'Pregunta retirada por acuerdo unánime. Una máquina la escribió y una máquina se equivocó.',
+    },
     { texto: 'Fuera esa. Ha votado toda la mesa y toda la mesa no se equivoca. La máquina sí.' },
     { texto: 'Anulada y a otra cosa. Nadie gana, nadie pierde, todos contentos.' },
     { texto: 'Esa la damos por no puesta. Las escribe una máquina y a veces se le va.' },
@@ -486,12 +748,7 @@ const FRASES: Readonly<Record<Momento, readonly Linea[]>> = {
  * frases y cuatro usos la probabilidad de repetir pasa del cuarenta por ciento,
  * y una frase repetida delata al guion más que cualquier otra cosa.
  */
-export function frasePara(
-  momento: Momento,
-  datos: DatosDeLaFrase,
-  rng: Rng,
-  yaDichas = 0,
-): string {
+export function frasePara(momento: Momento, datos: DatosDeLaFrase, rng: Rng, yaDichas = 0): string {
   const donde = completar(datos);
   const todas = FRASES[momento];
 

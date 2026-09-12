@@ -243,3 +243,85 @@ input[type='text']:focus {
     transform: none;
   }
 }
+
+/* El origen de las preguntas se elige como el rival: mismas fichas. */
+.origen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border: 1px solid rgb(148 163 184 / 25%);
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.8rem;
+}
+
+/*
+ * En el móvil, el lóbby medía 2.398 píxeles de alto en una ventana de 756.
+ *
+ * Es decir: para abrir la mesa había que bajar tres pantallas a ciegas, por
+ * detrás de las once caras y de los cuatro rivales. En un teléfono eso no es
+ * «hay que hacer scroll», es «no se puede entrar», y así se reportó.
+ *
+ * Se arregla por los dos lados: el botón se queda pegado abajo -siempre a un
+ * dedo de distancia- y lo que ocupa de más se encoge.
+ */
+@media (max-width: 768px) {
+  .lobby {
+    padding: 12px 12px 0;
+  }
+
+  .cabecera {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* El párrafo de presentación es de leerlo una vez, no en cada partida. */
+  .subtitulo {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .panel {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  /* Las caras, en una sola fila que se arrastra: once en rejilla eran media
+     pantalla de altura para elegir algo que se elige una vez. */
+  .caras {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+  }
+
+  .cara {
+    flex: 0 0 64px;
+    scroll-snap-align: start;
+  }
+
+  .rival {
+    padding: 6px 8px;
+  }
+
+  .rival .descripcion {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Y el botón, siempre a la vista. */
+  .accion {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin: 4px -12px 0;
+    border-radius: 0;
+    padding: 14px 16px;
+    background: rgba(var(--accent-rgb), 0.22);
+    backdrop-filter: blur(6px);
+  }
+}

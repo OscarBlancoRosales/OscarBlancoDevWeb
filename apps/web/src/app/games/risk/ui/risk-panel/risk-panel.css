@@ -5,7 +5,8 @@
 .panel-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: radial-gradient(circle at center, rgba(0, 230, 118, 0.06), rgba(0, 0, 0, 0.7));
+  backdrop-filter: blur(3px);
   z-index: 30;
 }
 
@@ -14,12 +15,13 @@
   right: 12px;
   top: 64px;
   bottom: 84px;
-  width: 320px;
+  width: min(380px, calc(100vw - 32px));
   display: flex;
   flex-direction: column;
-  background: rgba(8, 18, 14, 0.94);
-  border: 1px solid rgba(0, 255, 140, 0.25);
-  border-radius: 10px;
+  background: linear-gradient(155deg, rgba(20, 35, 27, 0.98), rgba(5, 11, 8, 0.98));
+  border: 1px solid rgba(0, 255, 140, 0.36);
+  border-radius: 12px;
+  box-shadow: 0 24px 68px rgba(0, 0, 0, 0.58);
   z-index: 31;
   overflow: hidden;
 }
@@ -29,12 +31,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 255, 140, 0.18);
 }
 
 .panel-title {
-  font-weight: 600;
+  color: #d6e8de;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
 }
 
 .panel-close {
@@ -46,6 +51,11 @@
   /* 44px: lo mínimo para que un dedo acierte sin pelearse con el aspa. */
   min-width: 44px;
   min-height: 44px;
+}
+
+.panel-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -4px;
 }
 
 .panel-body {

@@ -1,11 +1,11 @@
 <app-terminal-layout title="Impostor">
   <div class="lobby">
     <header class="cabecera">
-      <h1><span class="prompt">&gt;</span> Impostor</h1>
+      <h1>El Impostor</h1>
       <p class="subtitulo">
-        Todos reciben la misma palabra. Todos menos uno. Se dice una pista por turno, sin pasarse
-        de listo, y al final se vota. La palabra vive en el servidor: quien no la tiene, no la
-        tiene ni con las herramientas de desarrollo abiertas.
+        Todos tienen la palabra. Todos menos uno. Se habla por turnos, se acusa por turnos, se
+        echa al señalado y se sigue. Hasta que queden dos: ahí ya no hay a quién votar, y gana
+        quien mentía. La palabra no sale del servidor.
       </p>
     </header>
 
@@ -85,13 +85,11 @@
         <fieldset class="bloque reglas">
           <legend>Reglas de la casa</legend>
 
-          <label class="regla">
-            <span class="etiqueta">Vueltas de pistas</span>
-            <select [(ngModel)]="vueltas">
-              <option [ngValue]="1">Una: una palabra cada uno</option>
-              <option [ngValue]="2">Dos: se habla dos veces</option>
-            </select>
-          </label>
+          <p class="nota">
+            No hay «una ronda o dos». Se habla, se acusa, se echa al señalado y se sigue hasta
+            que queden dos. Ahí ya no se pueden acusar y gana el impostor. Con tres en mesa, el
+            primer inocente echado cierra la partida: siéntate con más gente o más bots.
+          </p>
 
           <label class="regla">
             <span class="etiqueta">Tiempo para discutir</span>
@@ -107,10 +105,9 @@
             <span class="etiqueta">Bots en la mesa</span>
             <select [(ngModel)]="bots">
               <option [ngValue]="0">Ninguno, viene gente</option>
-              <option [ngValue]="2">Dos</option>
-              <option [ngValue]="3">Tres</option>
-              <option [ngValue]="5">Cinco</option>
-              <option [ngValue]="7">Siete</option>
+              <option [ngValue]="3">Tres — mesa corta</option>
+              <option [ngValue]="5">Cinco — varias expulsiones</option>
+              <option [ngValue]="7">Siete — caza larga</option>
             </select>
           </label>
 
@@ -158,25 +155,33 @@
   aparte para esto es una pantalla más antes de jugar.
 -->
 <ng-template #elegirCara>
-  <fieldset class="bloque">
-    <legend>Tu cara</legend>
-    <div class="caras">
-      @for (una of elenco; track una.id) {
-        <button
-          type="button"
-          class="cara"
-          [class.elegido]="cara === una.id"
-          [title]="una.pinta"
-          [attr.aria-pressed]="cara === una.id"
-          (click)="cara = una.id"
-        >
-          <img [src]="fotoDe(una.id)" [alt]="una.nombre" loading="lazy" />
-          <span class="cara-nombre">{{ una.nombre }}</span>
-        </button>
+  <fieldset class="bloque elenco">
+    <legend>Tu personaje</legend>
+    <div class="elenco-grid">
+      @if (elegida; as quien) {
+        <div class="protagonista">
+          <img [src]="fotoDe(quien.id)" [alt]="quien.nombre" />
+          <div>
+            <p class="protagonista-nombre">{{ quien.nombre }}</p>
+            <p class="pinta">{{ quien.pinta }}</p>
+          </div>
+        </div>
       }
+      <div class="caras">
+        @for (una of elenco; track una.id) {
+          <button
+            type="button"
+            class="cara"
+            [class.elegido]="cara === una.id"
+            [title]="una.pinta"
+            [attr.aria-pressed]="cara === una.id"
+            (click)="cara = una.id"
+          >
+            <img [src]="fotoDe(una.id)" [alt]="una.nombre" loading="lazy" />
+            <span class="cara-nombre">{{ una.nombre }}</span>
+          </button>
+        }
+      </div>
     </div>
-    @if (elegida; as quien) {
-      <p class="pinta">{{ quien.pinta }}</p>
-    }
   </fieldset>
 </ng-template>

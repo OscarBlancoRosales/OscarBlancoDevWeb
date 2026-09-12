@@ -1,20 +1,18 @@
 <app-terminal-layout title="Impostor">
-  <div class="sala">
+  <div class="juicio">
     @if (vista(); as v) {
       <header class="barra">
-        <div class="titulo">
-          <h1>Impostor</h1>
-          <p class="reglas-linea">
-            <span class="etiqueta">{{ modo }}</span>
-            <span class="etiqueta">{{ v.tema }}</span>
-            @if (v.fase === 'pistas') {
-              <span class="etiqueta">Vuelta {{ v.vuelta }} de {{ v.vueltas }}</span>
-            }
-            @if (v.rondasJugadas > 0) {
-              <span class="etiqueta">Ronda {{ v.rondasJugadas + 1 }}</span>
-            }
-          </p>
+        <div class="marca">
+          <p class="marca-kicker">Sala cerrada</p>
+          <h1>El Impostor</h1>
         </div>
+        <p class="reglas-linea">
+          <span class="etiqueta">{{ modo }}</span>
+          <span class="etiqueta">{{ v.tema }}</span>
+          @if (v.fase !== 'sala' && v.fase !== 'repartiendo') {
+            <span class="etiqueta">Quedan {{ quedan }} · hasta 2</span>
+          }
+        </p>
         <div class="botones-cabecera">
           <button type="button" class="chico" (click)="copiarEnlace()">
             {{ enlaceCopiado() ? 'Enlace copiado' : 'Invitar' }}
@@ -30,201 +28,171 @@
         <p class="aviso reconectando">Sin conexión con la sala. Reintentando…</p>
       }
 
-      @if (dice) {
-        <p class="voz" [attr.data-turno]="turnoDePalabra">{{ dice }}</p>
-      }
-
-      <div class="juego">
-        <section class="salon">
+      <div class="plato">
+        <aside class="sumario">
+          <h2>Expediente</h2>
           @if (v.fase !== 'sala' && v.fase !== 'repartiendo') {
-            <div class="carta" [class.impostor]="eresImpostor" [class.tapada]="!palabraALaVista()">
-              <span class="carta-titulo">Tu palabra</span>
+            <div class="dossier" [class.impostor]="eresImpostor" [class.tapada]="!palabraALaVista()">
+              <span class="dossier-kicker">Tu palabra</span>
               @if (palabraALaVista()) {
                 @if (tuPalabra) {
                   <strong class="palabra">{{ tuPalabra }}</strong>
                   @if (eresImpostor) {
-                    <span class="carta-pie">…o eso te han dicho.</span>
+                    <span class="dossier-pie">…o eso te han dicho.</span>
                   }
                 } @else {
                   <strong class="palabra">Eres el impostor</strong>
-                  <span class="carta-pie">No tienes palabra. Escucha y di algo que valga para todo.</span>
+                  <span class="dossier-pie">No tienes palabra. Improvisa.</span>
                 }
               } @else {
-                <strong class="palabra oculta">· · · · ·</strong>
-                <span class="carta-pie">Tapada. Nadie mira por encima de tu hombro.</span>
+                <strong class="palabra oculta">••••</strong>
+                <span class="dossier-pie">Tapada.</span>
               }
               <button type="button" class="chico" (click)="palabraALaVista.set(!palabraALaVista())">
                 {{ palabraALaVista() ? 'Tapar' : 'Ver' }}
               </button>
             </div>
           }
+          <ol class="evidencias">
+            @if (v.pistas.length === 0) {
+              <li class="vacio">Aún no hay pistas. Se dicen una a una.</li>
+            }
+            @for (dicha of v.pistas; track $index) {
+              <li [class.mia]="dicha.seatId === miAsiento">
+                <b>{{ nombreDe(dicha.seatId) }}</b>
+                <span>{{ dicha.texto }}</span>
+              </li>
+            }
+          </ol>
+        </aside>
 
-          <div class="mesa-hueco">
-            <div class="tapete">
-              <div class="fieltro"></div>
+        <section class="escenario">
+          @if (dice) {
+            <p class="voz" [attr.data-turno]="turnoDePalabra">{{ dice }}</p>
+          }
 
-              <div class="centro">
-                @if (esperando) {
-                  <div class="panel-espera">
-                    <h2>Esperando a la mesa</h2>
-                    <p class="explicacion">
-                      Cuando digáis todos que estáis listos, la sala reparte la palabra.
-                      @if (faltanJugadores > 0) {
-                        Faltan {{ faltanJugadores }} para poder empezar: comparte el enlace.
-                      }
-                    </p>
-                    <button
-                      type="button"
-                      class="accion"
-                      [disabled]="yaEstoyListo || faltanJugadores > 0 || !conectado()"
-                      (click)="listo()"
-                    >
-                      @if (!conectado()) {
-                        Conectando…
-                      } @else {
-                        {{ yaEstoyListo ? 'Listo. Faltan los demás.' : 'Estoy listo' }}
-                      }
-                    </button>
-                  </div>
+          @if (esperando) {
+            <div class="panel-espera">
+              <h2>La sala se llena</h2>
+              <p class="explicacion">
+                Se echa a uno, se sigue, hasta que queden dos. Ahí ya no se puede acusar.
+                @if (faltanJugadores > 0) {
+                  Faltan {{ faltanJugadores }} para empezar.
                 }
-
-                @if (v.fase === 'pistas') {
-                  <p class="turno">
-                    @if (v.tuTurno) {
-                      Te toca. Una palabra, y que no te delate.
-                    } @else if (quienHabla; as quien) {
-                      Habla {{ quien.nombre }}…
-                    }
-                  </p>
+              </p>
+              <button
+                type="button"
+                class="accion"
+                [disabled]="yaEstoyListo || faltanJugadores > 0 || !conectado()"
+                (click)="listo()"
+              >
+                @if (!conectado()) {
+                  Conectando…
+                } @else {
+                  {{ yaEstoyListo ? 'Listo. Faltan los demás.' : 'Estoy listo' }}
                 }
-
-                @if (v.pistas.length > 0) {
-                  <div class="evidencias">
-                    @for (dicha of v.pistas; track $index) {
-                      <span class="prueba" [class.mia]="dicha.seatId === miAsiento">
-                        <b>{{ nombreDe(dicha.seatId) }}</b>
-                        {{ dicha.texto }}
-                      </span>
-                    }
-                  </div>
-                }
-
-                @if (v.fase === 'debate') {
-                  <div class="debate">
-                    <h2>Hablad</h2>
-                    @if (debateConReloj) {
-                      <p class="cuenta" [class.apurando]="quedanSegundos <= 10">{{ cuentaAtras }}</p>
-                    }
-                    <p class="explicacion">
-                      Preguntad, defendeos y mirad quién se pone nervioso. Se vota cuando
-                      {{ debateConReloj ? 'se acabe el tiempo' : 'lo diga el anfitrión' }}.
-                    </p>
-                    @if (anfitrion) {
-                      <button type="button" class="accion" (click)="alVoto()">A votar ya</button>
-                    }
-                  </div>
-                }
-
-                @if (v.fase === 'votacion') {
-                  <p class="turno">
-                    @if (v.tuVoto) {
-                      Ya has votado. Faltan {{ v.orden.length - v.hanVotado.length }}.
-                    } @else {
-                      A votar: toca la cara de quien creas que miente.
-                    }
-                  </p>
-                }
-
-                @if (v.fase === 'ultima-palabra') {
-                  <div class="disparo">
-                    @if (v.tuDisparo) {
-                      <h2>Te han pillado. Te queda una: ¿cuál era la palabra?</h2>
-                      <div class="opciones">
-                        @for (opcion of v.opciones; track opcion) {
-                          <button type="button" class="opcion" (click)="adivinar($index)">
-                            {{ opcion }}
-                          </button>
-                        }
-                      </div>
-                    } @else {
-                      <h2>Le habéis pillado. Ahora tiene que decir la palabra.</h2>
-                      <p class="explicacion">Si acierta, la ronda es suya. Aguantad la respiración.</p>
-                    }
-                  </div>
-                }
-
-                @if (v.fase === 'fin') {
-                  <div class="final" [class.ganaste]="ganasteTu">
-                    <h2>{{ desenlace }}</h2>
-                    @if (v.palabra) {
-                      <p class="palabra-final">
-                        La palabra era <strong>{{ v.palabra }}</strong>
-                      </p>
-                    }
-                    @if (v.intento >= 0 && v.opciones[v.intento]; as dicha) {
-                      <p class="explicacion">Disparó a «{{ dicha }}».</p>
-                    }
-                    @if (anfitrion) {
-                      <button type="button" class="accion" (click)="otraRonda()">Otra ronda</button>
-                    } @else {
-                      <p class="explicacion">Esperando a que el anfitrión reparta otra.</p>
-                    }
-                  </div>
-                }
+              </button>
+            </div>
+          } @else if (quienHabla; as quien) {
+            <div class="foco" [class.acusa]="v.fase === 'votacion'">
+              <p class="foco-turno">{{ fraseDeTurno }}</p>
+              <div class="foco-cara" [class.tu]="quien.eresTu">
+                <img [src]="quien.foto" [alt]="quien.mote" />
               </div>
-
-              @for (puesto of mesa(); track puesto.seatId) {
-                <button
-                  type="button"
-                  class="sitio"
-                  [style.left.%]="puesto.x"
-                  [style.top.%]="puesto.y"
-                  [class.tu]="puesto.eresTu"
-                  [class.toca]="puesto.leToca"
-                  [class.fuera]="puesto.expulsado"
-                  [class.mentia]="v.fase === 'fin' && puesto.eraImpostor"
-                  [class.votable]="puedesVotar && !puesto.eresTu"
-                  [class.votado]="v.tuVoto === puesto.seatId"
-                  [disabled]="!puedesVotar || puesto.eresTu"
-                  (click)="votar(puesto.seatId)"
-                >
-                  <span class="retrato">
-                    <img [src]="puesto.foto" [alt]="puesto.mote" loading="lazy" />
-                    @if (puesto.votos > 0) {
-                      <span class="marca-votos">{{ puesto.votos }}</span>
-                    }
-                    @if (v.fase === 'votacion' && puesto.haVotado) {
-                      <span class="marca-listo" title="Ya ha votado">✓</span>
-                    }
-                    @if (esperando && puesto.listo) {
-                      <span class="marca-listo" title="Listo">✓</span>
-                    }
-                  </span>
-                  <span class="nombre">
-                    {{ puesto.nombre }}
-                    @if (puesto.esBot) {
-                      <span class="bot">bot</span>
-                    }
-                  </span>
-                  @if (puesto.puntos > 0) {
-                    <span class="puntos">{{ puesto.puntos }}</span>
-                  }
-                  @if (v.fase === 'fin' && puesto.eraImpostor) {
-                    <span class="chapa">impostor</span>
-                  }
-                </button>
+              <p class="foco-nombre">
+                {{ quien.nombre }}
+                @if (quien.esBot) {
+                  <span class="bot">bot</span>
+                }
+              </p>
+            </div>
+          } @else if (v.fase === 'debate') {
+            <div class="debate">
+              <h2>Hablad</h2>
+              @if (debateConReloj) {
+                <p class="cuenta" [class.apurando]="quedanSegundos <= 10">{{ cuentaAtras }}</p>
+              }
+              <p class="explicacion">
+                Preguntad y mirad quién se pone nervioso. Se vota cuando
+                {{ debateConReloj ? 'se acabe el tiempo' : 'lo diga el anfitrión' }}.
+              </p>
+              @if (anfitrion) {
+                <button type="button" class="accion" (click)="alVoto()">A votar ya</button>
               }
             </div>
+          } @else if (v.fase === 'ultima-palabra') {
+            <div class="disparo">
+              @if (v.tuDisparo) {
+                <h2>Te han pillado. Una bala: ¿cuál era la palabra?</h2>
+                <div class="opciones">
+                  @for (opcion of v.opciones; track opcion) {
+                    <button type="button" class="opcion" (click)="adivinar($index)">
+                      {{ opcion }}
+                    </button>
+                  }
+                </div>
+              } @else {
+                <h2>Le habéis pillado. Ahora tiene que decir la palabra.</h2>
+              }
+            </div>
+          } @else if (v.fase === 'fin') {
+            <div class="final" [class.ganaste]="ganasteTu">
+              <h2>{{ desenlace }}</h2>
+              @if (v.palabra) {
+                <p class="palabra-final">La palabra era <strong>{{ v.palabra }}</strong></p>
+              }
+              @if (anfitrion) {
+                <button type="button" class="accion" (click)="otraRonda()">Otra ronda</button>
+              } @else {
+                <p class="explicacion">Esperando a que el anfitrión reparta otra.</p>
+              }
+            </div>
+          }
+
+          <div class="fila" role="list">
+            @for (puesto of mesa(); track puesto.seatId) {
+              <button
+                type="button"
+                class="acusado"
+                role="listitem"
+                [class.tu]="puesto.eresTu"
+                [class.toca]="puesto.leToca"
+                [class.fuera]="puesto.fuera"
+                [class.mentia]="v.fase === 'fin' && puesto.eraImpostor"
+                [class.votable]="puedesVotar && !puesto.eresTu && puesto.juega"
+                [class.votado]="v.tuVoto === puesto.seatId"
+                [disabled]="!puedesVotar || puesto.eresTu || !puesto.juega"
+                (click)="votar(puesto.seatId)"
+              >
+                <span class="retrato">
+                  <img [src]="puesto.foto" [alt]="puesto.mote" loading="lazy" />
+                  @if (puesto.haVotado && v.fase === 'votacion') {
+                    <span class="marca-listo">✓</span>
+                  }
+                  @if (esperando && puesto.listo) {
+                    <span class="marca-listo">✓</span>
+                  }
+                  @if (puesto.votos > 0) {
+                    <span class="marca-votos">{{ puesto.votos }}</span>
+                  }
+                </span>
+                <span class="nombre">{{ puesto.nombre }}</span>
+                @if (puesto.fuera) {
+                  <span class="chapa">fuera</span>
+                }
+                @if (v.fase === 'fin' && puesto.eraImpostor) {
+                  <span class="chapa mentia">impostor</span>
+                }
+              </button>
+            }
           </div>
         </section>
 
-        <section class="charla">
+        <section class="radio charla">
           <h2>La mesa</h2>
           <div class="lineas">
             @if (charlaDeLaMesa().length === 0) {
-              <p class="chat-vacio">
-                Aquí se discute. Acusar en voz alta es la mitad del juego.
-              </p>
+              <p class="chat-vacio">Aquí se discute. Acusar en voz alta es la mitad del juego.</p>
             }
             @for (entrada of charlaDeLaMesa(); track entrada.clave) {
               <div
@@ -253,20 +221,14 @@
               [attr.disabled]="inputBloqueado() ? true : null"
               (keydown.enter)="enviar()"
             />
-            <button
-              type="button"
-              class="chico"
-              (click)="enviar()"
-              [disabled]="inputBloqueado()"
-              aria-label="Enviar"
-            >
+            <button type="button" class="chico" (click)="enviar()" [disabled]="inputBloqueado()" aria-label="Enviar">
               ➤
             </button>
           </div>
         </section>
       </div>
     } @else {
-      <p class="explicacion cargando">Entrando en la mesa…</p>
+      <p class="explicacion cargando">Entrando en la sala…</p>
     }
   </div>
 </app-terminal-layout>

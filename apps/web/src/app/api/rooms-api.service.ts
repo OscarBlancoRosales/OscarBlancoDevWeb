@@ -11,6 +11,25 @@ import type {
 export class RoomsApiService {
   constructor(private readonly api: ApiClient) {}
 
+  /**
+   * Si el servidor tiene clave de IA, para saber si se pueden inventar preguntas.
+   *
+   * Se pregunta antes de ofrecer el modo: enseñar un botón que va a caer al
+   * banco sin avisar es peor que no enseñarlo.
+   */
+  async hayIa(): Promise<boolean> {
+    try {
+      const salud = await this.api.request<{ ia?: { configurada?: boolean } }>({
+        method: 'GET',
+        path: '/health',
+      });
+      return salud.ia?.configurada === true;
+    } catch {
+      // Sin poder preguntarlo, no se ofrece. El banco siempre funciona.
+      return false;
+    }
+  }
+
   /** Crear sala exige sesión: sin dueño no hay quien la borre ni quien la reclame. */
   crear(input: {
     game: GameId;
@@ -29,6 +48,7 @@ export class RoomsApiService {
         game: input.game,
         name: input.name,
         displayName: input.displayName,
+        ...(input.meta !== undefined && { meta: input.meta }),
         ...(input.config !== undefined && { config: input.config }),
         ...(input.bots !== undefined && { bots: input.bots }),
       },

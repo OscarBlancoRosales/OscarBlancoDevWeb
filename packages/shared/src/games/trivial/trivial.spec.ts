@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { trivialModule } from './index';
-import { BONUS_POR_ORDEN, PUNTOS_ACIERTO } from './reglas';
+import { BONUS_POR_ORDEN, PUNTOS_ACIERTO, SEGUNDOS_POR_PRUEBA } from './reglas';
 import type { Pregunta, TrivialState, TrivialView } from './tipos';
 import type { Seat } from '../module';
 
@@ -51,7 +51,11 @@ function partidaEntera(): TrivialState {
   return state;
 }
 
-function vistaDe(state: TrivialState, seat: string, asientos: readonly Seat[] = SEATS): TrivialView {
+function vistaDe(
+  state: TrivialState,
+  seat: string,
+  asientos: readonly Seat[] = SEATS,
+): TrivialView {
   return trivialModule.view(state, seat, asientos) as TrivialView;
 }
 
@@ -88,9 +92,9 @@ describe('empezar', () => {
 describe('responder', () => {
   it('no se responde dos veces', () => {
     const state = trivialModule.apply(enRonda(), { tipo: 'responder', valor: 1 }, 'ana', SEATS);
-    expect(
-      trivialModule.validate(state, { tipo: 'responder', valor: 2 }, 'ana', SEATS)?.code,
-    ).toBe('ya-respondida');
+    expect(trivialModule.validate(state, { tipo: 'responder', valor: 2 }, 'ana', SEATS)?.code).toBe(
+      'ya-respondida',
+    );
   });
 
   it('no se responde con una opcion que no existe', () => {
@@ -105,7 +109,9 @@ describe('responder', () => {
     state = trivialModule.apply(state, { tipo: 'responder', valor: 1 }, 'bea', SEATS);
     state = trivialModule.apply(state, { tipo: 'siguiente' }, 'ana', SEATS);
 
-    expect(trivialModule.validate(state, { tipo: 'responder', valor: 1998 }, 'ana', SEATS)).toBeNull();
+    expect(
+      trivialModule.validate(state, { tipo: 'responder', valor: 1998 }, 'ana', SEATS),
+    ).toBeNull();
   });
 
   it('quien no esta en la mesa no responde', () => {
@@ -138,9 +144,9 @@ describe('responder', () => {
     let state = trivialModule.apply(enRonda(), { tipo: 'responder', valor: 1 }, 'ana', SEATS);
     state = trivialModule.apply(state, { tipo: 'responder', valor: 0 }, 'bea', SEATS);
 
-    expect(
-      trivialModule.validate(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS)?.code,
-    ).toBe('ronda-cerrada');
+    expect(trivialModule.validate(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS)?.code).toBe(
+      'ronda-cerrada',
+    );
   });
 });
 
@@ -288,6 +294,16 @@ function enLaBomba(): TrivialState {
       correcta: 1,
       explicacion: 'Ocho, por convenio universal.',
     },
+    // Dos, para que haya a dónde pasar: con una sola, seguir es acabar el
+    // programa y no se puede mirar en manos de quién quedó la bomba.
+    {
+      id: 'b2',
+      tipo: 'bomba',
+      enunciado: '¿Cuántos bits tiene un nibble?',
+      opciones: ['2', '4', '8', 'depende'],
+      correcta: 1,
+      explicacion: 'Cuatro, medio byte.',
+    },
   ];
   const inicial = trivialModule.createState(SEATS, { preguntas: conBomba, semilla: 7 });
   let state = trivialModule.apply(inicial, { tipo: 'empezar' }, 'ana', SEATS);
@@ -337,26 +353,33 @@ describe('el reloj de la ronda', () => {
     expect(siguiente.cierraEn).toBe(0);
   });
 
-  it('con la bomba en la mano, no contestar es que te estalle', () => {
-    // Sin esto, la jugada ganadora en la bomba es quedarse quieto: se pierde la
-    // mecha pero no los puntos del castigo, que es justo lo que la prueba cobra
-    // por fallar.
+  it('la bomba no lleva reloj de ronda: el que corre es el de la mecha', () => {
+    // Poner además un plazo por pregunta era contar dos veces el mismo tiempo,
+    // y encima enseñar el que no importa.
+    expect(SEGUNDOS_POR_PRUEBA.bomba).toBe(0);
+  });
+
+  it('y el castigo llega cuando estalla, no antes', () => {
     const conBomba = enLaBomba();
     const tenia = conBomba.turno ?? 'ana';
     const antes = conBomba.puntos[tenia] ?? 0;
+    const encendida = trivialModule.apply(conBomba, { tipo: 'mecha', hasta: 9_000 }, 'ana', SEATS);
 
-    const vencida = trivialModule.apply(conBomba, { tipo: 'tiempo' }, 'ana', SEATS);
+    const quieto = trivialModule.apply(encendida, { tipo: 'siguiente' }, 'ana', SEATS);
+    expect(quieto.puntos[tenia] ?? 0).toBe(antes);
 
-    expect(vencida.puntos[tenia]).toBeLessThan(antes);
+    const reventada = trivialModule.apply(encendida, { tipo: 'estalla' }, 'ana', SEATS);
+    expect(reventada.puntos[tenia] ?? 0).toBeLessThan(antes);
   });
 
   it('y a quien no la tenía no le cuesta nada', () => {
     const conBomba = enLaBomba();
     const mirando = conBomba.orden.find((seat) => seat !== conBomba.turno) ?? 'bea';
+    const encendida = trivialModule.apply(conBomba, { tipo: 'mecha', hasta: 9_000 }, 'ana', SEATS);
 
-    const vencida = trivialModule.apply(conBomba, { tipo: 'tiempo' }, 'ana', SEATS);
+    const reventada = trivialModule.apply(encendida, { tipo: 'estalla' }, 'ana', SEATS);
 
-    expect(vencida.puntos[mirando] ?? 0).toBe(0);
+    expect(reventada.puntos[mirando] ?? 0).toBe(0);
   });
 });
 
@@ -368,7 +391,12 @@ function hastaLaFinal(): TrivialState {
       id: 'f1',
       tipo: 'final',
       enunciado: '¿Por qué "👨‍👩‍👧".length devuelve 8?',
-      opciones: ['Cuenta bytes', 'Son tres emojis unidos y algunos ocupan dos', 'Está mal formado', 'Siempre son potencias de dos'],
+      opciones: [
+        'Cuenta bytes',
+        'Son tres emojis unidos y algunos ocupan dos',
+        'Está mal formado',
+        'Siempre son potencias de dos',
+      ],
       correcta: 1,
       explicacion: 'Tres personas fuera del plano básico más dos uniones invisibles.',
     },
@@ -395,7 +423,12 @@ describe('la final a doble o nada', () => {
   it('nadie ve lo que apuestan los demás hasta que se cierra', () => {
     // La misma regla que la respuesta correcta: lo que no se manda, no se puede
     // mirar con las herramientas de desarrollo abiertas.
-    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    const conApuesta = trivialModule.apply(
+      apostando(),
+      { tipo: 'apostar', cuanto: 50 },
+      'bea',
+      SEATS,
+    );
     const vista = vistaDe(conApuesta, 'ana');
 
     expect(vista.hanApostado).toContain('bea');
@@ -403,7 +436,12 @@ describe('la final a doble o nada', () => {
   });
 
   it('pero tú sí ves la tuya', () => {
-    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 50 }, 'bea', SEATS);
+    const conApuesta = trivialModule.apply(
+      apostando(),
+      { tipo: 'apostar', cuanto: 50 },
+      'bea',
+      SEATS,
+    );
     expect(vistaDe(conApuesta, 'bea').tuApuesta).toBe(50);
   });
 
@@ -411,20 +449,28 @@ describe('la final a doble o nada', () => {
     const enJuego = apostando();
     const sobran = (enJuego.puntos['bea'] ?? 0) + 1;
 
-    expect(trivialModule.validate(enJuego, { tipo: 'apostar', cuanto: sobran }, 'bea', SEATS))
-      .toMatchObject({ code: 'no-tienes-tanto' });
+    expect(
+      trivialModule.validate(enJuego, { tipo: 'apostar', cuanto: sobran }, 'bea', SEATS),
+    ).toMatchObject({ code: 'no-tienes-tanto' });
   });
 
   it('ni apostar dos veces', () => {
-    const conApuesta = trivialModule.apply(apostando(), { tipo: 'apostar', cuanto: 10 }, 'bea', SEATS);
+    const conApuesta = trivialModule.apply(
+      apostando(),
+      { tipo: 'apostar', cuanto: 10 },
+      'bea',
+      SEATS,
+    );
 
-    expect(trivialModule.validate(conApuesta, { tipo: 'apostar', cuanto: 20 }, 'bea', SEATS))
-      .toMatchObject({ code: 'ya-apostaste' });
+    expect(
+      trivialModule.validate(conApuesta, { tipo: 'apostar', cuanto: 20 }, 'bea', SEATS),
+    ).toMatchObject({ code: 'ya-apostaste' });
   });
 
   it('ni contestar mientras se apuesta', () => {
-    expect(trivialModule.validate(apostando(), { tipo: 'responder', valor: 1 }, 'ana', SEATS))
-      .toMatchObject({ code: 'aun-se-apuesta' });
+    expect(
+      trivialModule.validate(apostando(), { tipo: 'responder', valor: 1 }, 'ana', SEATS),
+    ).toMatchObject({ code: 'aun-se-apuesta' });
   });
 
   it('cuando han apostado todos, se cantan y se juega la pregunta', () => {
@@ -554,22 +600,25 @@ describe('impugnar una pregunta que la IA se inventó mal', () => {
   it('en el modo del banco no se puede impugnar', () => {
     // El banco está escrito a mano y revisado. Abrir ahí la puerta a anular
     // rondas es invitar a usarla para no perder puntos.
-    expect(trivialModule.validate(enRonda(), { tipo: 'impugnar' }, 'ana', SEATS))
-      .toMatchObject({ code: 'no-se-impugna' });
+    expect(trivialModule.validate(enRonda(), { tipo: 'impugnar' }, 'ana', SEATS)).toMatchObject({
+      code: 'no-se-impugna',
+    });
   });
 
   it('no se impugna dos veces', () => {
     const state = trivialModule.apply(inventada(TRES), { tipo: 'impugnar' }, 'ana', TRES);
 
-    expect(trivialModule.validate(state, { tipo: 'impugnar' }, 'ana', TRES))
-      .toMatchObject({ code: 'ya-impugnaste' });
+    expect(trivialModule.validate(state, { tipo: 'impugnar' }, 'ana', TRES)).toMatchObject({
+      code: 'ya-impugnaste',
+    });
   });
 
   it('ni con la ronda ya cerrada', () => {
     const cerrada = trivialModule.apply(inventada(), { tipo: 'tiempo' }, 'ana', SEATS);
 
-    expect(trivialModule.validate(cerrada, { tipo: 'impugnar' }, 'ana', SEATS))
-      .toMatchObject({ code: 'ronda-cerrada' });
+    expect(trivialModule.validate(cerrada, { tipo: 'impugnar' }, 'ana', SEATS)).toMatchObject({
+      code: 'ronda-cerrada',
+    });
   });
 
   it('la mesa ve cuántos van y cuántos hacen falta, no quiénes', () => {

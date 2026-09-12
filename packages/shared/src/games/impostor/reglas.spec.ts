@@ -8,6 +8,7 @@ import {
   marcadorTras,
   masVotado,
   palabraPara,
+  quedaManoAMano,
   recuento,
 } from './reglas';
 import { frasePara, momentoDe } from './guion';
@@ -23,6 +24,7 @@ const BASE: ImpostorState = {
   orden: ['ana', 'bea', 'cris'],
   impostores: ['bea'],
   listos: ['ana', 'bea', 'cris'],
+  eliminados: [],
   vueltas: 1,
   vuelta: 0,
   segundosDebate: 90,
@@ -71,12 +73,19 @@ describe('quién gana', () => {
     expect(desenlaceDeLaVotacion(BASE, 'bea')).toBe('tripulacion');
   });
 
-  it('echar a un inocente la gana el impostor', () => {
+  it('echar a un inocente con tres en mesa deja uno contra uno: gana el impostor', () => {
     expect(desenlaceDeLaVotacion(BASE, 'ana')).toBe('impostores');
+    expect(quedaManoAMano(BASE, 'ana')).toBe(true);
   });
 
-  it('no echar a nadie también la gana el impostor', () => {
-    expect(desenlaceDeLaVotacion(BASE, null)).toBe('impostores');
+  it('echar a un inocente con gente de sobra no acaba: se sigue cazando', () => {
+    const cuatro = { ...BASE, orden: ['ana', 'bea', 'cris', 'dani'] };
+    expect(desenlaceDeLaVotacion(cuatro, 'ana')).toBeNull();
+    expect(quedaManoAMano(cuatro, 'ana')).toBe(false);
+  });
+
+  it('el empate no acaba nada: nadie sale y se vuelve a hablar', () => {
+    expect(desenlaceDeLaVotacion(BASE, null)).toBeNull();
   });
 
   it('en la revancha pillarle no cierra nada todavía', () => {
@@ -149,12 +158,26 @@ describe('la voz de la sala', () => {
     expect(momentoDe({ ...BASE, fase: 'debate' }, BASE)).toBe('aVotar');
   });
 
-  it('distingue el empate de la victoria del impostor', () => {
-    const empate: ImpostorState = { ...BASE, fase: 'fin', desenlace: 'impostores' };
-    expect(momentoDe(BASE, empate)).toBe('empate');
+  it('el empate vuelve a las pistas, no cierra la ronda', () => {
+    expect(momentoDe(BASE, { ...BASE, fase: 'pistas', expulsado: null })).toBe('empate');
+  });
 
-    const echado: ImpostorState = { ...empate, expulsado: 'ana' };
-    expect(momentoDe(BASE, echado)).toBe('ganaImpostor');
+  it('echar a un inocente y seguir tiene frase propia', () => {
+    expect(
+      momentoDe(BASE, { ...BASE, fase: 'pistas', expulsado: 'ana', orden: ['bea', 'cris'] }),
+    ).toBe('inocenteFuera');
+  });
+
+  it('uno contra uno es victoria del impostor con frase propia', () => {
+    expect(
+      momentoDe(BASE, {
+        ...BASE,
+        fase: 'fin',
+        desenlace: 'impostores',
+        expulsado: 'ana',
+        orden: ['bea', 'cris'],
+      }),
+    ).toBe('manoAMano');
   });
 
   it('la revancha ganada tiene frase propia', () => {

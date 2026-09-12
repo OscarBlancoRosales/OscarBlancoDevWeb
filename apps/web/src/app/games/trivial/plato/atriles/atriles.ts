@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import { Contador } from '../contador/contador';
 
 /** Cómo está un concursante en su puesto, ya decidido antes de la plantilla. */
 export interface PuestoEnAtril {
@@ -15,6 +16,14 @@ export interface PuestoEnAtril {
   readonly lidera: boolean;
   /** Ya ha puesto su apuesta en la final. Nunca cuánto. */
   readonly haApostado: boolean;
+  /**
+   * Lo que apostó, una vez cantada.
+   *
+   * `null` hasta que le llega el turno de destaparse: en la final las apuestas
+   * se cantan de una en una, y hasta entonces de este solo se sabe que ya ha
+   * apostado.
+   */
+  readonly apuesta: number | null;
 }
 
 /**
@@ -28,7 +37,7 @@ export interface PuestoEnAtril {
  */
 @Component({
   selector: 'app-atriles',
-  imports: [],
+  imports: [Contador],
   templateUrl: './atriles.html',
   styleUrl: './atriles.css',
 })

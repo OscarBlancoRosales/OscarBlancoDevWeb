@@ -82,6 +82,45 @@
           }
         </fieldset>
 
+        <fieldset class="origen">
+          <legend>De qué va</legend>
+          <label class="rival" [class.elegido]="tema === 'dev'">
+            <input type="radio" name="tema" value="dev" [(ngModel)]="tema" />
+            <span class="nombre">De programación</span>
+            <span class="descripcion">Lenguajes, redes, bases de datos y las manías del oficio.</span>
+          </label>
+          <label class="rival" [class.elegido]="tema === 'general'">
+            <input type="radio" name="tema" value="general" [(ngModel)]="tema" />
+            <span class="nombre">Cultura general</span>
+            <span class="descripcion">Geografía, cine, historia, música y deporte. Sin código.</span>
+          </label>
+        </fieldset>
+
+        <fieldset class="origen">
+          <legend>Preguntas</legend>
+          <label class="rival" [class.elegido]="origen === 'banco'">
+            <input type="radio" name="origen" value="banco" [(ngModel)]="origen" />
+            <span class="nombre">Del banco</span>
+            <span class="descripcion">Escritas a mano y revisadas. Las de siempre.</span>
+          </label>
+          @if (hayIa()) {
+            <label class="rival" [class.elegido]="origen === 'ia'">
+              <input type="radio" name="origen" value="ia" [(ngModel)]="origen" />
+              <span class="nombre">Inventadas por la IA</span>
+              <span class="descripcion">
+                Un programa escrito en el momento, con la dificultad subiendo de la primera
+                ronda a la última. Experimental: alguna saldrá mal contestada, y para eso está
+                el botón de impugnar.
+              </span>
+            </label>
+          } @else {
+            <p class="explicacion">
+              Para que la IA invente el programa hace falta una clave configurada en el
+              servidor. Ahora mismo no la hay, así que se juega con el banco.
+            </p>
+          }
+        </fieldset>
+
         <fieldset class="rivales">
           <legend>Contra quién</legend>
           @for (opcion of rivales; track opcion.id) {
@@ -94,7 +133,14 @@
         </fieldset>
 
         <button type="button" class="accion" [disabled]="trabajando()" (click)="crear()">
-          {{ trabajando() ? 'Abriendo…' : 'Abrir la mesa' }}
+          @if (!trabajando()) {
+            Abrir la mesa
+          } @else if (origen === 'ia') {
+            <!-- Veinte segundos de «Abriendo…» a secas parecen un cuelgue. -->
+            Escribiendo el programa…
+          } @else {
+            Abriendo…
+          }
         </button>
       </section>
     } @else if (sesionResuelta()) {

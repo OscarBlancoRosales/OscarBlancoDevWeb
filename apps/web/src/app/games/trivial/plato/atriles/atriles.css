@@ -16,11 +16,11 @@
   flex-direction: column;
   align-items: center;
   min-width: 0;
-  flex: 0 1 9rem;
+  flex: 0 1 10rem;
   padding: 0.5rem 0.4rem 0.6rem;
   border-radius: 0.6rem 0.6rem 0.2rem 0.2rem;
-  background: linear-gradient(180deg, rgb(30 41 59 / 85%), rgb(15 23 42 / 95%));
-  border: 1px solid rgb(148 163 184 / 25%);
+  background: linear-gradient(180deg, rgb(59 26 106 / 85%), rgb(20 12 46 / 95%));
+  border: 1px solid rgb(232 121 249 / 28%);
   box-shadow: 0 10px 20px rgb(0 0 0 / 45%);
   transition:
     transform 220ms ease,
@@ -31,7 +31,7 @@
 
 .cara {
   width: 100%;
-  max-width: 5.5rem;
+  max-width: 6rem;
   aspect-ratio: 1;
   object-fit: cover;
   border-radius: 50%;
@@ -130,6 +130,45 @@
   color: rgb(56 189 248);
 }
 
+/* La apuesta cantada. No se enciende sola: en la final salen de una en una,
+   y cada una entra de golpe porque lo que se está contando es el número. */
+.apuesta {
+  position: absolute;
+  bottom: -0.55rem;
+  left: 50%;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: rgb(56 189 248);
+  color: rgb(8 10 26);
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgb(56 189 248 / 45%);
+  animation: canta-apuesta 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes canta-apuesta {
+  0% {
+    transform: translate(-50%, 0.6rem) scale(0.6);
+    opacity: 0;
+  }
+  60% {
+    transform: translate(-50%, 0) scale(1.14);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apuesta {
+    animation: none;
+    transform: translate(-50%, 0);
+  }
+}
+
 @keyframes tiembla {
   0%,
   100% {
@@ -155,16 +194,22 @@
 
 /* En el móvil, dos filas antes que atriles de un centímetro. */
 @media (max-width: 560px) {
+  /* En el móvil los atriles se arrastran en una fila en vez de apilarse en
+     dos: apilados se comían media pantalla y aun así se veían pequeños. */
   .fila {
-    flex-wrap: wrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 0 0.2rem 0.3rem;
   }
   .atril {
-    flex: 0 1 5.5rem;
+    flex: 0 0 5.6rem;
+    scroll-snap-align: center;
   }
   .cara {
-    max-width: 3.2rem;
+    max-width: 3.4rem;
   }
   .puntos {
-    font-size: 1rem;
+    font-size: 1.15rem;
   }
 }

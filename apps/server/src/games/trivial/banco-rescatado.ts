@@ -144,6 +144,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-001',
+    tema: 'general',
     tipo: 'test',
     enunciado: '¿Cuál es el río más largo de la Tierra (disputa clásica: Nilo vs Amazonas)? El consenso habitual de «más largo» apunta al…',
     opciones: ['Nilo', 'Yangtsé', 'Misisipi', 'Danubio'],
@@ -152,6 +153,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-musica-012',
+    tema: 'general',
     tipo: 'test',
     enunciado: 'Nirvana lideraba Kurt Cobain. ¿Cómo se llamaba su batería más famoso de la etapa Nevermind?',
     opciones: ['Dave Grohl', 'Lars Ulrich', 'Chad Smith', 'Travis Barker'],
@@ -160,6 +162,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-television-005',
+    tema: 'general',
     tipo: 'test',
     enunciado: 'Walter White es el prota de…',
     opciones: ['The Wire', 'Breaking Bad', 'Better Call Saul (el primero)', 'Narcos'],
@@ -168,6 +171,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-naturaleza-010',
+    tema: 'general',
     tipo: 'test',
     enunciado: 'El «baobab» es un árbol típico de…',
     opciones: ['La tundra', 'Sabanas africanas (y algún otro sitio)', 'Los Alpes', 'La Amazonía exclusivamente'],
@@ -176,6 +180,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x2-cine-018',
+    tema: 'general',
     tipo: 'test',
     enunciado: 'El primer Óscar a mejor película extranjera de una película española (en democracia tardía famosa) «Belle Époque» es de…',
     opciones: ['Trueba', 'Almodóvar', 'Amenábar', 'Berlanga'],
@@ -184,6 +189,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x3-geografia-002',
+    tema: 'general',
     tipo: 'test',
     enunciado: '¿Cuál es la capital de Países Bajos?',
     opciones: ['Róterdam', 'Ámsterdam', 'La Haya (gobierno) / Ámsterdam capital', 'Utrecht'],
@@ -192,6 +198,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x3-ciencia-082',
+    tema: 'general',
     tipo: 'test',
     enunciado: '¿Cuál NO es un sentido clásico de los cinco?',
     opciones: ['Vista', 'Oído', 'Equilibrio (vestibular, extra)', 'Olfato'],
@@ -386,6 +393,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-historia-011',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: '¿Quién escribió las 95 tesis que dispararon la Reforma protestante?',
     opciones: ['Calvino', 'Lutero', 'Erasmo', 'Enrique VIII'],
@@ -394,6 +402,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-ciencia-006',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'El ADN está en el núcleo (en eucariotas) y su forma clásica es…',
     opciones: ['Triple hélice', 'Doble hélice', 'Anillo plano', 'Cubo'],
@@ -402,6 +411,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-cine-002',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'En Star Wars, ¿cómo se llama el padre de Luke, de negro y respirador?',
     opciones: ['Yoda', 'Darth Vader', 'Obi-Wan', 'Palpatine'],
@@ -410,6 +420,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-cine-004',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'El Óscar a mejor película de 2003 (ceremonia 2004) se lo llevó, de las de Tolkien…',
     opciones: ['La Comunidad del Anillo', 'Las dos torres', 'El retorno del rey', 'El hobbit'],
@@ -418,6 +429,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-cine-007',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: '¿Cuál de estas NO es una película de Studio Ghibli?',
     opciones: ['El viaje de Chihiro', 'Mi vecino Totoro', 'Akira', 'La princesa Mononoke'],
@@ -426,6 +438,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-television-009',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'El presentador original británico de «The Weakest Link» (el eslabón más débil) era…',
     opciones: ['Anne Robinson', 'Chris Tarrant', 'Alexander Armstrong', 'Richard Osman'],
@@ -434,6 +447,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-gastronomia-005',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'El «umami» es…',
     opciones: ['Un tipo de pasta', 'El quinto sabor básico', 'Un vino italiano', 'Un corte de carne'],
@@ -442,6 +456,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-espana-005',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: 'El pico más alto del país (territorio español, incluyendo islas) es…',
     opciones: ['Mulhacén', 'Aneto', 'Teide', 'Veleta'],
@@ -450,6 +465,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x1-geografia-015',
+    tema: 'general',
     tipo: 'pulsa',
     enunciado: '¿Cuál es la capital de Sudáfrica legislativa (una de las tres)?',
     opciones: ['Johannesburgo', 'Ciudad del Cabo', 'Durban', 'Pretoria'],
@@ -636,6 +652,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-arte-005',
+    tema: 'general',
     tipo: 'rafaga',
     enunciado: 'Picasso nació en España.',
     opciones: ['Verdadero', 'Falso'],
@@ -644,6 +661,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-naturaleza-003',
+    tema: 'general',
     tipo: 'rafaga',
     enunciado: 'Los pingüinos viven, de forma natural, sobre todo en el hemisferio sur.',
     opciones: ['Verdadero', 'Falso'],
@@ -652,6 +670,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x1-ciencia-096',
+    tema: 'general',
     tipo: 'rafaga',
     enunciado: 'Un año luz es una unidad de tiempo.',
     opciones: ['Verdadero', 'Falso'],
@@ -806,6 +825,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-006',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: '¿Cuántos continentes se suelen contar en el modelo escolar de siete (incluyendo la Antártida)?',
     opciones: [],
@@ -815,6 +835,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-ciencia-009',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: '¿Cuántos huesos tiene, aproximadamente, el esqueleto humano adulto?',
     opciones: [],
@@ -824,6 +845,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-arte-011',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: 'Rembrandt pintó sobre todo en el siglo XVII. ¿Qué número de siglo es ese (17, no romano)?',
     opciones: [],
@@ -833,6 +855,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-gastronomia-008',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: '¿Cuál es el máximo de estrellas Michelin que puede tener un restaurante?',
     opciones: [],
@@ -842,6 +865,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-naturaleza-007',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: '¿Cuántos corazones tiene un pulpo (el común)?',
     opciones: [],
@@ -851,6 +875,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-espana-008',
+    tema: 'general',
     tipo: 'estimacion',
     enunciado: '¿Cuántas comunidades autónomas tiene España?',
     opciones: [],
@@ -1078,6 +1103,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-003',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿En qué continente está Egipto, mayoritariamente?',
     opciones: ['Asia', 'África', 'Europa', 'Oceanía'],
@@ -1086,6 +1112,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-007',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estas ciudades NO está en Italia?',
     opciones: ['Milán', 'Nápoles', 'Lyon', 'Turín'],
@@ -1094,6 +1121,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-010',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál es el desierto más grande del mundo (contando el frío)?',
     opciones: ['Sáhara', 'Gobi', 'Antártida', 'Kalahari'],
@@ -1102,6 +1130,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-geografia-012',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál es la capital de Kazajistán desde 2019 (nombre actual)?',
     opciones: ['Almatý', 'Astaná', 'Biskek', 'Taskent'],
@@ -1110,6 +1139,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-historia-005',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Quién fue el primer emperador de Roma?',
     opciones: ['Julio César', 'Augusto', 'Nerón', 'Trajano'],
@@ -1118,6 +1148,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-historia-007',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: 'La peste negra asoló Europa sobre todo en el siglo…',
     opciones: ['X', 'XIV', 'XVIII', 'XX'],
@@ -1126,6 +1157,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-historia-008',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estos NO fue un faraón egipcio?',
     opciones: ['Tutankamón', 'Ramsés II', 'Julio César', 'Keops'],
@@ -1134,6 +1166,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-ciencia-011',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: 'El bosón de Higgs se observó en el CERN en…',
     opciones: ['1964', '1989', '2012', '2020'],
@@ -1142,6 +1175,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-cine-006',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '«El Padrino» la protagoniza, como Vito Corleone…',
     opciones: ['Al Pacino', 'Robert De Niro', 'Marlon Brando', 'Joe Pesci'],
@@ -1150,6 +1184,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-cine-010',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: 'La primera película de Pixar (largometraje) fue…',
     opciones: ['Shrek', 'Toy Story', 'Buscando a Nemo', 'Monstruos, S.A.'],
@@ -1158,6 +1193,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-musica-001',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿De qué ciudad eran los Beatles?',
     opciones: ['Londres', 'Liverpool', 'Manchester', 'Hamburgo'],
@@ -1166,6 +1202,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-musica-006',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '«Bohemian Rhapsody» dura, groseramente, casi…',
     opciones: ['2 minutos', '6 minutos', '12 minutos', '20 minutos'],
@@ -1174,6 +1211,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-musica-007',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estos NO es un instrumento de cuerda frotada?',
     opciones: ['Violín', 'Viola', 'Trombón', 'Violonchelo'],
@@ -1182,6 +1220,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-deporte-006',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuántos anillos entrelazados tiene la bandera olímpica?',
     opciones: ['4', '5', '6', '7'],
@@ -1190,6 +1229,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-deporte-008',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estos NO es un Grand Slam de tenis?',
     opciones: ['Wimbledon', 'Roland Garros', 'Open de Australia', 'Copa Davis'],
@@ -1198,6 +1238,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-deporte-009',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: 'España ganó su primer Mundial de fútbol en…',
     opciones: ['2008', '2010', '2012', '1982'],
@@ -1206,6 +1247,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-television-007',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estas NO es una serie de HBO clásica?',
     opciones: ['The Sopranos', 'The Wire', 'Friends', 'True Detective'],
@@ -1214,6 +1256,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-naturaleza-005',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: 'El koala se alimenta sobre todo de hojas de…',
     opciones: ['Pino', 'Eucalipto', 'Roble', 'Bambú'],
@@ -1222,6 +1265,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-naturaleza-006',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estos NO es un reptil?',
     opciones: ['Cocodrilo', 'Iguana', 'Salamandra', 'Tortuga'],
@@ -1230,6 +1274,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-gen-espana-007',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál de estas NO es una comunidad autónoma?',
     opciones: ['Navarra', 'La Rioja', 'Andorra', 'Murcia'],
@@ -1238,6 +1283,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x1-historia-040',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿En qué siglo se sitúa el descubrimiento de América por Colón?',
     opciones: ['XIV', 'XV', 'XVI', 'XVII'],
@@ -1246,6 +1292,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x1-ciencia-075',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Qué gas respiramos sobre todo (el que nos mantiene vivos)?',
     opciones: ['Nitrógeno', 'Oxígeno', 'CO2', 'Helio'],
@@ -1254,6 +1301,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x2-espana-093',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuál es el río más largo de la península ibérica?',
     opciones: ['Ebro', 'Tajo', 'Duero', 'Guadalquivir'],
@@ -1262,6 +1310,7 @@ export const BANCO_RESCATADO: readonly Pregunta[] = [
   },
   {
     id: 'viejo-general-x2-espana-101',
+    tema: 'general',
     tipo: 'bomba',
     enunciado: '¿Cuántas provincias tiene España?',
     opciones: ['17', '50', '52', '48'],

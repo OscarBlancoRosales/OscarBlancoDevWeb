@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BANCO, ESCALETA, RONDAS_POR_PROGRAMA, repartir } from './banco';
+import { BANCO, ESCALETA, RONDAS_POR_PROGRAMA, delTema, escaletaDe, repartir, rondasDe } from './banco';
 import { BOMBA, FINAL, PULSA, RAFAGA } from './pruebas';
 import { BANCO_RESCATADO } from './banco-rescatado';
 import { OPCIONES } from '@devweb/shared/games/trivial/tipos';
@@ -208,5 +208,61 @@ describe('las preguntas de las pruebas nuevas', () => {
   it('ninguna se repite con otra', () => {
     const todas = [...BANCO, ...nuevas];
     expect(new Set(todas.map((una) => una.id)).size).toBe(todas.length);
+  });
+});
+
+/**
+ * Las dos barajas, sin mezclarse.
+ *
+ * Un programa que te pone «¿qué devuelve typeof null?» y «¿en qué año fue la
+ * peste negra?» en la misma tanda no es variado: es incoherente. Son dos
+ * juegos distintos y se eligen al abrir la sala.
+ */
+describe('el tema del programa', () => {
+  it('el de dev no trae ni una de cultura general', () => {
+    const programa = repartir(7, 'dev');
+    expect(programa.every((una) => (una.tema ?? 'dev') === 'dev')).toBe(true);
+  });
+
+  it('y el de cultura general no trae ni una de dev', () => {
+    const programa = repartir(7, 'general');
+    expect(programa.every((una) => una.tema === 'general')).toBe(true);
+  });
+
+  it('sin decir nada, el de siempre: dev', () => {
+    expect(repartir(7)).toEqual(repartir(7, 'dev'));
+  });
+
+  it('los dos programas salen completos', () => {
+    expect(repartir(3, 'dev')).toHaveLength(rondasDe('dev'));
+    expect(repartir(3, 'general')).toHaveLength(rondasDe('general'));
+  });
+
+  it('los dos cierran con la final, que es lo que decide el concurso', () => {
+    expect(repartir(5, 'dev').at(-1)?.tipo).toBe('final');
+    expect(repartir(5, 'general').at(-1)?.tipo).toBe('final');
+  });
+
+  /**
+   * «Encuentra el fallo» es leer código con un error dentro. Fuera de la
+   * programación no hay código que leer, así que esa sección no existe.
+   */
+  it('el de cultura general no tiene la sección de encontrar el fallo', () => {
+    expect(repartir(5, 'general').some((una) => una.tipo === 'fallo')).toBe(false);
+  });
+
+  it('y hay más preguntas de las que caben, para que dos partidas no repitan', () => {
+    for (const tema of ['dev', 'general'] as const) {
+      for (const seccion of escaletaDe(tema)) {
+        const hay = delTema(tema).filter((una) => una.tipo === seccion.tipo);
+        expect(hay.length, `${tema}/${seccion.tipo}`).toBeGreaterThan(seccion.cuantas);
+      }
+    }
+  });
+
+  it('dos partidas del mismo tema con semillas distintas no traen lo mismo', () => {
+    const una = repartir(1, 'general').map((p) => p.id).join();
+    const otra = repartir(2, 'general').map((p) => p.id).join();
+    expect(una).not.toBe(otra);
   });
 });

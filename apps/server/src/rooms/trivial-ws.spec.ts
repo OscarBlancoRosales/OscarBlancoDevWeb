@@ -56,7 +56,10 @@ class Cliente {
       .map((mensaje) => mensaje.vista as TrivialView);
   }
 
-  async vistaCuando(condicion: (vista: TrivialView) => boolean, motivo: string): Promise<TrivialView> {
+  async vistaCuando(
+    condicion: (vista: TrivialView) => boolean,
+    motivo: string,
+  ): Promise<TrivialView> {
     const plazo = Date.now() + 3000;
     for (;;) {
       const encontrada = this.vistas.findLast(condicion);
@@ -110,7 +113,11 @@ describe('un concurso de trivial contra el bot', () => {
     const direccion = app.server.address();
     const puerto = typeof direccion === 'string' ? 0 : (direccion?.port ?? 0);
 
-    await app.inject({ method: 'POST', url: '/auth/registro', payload: { ...ALTA, invitacion: invitacionDePrueba(db) } });
+    await app.inject({
+      method: 'POST',
+      url: '/auth/registro',
+      payload: { ...ALTA, invitacion: invitacionDePrueba(db) },
+    });
     db.prepare("UPDATE users SET status = 'active'").run();
     const acceso = await app.inject({
       method: 'POST',
@@ -231,10 +238,12 @@ describe('un concurso de trivial contra el bot', () => {
     }
 
     expect(vista.tipo, 'hay que llegar a la bomba').toBe('bomba');
-    // La bomba tiene dueño en cuanto se enciende la sección; la mecha se mira
-    // con la ronda viva, porque al cerrarse ya se ha gastado o ha estallado.
+    // La bomba tiene dueño en cuanto se enciende la sección. Cuánto le queda
+    // de mecha no viaja a propósito: si viajara, quien abriera las devtools
+    // sabría cuándo soltarla, y entonces esto deja de ser una bomba.
     expect(vista.turno, 'la bomba es de alguien').not.toBeNull();
-    if (!vista.cerrada) expect(vista.mecha, 'y con mecha encendida').toBeGreaterThan(0);
+    expect(vista, 'la mecha no se manda').not.toHaveProperty('mecha');
+    expect(vista.cierraEn, 'ni por la puerta de atrás').toBe(0);
     cliente.cerrar();
   });
 

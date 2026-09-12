@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mechaInicial, trivialModule } from './index';
+import { trivialModule } from './index';
 import {
   CASTIGO_BOMBA,
   CASTIGO_PULSA,
@@ -8,6 +8,7 @@ import {
   PUNTOS_RAFAGA,
   RACHA_MAXIMA,
 } from './reglas';
+import { rondaEn } from './tipos';
 import type { Pregunta, TrivialState, TrivialView } from './tipos';
 import type { Seat } from '../module';
 
@@ -52,6 +53,11 @@ function responde(state: TrivialState, seat: string, valor: number): TrivialStat
 
 function siguiente(state: TrivialState, seat = 'ana'): TrivialState {
   return trivialModule.apply(state, { tipo: 'siguiente' }, seat, SEATS);
+}
+
+/** Enciende la mecha, que es lo que hace el servidor con su reloj. */
+function encender(state: TrivialState, hasta: number): TrivialState {
+  return trivialModule.apply(state, { tipo: 'mecha', hasta }, 'ana', SEATS);
 }
 
 function vista(state: TrivialState, seat: string): TrivialView {
@@ -168,8 +174,16 @@ describe('la bomba', () => {
     expect(state.turno).toBe('ana');
   });
 
-  it('la mecha da para más de una vuelta, para que no se sepa a quién le toca', () => {
-    expect(mechaInicial(SEATS.length)).toBeGreaterThan(SEATS.length);
+  it('cuánto queda de mecha no sale en la vista de nadie', () => {
+    // Es la regla entera de la prueba. Si el número viajara, quien abriera las
+    // devtools sabría cuándo soltarla, y entonces esto no es una bomba.
+    let state = conBombaEnMarcha();
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+    state = siguiente(state);
+    state = encender(state, 60_000);
+
+    expect(JSON.stringify(vista(state, 'ana'))).not.toContain('60000');
+    expect(vista(state, 'ana').cierraEn).toBe(0);
   });
 
   it('solo contesta quien la tiene', () => {
@@ -182,18 +196,74 @@ describe('la bomba', () => {
     expect(trivialModule.validate(state, { tipo: 'responder', valor: 1 }, 'ana', SEATS)).toBeNull();
   });
 
-  it('acertar la pasa al siguiente y gasta mecha', () => {
+  it('acertar es la única forma de soltarla', () => {
     let state = conBombaEnMarcha();
     for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
     state = siguiente(state);
-    const mecha = state.mecha;
 
     state = responde(state, 'ana', ACIERTO);
     state = siguiente(state);
 
     expect(state.turno).toBe('bea');
-    expect(state.mecha).toBe(mecha - 1);
     expect(state.puntos['ana']).toBeGreaterThanOrEqual(PUNTOS_BOMBA);
+  });
+
+  it('y fallar te la deja en la mano', () => {
+    // Esto es lo que la convierte en una patata caliente. Antes fallar restaba
+    // puntos y la pasaba igual, así que salía casi lo mismo contestar bien que
+    // mal: te quitabas el problema de encima de las dos maneras.
+    let state = conBombaEnMarcha();
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+    state = siguiente(state);
+    state = encender(state, 60_000);
+
+    state = responde(state, 'ana', FALLO);
+    state = siguiente(state);
+
+    expect(state.turno).toBe('ana');
+  });
+
+  it('fallar no resta: lo que cuesta puntos es que te estalle', () => {
+    let state = conBombaEnMarcha();
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+    state = siguiente(state);
+    const antes = state.puntos['ana'] ?? 0;
+
+    state = responde(state, 'ana', FALLO);
+
+    expect(state.puntos['ana'] ?? 0).toBe(antes);
+  });
+
+  /**
+   * Que la bomba avance sola es parte de la prueba, no una comodidad.
+   *
+   * Tener que darle a «siguiente» entre pase y pase le regala a quien la tiene
+   * todo el tiempo del mundo justo cuando la gracia es no tenerlo, y además
+   * deja la mecha corriendo en manos de quien más tarde en pulsar.
+   */
+  it('una vez resuelta, pasa sola en cuanto se acaba el rato', () => {
+    let state = conBombaEnMarcha();
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+    state = siguiente(state);
+
+    const antes = state.actual;
+    state = responde(state, 'ana', ACIERTO);
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(state.actual).toBe(antes + 1);
+    expect(state.turno).toBe('bea');
+  });
+
+  it('y ese mismo rato, fuera de la bomba, no adelanta nada', () => {
+    // En las demás pruebas se lee la explicación y se sigue cuando la mesa
+    // quiera: el reloj solo sirve para cerrar la ronda, no para saltársela.
+    let state = conBombaEnMarcha([pregunta('test', 't1')]);
+    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+
+    const cerrada = state.actual;
+    state = trivialModule.apply(state, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    expect(state.actual).toBe(cerrada);
   });
 
   it('la ronda se cierra sin esperar a los demás: los demás miran', () => {
@@ -205,26 +275,58 @@ describe('la bomba', () => {
     expect(state.rondas[1].cerrada).toBe(true);
   });
 
-  it('fallar te la estalla en la mano', () => {
-    let state = conBombaEnMarcha();
-    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
-    const antes = state.puntos['ana'] ?? 0;
-    state = siguiente(state);
+  /**
+   * La mecha.
+   *
+   * Es tiempo, no turnos, y estalla en las manos de quien la tenga en ese
+   * momento. Da igual lo que estuviera contestando: importa que se le acabó el
+   * tiempo con ella encima. Eso es una bomba; lo de antes era un examen con
+   * penalización.
+   */
+  describe('la mecha', () => {
+    /** Con la bomba en marcha y encendida, en manos de Ana. */
+    function encendida(): TrivialState {
+      let state = conBombaEnMarcha();
+      for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
+      return encender(siguiente(state), 60_000);
+    }
 
-    state = responde(state, 'ana', FALLO);
-    expect(state.puntos['ana']).toBe(antes - CASTIGO_BOMBA);
-    expect(state.mecha).toBe(0);
-  });
+    it('estalla en quien la tenga, conteste o no', () => {
+      const state = encendida();
+      const antes = state.puntos['ana'] ?? 0;
+      const reventada = trivialModule.apply(state, { tipo: 'estalla' }, 'ana', SEATS);
 
-  /** Que estalle una vez no acaba la sección: se enciende otra. */
-  it('tras estallar se enciende una mecha nueva', () => {
-    let state = conBombaEnMarcha();
-    for (const seat of SEATS) state = responde(state, seat.id, ACIERTO);
-    state = siguiente(state);
+      expect(reventada.puntos['ana']).toBe(antes - CASTIGO_BOMBA);
+      expect(rondaEn(reventada, reventada.actual)?.cerrada).toBe(true);
+    });
 
-    state = responde(state, 'ana', FALLO);
-    state = siguiente(state);
-    expect(state.mecha).toBe(mechaInicial(SEATS.length));
+    it('y se apaga al estallar, para que se encienda otra', () => {
+      const reventada = trivialModule.apply(encendida(), { tipo: 'estalla' }, 'ana', SEATS);
+
+      expect(reventada.revienta).toBe(0);
+    });
+
+    it('tras estallar empieza el siguiente, que bastante ha tenido', () => {
+      let state = trivialModule.apply(encendida(), { tipo: 'estalla' }, 'ana', SEATS);
+      state = siguiente(state);
+
+      expect(state.turno).toBe('bea');
+    });
+
+    it('encenderla otra vez no la alarga', () => {
+      // La mecha corre por debajo de las rondas. Si cada pregunta la
+      // reiniciara, no se acabaría nunca y no habría bomba.
+      const state = encender(encendida(), 999_000);
+
+      expect(state.revienta).toBe(60_000);
+    });
+
+    it('no estalla dos veces la misma ronda', () => {
+      const una = trivialModule.apply(encendida(), { tipo: 'estalla' }, 'ana', SEATS);
+      const otra = trivialModule.apply(una, { tipo: 'estalla' }, 'ana', SEATS);
+
+      expect(otra.puntos['ana']).toBe(una.puntos['ana']);
+    });
   });
 
   it('fuera de la bomba no hay turno de nadie', () => {
@@ -232,7 +334,7 @@ describe('la bomba', () => {
     state = responde(state, 'ana', ACIERTO);
     state = siguiente(state);
     expect(state.turno).toBeNull();
-    expect(state.mecha).toBe(0);
+    expect(state.revienta).toBe(0);
   });
 
   it('cada uno ve si le toca a él', () => {

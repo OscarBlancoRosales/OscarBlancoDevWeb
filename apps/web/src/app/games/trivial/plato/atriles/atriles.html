@@ -15,12 +15,16 @@
       <span class="foco" aria-hidden="true"></span>
       <img class="cara" [src]="puesto.foto" [alt]="puesto.nombre" loading="lazy" />
       <span class="nombre">{{ puesto.nombre }}</span>
-      <span class="puntos">{{ puesto.puntos }}</span>
+      <app-contador class="puntos" [valor]="puesto.puntos" />
 
       @if (puesto.gano !== null && puesto.gano !== 0) {
         <span class="gano">{{ conSigno(puesto.gano) }}</span>
       }
-      @if (puesto.haApostado) {
+      @if (puesto.apuesta !== null) {
+        <span class="apuesta"
+          >Apuesta <strong>{{ puesto.apuesta }}</strong></span
+        >
+      } @else if (puesto.haApostado) {
         <span class="apostado" title="Ya ha apostado">&#9679;</span>
       }
     </li>

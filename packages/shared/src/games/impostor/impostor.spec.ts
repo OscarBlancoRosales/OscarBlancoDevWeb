@@ -216,34 +216,76 @@ describe('el debate', () => {
   });
 });
 
-describe('la votación', () => {
-  it('a quién ha votado cada uno no se sabe hasta que votan todos', () => {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
+/** Cada uno vota cuando le toca, según este mapa votante → acusado. */
+function votarSegun(
+  state: ImpostorState,
+  aQuien: Readonly<Record<string, string>>,
+  asientos: readonly Seat[] = SEATS,
+): ImpostorState {
+  let actual = state;
+  while (actual.fase === 'votacion') {
+    const quien = enElSitio(actual.orden, actual.turno);
+    const acusado = Object.entries(aQuien).find(([id]) => id === quien)?.[1];
+    if (acusado === undefined) {
+      throw new Error(`sin voto para ${quien} en ${actual.orden.join(',')}`);
+    }
+    actual = impostorModule.apply(actual, { tipo: 'votar', aQuien: acusado }, quien, asientos);
+  }
+  return actual;
+}
 
-    const cris = vistaDe(state, 'cris');
+/** El de ese sitio, o se corta el test: `.at` dice `undefined` y no miente. */
+function enElSitio(orden: readonly string[], i: number): string {
+  const id = orden.at(i);
+  if (id === undefined) throw new Error(`no hay nadie en ${i}`);
+  return id;
+}
+
+function elOtro(orden: readonly string[], de: string): string {
+  const id = orden.find((uno) => uno !== de);
+  if (id === undefined) throw new Error(`no hay otro distinto de ${de}`);
+  return id;
+}
+
+describe('la votación', () => {
+  it('se vota por turnos: fuera de turno se rechaza', () => {
+    const state = enVotacion();
+    const toca = enElSitio(state.orden, state.turno);
+    const otro = elOtro(state.orden, toca);
+    expect(
+      impostorModule.validate(state, { tipo: 'votar', aQuien: toca }, otro, SEATS)?.code,
+    ).toBe('no-es-tu-turno');
+  });
+
+  it('a quién ha votado cada uno no se sabe hasta que votan todos', () => {
+    const state = enVotacion();
+    const quien = enElSitio(state.orden, 0);
+    const acusado = elOtro(state.orden, quien);
+    const siguiente = aplicar(state, { tipo: 'votar', aQuien: acusado }, quien);
+
+    const cris = vistaDe(siguiente, 'cris');
     expect(cris.votos).toBeNull();
-    expect(cris.hanVotado).toEqual(['ana']);
+    expect(cris.hanVotado).toEqual([quien]);
   });
 
   it('tu propio voto sí lo ves', () => {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    expect(vistaDe(state, 'ana').tuVoto).toBe('bea');
+    const state = enVotacion();
+    const quien = enElSitio(state.orden, 0);
+    const acusado = elOtro(state.orden, quien);
+    const siguiente = aplicar(state, { tipo: 'votar', aQuien: acusado }, quien);
+    expect(vistaDe(siguiente, quien).tuVoto).toBe(acusado);
   });
 
   it('votarse a uno mismo se rechaza', () => {
     const state = enVotacion();
+    const quien = enElSitio(state.orden, 0);
     expect(
-      impostorModule.validate(state, { tipo: 'votar', aQuien: 'ana' }, 'ana', SEATS)?.code,
+      impostorModule.validate(state, { tipo: 'votar', aQuien: quien }, quien, SEATS)?.code,
     ).toBe('ni-de-broma');
   });
 
   it('pillar al impostor gana la ronda para la tripulación', () => {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'cris');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'bea');
+    const state = votarSegun(enVotacion(), { ana: 'bea', cris: 'bea', bea: 'ana' });
 
     expect(state.fase).toBe('fin');
     expect(state.expulsado).toBe('bea');
@@ -251,32 +293,48 @@ describe('la votación', () => {
     expect(state.marcador).toEqual({ ana: 1, cris: 1 });
   });
 
-  it('echar a un inocente gana la ronda para el impostor', () => {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'cris' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'cris' }, 'bea');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'cris');
+  it('echar a un inocente con tres deja uno contra uno y gana el impostor', () => {
+    const state = votarSegun(enVotacion(), { ana: 'cris', bea: 'cris', cris: 'bea' });
 
     expect(state.desenlace).toBe('impostores');
     expect(state.marcador).toEqual({ bea: 1 });
   });
 
-  it('el empate no echa a nadie y lo aprovecha el impostor', () => {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'cris' }, 'bea');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'cris');
+  it('echar a un inocente con gente de sobra sigue la caza', () => {
+    const cuatro: Seat[] = [
+      ...SEATS,
+      { id: 'dani', displayName: 'Dani', isBot: false, connected: true, order: 3 },
+    ];
+    const reparto: ImpostorAction = {
+      ...REPARTO,
+      orden: ['ana', 'bea', 'cris', 'dani'],
+    };
+    let state = impostorModule.createState(cuatro, { tema: 'comida' });
+    for (const seat of cuatro) state = impostorModule.apply(state, { tipo: 'listo' }, seat.id, cuatro);
+    state = impostorModule.apply(state, reparto, 'ana', cuatro);
+    for (const seat of state.orden) {
+      state = impostorModule.apply(state, { tipo: 'pista', texto: 'horno' }, seat, cuatro);
+    }
+    state = impostorModule.apply(state, { tipo: 'alVoto' }, 'ana', cuatro);
+    state = votarSegun(state, { ana: 'dani', bea: 'dani', cris: 'dani', dani: 'ana' }, cuatro);
+
+    expect(state.fase).toBe('pistas');
+    expect(state.eliminados).toEqual(['dani']);
+    expect(state.orden).not.toContain('dani');
+    expect(state.orden).toHaveLength(3);
+    expect(state.desenlace).toBeNull();
+  });
+
+  it('el empate no echa a nadie y se vuelve a hablar', () => {
+    const state = votarSegun(enVotacion(), { ana: 'bea', bea: 'cris', cris: 'ana' });
 
     expect(state.expulsado).toBeNull();
-    expect(state.desenlace).toBe('impostores');
+    expect(state.fase).toBe('pistas');
+    expect(state.desenlace).toBeNull();
   });
 
   it('al acabar se destapan la palabra y los impostores', () => {
-    let state = enVotacion();
-    for (const seat of ['ana', 'cris']) {
-      state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, seat);
-    }
-    state = aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'bea');
+    const state = votarSegun(enVotacion(), { ana: 'bea', cris: 'bea', bea: 'ana' });
 
     const vista = vistaDe(state, 'cris');
     expect(vista.palabra).toBe('Pizza');
@@ -287,10 +345,7 @@ describe('la votación', () => {
 describe('la revancha', () => {
   /** La ronda con Bea pillada y el disparo abierto. */
   function pillada(): ImpostorState {
-    let state = enVotacion('revancha');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'cris');
-    return aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'bea');
+    return votarSegun(enVotacion('revancha'), { ana: 'bea', cris: 'bea', bea: 'ana' });
   }
 
   it('pillar al impostor no acaba la ronda: le abre el disparo', () => {
@@ -327,20 +382,14 @@ describe('la revancha', () => {
   });
 
   it('en el modo clásico pillarle acaba la ronda y no hay disparo', () => {
-    let state = enVotacion('clasico');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'cris');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'bea');
+    const state = votarSegun(enVotacion('clasico'), { ana: 'bea', cris: 'bea', bea: 'ana' });
     expect(state.fase).toBe('fin');
   });
 });
 
 describe('otra ronda', () => {
   function acabada(): ImpostorState {
-    let state = enVotacion();
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'ana');
-    state = aplicar(state, { tipo: 'votar', aQuien: 'bea' }, 'cris');
-    return aplicar(state, { tipo: 'votar', aQuien: 'ana' }, 'bea');
+    return votarSegun(enVotacion(), { ana: 'bea', cris: 'bea', bea: 'ana' });
   }
 
   it('solo la pide el anfitrión, y solo con la ronda acabada', () => {
@@ -424,8 +473,10 @@ describe('los bots', () => {
 
   it('votan a alguien que no son ellos mismos', () => {
     const state = enVotacion();
-    const voto = impostorModule.botAction?.(state, 'ana', SEATS);
+    const quien = enElSitio(state.orden, state.turno);
+    const voto = impostorModule.botAction?.(state, quien, SEATS);
     expect(voto?.tipo).toBe('votar');
-    expect(voto?.tipo === 'votar' ? voto.aQuien : '').not.toBe('ana');
+    expect(voto?.tipo === 'votar' ? voto.aQuien : '').not.toBe(quien);
+    expect(impostorModule.botAction?.(state, elOtro(state.orden, quien), SEATS)).toBeNull();
   });
 });

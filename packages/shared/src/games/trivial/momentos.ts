@@ -80,10 +80,16 @@ function trasLaRonda(antes: TrivialState, ahora: TrivialState): Comentario {
   if (tipo === 'bomba') {
     const quien = antes.turno;
     const suya = quien && ronda ? respuestaDe(ronda.respuestas, quien) : undefined;
-    const acierta = suya && ronda ? aciertaCon(ronda.pregunta, suya.valor) : false;
-    return acierta
-      ? { momento: 'pasaLaBomba', quien, puntos: ahora.mecha }
-      : { momento: 'explota', quien, puntos: ahora.puntos[quien ?? ''] ?? 0 };
+
+    // Ronda cerrada y sin respuesta suya: se le acabó la mecha en la mano. Es
+    // la única forma de que una bomba se cierre sin que nadie conteste.
+    if (!suya) return { momento: 'explota', quien, puntos: ahora.puntos[quien ?? ''] ?? 0 };
+
+    // Cuánta mecha queda no se dice: ni el presentador lo sabe, y contarlo
+    // sería la única forma de que la mesa pudiera calcular a quién le toca.
+    return ronda && aciertaCon(ronda.pregunta, suya.valor)
+      ? { momento: 'pasaLaBomba', quien, puntos: 0 }
+      : { momento: 'seLaQueda', quien, puntos: 0 };
   }
 
   // Una racha larga es lo que hay que subrayar en la ráfaga.
@@ -175,7 +181,9 @@ function haRemontado(antes: TrivialState, ahora: TrivialState, seat: SeatId): bo
 function elQueSeHunde(state: TrivialState): SeatId | null {
   if (state.orden.length < 2) return null;
   const [, mejor] = lider(state);
-  const ultimo = [...state.orden].sort((a, b) => (state.puntos[a] ?? 0) - (state.puntos[b] ?? 0)).at(0);
+  const ultimo = [...state.orden]
+    .sort((a, b) => (state.puntos[a] ?? 0) - (state.puntos[b] ?? 0))
+    .at(0);
   if (!ultimo) return null;
   return mejor - (state.puntos[ultimo] ?? 0) >= 250 ? ultimo : null;
 }

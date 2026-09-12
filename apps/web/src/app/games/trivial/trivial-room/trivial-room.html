@@ -1,6 +1,8 @@
 <app-plato
   [callado]="callado()"
   [rotulo]="rotuloDeArriba"
+  [cuadro]="cuadro"
+  [sacude]="sacudiendo()"
   (alterna)="alternarSonido()"
   (sale)="volver()"
 >
@@ -9,6 +11,10 @@
   }
 
   @if (vista(); as v) {
+    @if (v.cierraEn !== 0 && !v.cerrada) {
+      <app-cronometro [cierraEn]="v.cierraEn" [duracionMs]="duracionMs" />
+    }
+
     <!-- Arriba: el presentador. Lo que dice y la cara que pone los manda el
          servidor, así que los cinco de la mesa ven y leen lo mismo. -->
     <app-presentador [dice]="v.dice" [momento]="v.momento" />
@@ -38,23 +44,32 @@
           (apuesta)="apostar($event)"
         />
       } @else {
-        @if (v.cierraEn !== 0 && !v.cerrada) {
-          <app-cronometro [cierraEn]="v.cierraEn" [duracionMs]="duracionMs" />
-        }
-
         @if (v.tipo === 'bomba' && !v.cerrada) {
           <p class="bomba" [class.tuya]="v.tuTurno">
             @if (v.tuTurno) {
               <strong>¡La bomba la tienes tú!</strong> Contesta y pásala.
             } @else {
-              La tiene <strong>{{ quienTieneLaBomba }}</strong>. Tú mira.
+              La tiene <strong>{{ quienTieneLaBomba }}</strong
+              >. Tú mira.
             }
-            <span class="mecha">Mecha: {{ v.mecha }}</span>
+            <!-- Una mecha que arde y no dice cuánto queda. No es adorno: si
+                 aquí saliera un número, la mesa contaría y sabría a quién le
+                 va a tocar, que es exactamente lo que no puede saberse. -->
+            <span class="mecha" aria-hidden="true"><i></i></span>
+            <span class="solo-lectores">La mecha está encendida y nadie sabe cuánto queda.</span>
           </p>
         }
 
+        <!-- El `@for` sobre un solo número no es un rodeo: al cambiar la
+             racha, Angular tira el párrafo y pone otro, y con el elemento
+             nuevo vuelve a empezar la animación. Un contador que sube sin
+             moverse no cuenta que estás en racha. -->
         @if (v.tipo === 'rafaga' && v.racha > 0) {
-          <p class="racha">Llevas <strong>{{ v.racha }}</strong> seguidas. Multiplicador activo.</p>
+          @for (sube of [v.racha]; track sube) {
+            <p class="racha" [attr.data-racha]="sube">
+              Llevas <strong>{{ sube }}</strong> seguidas. Multiplicador activo.
+            </p>
+          }
         }
 
         <app-panel-pregunta
@@ -68,6 +83,7 @@
           [correcta]="v.correcta"
           [tuRespuesta]="v.tuRespuesta"
           [explicacion]="v.explicacion"
+          [paso]="destapa()"
           [sePuedeImpugnar]="v.inventadas"
           [impugnan]="v.impugnan"
           [hacenFalta]="v.hacenFalta"
@@ -76,10 +92,17 @@
           (impugna)="impugnar()"
         />
 
-        @if (v.cerrada) {
-          <button type="button" class="principal" (click)="siguiente()">
-            {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
-          </button>
+        <!-- El botón de seguir no sale hasta que la respuesta está destapada:
+             si sale antes, medio plató lo pulsa sin haberla mirado. Y en las
+             pruebas de ritmo no sale nunca: esas pasan solas. -->
+        @if (v.cerrada && yaSeExplica) {
+          @if (pasaSola) {
+            <p class="pie pasando">{{ loQueViene }}</p>
+          } @else {
+            <button type="button" class="principal" (click)="siguiente()">
+              {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}
+            </button>
+          }
         } @else if (esperandoAlResto) {
           <p class="pie">Contestado. Esperando al resto…</p>
         }

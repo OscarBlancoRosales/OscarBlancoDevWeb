@@ -1,9 +1,21 @@
-<section class="escenario">
+<section class="escenario" [class.sacude]="sacude">
+  <!-- El plató de verdad, si el navegador puede con él. Si no puede, no pinta
+       nada y se queda el decorado de CSS de debajo, que sigue estando. -->
+  <app-escenario3d [cuadro]="cuadro" />
+
   <div class="focos" aria-hidden="true"></div>
   <div class="suelo" aria-hidden="true"></div>
 
   <header class="marquesina">
     <span class="donde">{{ rotulo }}</span>
+
+    <!-- El reloj vive en la cabecera y no en medio del juego: ahí no le quita
+         sitio a la pregunta ni se le monta encima al bocadillo, que es lo que
+         pasaba en el móvil. -->
+    <span class="reloj">
+      <ng-content select="app-cronometro" />
+    </span>
+
     <span class="mandos">
       <button
         type="button"

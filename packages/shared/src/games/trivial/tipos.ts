@@ -25,6 +25,15 @@ export type TipoPrueba =
   // La última del programa: se apuesta antes de verla y se cobra o se paga lo
   // apostado. Es la única que puede dar la vuelta a un marcador entero.
   | 'final';
+/**
+ * De qué va el programa.
+ *
+ * Son dos juegos distintos y mezclarlos no es variedad, es incoherencia: nadie
+ * quiere que entre «¿qué devuelve typeof null?» y «¿en qué año fue la peste
+ * negra?» en la misma tanda. Se elige al abrir la sala y no se mezcla.
+ */
+export type Tema = 'dev' | 'general';
+
 export type Fase = 'presentacion' | 'ronda' | 'resultado' | 'apuestas' | 'fin';
 export type NivelBot = 'pardillo' | 'apanado' | 'sabelotodo';
 
@@ -62,6 +71,14 @@ export interface Pregunta {
    * posición para que el programa vaya subiendo de la primera a la última.
    */
   readonly dificultad?: 1 | 2 | 3 | 4 | 5;
+  /**
+   * De qué baraja es. Sin declarar, de programación.
+   *
+   * El banco nació siendo solo de dev y se queda como estaba: así una pregunta
+   * nueva de programación no tiene que acordarse de ponerlo, y una de cultura
+   * general sí, que es la que se cuela donde no debe.
+   */
+  readonly tema?: Tema;
 }
 
 /**
@@ -107,12 +124,20 @@ export interface TrivialState {
   /** Quién tiene la bomba ahora mismo. Fuera de esa prueba, `null`. */
   readonly turno: SeatId | null;
   /**
-   * Respuestas que le quedan a la bomba antes de estallar.
+   * Cuándo estalla la bomba, en milisegundos de reloj de servidor.
    *
-   * Baja con cada acierto y no se reparte por turnos: la gracia es que nadie
-   * sabe si le va a tocar a él, que es lo que hace que se conteste con prisa.
+   * Una mecha es tiempo, no turnos. Antes era un contador de respuestas que
+   * bajaba a la vista de todos, y eso tiene un problema de fondo: con cuatro
+   * jugadores y tres de mecha, la mesa sabe desde ya a quién le va a estallar.
+   * Contando, la bomba deja de dar miedo.
+   *
+   * Ahora dura un rato al azar, corre mientras se juega y estalla en las manos
+   * de quien la tenga en ese momento. Este número no sale en la vista: si el
+   * navegador lo supiera, el que abriera las devtools sabría cuándo soltarla.
+   *
+   * Cero es «no hay mecha encendida».
    */
-  readonly mecha: number;
+  readonly revienta: number;
 
   /**
    * Cuándo se cierra sola la ronda, en milisegundos de reloj de servidor.
@@ -174,18 +199,23 @@ export function rondaEn(state: TrivialState, i: number): Ronda | undefined {
 export const TrivialAction = Type.Union([
   Type.Object({ tipo: Type.Literal('empezar') }, SIN_EXTRAS),
   Type.Object(
-    { tipo: Type.Literal('responder'), valor: Type.Integer({ minimum: -1_000_000_000, maximum: 1_000_000_000 }) },
+    {
+      tipo: Type.Literal('responder'),
+      valor: Type.Integer({ minimum: -1_000_000_000, maximum: 1_000_000_000 }),
+    },
     SIN_EXTRAS,
   ),
   Type.Object({ tipo: Type.Literal('siguiente') }, SIN_EXTRAS),
   // Las pone el servidor: la hora de cierre la decide él porque es el único
   // reloj que la mesa comparte, y porque un cronómetro que corre en el
   // navegador es un cronómetro que se para con las devtools abiertas.
-  Type.Object(
-    { tipo: Type.Literal('reloj'), hasta: Type.Integer({ minimum: 0 }) },
-    SIN_EXTRAS,
-  ),
+  Type.Object({ tipo: Type.Literal('reloj'), hasta: Type.Integer({ minimum: 0 }) }, SIN_EXTRAS),
   Type.Object({ tipo: Type.Literal('tiempo') }, SIN_EXTRAS),
+  // La mecha también la enciende el servidor, y con ella el instante en que
+  // estalla: cuánto dura se decide al azar ahí y viaja en la jugada, así que
+  // el registro de la partida se vuelve a reproducir tal cual pasó.
+  Type.Object({ tipo: Type.Literal('mecha'), hasta: Type.Integer({ minimum: 0 }) }, SIN_EXTRAS),
+  Type.Object({ tipo: Type.Literal('estalla') }, SIN_EXTRAS),
   Type.Object(
     { tipo: Type.Literal('apostar'), cuanto: Type.Integer({ minimum: 0, maximum: 1_000_000 }) },
     SIN_EXTRAS,
@@ -239,9 +269,13 @@ export interface TrivialView {
   readonly explicacion: string | null;
   readonly resultados: readonly ResultadoDeRonda[] | null;
 
-  /** Quién tiene la bomba, y cuánto le queda. Fuera de la bomba, `null` y 0. */
+  /**
+   * Quién tiene la bomba. Fuera de la bomba, `null`.
+   *
+   * Cuánto le queda de mecha no se manda, y esa ausencia es la regla: nadie
+   * puede calcular si le va a estallar a él, ni mirando la red.
+   */
   readonly turno: SeatId | null;
-  readonly mecha: number;
   /** Cuándo se cierra la ronda. Cero mientras no haya reloj puesto. */
   readonly cierraEn: number;
   /** Quién ha apostado ya. Nunca cuánto, mientras la fase siga abierta. */

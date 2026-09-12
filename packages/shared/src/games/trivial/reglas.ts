@@ -28,9 +28,22 @@ export const CASTIGO_PULSA = 50;
 export const PUNTOS_RAFAGA = 40;
 export const RACHA_MAXIMA = 5;
 
-/** Acertar con la bomba en la mano, y lo que cuesta que te estalle. */
+/** Acertar con la bomba en la mano, y lo que cuesta que te estalle encima. */
 export const PUNTOS_BOMBA = 60;
 export const CASTIGO_BOMBA = 120;
+
+/**
+ * Entre cuánto y cuánto dura una mecha, en segundos.
+ *
+ * Al azar dentro de esta horquilla, y sin decírselo a nadie. Es ancha a
+ * propósito: si todas las mechas duraran parecido, a la tercera bomba la mesa
+ * ya sabría contar, y contar es justo lo que aquí no se puede poder hacer.
+ *
+ * El suelo da para varias preguntas -si no, estallaría siempre en el primero,
+ * que no tiene ninguna gracia- y el techo evita la mecha eterna.
+ */
+export const MECHA_MINIMA = 18;
+export const MECHA_MAXIMA = 45;
 
 export function aciertaCon(pregunta: Pregunta, valor: number): boolean {
   return valor === pregunta.correcta;
@@ -75,7 +88,10 @@ export function puntosDe(
   }
 
   if (pregunta.tipo === 'bomba') {
-    return acierta ? PUNTOS_BOMBA : -CASTIGO_BOMBA;
+    // Fallar no resta: lo que cuesta puntos es que te estalle. Restar aquí
+    // además sería cobrar dos veces por lo mismo, porque quien falla se queda
+    // la bomba y encima sigue corriéndole la mecha.
+    return acierta ? PUNTOS_BOMBA : 0;
   }
 
   if (!acierta) return 0;
@@ -157,7 +173,11 @@ export const SEGUNDOS_POR_PRUEBA: Readonly<Record<TipoPrueba, number>> = {
   estimacion: 30,
   pulsa: 15,
   rafaga: 10,
-  bomba: 12,
+  // La bomba no lleva plazo por pregunta, y el cero es lo que lo dice: lo que
+  // corre ahí es la mecha, que viene de la pregunta anterior y sigue en la
+  // siguiente. Poner además un cronómetro por pregunta era contar dos veces el
+  // mismo tiempo, y encima enseñar el que no importa.
+  bomba: 0,
   // Con todo en juego se piensa, así que algo más que una pregunta normal.
   final: 30,
 };
@@ -170,3 +190,30 @@ export const SEGUNDOS_POR_PRUEBA: Readonly<Record<TipoPrueba, number>> = {
  * mirando el marcador.
  */
 export const SEGUNDOS_PARA_APOSTAR = 45;
+
+/**
+ * Lo que se espera antes de pasar sola a la ronda siguiente. Cero: no pasa.
+ *
+ * Hay dos clases de prueba y este número es lo que las separa. Unas van de
+ * saber: se contesta, se lee por qué, y se sigue cuando la mesa quiera. Otras
+ * van de ritmo -reflejos, racha, mecha corriendo- y en esas el botón de
+ * «siguiente» es el enemigo: deja que quien va con la bomba en la mano se tome
+ * todo el tiempo del mundo justo cuando la gracia es no tenerlo, y convierte
+ * una ráfaga en una tanda de preguntas con pausas.
+ *
+ * Tres segundos es lo que cuesta ver quién ha acertado y a quién le cae
+ * encima. En la ráfaga, medio menos: ahí es que no dé tiempo ni a respirar.
+ */
+export const SEGUNDOS_PARA_PASAR: Readonly<Record<TipoPrueba, number>> = {
+  test: 0,
+  fallo: 0,
+  estimacion: 0,
+  // Va de reflejos: se cierra en cuanto alguien acierta, y pararla ahí a
+  // esperar un clic apaga justo lo que la hace rápida.
+  pulsa: 3,
+  // Es una ráfaga. Un botón entre disparo y disparo no es una ráfaga.
+  rafaga: 2.5,
+  bomba: 3,
+  // La última pregunta del programa: de ahí se sale al podio, no a otra ronda.
+  final: 0,
+};

@@ -96,6 +96,8 @@ export class RoomActor {
    * de otra hasta reventar la pila.
    */
   private moviendoBots = false;
+  /** El próximo turno de un bot, si este juego pide pausa entre jugadas. */
+  private botReloj: ReturnType<typeof setTimeout> | null = null;
 
   private readonly narrador: Narrador | null;
 
@@ -425,12 +427,39 @@ export class RoomActor {
    */
   private dejarJugarALosBots(): void {
     if (this.moviendoBots) return;
+    if (this.botReloj) {
+      clearTimeout(this.botReloj);
+      this.botReloj = null;
+    }
+    const pausa = this.pausaDeBot();
     this.moviendoBots = true;
     try {
-      moverBots(this, this.module);
+      // Con pausa, una jugada cada vez: si no, cuatro bots sueltan pista y voto
+      // en el mismo tick y el turno no se ve.
+      moverBots(this, this.module, pausa > 0 ? 1 : undefined);
     } finally {
       this.moviendoBots = false;
     }
+    if (pausa > 0 && this.unBotQuiereJugar()) {
+      this.botReloj = setTimeout(() => {
+        this.botReloj = null;
+        this.dejarJugarALosBots();
+      }, pausa);
+      this.botReloj.unref();
+    }
+  }
+
+  private pausaDeBot(): number {
+    if (process.env['NODE_ENV'] === 'test') return 0;
+    return this.module.botEntreJugadasMs ?? 0;
+  }
+
+  private unBotQuiereJugar(): boolean {
+    if (!this.module.botAction) return false;
+    return this.seats.some(
+      (asiento) =>
+        asiento.isBot && this.module.botAction?.(this.state, asiento.id, this.seats) != null,
+    );
   }
 
   /**
@@ -526,6 +555,10 @@ export class RoomActor {
   flush(): void {
     // Quien vigila con reloj se va con la sala: un temporizador suelto sobre
     // una sala descargada seguiría hablándole a nadie.
+    if (this.botReloj) {
+      clearTimeout(this.botReloj);
+      this.botReloj = null;
+    }
     this.narrador?.parar?.();
     if (this.state === null) return;
     this.repository.saveSnapshot(

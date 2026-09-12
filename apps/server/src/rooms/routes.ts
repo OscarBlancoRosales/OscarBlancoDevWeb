@@ -52,7 +52,7 @@ export function roomRoutes({ service, jwtSecret }: RoomRoutesOptions): FastifyPl
         schema: { body: CreateRoomRequest, response: { 201: SeatGrant } },
       },
       async (request, reply) => {
-        const grant = service.crear({
+        const grant = await service.crear({
           game: request.body.game,
           name: request.body.name,
           displayName: request.body.displayName,
