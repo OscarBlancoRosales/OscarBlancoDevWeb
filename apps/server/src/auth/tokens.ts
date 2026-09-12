@@ -75,6 +75,14 @@ export function verifyPayload<T extends Expirable>(
 
 export interface AccessTokenPayload extends Expirable {
   readonly userId: string;
+  /**
+   * Cuándo se firmó, para poder invalidarlo antes de que caduque.
+   *
+   * Opcional al leerlo: los que ya están en la calle se firmaron sin esto, y
+   * exigirlo echaría a todo el mundo en el despliegue que lo estrene. Sin el
+   * dato cuenta como cero, que solo pierde contra una marca puesta a posta.
+   */
+  readonly emitidoEn?: number;
 }
 
 export function isAccessToken(value: unknown): value is AccessTokenPayload {

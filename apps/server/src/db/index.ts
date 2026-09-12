@@ -5,6 +5,7 @@ import { sql as inicial } from './migrations/001-inicial';
 import { sql as asientosYChat } from './migrations/002-asientos-y-chat';
 import { sql as chatPrivado } from './migrations/003-chat-privado';
 import { sql as adminEInvitaciones } from './migrations/004-admin-e-invitaciones';
+import { sql as accesos } from './migrations/005-accesos';
 
 export type Db = Database.Database;
 
@@ -14,6 +15,7 @@ const MIGRATIONS: readonly { readonly name: string; readonly sql: string }[] = [
   { name: '002-asientos-y-chat', sql: asientosYChat },
   { name: '003-chat-privado', sql: chatPrivado },
   { name: '004-admin-e-invitaciones', sql: adminEInvitaciones },
+  { name: '005-accesos', sql: accesos },
 ];
 
 /**

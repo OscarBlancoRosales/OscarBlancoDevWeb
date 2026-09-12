@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { ApiClient } from './api-client';
 import type {
+  Acceso,
+  AccesoList,
   AdminRoom,
   AdminRoomList,
   BorrarSalasRequest,
@@ -59,6 +61,24 @@ export class AdminApiService {
 
   async revocarInvitacion(id: string): Promise<void> {
     await this.api.request<OkResponse>({ method: 'DELETE', path: `/admin/invitaciones/${id}` });
+  }
+
+  async accesos(): Promise<readonly Acceso[]> {
+    return (await this.api.request<AccesoList>({ method: 'GET', path: '/admin/accesos' })).accesos;
+  }
+
+  /** Cierra un aparato. Los demás de esa persona siguen dentro. */
+  async cerrarAcceso(id: string): Promise<void> {
+    await this.api.request<OkResponse>({ method: 'DELETE', path: `/admin/accesos/${id}` });
+  }
+
+  /** Echa a alguien de todas partes, con efecto en la siguiente petición. */
+  async forzarRelogin(userId: string): Promise<void> {
+    await this.api.request<OkResponse>({
+      method: 'POST',
+      path: `/admin/usuarios/${userId}/relogin`,
+      body: {},
+    });
   }
 
   async salas(): Promise<readonly AdminRoom[]> {

@@ -25,7 +25,9 @@
         }
       </nav>
 
-      @if (pestana() === 'salas') {
+      @if (pestana() === 'accesos') {
+        <app-accesos />
+      } @else if (pestana() === 'salas') {
         <app-salas />
       } @else if (pestana() === 'sesiones') {
         <app-sesiones />

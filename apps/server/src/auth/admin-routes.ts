@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import {
+  AccesoList,
   AdminRoomList,
   BorrarSalasRequest,
   ChangeStatusRequest,
@@ -18,6 +19,7 @@ import type { AuthService } from './service';
 const UserParams = Type.Object({ userId: Type.String({ minLength: 1, maxLength: 64 }) });
 const InvitationParams = Type.Object({ id: Type.String({ minLength: 1, maxLength: 64 }) });
 const RoomParams = Type.Object({ roomId: Type.String({ minLength: 1, maxLength: 64 }) });
+const AccesoParams = Type.Object({ id: Type.String({ minLength: 1, maxLength: 64 }) });
 const SeatParams = Type.Object({
   roomId: Type.String({ minLength: 1, maxLength: 64 }),
   seatId: Type.String({ minLength: 1, maxLength: 64 }),
@@ -94,6 +96,48 @@ export function adminRoutes(service: AuthService, rooms: RoomService): FastifyPl
       },
       async (request, reply) => {
         service.revocarInvitacion(request.params.id);
+        await reply.send({ ok: true });
+      },
+    );
+
+    // ===== LOS ACCESOS =====
+
+    /**
+     * Qué aparatos hay dentro y desde dónde.
+     *
+     * Va agrupado por familia de refrescos, que es lo que una persona reconoce
+     * como «mi portátil»: cada renovación escribe una fila, así que la tabla en
+     * bruto son cientos por sesión y no se administra nada con eso.
+     */
+    app.get(
+      '/admin/accesos',
+      { onRequest: app.requireAdmin, schema: { response: { 200: AccesoList } } },
+      async (_request, reply) => {
+        await reply.send({ accesos: [...service.listarAccesos()] });
+      },
+    );
+
+    app.delete(
+      '/admin/accesos/:id',
+      { onRequest: app.requireAdmin, schema: { params: AccesoParams, response: { 200: OkResponse } } },
+      async (request, reply) => {
+        service.cerrarAcceso(request.params.id);
+        await reply.send({ ok: true });
+      },
+    );
+
+    /**
+     * Fuera de todas partes, ahora mismo.
+     *
+     * Es lo único que se lleva por delante también el acceso ya firmado: sin
+     * eso, «forzar relogin» significaría «dentro de un rato», que es justo lo
+     * que no sirve el día que hace falta.
+     */
+    app.post(
+      '/admin/usuarios/:userId/relogin',
+      { onRequest: app.requireAdmin, schema: { params: UserParams, response: { 200: OkResponse } } },
+      async (request, reply) => {
+        service.forzarRelogin(request.params.userId);
         await reply.send({ ok: true });
       },
     );

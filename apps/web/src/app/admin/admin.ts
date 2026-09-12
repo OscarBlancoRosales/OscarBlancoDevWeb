@@ -7,13 +7,14 @@ import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
 import { Sesiones } from './sesiones/sesiones';
 import { Consola } from './consola/consola';
 import { Salas } from './salas/salas';
+import { Accesos } from './accesos/accesos';
 import { I18nService } from '../services/i18n.service';
 import type { CreatedInvitation, Invitation } from '@devweb/shared/contracts/admin';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
 
 const DIAS_POR_DEFECTO = 7;
 
-const PESTANAS = ['gente', 'salas', 'sesiones', 'consola'] as const;
+const PESTANAS = ['gente', 'accesos', 'salas', 'sesiones', 'consola'] as const;
 type Pestana = (typeof PESTANAS)[number];
 
 /**
@@ -26,7 +27,7 @@ type Pestana = (typeof PESTANAS)[number];
  */
 @Component({
   selector: 'app-admin',
-  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones, Consola, Salas],
+  imports: [FormsModule, RouterLink, TerminalLayout, Sesiones, Consola, Salas, Accesos],
   templateUrl: './admin.html',
   styleUrl: './admin.css',
 })

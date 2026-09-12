@@ -12,6 +12,8 @@ export interface UserRow {
   readonly status: UserStatus;
   readonly role: UserRole;
   readonly createdAt: number;
+  /** Todo acceso firmado antes de esta marca deja de valer. Cero es ninguno. */
+  readonly sessionsInvalidBefore: number;
 }
 
 /**
@@ -37,6 +39,25 @@ export interface SessionRow {
   readonly revokedAt: number | null;
 }
 
+/**
+ * Una sesión vista desde el panel: un aparato, no una fila.
+ *
+ * Cada refresco escribe una fila nueva con la misma `family_id`, así que una
+ * sesión de un mes son cientos de filas. Lo que interesa es la familia: desde
+ * dónde se abrió, cuándo fue lo último y cuántas veces se ha renovado.
+ */
+export interface AccesoRow {
+  readonly familyId: string;
+  readonly userId: string;
+  readonly ip: string | null;
+  readonly userAgent: string | null;
+  readonly empezo: number;
+  readonly ultimo: number;
+  readonly expiraEn: number;
+  readonly revocadaEn: number | null;
+  readonly refrescos: number;
+}
+
 export interface EmailTokenRow {
   readonly tokenHash: string;
   readonly userId: string;
@@ -60,6 +81,11 @@ export interface AuthRepository {
   updatePassword(id: string, passwordHash: string): void;
 
   listUsers(): readonly UserRow[];
+  /** Echa fuera a alguien ahora mismo: sus accesos firmados dejan de valer. */
+  invalidarAccesosDe(id: string, at: number): void;
+
+  /** Las sesiones abiertas, una por aparato, la más reciente primero. */
+  listarAccesos(): readonly AccesoRow[];
   deleteUser(id: string): void;
   /** Deja como admin exactamente a esos correos, y a nadie más. */
   setAdmins(emails: readonly string[]): void;
@@ -91,6 +117,19 @@ interface UserRecord {
   status: UserStatus;
   role: UserRole;
   created_at: number;
+  sessions_invalid_before: number;
+}
+
+interface AccesoRecord {
+  family_id: string;
+  user_id: string;
+  ip: string | null;
+  user_agent: string | null;
+  empezo: number;
+  ultimo: number;
+  expira_en: number;
+  revocada_en: number | null;
+  refrescos: number;
 }
 
 interface InvitationRecord {
@@ -131,6 +170,20 @@ export function createAuthRepository(db: Db): AuthRepository {
     updateUserStatus: db.prepare('UPDATE users SET status = ? WHERE id = ?'),
     updatePassword: db.prepare('UPDATE users SET password_hash = ? WHERE id = ?'),
     listUsers: db.prepare('SELECT * FROM users ORDER BY created_at'),
+    invalidarAccesos: db.prepare('UPDATE users SET sessions_invalid_before = ? WHERE id = ?'),
+
+    // Una fila por familia: la primera apertura, el último refresco y de dónde
+    // vino ese último, que es el dato que dice dónde está ahora esa persona.
+    listarAccesos: db.prepare(
+      'SELECT family_id, user_id, MIN(created_at) AS empezo, MAX(created_at) AS ultimo,' +
+        ' MAX(expires_at) AS expira_en, COUNT(*) AS refrescos,' +
+        ' MIN(revoked_at) AS revocada_en,' +
+        ' (SELECT ip FROM sessions AS s2 WHERE s2.family_id = s.family_id' +
+        '   ORDER BY created_at DESC LIMIT 1) AS ip,' +
+        ' (SELECT user_agent FROM sessions AS s2 WHERE s2.family_id = s.family_id' +
+        '   ORDER BY created_at DESC LIMIT 1) AS user_agent' +
+        ' FROM sessions AS s GROUP BY family_id ORDER BY ultimo DESC',
+    ),
     deleteUser: db.prepare('DELETE FROM users WHERE id = ?'),
     quitarAdmins: db.prepare("UPDATE users SET role = 'user' WHERE role = 'admin'"),
     hacerAdmin: db.prepare("UPDATE users SET role = 'admin' WHERE email = ?"),
@@ -189,6 +242,22 @@ export function createAuthRepository(db: Db): AuthRepository {
       statements.updatePassword.run(passwordHash, id);
     },
 
+    invalidarAccesosDe(id, at) {
+      statements.invalidarAccesos.run(at, id);
+    },
+    listarAccesos() {
+      return (statements.listarAccesos.all() as AccesoRecord[]).map((row) => ({
+        familyId: row.family_id,
+        userId: row.user_id,
+        ip: row.ip,
+        userAgent: row.user_agent,
+        empezo: row.empezo,
+        ultimo: row.ultimo,
+        expiraEn: row.expira_en,
+        revocadaEn: row.revocada_en,
+        refrescos: row.refrescos,
+      }));
+    },
     listUsers() {
       return (statements.listUsers.all() as UserRecord[]).flatMap((row) => {
         const user = toUser(row);
@@ -307,6 +376,7 @@ function toUser(row: UserRecord | undefined): UserRow | null {
     status: row.status,
     role: row.role,
     createdAt: row.created_at,
+    sessionsInvalidBefore: row.sessions_invalid_before,
   };
 }
 

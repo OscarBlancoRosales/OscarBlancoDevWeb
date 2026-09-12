@@ -93,6 +93,34 @@ export const AdminRoom = Type.Object({
 export const AdminRoomList = Type.Object({ salas: Type.Array(AdminRoom) });
 
 /**
+ * Un aparato con la sesión abierta, no una fila de la base.
+ *
+ * Cada renovación escribe una fila nueva con la misma familia, así que un mes
+ * de uso son cientos: lo que se administra es el aparato. `ultimo` es el último
+ * refresco, que es la señal de actividad de verdad, y la IP y el navegador son
+ * los de ese último, no los del día que entró.
+ */
+export const Acceso = Type.Object({
+  id: Type.String(),
+  usuario: Type.Object({ id: Type.String(), email: Type.String(), displayName: Type.String() }),
+  ip: Type.String(),
+  /** Lo que se entiende del user-agent: «Chrome en Windows». */
+  aparato: Type.String(),
+  /** El user-agent tal cual, por si el resumen se queda corto. */
+  agente: Type.String(),
+  empezo: Type.Integer(),
+  ultimo: Type.Integer(),
+  expiraEn: Type.Integer(),
+  refrescos: Type.Integer(),
+  /** Cerrada a mano o por reutilización de un token ya gastado. */
+  revocada: Type.Boolean(),
+  /** Si además su acceso firmado ya no vale: se le echó en el acto. */
+  fueraDelTodo: Type.Boolean(),
+});
+
+export const AccesoList = Type.Object({ accesos: Type.Array(Acceso) });
+
+/**
  * El borrado en bloque, siempre con filtro.
  *
  * Sin ninguno se lleva todas, que es justo lo que no debe pasar por descuido:
@@ -117,6 +145,8 @@ export type AdminRoom = Static<typeof AdminRoom>;
 export type AdminRoomList = Static<typeof AdminRoomList>;
 export type BorrarSalasRequest = Static<typeof BorrarSalasRequest>;
 export type SalasBorradas = Static<typeof SalasBorradas>;
+export type Acceso = Static<typeof Acceso>;
+export type AccesoList = Static<typeof AccesoList>;
 export type ChangeStatusRequest = Static<typeof ChangeStatusRequest>;
 export type CreateInvitationRequest = Static<typeof CreateInvitationRequest>;
 export type CreatedInvitation = Static<typeof CreatedInvitation>;

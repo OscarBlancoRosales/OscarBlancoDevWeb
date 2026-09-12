@@ -1,0 +1,111 @@
+@if (cargando()) {
+  <p class="acc-nota">{{ i18n.t('acc.cargando') }}</p>
+} @else {
+  <div class="kpis">
+    <div class="kpi" [class.kpi--vivo]="dentro() > 0">
+      <div class="kpi-dato">{{ dentro() }}</div>
+      <div class="kpi-que">{{ i18n.t('acc.kpiAparatos') }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-dato">{{ personas() }}</div>
+      <div class="kpi-que">{{ i18n.t('acc.kpiPersonas') }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-dato">{{ sitios() }}</div>
+      <div class="kpi-que">{{ i18n.t('acc.kpiSitios') }}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-dato">{{ accesos().length }}</div>
+      <div class="kpi-que">{{ i18n.t('acc.kpiTotal') }}</div>
+    </div>
+  </div>
+
+  <div class="barra">
+    <input
+      class="input input--sm"
+      type="search"
+      name="busqueda"
+      [ngModel]="busqueda()"
+      (ngModelChange)="busqueda.set($event)"
+      [placeholder]="i18n.t('acc.buscar')"
+    />
+    <label class="acc-filtro">
+      <input
+        type="checkbox"
+        [checked]="soloVivos()"
+        (change)="soloVivos.set(!soloVivos())"
+      />
+      {{ i18n.t('acc.soloDentro') }}
+    </label>
+    <button type="button" class="btn btn--sm barra-fin" (click)="refrescar()">
+      {{ i18n.t('acc.refrescar') }}
+    </button>
+  </div>
+
+  <div class="tabla-marco">
+    <table class="tabla">
+      <thead>
+        <tr>
+          <th class="col-ancha">{{ i18n.t('cuenta.email') }}</th>
+          <th>{{ i18n.t('acc.aparato') }}</th>
+          <th>{{ i18n.t('acc.ip') }}</th>
+          <th>{{ i18n.t('acc.empezo') }}</th>
+          <th>{{ i18n.t('acc.ultimo') }}</th>
+          <th>{{ i18n.t('acc.refrescos') }}</th>
+          <th>{{ i18n.t('admin.state') }}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (acceso of filtrados(); track acceso.id) {
+          <tr>
+            <td class="col-ancha">
+              <span class="acc-nombre">{{ acceso.usuario.displayName }}</span>
+              <span class="acc-correo">{{ acceso.usuario.email }}</span>
+            </td>
+            <td>
+              <button type="button" class="acc-aparato" (click)="desplegar(acceso)">
+                {{ acceso.aparato }}
+              </button>
+            </td>
+            <td>{{ acceso.ip || '—' }}</td>
+            <td>{{ cuando(acceso.empezo) }}</td>
+            <td>{{ cuando(acceso.ultimo) }}</td>
+            <td>{{ acceso.refrescos }}</td>
+            <td><span [class]="'badge ' + claseDe(acceso)">{{ estadoDe(acceso) }}</span></td>
+            <td class="col-acciones">
+              @if (vivo(acceso)) {
+                <button type="button" class="btn btn--sm" (click)="cerrar(acceso)">
+                  {{ i18n.t('acc.cerrar') }}
+                </button>
+              }
+              <button type="button" class="btn btn--sm btn--danger" (click)="forzarRelogin(acceso)">
+                {{ confirmando() === acceso.usuario.id ? i18n.t('admin.sure') : i18n.t('acc.relogin') }}
+              </button>
+            </td>
+          </tr>
+
+          @if (desplegado() === acceso.id) {
+            <!-- El user-agent entero: el resumen se queda corto más veces de las que parece. -->
+            <tr class="acc-detalle">
+              <td colspan="8">
+                <code>{{ acceso.agente || i18n.t('acc.sinAgente') }}</code>
+                <span class="acc-caduca">{{ i18n.t('acc.caducaEl', { cuando: cuando(acceso.expiraEn) }) }}</span>
+              </td>
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td colspan="8" class="tabla-vacio">{{ i18n.t('acc.ninguno') }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <p class="acc-pie">{{ i18n.t('acc.pie') }}</p>
+}
+
+@if (error()) {
+  <p class="acc-error">{{ error() }}</p>
+}

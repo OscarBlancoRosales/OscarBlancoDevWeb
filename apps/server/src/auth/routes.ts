@@ -126,8 +126,9 @@ export function authRoutes({ service, config }: AuthRoutesOptions): FastifyPlugi
 }
 
 function accessTokenFor(userId: string, config: Config): string {
+  const ahora = Date.now();
   return signPayload(
-    { userId, expiresAt: Date.now() + config.ACCESS_TOKEN_TTL_SECONDS * 1000 },
+    { userId, emitidoEn: ahora, expiresAt: ahora + config.ACCESS_TOKEN_TTL_SECONDS * 1000 },
     config.JWT_SECRET,
   );
 }

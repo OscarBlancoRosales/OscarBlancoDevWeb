@@ -99,7 +99,7 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
     );
   }
 
-  registerAuthGuard(app, config.JWT_SECRET, (userId) => repository.findUserById(userId)?.role === 'admin');
+  registerAuthGuard(app, config.JWT_SECRET, (userId) => repository.findUserById(userId));
 
   await app.register(websocket, { options: { maxPayload: 64 * 1024 } });
 

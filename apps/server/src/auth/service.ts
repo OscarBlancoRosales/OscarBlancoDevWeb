@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { AppError } from '../errors';
 import { hashPassword, verifyPassword, wastePasswordTime } from './password';
 import { generateToken, hashToken } from './tokens';
+import { describirAparato } from './aparatos';
+import type { Acceso } from '@devweb/shared/contracts/admin';
 import type { Mailer } from './mailer';
 import type { AuthRepository, InvitationRow, UserRow } from './repository';
 import type { PublicUser } from '@devweb/shared/contracts/auth';
@@ -116,6 +118,7 @@ export class AuthService {
       status: 'pending',
       role: 'user',
       createdAt: this.now(),
+      sessionsInvalidBefore: 0,
     };
     this.repository.insertUser(user);
     // Se gasta aquí, no al verificar: si no, un mismo enlace daría de alta a
@@ -187,6 +190,58 @@ export class AuthService {
   }
 
   /** Crea una invitación de un solo uso y devuelve su enlace. */
+  // ===== LOS ACCESOS: qué aparatos están dentro y cómo echarlos =====
+
+  /**
+   * Los aparatos con sesión abierta, el más reciente primero.
+   *
+   * Se cruza con la lista de cuentas para poner cara y correo, y con la marca
+   * de invalidación para saber si, además de revocado el refresco, el acceso
+   * firmado tampoco vale ya.
+   */
+  listarAccesos(): readonly Acceso[] {
+    const porId = new Map(this.repository.listUsers().map((usuario) => [usuario.id, usuario]));
+
+    return this.repository.listarAccesos().flatMap((fila) => {
+      const usuario = porId.get(fila.userId);
+      if (!usuario) return [];
+
+      return [
+        {
+          id: fila.familyId,
+          usuario: { id: usuario.id, email: usuario.email, displayName: usuario.displayName },
+          ip: fila.ip ?? '',
+          aparato: describirAparato(fila.userAgent),
+          agente: fila.userAgent ?? '',
+          empezo: fila.empezo,
+          ultimo: fila.ultimo,
+          expiraEn: fila.expiraEn,
+          refrescos: fila.refrescos,
+          revocada: fila.revocadaEn !== null,
+          fueraDelTodo: usuario.sessionsInvalidBefore > fila.ultimo,
+        },
+      ];
+    });
+  }
+
+  /** Cierra un aparato: el de al lado sigue dentro. */
+  cerrarAcceso(familyId: string): void {
+    this.repository.revokeFamily(familyId, this.now());
+  }
+
+  /**
+   * Echa a alguien de todas partes, ahora mismo.
+   *
+   * Revocar los refrescos no basta: su acceso firmado sigue valiendo hasta que
+   * caduque, y en ese rato sigue trabajando como si nada. La marca es lo que
+   * hace que el guardia lo rechace en la siguiente petición.
+   */
+  forzarRelogin(userId: string): void {
+    const ahora = this.now();
+    this.repository.revokeAllForUser(userId, ahora);
+    this.repository.invalidarAccesosDe(userId, ahora);
+  }
+
   async crearInvitacion(input: {
     creadaPor: string;
     nota: string;

@@ -1,0 +1,76 @@
+.acc-nota {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.acc-filtro {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.acc-nombre {
+  display: block;
+  color: var(--bright);
+}
+
+.acc-correo {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* El resumen del user-agent se pulsa para ver el original. */
+.acc-aparato {
+  padding: 0;
+  background: none;
+  border: none;
+  border-bottom: 1px dotted var(--border);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.acc-aparato:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.acc-detalle td {
+  background: var(--bg-soft);
+  white-space: normal;
+}
+
+.acc-detalle code {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  word-break: break-all;
+}
+
+.acc-caduca {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.acc-pie {
+  margin-top: var(--sp-3);
+  color: var(--muted);
+  font-size: 11px;
+  max-width: 82ch;
+}
+
+.acc-error {
+  margin-top: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 2px solid currentColor;
+  color: var(--error);
+  font-size: 12px;
+}

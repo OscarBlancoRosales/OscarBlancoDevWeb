@@ -5,6 +5,7 @@ import { openDatabase } from '../db/index';
 import { invitacionDePrueba } from './testing';
 import type { FastifyInstance } from 'fastify';
 import type {
+  AccesoList,
   AdminRoomList,
   CreatedInvitation,
   InvitationList,
@@ -325,6 +326,90 @@ describe('el panel de administración', () => {
       expect(response.json<CreatedInvitation>().enlace).toContain('invitacion=');
       expect(response.json<CreatedInvitation>().enviadoA).toBeNull();
       await rota.close();
+    });
+  });
+
+  describe('los accesos', () => {
+    const accesos = async (token: string) =>
+      app.inject({ method: 'GET', url: '/admin/accesos', headers: como(token) });
+
+    it('se ve quién está dentro, con su aparato y desde dónde', async () => {
+      const lista = (await accesos(jefe)).json<AccesoList>().accesos;
+
+      expect(lista.length).toBeGreaterThanOrEqual(2);
+      expect(lista.map((uno) => uno.usuario.email)).toContain(CUALQUIERA.email);
+      expect(lista[0]?.refrescos).toBeGreaterThanOrEqual(1);
+    });
+
+    it('quien no manda no ve los de nadie', async () => {
+      expect((await accesos(cualquiera)).statusCode).toBe(404);
+    });
+
+    /**
+     * Lo que de verdad se pidió: que al pulsar, esa persona esté fuera. Con
+     * solo revocar el refresco seguiría trabajando con su acceso ya firmado
+     * hasta que caducara, que es justo el rato que importa.
+     */
+    it('forzar relogin echa a alguien en la siguiente petición, no cuando caduque', async () => {
+      const antes = await app.inject({ method: 'GET', url: '/auth/yo', headers: como(cualquiera) });
+      expect(antes.statusCode).toBe(200);
+
+      const victima = (await app.inject({ method: 'GET', url: '/admin/usuarios', headers: como(jefe) }))
+        .json<UserList>()
+        .users.find((uno) => uno.email === CUALQUIERA.email);
+
+      const forzado = await app.inject({
+        method: 'POST',
+        url: `/admin/usuarios/${victima?.id}/relogin`,
+        headers: como(jefe),
+      });
+      expect(forzado.statusCode).toBe(200);
+
+      const despues = await app.inject({ method: 'GET', url: '/auth/yo', headers: como(cualquiera) });
+      expect(despues.statusCode).toBe(401);
+    });
+
+    it('y no se lleva por delante a los demás', async () => {
+      const victima = (await app.inject({ method: 'GET', url: '/admin/usuarios', headers: como(jefe) }))
+        .json<UserList>()
+        .users.find((uno) => uno.email === CUALQUIERA.email);
+
+      await app.inject({
+        method: 'POST',
+        url: `/admin/usuarios/${victima?.id}/relogin`,
+        headers: como(jefe),
+      });
+
+      const yo = await app.inject({ method: 'GET', url: '/auth/yo', headers: como(jefe) });
+      expect(yo.statusCode).toBe(200);
+    });
+
+    it('cerrar un aparato deja fuera a ese y a ninguno más', async () => {
+      const mio = (await accesos(jefe)).json<AccesoList>().accesos.find(
+        (uno) => uno.usuario.email === CUALQUIERA.email,
+      );
+
+      const cerrado = await app.inject({
+        method: 'DELETE',
+        url: `/admin/accesos/${mio?.id}`,
+        headers: como(jefe),
+      });
+
+      expect(cerrado.statusCode).toBe(200);
+      const despues = (await accesos(jefe)).json<AccesoList>().accesos.find(
+        (uno) => uno.id === mio?.id,
+      );
+      expect(despues?.revocada).toBe(true);
+    });
+
+    it('quien no manda no puede echar a nadie', async () => {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/admin/usuarios/quien-sea/relogin',
+        headers: como(cualquiera),
+      });
+
+      expect(response.statusCode).toBe(404);
     });
   });
 
