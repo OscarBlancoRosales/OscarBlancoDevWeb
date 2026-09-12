@@ -136,8 +136,15 @@ function tarea(ctx: ContextoDelPresentador): string {
 
     case 'pasaLaBomba':
       return [
-        `${quien} ha contestado bien y ha pasado la bomba. Quedan ${ctx.cifra} respuestas de mecha.`,
-        'Mete prisa y tensión: esto va rápido y la bomba sigue viva.',
+        `${quien} ha contestado bien y ha pasado la bomba.`,
+        'Mete prisa y tensión: esto va rápido, la mecha corre y nadie sabe cuánto queda.',
+        'No te inventes cuánto queda: no lo sabes tú tampoco.',
+      ].join(' ');
+
+    case 'seLaQueda':
+      return [
+        `${quien} ha fallado, y con la bomba solo se suelta acertando: se la queda.`,
+        'Regodéate un poco, que se le está acabando el tiempo con ella en la mano.',
       ].join(' ');
 
     case 'explota':
@@ -196,7 +203,9 @@ function tarea(ctx: ContextoDelPresentador): string {
 /** El marcador y la mesa, en crudo, para que no tenga que inventarse nada. */
 function datos(ctx: ContextoDelPresentador): string {
   const mesa = ctx.jugadores
-    .map((uno, i) => `${i + 1}. ${uno.nombre}: ${uno.puntos} puntos${uno.esBot ? ' (es un bot)' : ''}`)
+    .map(
+      (uno, i) => `${i + 1}. ${uno.nombre}: ${uno.puntos} puntos${uno.esBot ? ' (es un bot)' : ''}`,
+    )
     .join('\n');
 
   return [
@@ -249,6 +258,7 @@ const LARGOS: Readonly<Record<Momento, number>> = {
   rachaBuena: 140,
 
   pasaLaBomba: 90,
+  seLaQueda: 110,
   explota: 120,
 
   seccionFinal: 280,

@@ -183,10 +183,119 @@ describe('el regidor', () => {
       const { actor, puestas } = actorFalso();
       const { antes, ahora } = contestada();
 
-      new RegidorDeSala(() => 0).trasJugada(actor, antes, ahora);
+      new RegidorDeSala(
+        () => 0,
+        () => 0,
+      ).trasJugada(actor, antes, ahora);
       vi.advanceTimersByTime(3_000);
 
-      expect(puestas).toEqual([{ tipo: 'tiempo' }]);
+      // Enciende la mecha -sigue habiendo bomba en pantalla- y pasa de ronda.
+      expect(puestas.filter((una) => una.tipo === 'tiempo')).toEqual([{ tipo: 'tiempo' }]);
+      vi.useRealTimers();
+    });
+
+    it('enciende la mecha al entrar en la sección', () => {
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+
+      // Con el dado a cero, la mecha dura lo mínimo: dieciocho segundos.
+      new RegidorDeSala(
+        () => 1_000,
+        () => 0,
+      ).trasJugada(actor, null, enBomba());
+
+      expect(puestas).toContainEqual({ tipo: 'mecha', hasta: 19_000 });
+      vi.useRealTimers();
+    });
+
+    it('pero no antes de empezar, que ahí todavía está entrando gente', () => {
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const sinEmpezar = trivialModule.createState(SEATS, {
+        preguntas: [{ ...preguntaDe('bomba'), id: 'bomba-1' }],
+        semilla: 7,
+      });
+
+      new RegidorDeSala(
+        () => 0,
+        () => 0,
+      ).trasJugada(actor, null, sinEmpezar);
+      vi.advanceTimersByTime(60_000);
+
+      expect(puestas).toEqual([]);
+      vi.useRealTimers();
+    });
+
+    it('y cuánto dura no es siempre lo mismo', () => {
+      // Si todas duraran parecido, a la tercera bomba la mesa sabría contar, y
+      // contar es justo lo que aquí no se puede poder hacer.
+      vi.useFakeTimers();
+      const corta = actorFalso();
+      const larga = actorFalso();
+
+      new RegidorDeSala(
+        () => 0,
+        () => 0,
+      ).trasJugada(corta.actor, null, enBomba());
+      new RegidorDeSala(
+        () => 0,
+        () => 1,
+      ).trasJugada(larga.actor, null, enBomba());
+
+      const deCorta = corta.puestas.find((una) => una.tipo === 'mecha')?.hasta ?? 0;
+      const deLarga = larga.puestas.find((una) => una.tipo === 'mecha')?.hasta ?? 0;
+
+      expect(deLarga).toBeGreaterThan(deCorta * 2);
+      vi.useRealTimers();
+    });
+
+    it('al acabarse, estalla', () => {
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+
+      new RegidorDeSala(
+        () => 0,
+        () => 0,
+      ).trasJugada(actor, null, enBomba());
+      vi.advanceTimersByTime(18_000);
+
+      expect(puestas.at(-1)).toEqual({ tipo: 'estalla' });
+      vi.useRealTimers();
+    });
+
+    it('y no se reinicia con cada pregunta', () => {
+      // La mecha corre por debajo de las rondas. Si cada pregunta la volviera
+      // a encender, no se acabaría nunca y no habría bomba.
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const regidor = new RegidorDeSala(
+        () => 0,
+        () => 0,
+      );
+      const { antes, ahora } = contestada();
+
+      regidor.trasJugada(actor, null, antes);
+      regidor.trasJugada(actor, antes, ahora);
+
+      expect(puestas.filter((una) => una.tipo === 'mecha')).toHaveLength(1);
+      vi.useRealTimers();
+    });
+
+    it('al salir de la bomba se apaga', () => {
+      // Una mecha que sobrevive a su sección estallaría en mitad de la final.
+      vi.useFakeTimers();
+      const { actor, puestas } = actorFalso();
+      const regidor = new RegidorDeSala(
+        () => 0,
+        () => 0,
+      );
+      const enBomba_ = enBomba();
+
+      regidor.trasJugada(actor, null, enBomba_);
+      regidor.trasJugada(actor, enBomba_, enRonda('test'));
+      vi.advanceTimersByTime(60_000);
+
+      expect(puestas.filter((una) => una.tipo === 'estalla')).toHaveLength(0);
       vi.useRealTimers();
     });
 
@@ -203,7 +312,10 @@ describe('el regidor', () => {
       // esa cuenta mandara, la bomba pasaría diez segundos tarde.
       vi.useFakeTimers();
       const { actor, puestas } = actorFalso();
-      const regidor = new RegidorDeSala(() => 0);
+      const regidor = new RegidorDeSala(
+        () => 0,
+        () => 0,
+      );
       const { antes, ahora } = contestada();
 
       regidor.trasJugada(actor, null, antes);
@@ -228,7 +340,7 @@ describe('el regidor', () => {
       regidor.trasJugada(actor, ahora, ahora);
       vi.advanceTimersByTime(3_000);
 
-      expect(puestas).toEqual([{ tipo: 'tiempo' }]);
+      expect(puestas.filter((una) => una.tipo === 'tiempo')).toHaveLength(1);
       vi.useRealTimers();
     });
   });

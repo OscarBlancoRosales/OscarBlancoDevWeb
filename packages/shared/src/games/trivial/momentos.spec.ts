@@ -213,10 +213,23 @@ describe('lo que comenta de la bomba', () => {
     expect(dicho?.quien).toBe('ana');
   });
 
-  it('y canta la explosión con nombre y apellidos', () => {
+  it('se regodea cuando se falla y no se suelta', () => {
+    // Fallar ya no la estalla: te la deja en la mano, que es peor.
     const antes = conLaBombaEnAna();
     const ahora = responde(antes, 'ana', FALLO);
     const dicho = comentarioDe(antes, ahora);
+
+    expect(dicho?.momento).toBe('seLaQueda');
+    expect(dicho?.quien).toBe('ana');
+  });
+
+  it('y canta la explosión con nombre y apellidos', () => {
+    // La bomba estalla porque se acaba la mecha, no porque se falle. Por eso
+    // la ronda se cierra sin que quien la tenía haya llegado a contestar.
+    const antes = conLaBombaEnAna();
+    const ahora = trivialModule.apply(antes, { tipo: 'estalla' }, 'ana', SEATS);
+    const dicho = comentarioDe(antes, ahora);
+
     expect(dicho?.momento).toBe('explota');
     expect(dicho?.quien).toBe('ana');
   });

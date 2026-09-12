@@ -27,7 +27,6 @@ const BASE: TrivialView = {
   explicacion: null,
   resultados: null,
   turno: null,
-  mecha: 0,
   cierraEn: 0,
   hanApostado: [],
   tuApuesta: null,

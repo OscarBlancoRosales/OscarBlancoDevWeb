@@ -52,7 +52,11 @@
               La tiene <strong>{{ quienTieneLaBomba }}</strong
               >. Tú mira.
             }
-            <span class="mecha">Mecha: {{ v.mecha }}</span>
+            <!-- Una mecha que arde y no dice cuánto queda. No es adorno: si
+                 aquí saliera un número, la mesa contaría y sabría a quién le
+                 va a tocar, que es exactamente lo que no puede saberse. -->
+            <span class="mecha" aria-hidden="true"><i></i></span>
+            <span class="solo-lectores">La mecha está encendida y nadie sabe cuánto queda.</span>
           </p>
         }
 

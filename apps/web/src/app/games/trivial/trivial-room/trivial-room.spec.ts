@@ -33,7 +33,6 @@ const BASE: TrivialView = {
   explicacion: null,
   resultados: null,
   turno: null,
-  mecha: 0,
   cierraEn: 0,
   hanApostado: [],
   tuApuesta: null,
@@ -209,7 +208,7 @@ describe('la mesa del concurso', () => {
 
     /** Saber de quién es la bomba de un vistazo, sin leer el nombre. */
     it('con la bomba, su atril se señala', () => {
-      pinta({ tipo: 'bomba', turno: 'otra', tuTurno: false, mecha: 3 });
+      pinta({ tipo: 'bomba', turno: 'otra', tuTurno: false });
       const dom = fixture.nativeElement as HTMLElement;
       const suyo = Array.from(dom.querySelectorAll('.atril')).find((atril) =>
         atril.textContent.includes('Bea'),
@@ -254,25 +253,30 @@ describe('la mesa del concurso', () => {
 
   describe('la bomba', () => {
     it('cuando la tienes tú, lo dice y puedes contestar', () => {
-      const texto = pinta({ tipo: 'bomba', turno: 'yo', tuTurno: true, mecha: 3 });
+      const texto = pinta({ tipo: 'bomba', turno: 'yo', tuTurno: true });
       expect(texto).toContain('La bomba la tienes tú');
       expect(botones().every((boton) => !boton.disabled)).toBe(true);
     });
 
     /** Si los cuatro pudieran pulsar, la bomba no sería de nadie. */
     it('cuando la tiene otro, se mira y no se toca', () => {
-      const texto = pinta({ tipo: 'bomba', turno: 'otra', tuTurno: false, mecha: 2 });
+      const texto = pinta({ tipo: 'bomba', turno: 'otra', tuTurno: false });
       expect(texto).toContain('Bea');
       expect(botones().every((boton) => boton.disabled)).toBe(true);
     });
 
-    it('la mecha se ve, para saber lo que queda', () => {
-      const texto = pinta({ tipo: 'bomba', turno: 'yo', tuTurno: true, mecha: 4 });
-      expect(texto).toContain('Mecha: 4');
+    it('la mecha arde pero no dice cuánto queda', () => {
+      // Un número que baja se puede contar, y contando se sabe a quién le va a
+      // estallar. Lo que se ve es una llama, que no significa nada.
+      const texto = pinta({ tipo: 'bomba', turno: 'yo', tuTurno: true });
+      const dom = fixture.nativeElement as HTMLElement;
+
+      expect(dom.querySelector('.bomba .mecha')).not.toBeNull();
+      expect(texto).not.toMatch(/Mecha: \d/);
     });
 
     it('y con la ronda cerrada ya no se pinta', () => {
-      pinta({ tipo: 'bomba', turno: 'yo', mecha: 2, cerrada: true, resultados: [] });
+      pinta({ tipo: 'bomba', turno: 'yo', cerrada: true, resultados: [] });
       expect((fixture.nativeElement as HTMLElement).querySelector('.bomba')).toBeNull();
     });
 
@@ -287,7 +291,6 @@ describe('la mesa del concurso', () => {
       const texto = pintaDestapada({
         tipo: 'bomba',
         turno: 'yo',
-        mecha: 2,
         cerrada: true,
         explicacion: 'Pues eso.',
         resultados: [{ seatId: 'yo', valor: 1, ganados: 100 }],

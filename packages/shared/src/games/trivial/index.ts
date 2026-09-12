@@ -1,5 +1,5 @@
 import { OPCIONES, TrivialAction, rondaEn } from './tipos';
-import { SEGUNDOS_PARA_PASAR, aciertaCon, repartoDe, respuestaDe } from './reglas';
+import { CASTIGO_BOMBA, SEGUNDOS_PARA_PASAR, aciertaCon, repartoDe, respuestaDe } from './reglas';
 import { respuestaDelBot } from './bot';
 import { rngFor } from '../../engine/rng';
 import type {
@@ -25,7 +25,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
   // La voz del presentador y el reloj los pone el servidor. Si los pudiera
   // mandar un cliente, cualquiera hablaría por boca del presentador al resto de
   // la mesa, o se daría a sí mismo todo el tiempo del mundo.
-  accionesDeSistema: ['presenta', 'reloj', 'tiempo'],
+  accionesDeSistema: ['presenta', 'reloj', 'tiempo', 'mecha', 'estalla'],
 
   /**
    * Las preguntas llegan por la configuración de la sala, no de un banco que
@@ -49,7 +49,7 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       inventadas: config['origen'] === 'ia',
       impugnan: [],
       turno: null,
-      mecha: 0,
+      revienta: 0,
       cierraEn: 0,
       dichos: {},
       dice: '',
@@ -151,6 +151,8 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       case 'presenta':
       case 'reloj':
       case 'tiempo':
+      case 'mecha':
+      case 'estalla':
         return null;
     }
   },
@@ -231,6 +233,15 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         return { ...anular(state), jugadas, impugnan };
       }
 
+      case 'mecha':
+        // Encender una mecha que ya está encendida la alargaría, y alargarla
+        // es justo lo que no puede pasar: la mecha corre por debajo de las
+        // rondas y no se reinicia con cada pregunta.
+        return state.revienta === 0 ? { ...state, jugadas, revienta: action.hasta } : state;
+
+      case 'estalla':
+        return estallar(state, jugadas);
+
       case 'tiempo': {
         // Vencido el plazo de apostar, quien no puso nada se planta. Bloquear
         // la final esperando a alguien que se ha ido es peor que darle un cero.
@@ -247,7 +258,10 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         // es lo que hace que esta jugada no se escriba en el registro: el
         // temporizador salta a menudo sobre rondas que la mesa acaba de cortar.
         if (!ronda || ronda.cerrada || state.fase !== 'ronda') return state;
-        return { ...cerrar(state, conLaBombaPerdida(state, ronda)), jugadas };
+        // La bomba no llega aquí: no tiene plazo por pregunta. Quedarse quieto
+        // con ella no cierra nada, deja correr la mecha, y eso es lo que se
+        // quería cobrar; el castigo lo pone la explosión.
+        return { ...cerrar(state, ronda), jugadas };
       }
     }
   },
@@ -282,7 +296,6 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
       explicacion: cerrada && pregunta ? pregunta.explicacion : null,
       resultados: cerrada && ronda ? resultadosDe(state, ronda) : null,
       turno: state.turno,
-      mecha: state.mecha,
       cierraEn: state.cierraEn,
       inventadas: state.inventadas,
       impugnan: state.impugnan.length,
@@ -334,30 +347,6 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
   },
 };
 
-/** El valor que se apunta por quien no llegó a contestar. Nunca acierta. */
-const NO_CONTESTO = -1;
-
-/**
- * La bomba de quien no contestó a tiempo, ya estallada.
- *
- * Fuera de la bomba, dejar de contestar solo cuesta los puntos que no se ganan.
- * Con la bomba en la mano es distinto: si no contestar saliera gratis, la
- * jugada ganadora sería quedarse quieto y ahorrarse el castigo, que es
- * exactamente lo que la prueba cobra por fallar.
- */
-function conLaBombaPerdida(state: TrivialState, ronda: Ronda): Ronda {
-  if (ronda.pregunta.tipo !== 'bomba' || !state.turno) return ronda;
-  if (respuestaDe(ronda.respuestas, state.turno)) return ronda;
-
-  return {
-    ...ronda,
-    respuestas: {
-      ...ronda.respuestas,
-      [state.turno]: { valor: NO_CONTESTO, orden: Object.keys(ronda.respuestas).length },
-    },
-  };
-}
-
 function esBot(seats: readonly Seat[], seat: SeatId): boolean {
   return seats.find((asiento) => asiento.id === seat)?.isBot ?? false;
 }
@@ -376,6 +365,34 @@ function anular(state: TrivialState): TrivialState {
   return {
     ...conRondaActual(state, { ...ronda, cerrada: true, anulada: true }),
     fase: 'resultado',
+    cierraEn: 0,
+  };
+}
+
+/**
+ * La bomba estalla en las manos de quien la tenga.
+ *
+ * No importa lo que estuviera contestando ni si iba bien: importa que se le
+ * acabó el tiempo con ella encima. Eso es una bomba; lo otro era un examen con
+ * penalización.
+ *
+ * La ronda se cierra aquí mismo, aunque nadie haya contestado: seguir
+ * preguntando después de la explosión no tiene sentido. Y la mecha se apaga,
+ * que es la señal para que el servidor encienda otra.
+ */
+function estallar(state: TrivialState, jugadas: number): TrivialState {
+  const ronda = rondaActual(state);
+  if (!ronda || ronda.cerrada || ronda.pregunta.tipo !== 'bomba' || !state.turno) {
+    return state;
+  }
+
+  const quien = state.turno;
+  return {
+    ...conRondaActual(state, { ...ronda, cerrada: true }),
+    jugadas,
+    puntos: { ...state.puntos, [quien]: (state.puntos[quien] ?? 0) - CASTIGO_BOMBA },
+    fase: 'resultado',
+    revienta: 0,
     cierraEn: 0,
   };
 }
@@ -469,7 +486,6 @@ function cerrar(state: TrivialState, ronda: Ronda): TrivialState {
     ...conRondaActual(state, { ...ronda, cerrada: true }),
     puntos,
     racha: rachasTras(state, ronda),
-    mecha: mechaTras(state, ronda),
     fase: 'resultado',
   };
 }
@@ -493,45 +509,35 @@ function rachasTras(state: TrivialState, ronda: Ronda): Record<SeatId, number> {
 }
 
 /**
- * Lo que le queda a la mecha después de esta ronda.
- *
- * Solo baja con los aciertos: fallar hace estallar la bomba en el acto, así
- * que ahí lo que queda de mecha ya da igual.
- */
-function mechaTras(state: TrivialState, ronda: Ronda): number {
-  if (ronda.pregunta.tipo !== 'bomba') return 0;
-  const suya = state.turno ? respuestaDe(ronda.respuestas, state.turno) : undefined;
-  const acierta = suya ? aciertaCon(ronda.pregunta, suya.valor) : false;
-  return acierta ? Math.max(0, state.mecha - 1) : 0;
-}
-
-/**
  * Prepara el turno de la bomba al entrar en una ronda.
  *
- * La mecha se enciende al empezar la sección y va cruzando rondas; dentro de
- * ella, la bomba pasa al siguiente. Si se agotó, se vuelve a encender: la
- * sección sigue hasta que se acaban sus preguntas.
+ * Aquí está la regla que hace que esto sea una patata caliente y no un turno
+ * rotatorio: **la bomba solo se suelta acertando**. Fallar te la deja en la
+ * mano y te llevas la siguiente pregunta con la mecha ya más corta, que es
+ * exactamente el castigo que tiene que ser. Antes fallar restaba puntos y la
+ * pasaba igual, así que daba casi lo mismo contestar bien que mal.
+ *
+ * La mecha no se toca desde aquí: la enciende el servidor con su reloj y sigue
+ * corriendo por debajo de las rondas.
  */
 function conBomba(state: TrivialState, siguiente: number): TrivialState {
   const entra = rondaEn(state, siguiente)?.pregunta;
-  if (entra?.tipo !== 'bomba') return { ...state, turno: null, mecha: 0 };
+  if (entra?.tipo !== 'bomba') return { ...state, turno: null, revienta: 0 };
 
-  const venia = rondaEn(state, state.actual)?.pregunta.tipo === 'bomba';
-  const mecha = venia && state.mecha > 0 ? state.mecha : mechaInicial(state.orden.length);
-  const turno = venia ? siguienteDe(state.orden, state.turno) : (state.orden[0] ?? null);
+  const salia = rondaEn(state, state.actual);
+  // Se entra en la sección: empieza el primero y el servidor enciende mecha.
+  if (salia?.pregunta.tipo !== 'bomba') {
+    return { ...state, turno: state.orden[0] ?? null, revienta: 0 };
+  }
 
-  return { ...state, turno, mecha };
-}
+  // Una ronda de bomba cerrada sin respuesta suya es que le estalló: ahí
+  // también se suelta, porque comerse una bomba y quedarse además con la
+  // siguiente sería pasarse. Que la mecha esté apagada no sirve para saberlo:
+  // también lo está antes de que el servidor encienda la primera.
+  const suya = state.turno ? respuestaDe(salia.respuestas, state.turno) : undefined;
+  const suelta = !suya || aciertaCon(salia.pregunta, suya.valor);
 
-/**
- * Cuánto aguanta la bomba antes de estallar.
- *
- * Más que jugadores, para que dé al menos una vuelta entera y nadie pueda
- * contar de quién será la última: si durase exactamente una vuelta, la mesa
- * sabría desde el principio a quién le toca comérsela.
- */
-export function mechaInicial(jugadores: number): number {
-  return Math.max(2, jugadores) + 2;
+  return { ...state, turno: suelta ? siguienteDe(state.orden, state.turno) : state.turno };
 }
 
 function siguienteDe(orden: readonly SeatId[], actual: SeatId | null): SeatId | null {
