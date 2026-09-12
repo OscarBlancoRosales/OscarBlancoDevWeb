@@ -1,8 +1,5 @@
-import {
-  SEGUNDOS_PARA_PASAR_LA_BOMBA,
-  SEGUNDOS_POR_PRUEBA,
-} from '@devweb/shared/games/trivial/reglas';
-import { laBombaPasaSola } from '@devweb/shared/games/trivial/index';
+import { SEGUNDOS_PARA_PASAR, SEGUNDOS_POR_PRUEBA } from '@devweb/shared/games/trivial/reglas';
+import { pasaSola } from '@devweb/shared/games/trivial/index';
 import { rondaEn } from '@devweb/shared/games/trivial/tipos';
 import type { TrivialState } from '@devweb/shared/games/trivial/tipos';
 import type { Narrador, RoomActor } from '../../rooms/actor';
@@ -39,11 +36,11 @@ export class RegidorDeSala implements Narrador {
     const state = ahora as TrivialState | null;
     if (!state) return;
 
-    // La bomba es la única prueba que avanza sola. Quien la tiene contesta y
-    // se ve enseguida a quién le cae encima: parar el programa ahí a esperar
-    // un clic es apagar justo lo que la hace divertida.
-    if (laBombaPasaSola(state)) {
-      this.pasarLaBomba(actor, state);
+    // Las pruebas de ritmo avanzan solas. Se contesta, se ve quién ha
+    // acertado y sigue: parar el programa ahí a esperar un clic apaga justo lo
+    // que las hace rápidas.
+    if (pasaSola(state)) {
+      this.pasarDeRonda(actor, state);
       return;
     }
 
@@ -89,19 +86,22 @@ export class RegidorDeSala implements Narrador {
   }
 
   /**
-   * Deja ver el resultado y pasa la bomba al siguiente.
+   * Deja ver el resultado y pasa a la ronda siguiente.
    *
    * Lo pide el mismo `tiempo` que cierra las rondas vencidas: el juego ya sabe
-   * que una bomba resuelta lo que quiere es avanzar, así que desde aquí solo
-   * hay que decirle cuándo.
+   * que una ronda de ritmo resuelta lo que quiere es avanzar, así que desde
+   * aquí solo hay que decirle cuándo.
    */
-  private pasarLaBomba(actor: RoomActor, state: TrivialState): void {
+  private pasarDeRonda(actor: RoomActor, state: TrivialState): void {
     if (this.esperando === 'pase') return;
 
     // La cuenta atrás de la ronda que se acaba de resolver sigue corriendo:
-    // quien contesta pronto se la deja viva. Sin pararla, la bomba tardaría en
+    // quien contesta pronto se la deja viva. Sin pararla, la ronda tardaría en
     // pasar lo que quedara de ella.
     this.pararElReloj();
+
+    const tipo = rondaEn(state, state.actual)?.pregunta.tipo;
+    if (!tipo) return;
 
     const locutor = state.orden[0] ?? 'sala';
     this.esperando = 'pase';
@@ -109,7 +109,7 @@ export class RegidorDeSala implements Narrador {
       this.reloj = null;
       this.esperando = null;
       actor.aplicarDelSistema(locutor, { tipo: 'tiempo' });
-    }, SEGUNDOS_PARA_PASAR_LA_BOMBA * 1000);
+    }, SEGUNDOS_PARA_PASAR[tipo] * 1000);
     this.reloj.unref();
   }
 

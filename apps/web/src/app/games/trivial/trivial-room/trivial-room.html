@@ -89,12 +89,11 @@
         />
 
         <!-- El botón de seguir no sale hasta que la respuesta está destapada:
-             si sale antes, medio plató lo pulsa sin haberla mirado. Y en la
-             bomba no sale nunca: esa pasa sola, que para eso es una patata
-             caliente. -->
+             si sale antes, medio plató lo pulsa sin haberla mirado. Y en las
+             pruebas de ritmo no sale nunca: esas pasan solas. -->
         @if (v.cerrada && yaSeExplica) {
-          @if (v.tipo === 'bomba') {
-            <p class="pie pasando">La bomba pasa al siguiente&hellip;</p>
+          @if (pasaSola) {
+            <p class="pie pasando">{{ loQueViene }}</p>
           } @else {
             <button type="button" class="principal" (click)="siguiente()">
               {{ v.ronda === v.rondas ? 'Ver el resultado' : 'Siguiente ronda' }}

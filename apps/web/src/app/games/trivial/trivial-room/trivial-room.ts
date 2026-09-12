@@ -24,7 +24,11 @@ import { MandoDeApuesta } from '../plato/apuesta/apuesta';
 import { Podio } from '../plato/podio/podio';
 import { Sonido } from '../plato/sonido';
 import type { Efecto } from '../plato/sonido';
-import { SEGUNDOS_PARA_APOSTAR, SEGUNDOS_POR_PRUEBA } from '@devweb/shared/games/trivial/reglas';
+import {
+  SEGUNDOS_PARA_APOSTAR,
+  SEGUNDOS_PARA_PASAR,
+  SEGUNDOS_POR_PRUEBA,
+} from '@devweb/shared/games/trivial/reglas';
 import { fotoDelPersonaje } from '@devweb/shared/games/trivial/reparto';
 import { paseDe } from '../../pase-guardado';
 import type { Signal } from '@angular/core';
@@ -423,6 +427,26 @@ export class TrivialRoom implements OnInit, OnDestroy {
   /** Si el destape ya ha llegado a explicar y ofrecer la siguiente ronda. */
   get yaSeExplica(): boolean {
     return seExplica(this.destapa());
+  }
+
+  /**
+   * Si esta prueba avanza sola y por tanto aquí no se ofrece pasar a mano.
+   *
+   * Quién avanza solo lo dicen las reglas y no la pantalla: si el navegador se
+   * lo inventara, acabaría enseñando un botón que no hace nada, o escondiendo
+   * el único que hay.
+   */
+  get pasaSola(): boolean {
+    const tipo = this.vista()?.tipo;
+    return !!tipo && SEGUNDOS_PARA_PASAR[tipo] > 0;
+  }
+
+  /** Lo que se dice mientras la ronda se pasa sola. */
+  get loQueViene(): string {
+    const tipo = this.vista()?.tipo;
+    if (tipo === 'bomba') return 'La bomba pasa al siguiente…';
+    if (tipo === 'rafaga') return 'Sigue la ráfaga…';
+    return 'Va la siguiente…';
   }
 
   get rotuloDeArriba(): string {

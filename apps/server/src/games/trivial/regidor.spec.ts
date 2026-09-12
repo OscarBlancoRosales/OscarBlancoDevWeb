@@ -138,6 +138,35 @@ describe('el regidor', () => {
    * clic le da todo el tiempo del mundo al que la tiene justo cuando la gracia
    * es no tenerlo.
    */
+  it('la ráfaga también pasa sola, y más rápido que la bomba', () => {
+    // Un botón entre disparo y disparo no es una ráfaga.
+    vi.useFakeTimers();
+    const { actor, puestas } = actorFalso();
+    const abierta = enRonda('rafaga');
+    const cerrada = trivialModule.apply(abierta, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    new RegidorDeSala(() => 0).trasJugada(actor, abierta, cerrada);
+    vi.advanceTimersByTime(2_500);
+
+    expect(puestas).toEqual([{ tipo: 'tiempo' }]);
+    vi.useRealTimers();
+  });
+
+  it('pero las de leer y pensar esperan a la mesa', () => {
+    // En «encuentra el fallo» hay una explicación que merece leerse, y la
+    // lee cada uno a su ritmo.
+    vi.useFakeTimers();
+    const { actor, puestas } = actorFalso();
+    const abierta = enRonda('fallo');
+    const cerrada = trivialModule.apply(abierta, { tipo: 'tiempo' }, 'ana', SEATS);
+
+    new RegidorDeSala(() => 0).trasJugada(actor, abierta, cerrada);
+    vi.advanceTimersByTime(60_000);
+
+    expect(puestas).toEqual([]);
+    vi.useRealTimers();
+  });
+
   describe('la bomba', () => {
     /** El estado tras contestar quien la tiene, que cierra la ronda al vuelo. */
     function contestada(): { antes: TrivialState; ahora: TrivialState } {
@@ -205,17 +234,19 @@ describe('el regidor', () => {
   });
 
   it('y al salir de la ronda, tampoco', () => {
+    // Con una prueba de las que esperan a la mesa: en las de ritmo lo que
+    // viene detrás no es silencio, es el pase a la ronda siguiente.
     vi.useFakeTimers();
     const { actor, puestas } = actorFalso();
     const regidor = new RegidorDeSala(() => 0);
-    const abierta = enRonda('rafaga');
+    const abierta = enRonda('test');
 
     regidor.trasJugada(actor, null, abierta);
     const cerrada = trivialModule.apply(abierta, { tipo: 'tiempo' }, 'ana', SEATS);
     regidor.trasJugada(actor, abierta, cerrada);
-    vi.advanceTimersByTime(30_000);
+    vi.advanceTimersByTime(60_000);
 
-    expect(puestas).toEqual([{ tipo: 'reloj', hasta: 10_000 }]);
+    expect(puestas).toEqual([{ tipo: 'reloj', hasta: 25_000 }]);
     vi.useRealTimers();
   });
 });

@@ -10,7 +10,7 @@ import {
   seExplica,
   turnoDeCantar,
 } from './revelacion';
-import { SEGUNDOS_PARA_PASAR_LA_BOMBA } from '@devweb/shared/games/trivial/reglas';
+import { SEGUNDOS_PARA_PASAR } from '@devweb/shared/games/trivial/reglas';
 import type { Paso } from './revelacion';
 
 describe('el destape de la respuesta', () => {
@@ -58,10 +58,13 @@ describe('el destape de la respuesta', () => {
     expect(LO_QUE_DURA).toBeLessThan(2_000);
   });
 
-  it('y da tiempo a verlo antes de que la bomba pase sola', () => {
-    // La bomba avanza sin que nadie pulse. Si el destape durase más que ese
-    // plazo, la ronda cambiaría con la respuesta todavía sin enseñar.
-    expect(LO_QUE_DURA).toBeLessThan(SEGUNDOS_PARA_PASAR_LA_BOMBA * 1_000);
+  it('y da tiempo a verlo antes de que la ronda pase sola', () => {
+    // Las pruebas de ritmo avanzan sin que nadie pulse. Si el destape durase
+    // más que la más corta de ellas, la ronda cambiaría con la respuesta
+    // todavía sin enseñar.
+    const masCorta = Math.min(...Object.values(SEGUNDOS_PARA_PASAR).filter((s) => s > 0));
+
+    expect(LO_QUE_DURA).toBeLessThan(masCorta * 1_000);
   });
 
   it('y mucho después sigue estando destapada', () => {

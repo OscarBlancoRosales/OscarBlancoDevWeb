@@ -1,5 +1,5 @@
 import { OPCIONES, TrivialAction, rondaEn } from './tipos';
-import { aciertaCon, repartoDe, respuestaDe } from './reglas';
+import { SEGUNDOS_PARA_PASAR, aciertaCon, repartoDe, respuestaDe } from './reglas';
 import { respuestaDelBot } from './bot';
 import { rngFor } from '../../engine/rng';
 import type {
@@ -237,10 +237,10 @@ export const trivialModule: GameModule<TrivialState, TrivialAction> = {
         if (state.fase === 'apuestas') {
           return { ...state, jugadas, fase: 'ronda', cierraEn: 0 };
         }
-        // La bomba no espera a que nadie pulse: en cuanto se ve quién ha
-        // acertado, pasa. Que haya que darle a «siguiente» entre pase y pase
-        // es lo contrario de una patata caliente.
-        if (laBombaPasaSola(state)) return avanzar(state, jugadas);
+        // Las pruebas de ritmo no esperan a que nadie pulse: en cuanto se ve
+        // quién ha acertado, siguen. Que haya que darle a «siguiente» entre
+        // disparo y disparo es lo contrario de una ráfaga.
+        if (pasaSola(state)) return avanzar(state, jugadas);
 
         const ronda = rondaActual(state);
         // Una ronda ya cerrada no se vuelve a cerrar. Devolver el mismo objeto
@@ -413,14 +413,14 @@ function cerrarSiProcede(state: TrivialState, ronda: Ronda, valor: number): Triv
 }
 
 /**
- * Si lo que hay en pantalla es una bomba ya resuelta esperando a pasar.
+ * Si lo que hay en pantalla es una ronda resuelta que avanza sola.
  *
- * Es la única prueba que avanza sola, y por eso se pregunta aquí y no en el
- * servidor: quien decide cómo se juega cada prueba es el juego.
+ * Se pregunta aquí y no en el servidor porque quien decide cómo se juega cada
+ * prueba es el juego; el servidor solo pone el reloj.
  */
-export function laBombaPasaSola(state: TrivialState): boolean {
+export function pasaSola(state: TrivialState): boolean {
   const ronda = rondaActual(state);
-  return !!ronda && ronda.cerrada && ronda.pregunta.tipo === 'bomba';
+  return !!ronda && ronda.cerrada && SEGUNDOS_PARA_PASAR[ronda.pregunta.tipo] > 0;
 }
 
 /**

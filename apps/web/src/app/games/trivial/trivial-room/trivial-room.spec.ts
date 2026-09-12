@@ -298,6 +298,19 @@ describe('la mesa del concurso', () => {
       expect(dom.querySelector('.pasando')).not.toBeNull();
     });
 
+    it('y en la ráfaga tampoco, que ahí un botón la corta', () => {
+      const texto = pintaDestapada({
+        tipo: 'rafaga',
+        racha: 2,
+        cerrada: true,
+        explicacion: 'Pues eso.',
+        resultados: [{ seatId: 'yo', valor: 1, ganados: 80 }],
+      });
+
+      expect(texto).not.toContain('Siguiente ronda');
+      expect(texto).toContain('Sigue la ráfaga');
+    });
+
     it('pero en las demás pruebas sí, que ahí se sigue cuando la mesa quiere', () => {
       const texto = pintaDestapada({
         tipo: 'test',
