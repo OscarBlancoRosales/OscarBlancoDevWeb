@@ -282,6 +282,13 @@ describe('la mesa del impostor', () => {
     expect(componente.mensaje()).toBe('');
   });
 
+  it('al escribir se cierra el historial para no tapar el teclado', () => {
+    expect(componente.teclado()).toBe(0);
+    componente.historialAbierto.set(true);
+    componente.alEscribir();
+    expect(componente.historialAbierto()).toBe(false);
+  });
+
   it('lo último dicho sale en un bocadillo encima de la cara', () => {
     sala.chat.set([
       { seq: 1, authorId: 'bea', author: 'Bea', kind: 'player', text: 'te pillo', at: Date.now() },

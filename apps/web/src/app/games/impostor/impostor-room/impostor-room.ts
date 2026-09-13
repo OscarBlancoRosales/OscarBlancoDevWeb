@@ -88,6 +88,14 @@ export class ImpostorRoom implements OnInit, OnDestroy {
   readonly palabraALaVista = signal(true);
   /** El historial de chat. En el teléfono va detrás de un botón; en mesa, abierto. */
   readonly historialAbierto = signal(false);
+  /**
+   * Cuánto come el teclado, en píxeles, según el visualViewport.
+   *
+   * En Android el teclado no es un padding: encoge lo visible o deja el
+   * layout a 100dvh y tapa el compositor. Esto lo medimos y el CSS sube el
+   * hueco de escribir. Cero si no hay teclado o el navegador no lo cuenta.
+   */
+  readonly teclado = signal(0);
 
   /**
    * Lo que se escribe: la pista de tu turno y lo que dices en el chat.
@@ -100,6 +108,7 @@ export class ImpostorRoom implements OnInit, OnDestroy {
   readonly mensaje = signal('');
 
   readonly mesa: Signal<Puesto[]>;
+  private soltarViewport: (() => void) | null = null;
 
   constructor(
     private readonly sala: ImpostorRoomService,
@@ -129,11 +138,38 @@ export class ImpostorRoom implements OnInit, OnDestroy {
     this.tictac = setInterval(() => {
       this.ahora.set(Date.now());
     }, 500);
+    this.seguirTeclado();
   }
 
   ngOnDestroy(): void {
     if (this.tictac !== null) clearInterval(this.tictac);
+    this.soltarViewport?.();
     this.sala.desconectar();
+  }
+
+  /**
+   * El teclado de Android no avisa: cambia el visualViewport. Si no lo
+   * seguimos, el compositor se queda detrás del teclado o el flex se aplasta.
+   */
+  private seguirTeclado(): void {
+    const vista = window.visualViewport;
+    if (!vista) return;
+    const medir = (): void => {
+      const inset = Math.max(0, Math.round(window.innerHeight - vista.height - vista.offsetTop));
+      this.teclado.set(inset);
+    };
+    vista.addEventListener('resize', medir);
+    vista.addEventListener('scroll', medir);
+    medir();
+    this.soltarViewport = () => {
+      vista.removeEventListener('resize', medir);
+      vista.removeEventListener('scroll', medir);
+    };
+  }
+
+  /** Al escribir se cierra el historial: si no, tapa el teclado. */
+  alEscribir(): void {
+    this.historialAbierto.set(false);
   }
 
   // --- Las jugadas ---------------------------------------------------------

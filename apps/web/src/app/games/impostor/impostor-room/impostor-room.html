@@ -1,5 +1,10 @@
 <app-terminal-layout title="Impostor">
-  <div class="juicio" [class.con-historial]="historialAbierto()">
+  <div
+    class="juicio"
+    [class.con-historial]="historialAbierto()"
+    [class.teclado]="teclado() > 80"
+    [style.--teclado.px]="teclado()"
+  >
     @if (vista(); as v) {
       <header class="barra">
         <div class="marca">
@@ -227,6 +232,7 @@
             [maxlength]="puedesHablar ? 40 : 400"
             [placeholder]="placeholder"
             [attr.disabled]="inputBloqueado() ? true : null"
+            (focus)="alEscribir()"
             (keydown.enter)="enviar()"
           />
           <button type="button" class="chico" (click)="enviar()" [disabled]="inputBloqueado()" aria-label="Enviar">

@@ -122,6 +122,7 @@
   min-height: 0;
   min-width: 0;
   gap: 8px;
+  overflow: hidden;
 }
 
 .dossier {
@@ -649,6 +650,7 @@ time {
 @media (max-width: 900px) {
   .juicio {
     padding: 6px 8px 8px;
+    padding-bottom: 64px;
   }
 
   .marca h1 {
@@ -663,6 +665,25 @@ time {
 
   .escenario {
     flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .foco,
+  .panel-espera,
+  .debate,
+  .disparo,
+  .final {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .fila,
+  .dossier,
+  .voz,
+  .barra,
+  .pie {
+    flex-shrink: 0;
   }
 
   .foco-cara {
@@ -671,7 +692,7 @@ time {
 
   .historial {
     position: fixed;
-    inset: 48px 8px 72px;
+    inset: 48px 8px calc(72px + var(--teclado, 0px));
     z-index: 20;
     transform: translateY(110%);
     transition: transform 0.2s ease;
@@ -691,7 +712,7 @@ time {
     display: block;
     position: fixed;
     right: 14px;
-    bottom: 78px;
+    bottom: calc(78px + var(--teclado, 0px));
     z-index: 21;
     border: 1px solid var(--accent);
     background: var(--bg);
@@ -704,12 +725,35 @@ time {
     box-shadow: 0 4px 18px #000;
   }
 
-  .con-historial .fab-historial {
+  .con-historial .fab-historial,
+  .teclado .fab-historial {
     display: none;
   }
 
+  /*
+    El compositor se clava al borde visible. --teclado es lo que tapa el
+    teclado de Android; si el layout no se encoge, sin esto el hueco queda
+    detrás. Si sí se encoge, --teclado vale 0 y overflow:hidden evita que
+    la fila y el foco se pinten encima.
+  */
   .pie {
-    margin-top: 6px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--teclado, 0px);
+    z-index: 16;
+    margin: 0;
+    padding: 8px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+  }
+
+  .teclado .foco-cara {
+    width: 72px;
+  }
+
+  .teclado .historial {
+    display: none;
   }
 }
 
