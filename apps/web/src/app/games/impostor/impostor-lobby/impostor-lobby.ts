@@ -7,8 +7,10 @@ import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout'
 import { AuthApiService } from '../../../api/auth-api.service';
 import { ImpostorRoomService } from '../impostor-room.service';
 import { RoomsApiService } from '../../../api/rooms-api.service';
-import { cribarPases, guardarPase, olvidarPase, paseDe, pasesGuardados } from '../../pase-guardado';
+import { guardarPase, olvidarPase, paseDe, pasesGuardados } from '../../pase-guardado';
 import type { PaseDeSala } from '../../pase-guardado';
+import { fichaDeMesa } from './mesas-vivas';
+import type { FichaDeMesa, MesaViva } from './mesas-vivas';
 import { ELENCO, caraPorId, fotoDeLaCara } from '@devweb/shared/games/impostor/caras';
 import { TEMAS, TEMA_MEZCLA } from '@devweb/shared/games/impostor/temas';
 import type { Cara } from '@devweb/shared/games/impostor/caras';
@@ -59,7 +61,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   readonly trabajando = signal(false);
   readonly error = signal('');
   readonly invitacion = signal('');
-  readonly partidasAbiertas = signal<readonly PaseDeSala[]>([]);
+  readonly partidasAbiertas = signal<readonly MesaViva[]>([]);
 
   nombreSala = 'Aquí miente alguien';
   nombreJugador = '';
@@ -106,17 +108,30 @@ export class ImpostorLobby implements OnInit, OnDestroy {
    * El panel puede haber matado las salas: el localStorage no se entera solo.
    */
   private async cargarVivas(invitacion: string): Promise<void> {
-    const vivos = await cribarPases(pasesGuardados(), async (id) => {
-      const info = await this.rooms.info(id);
-      return info.status !== 'finished';
-    });
-    this.partidasAbiertas.set(vivos);
+    const tarjetas: MesaViva[] = [];
+    for (const pase of pasesGuardados()) {
+      try {
+        const info = await this.rooms.info(pase.roomId);
+        if (info.status === 'finished' || info.game !== 'impostor') {
+          olvidarPase(pase.roomId);
+          continue;
+        }
+        tarjetas.push({ pase, info });
+      } catch {
+        olvidarPase(pase.roomId);
+      }
+    }
+    this.partidasAbiertas.set(tarjetas);
 
-    if (invitacion && vivos.some((uno) => uno.roomId === invitacion)) {
+    if (invitacion && tarjetas.some((uno) => uno.pase.roomId === invitacion)) {
       void this.router.navigate(['/juegos/impostor/mesa'], { queryParams: { sala: invitacion } });
       return;
     }
     if (invitacion && paseDe(invitacion)) olvidarPase(invitacion);
+  }
+
+  fichaDe(mesa: MesaViva): FichaDeMesa {
+    return fichaDeMesa(mesa.info, Date.now());
   }
 
   seguir(pase: PaseDeSala): void {

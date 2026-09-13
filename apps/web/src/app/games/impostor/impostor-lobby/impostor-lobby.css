@@ -10,6 +10,48 @@
   gap: 8px;
 }
 
+.mesa-viva {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.mesa-viva:hover {
+  border-color: rgba(var(--accent-rgb), 0.55);
+}
+
+.mesa-nombre {
+  color: var(--bright);
+  font-size: 15px;
+}
+
+.mesa-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mesa-estado {
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.mesa-gente {
+  font-size: 12px;
+  color: var(--text);
+}
+
 .lobby {
   padding: 20px 22px 32px;
   color: var(--text);

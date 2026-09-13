@@ -18,8 +18,16 @@
         <h2>Mesas vivas en este dispositivo</h2>
         <p class="explicacion">Ya te sentaste. Entras al mismo asiento, con la misma cara.</p>
         <div class="vivas">
-          @for (pase of partidasAbiertas(); track pase.roomId) {
-            <button type="button" class="accion" (click)="seguir(pase)">Seguir jugando</button>
+          @for (mesa of partidasAbiertas(); track mesa.pase.roomId) {
+            <button type="button" class="mesa-viva" (click)="seguir(mesa.pase)">
+              @let ficha = fichaDe(mesa);
+              <span class="mesa-nombre">{{ ficha.nombre }}</span>
+              <span class="mesa-meta">
+                <span class="mesa-estado">{{ ficha.estado }}</span>
+                <span>{{ ficha.actividad }}</span>
+              </span>
+              <span class="mesa-gente">{{ ficha.gente }}</span>
+            </button>
           }
         </div>
       </section>
