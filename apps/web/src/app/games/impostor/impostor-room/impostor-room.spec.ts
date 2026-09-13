@@ -289,6 +289,13 @@ describe('la mesa del impostor', () => {
     expect(componente.historialAbierto()).toBe(false);
   });
 
+  it('el hueco de escribir está en el flujo, no clavado al borde de la pantalla', () => {
+    const pie = raiz().querySelector('.pie');
+    expect(pie).not.toBeNull();
+    expect(pie!.querySelector('input')).not.toBeNull();
+    expect(getComputedStyle(pie!).position).not.toBe('fixed');
+  });
+
   it('lo último dicho sale en un bocadillo encima de la cara', () => {
     sala.chat.set([
       { seq: 1, authorId: 'bea', author: 'Bea', kind: 'player', text: 'te pillo', at: Date.now() },

@@ -17,11 +17,13 @@
 }
 
 .juicio {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
   padding: 8px 10px 10px;
+  padding-bottom: calc(10px + var(--teclado, 0px));
   color: var(--text);
   background:
     radial-gradient(ellipse 80% 50% at 50% 28%, rgba(var(--accent-rgb), 0.08), transparent 55%),
@@ -650,7 +652,7 @@ time {
 @media (max-width: 900px) {
   .juicio {
     padding: 6px 8px 8px;
-    padding-bottom: 64px;
+    padding-bottom: calc(8px + var(--teclado, 0px));
   }
 
   .marca h1 {
@@ -710,10 +712,10 @@ time {
 
   .fab-historial {
     display: block;
-    position: fixed;
-    right: 14px;
-    bottom: calc(78px + var(--teclado, 0px));
-    z-index: 21;
+    position: absolute;
+    right: 12px;
+    bottom: 60px;
+    z-index: 8;
     border: 1px solid var(--accent);
     background: var(--bg);
     color: var(--accent);
@@ -731,21 +733,17 @@ time {
   }
 
   /*
-    El compositor se clava al borde visible. --teclado es lo que tapa el
-    teclado de Android; si el layout no se encoge, sin esto el hueco queda
-    detrás. Si sí se encoge, --teclado vale 0 y overflow:hidden evita que
-    la fila y el foco se pinten encima.
+    El compositor va en el flujo, encima de la barra del sitio. Si se clava
+    al viewport (fixed + bottom: 0) queda detrás de esa barra y no se ve.
+    --teclado empuja el juicio hacia arriba cuando Android tapa lo de abajo.
   */
   .pie {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: var(--teclado, 0px);
-    z-index: 16;
+    position: static;
+    flex-shrink: 0;
     margin: 0;
-    padding: 8px;
+    padding: 8px 0 0;
     background: var(--bg);
-    border-top: 1px solid var(--border);
+    z-index: auto;
   }
 
   .teclado .foco-cara {

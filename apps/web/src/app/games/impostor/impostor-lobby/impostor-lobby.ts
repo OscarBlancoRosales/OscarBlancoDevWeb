@@ -6,7 +6,8 @@ import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { AuthApiService } from '../../../api/auth-api.service';
 import { ImpostorRoomService } from '../impostor-room.service';
-import { guardarPase, paseDe, pasesGuardados } from '../../pase-guardado';
+import { RoomsApiService } from '../../../api/rooms-api.service';
+import { cribarPases, guardarPase, olvidarPase, paseDe, pasesGuardados } from '../../pase-guardado';
 import type { PaseDeSala } from '../../pase-guardado';
 import { ELENCO, caraPorId, fotoDeLaCara } from '@devweb/shared/games/impostor/caras';
 import { TEMAS, TEMA_MEZCLA } from '@devweb/shared/games/impostor/temas';
@@ -80,6 +81,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
 
   constructor(
     private readonly sala: ImpostorRoomService,
+    private readonly rooms: RoomsApiService,
     private readonly auth: AuthApiService,
     private readonly router: Router,
     private readonly ruta: ActivatedRoute,
@@ -88,19 +90,33 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   ngOnInit(): void {
     const sala = this.ruta.snapshot.queryParamMap.get('sala') ?? '';
     this.invitacion.set(sala);
-    this.partidasAbiertas.set(pasesGuardados());
-
-    // Este dispositivo ya tiene asiento en esa mesa: no se elige cara otra vez.
-    if (sala && paseDe(sala)) {
-      void this.router.navigate(['/juegos/impostor/mesa'], { queryParams: { sala } });
-      return;
-    }
 
     this.suscripcion = this.auth.settledUser$.subscribe((usuario) => {
       this.conSesion.set(usuario !== null);
       this.sesionResuelta.set(true);
       if (usuario && !this.nombreJugador) this.nombreJugador = usuario.displayName;
     });
+
+    void this.cargarVivas(sala);
+  }
+
+  /**
+   * Pregunta al servidor cuáles de los pases de este teléfono siguen en pie.
+   *
+   * El panel puede haber matado las salas: el localStorage no se entera solo.
+   */
+  private async cargarVivas(invitacion: string): Promise<void> {
+    const vivos = await cribarPases(pasesGuardados(), async (id) => {
+      const info = await this.rooms.info(id);
+      return info.status !== 'finished';
+    });
+    this.partidasAbiertas.set(vivos);
+
+    if (invitacion && vivos.some((uno) => uno.roomId === invitacion)) {
+      void this.router.navigate(['/juegos/impostor/mesa'], { queryParams: { sala: invitacion } });
+      return;
+    }
+    if (invitacion && paseDe(invitacion)) olvidarPase(invitacion);
   }
 
   seguir(pase: PaseDeSala): void {

@@ -68,3 +68,25 @@ export function pasesGuardados(): readonly PaseDeSala[] {
   }
   return [...vistos.values()];
 }
+
+/**
+ * Se queda solo con las salas que siguen vivas en el servidor.
+ *
+ * Un pase en el navegador no significa nada si el dueño ya cerró la mesa o el
+ * panel las mató: sin esta criba, el lobby ofrece «seguir jugando» a un muerto.
+ */
+export async function cribarPases(
+  pases: readonly PaseDeSala[],
+  vive: (roomId: string) => Promise<boolean>,
+): Promise<readonly PaseDeSala[]> {
+  const vivos: PaseDeSala[] = [];
+  for (const pase of pases) {
+    try {
+      if (await vive(pase.roomId)) vivos.push(pase);
+      else olvidarPase(pase.roomId);
+    } catch {
+      olvidarPase(pase.roomId);
+    }
+  }
+  return vivos;
+}
