@@ -4,6 +4,12 @@
   box-sizing: border-box;
 }
 
+.vivas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .lobby {
   padding: 20px 22px 32px;
   color: var(--text);

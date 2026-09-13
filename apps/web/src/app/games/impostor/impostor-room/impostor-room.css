@@ -1,8 +1,9 @@
 /* =========================================================================
    El juicio.
 
-   No es una mesa de cartas. Es una sala a oscuras con un foco, una fila de
-   acusados y un expediente. Los colores siguen el tema del sitio.
+   En mesa: escenario a la izquierda, historial a la derecha, escribir abajo.
+   En el teléfono: el escenario llena la pantalla, el chat es un botón, el
+   historial sale encima. El expediente vacío no ocupa un tercio.
    ========================================================================= */
 
 :host {
@@ -20,64 +21,56 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding: 10px 14px 12px;
+  padding: 8px 10px 10px;
   color: var(--text);
   background:
     radial-gradient(ellipse 80% 50% at 50% 28%, rgba(var(--accent-rgb), 0.08), transparent 55%),
-    radial-gradient(ellipse 100% 80% at 50% 120%, #000 0%, transparent 50%),
     var(--bg);
 }
 
 .barra,
-.aviso {
+.aviso,
+.pie {
   flex: none;
 }
 
 .barra {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 10px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
 }
 
-.marca-kicker {
-  margin: 0;
-  font-size: 10px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--error);
+.marca {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
 }
 
 .marca h1 {
   margin: 0;
   color: var(--bright);
-  font-size: 22px;
+  font-size: 18px;
   letter-spacing: 2px;
   text-transform: uppercase;
-  text-shadow: 0 0 28px var(--glow);
+  text-shadow: 0 0 22px var(--glow);
 }
 
-.reglas-linea {
+.quedan {
   margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.etiqueta {
-  border: 1px solid var(--border);
-  color: var(--muted);
   font-size: 11px;
-  padding: 2px 7px;
+  color: var(--muted);
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .botones-cabecera {
   display: flex;
   gap: 8px;
+  flex: none;
 }
 
 .chico {
@@ -104,14 +97,13 @@
   border: 1px solid color-mix(in srgb, var(--error) 45%, transparent);
   background: color-mix(in srgb, var(--error) 10%, var(--bg-soft));
   color: var(--error);
-  padding: 9px 12px;
+  padding: 8px 10px;
   font-size: 13px;
   margin: 8px 0 0;
 }
 
 .aviso.reconectando {
   border-color: color-mix(in srgb, var(--warn) 45%, transparent);
-  background: color-mix(in srgb, var(--warn) 10%, var(--bg-soft));
   color: var(--warn);
 }
 
@@ -119,38 +111,27 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 280px;
-  gap: 12px;
-  margin-top: 10px;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 10px;
+  margin-top: 8px;
 }
 
-.sumario,
-.radio {
+.escenario {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   min-height: 0;
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg-soft) 80%, #000);
-  padding: 12px;
-}
-
-.sumario h2,
-.radio h2 {
-  margin: 0;
-  color: var(--accent);
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
+  min-width: 0;
+  gap: 8px;
 }
 
 .dossier {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+  flex: none;
   border: 1px solid var(--accent);
   background: rgba(var(--accent-rgb), 0.08);
-  padding: 10px 12px;
+  padding: 8px 12px;
 }
 
 .dossier.impostor {
@@ -166,9 +147,11 @@
 }
 
 .palabra {
-  font-size: 22px;
+  font-size: 18px;
   color: var(--bright);
   letter-spacing: 1px;
+  flex: 1;
+  min-width: 0;
 }
 
 .dossier.impostor .palabra {
@@ -180,72 +163,54 @@
   letter-spacing: 6px;
 }
 
-.dossier-pie {
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 1.4;
-}
-
 .evidencias {
   margin: 0;
   padding: 0;
   list-style: none;
-  overflow-y: auto;
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-height: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: none;
 }
 
 .evidencias li {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  border-left: 2px solid var(--border);
-  padding: 2px 0 2px 10px;
+  gap: 6px;
+  align-items: baseline;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-size: 13px;
 }
 
 .evidencias li.mia {
-  border-left-color: var(--accent);
+  border-color: var(--accent);
 }
 
 .evidencias b {
   font-size: 10px;
   color: var(--muted);
   font-weight: 500;
-  letter-spacing: 0.5px;
 }
 
 .evidencias span {
   color: var(--bright);
-  font-size: 14px;
 }
 
-.evidencias .vacio {
-  color: var(--muted);
-  font-size: 12px;
-  border: none;
-  padding-left: 0;
-}
-
-.escenario {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-  position: relative;
+.evidencias .vacio,
+.evidencias.visor-tests {
+  display: none;
 }
 
 .voz {
-  margin: 0 0 10px;
+  margin: 0;
   text-align: center;
   color: var(--bright);
-  font-size: 15px;
-  line-height: 1.5;
-  padding: 8px 16px;
+  font-size: 14px;
+  line-height: 1.45;
+  padding: 8px 12px;
   border: 1px solid rgba(var(--accent-rgb), 0.25);
   background: rgba(var(--accent-rgb), 0.06);
+  flex: none;
 }
 
 .foco {
@@ -254,13 +219,13 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
 }
 
 .foco-turno {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--accent);
@@ -271,26 +236,17 @@
 }
 
 .foco-cara {
-  width: min(42vw, 220px);
+  width: min(36vw, 180px);
   aspect-ratio: 1;
   border-radius: 8px;
   overflow: hidden;
   border: 2px solid rgba(var(--accent-rgb), 0.45);
   background: #000;
-  box-shadow:
-    0 0 0 8px rgba(var(--accent-rgb), 0.06),
-    0 0 60px var(--glow);
+  box-shadow: 0 0 40px var(--glow);
 }
 
 .foco.acusa .foco-cara {
   border-color: var(--error);
-  box-shadow:
-    0 0 0 8px color-mix(in srgb, var(--error) 12%, transparent),
-    0 0 60px color-mix(in srgb, var(--error) 35%, transparent);
-}
-
-.foco-cara.tu {
-  border-color: var(--accent);
 }
 
 .foco-cara img {
@@ -301,9 +257,8 @@
 
 .foco-nombre {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   color: var(--bright);
-  letter-spacing: 1px;
 }
 
 .bot {
@@ -336,7 +291,6 @@
   margin: 0;
   color: var(--accent);
   font-size: 18px;
-  letter-spacing: 1px;
 }
 
 .final.ganaste h2 {
@@ -350,15 +304,14 @@
 
 .palabra-final strong {
   color: var(--bright);
-  font-size: 22px;
-  letter-spacing: 1px;
+  font-size: 20px;
 }
 
 .explicacion {
   margin: 0;
   color: var(--muted);
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .cargando {
@@ -368,7 +321,7 @@
 
 .cuenta {
   margin: 0;
-  font-size: 40px;
+  font-size: 36px;
   letter-spacing: 3px;
   color: var(--bright);
   font-variant-numeric: tabular-nums;
@@ -423,18 +376,19 @@
 .fila {
   display: flex;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 8px 0 4px;
+  padding: 4px 0 0;
   flex: none;
 }
 
 .acusado {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  width: 72px;
+  width: 68px;
   border: none;
   background: transparent;
   color: var(--text);
@@ -453,8 +407,8 @@
 
 .retrato {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 6px;
   overflow: hidden;
   border: 2px solid var(--border);
@@ -473,7 +427,7 @@
 
 .acusado.toca .retrato {
   border-color: var(--accent);
-  box-shadow: 0 0 16px var(--glow);
+  box-shadow: 0 0 14px var(--glow);
 }
 
 .acusado.votado .retrato {
@@ -487,7 +441,34 @@
 
 .acusado.mentia .retrato {
   border-color: var(--error);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--error) 55%, transparent);
+}
+
+.bocadillo {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: 160px;
+  width: max-content;
+  border-radius: 10px;
+  background: var(--bright);
+  color: #14171a;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.3;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  z-index: 3;
+}
+
+.bocadillo::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--bright);
 }
 
 .marca-votos,
@@ -506,15 +487,11 @@
   text-align: center;
 }
 
-.marca-votos {
-  color: var(--warn);
-}
-
 .nombre {
   font-size: 11px;
   text-align: center;
   word-break: break-word;
-  max-width: 72px;
+  max-width: 68px;
 }
 
 .chapa {
@@ -531,13 +508,42 @@
   border-color: var(--error);
 }
 
+.historial {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-soft) 80%, #000);
+  padding: 12px;
+}
+
+.historial-cabeza {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.historial h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.historial .cierra {
+  display: none;
+}
+
 .lineas {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 8px;
 }
 
 .chat-vacio {
@@ -566,6 +572,12 @@
   min-width: 0;
 }
 
+.meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
 .autor {
   font-size: 11px;
   color: var(--muted);
@@ -579,6 +591,12 @@
   color: var(--warn);
 }
 
+time {
+  font-size: 10px;
+  color: var(--muted);
+  opacity: 0.7;
+}
+
 .texto {
   font-size: 13px;
   color: var(--text);
@@ -586,19 +604,22 @@
   line-height: 1.4;
 }
 
-.linea.de-la-sala .texto {
+.linea.de-la-sala .texto,
+.linea.pista .texto {
   color: var(--bright);
 }
 
 .linea.pista .texto {
-  color: var(--bright);
   font-style: italic;
+}
+
+.pie {
+  margin-top: 8px;
 }
 
 .escribir {
   display: flex;
   gap: 8px;
-  flex: none;
 }
 
 .escribir input {
@@ -607,9 +628,9 @@
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 9px 11px;
+  padding: 10px 12px;
   font-family: inherit;
-  font-size: 14px;
+  font-size: 16px;
 }
 
 .escribir input:focus {
@@ -621,22 +642,82 @@
   opacity: 0.55;
 }
 
+.fab-historial {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .plato {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(240px, 1fr) minmax(160px, 32%);
+  .juicio {
+    padding: 6px 8px 8px;
   }
 
-  .sumario {
-    max-height: 180px;
+  .marca h1 {
+    font-size: 15px;
+  }
+
+  .plato {
+    display: flex;
+    flex-direction: column;
+    grid-template-columns: none;
+  }
+
+  .escenario {
+    flex: 1;
   }
 
   .foco-cara {
-    width: min(50vw, 160px);
+    width: min(42vw, 140px);
+  }
+
+  .historial {
+    position: fixed;
+    inset: 48px 8px 72px;
+    z-index: 20;
+    transform: translateY(110%);
+    transition: transform 0.2s ease;
+    box-shadow: 0 -12px 40px #000;
+  }
+
+  .historial.abierto,
+  .con-historial .historial {
+    transform: none;
+  }
+
+  .historial .cierra {
+    display: inline-block;
+  }
+
+  .fab-historial {
+    display: block;
+    position: fixed;
+    right: 14px;
+    bottom: 78px;
+    z-index: 21;
+    border: 1px solid var(--accent);
+    background: var(--bg);
+    color: var(--accent);
+    font: inherit;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 10px 14px;
+    cursor: pointer;
+    box-shadow: 0 4px 18px #000;
+  }
+
+  .con-historial .fab-historial {
+    display: none;
+  }
+
+  .pie {
+    margin-top: 6px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .historial {
+    transition: none;
+  }
+
   .foco-cara {
     box-shadow: none;
   }

@@ -270,15 +270,25 @@ describe('la mesa del impostor', () => {
 
   it('el chat de la mesa se pinta y se manda', () => {
     sala.chat.set([
-      { seq: 1, authorId: 'bea', author: 'Bea', kind: 'player', text: 'ha sido el bot', at: 0 },
+      { seq: 1, authorId: 'bea', author: 'Bea', kind: 'player', text: 'ha sido el bot', at: Date.now() },
     ]);
     fixture.detectChanges();
     expect(texto()).toContain('ha sido el bot');
+    expect(raiz().querySelector('.historial time')?.textContent).toMatch(/^\d{2}:\d{2}$/);
 
     componente.mensaje.set('que no, que eres tú');
     componente.enviarMensaje();
     expect(sala.decir).toHaveBeenCalledWith('que no, que eres tú');
     expect(componente.mensaje()).toBe('');
+  });
+
+  it('lo último dicho sale en un bocadillo encima de la cara', () => {
+    sala.chat.set([
+      { seq: 1, authorId: 'bea', author: 'Bea', kind: 'player', text: 'te pillo', at: Date.now() },
+    ]);
+    fixture.detectChanges();
+    expect(componente.mesa().find((uno) => uno.seatId === 'bea')?.bocadillo).toBe('te pillo');
+    expect(texto()).toContain('te pillo');
   });
 
   it('fuera de tu turno no deja escribir la pista', () => {

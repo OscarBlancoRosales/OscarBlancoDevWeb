@@ -6,7 +6,8 @@ import { Subscription } from 'rxjs';
 import { TerminalLayout } from '../../../shared/terminal-layout/terminal-layout';
 import { AuthApiService } from '../../../api/auth-api.service';
 import { ImpostorRoomService } from '../impostor-room.service';
-import { guardarPase } from '../../pase-guardado';
+import { guardarPase, paseDe, pasesGuardados } from '../../pase-guardado';
+import type { PaseDeSala } from '../../pase-guardado';
 import { ELENCO, caraPorId, fotoDeLaCara } from '@devweb/shared/games/impostor/caras';
 import { TEMAS, TEMA_MEZCLA } from '@devweb/shared/games/impostor/temas';
 import type { Cara } from '@devweb/shared/games/impostor/caras';
@@ -31,12 +32,6 @@ const MODOS: readonly OpcionDeModo[] = [
     nombre: 'La última palabra',
     descripcion:
       'Igual que el clásico, pero pillarle no basta: le queda un disparo. Si acierta la palabra, gana él.',
-  },
-  {
-    id: 'infiltrado',
-    nombre: 'Infiltrado',
-    descripcion:
-      'Al impostor le dan una palabra parecida y no le dicen que lo es. Nadie miente a propósito y aun así uno sobra.',
   },
 ];
 
@@ -63,6 +58,7 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   readonly trabajando = signal(false);
   readonly error = signal('');
   readonly invitacion = signal('');
+  readonly partidasAbiertas = signal<readonly PaseDeSala[]>([]);
 
   nombreSala = 'Aquí miente alguien';
   nombreJugador = '';
@@ -90,12 +86,26 @@ export class ImpostorLobby implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.invitacion.set(this.ruta.snapshot.queryParamMap.get('sala') ?? '');
+    const sala = this.ruta.snapshot.queryParamMap.get('sala') ?? '';
+    this.invitacion.set(sala);
+    this.partidasAbiertas.set(pasesGuardados());
+
+    // Este dispositivo ya tiene asiento en esa mesa: no se elige cara otra vez.
+    if (sala && paseDe(sala)) {
+      void this.router.navigate(['/juegos/impostor/mesa'], { queryParams: { sala } });
+      return;
+    }
 
     this.suscripcion = this.auth.settledUser$.subscribe((usuario) => {
       this.conSesion.set(usuario !== null);
       this.sesionResuelta.set(true);
       if (usuario && !this.nombreJugador) this.nombreJugador = usuario.displayName;
+    });
+  }
+
+  seguir(pase: PaseDeSala): void {
+    void this.router.navigate(['/juegos/impostor/mesa'], {
+      queryParams: { sala: pase.roomId },
     });
   }
 

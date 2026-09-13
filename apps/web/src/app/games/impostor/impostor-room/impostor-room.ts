@@ -31,6 +31,8 @@ export interface Puesto {
   /** Si era impostor. Solo al acabar la ronda. */
   readonly eraImpostor: boolean;
   readonly puntos: number;
+  /** Lo último que ha dicho, si fue hace un momento. */
+  readonly bocadillo: string;
 }
 
 /** Una línea de la charla: pista dicha o mensaje de mesa. */
@@ -42,6 +44,7 @@ export interface LineaDeCharla {
   readonly mia: boolean;
   readonly deLaSala: boolean;
   readonly esPista: boolean;
+  readonly hora: string;
 }
 
 /** Cómo se llama cada modo en pantalla. */
@@ -83,6 +86,8 @@ export class ImpostorRoom implements OnInit, OnDestroy {
   readonly enlaceCopiado = signal(false);
   /** Si la palabra se enseña o se tapa. Tapada por si alguien mira de reojo. */
   readonly palabraALaVista = signal(true);
+  /** El historial de chat. En el teléfono va detrás de un botón; en mesa, abierto. */
+  readonly historialAbierto = signal(false);
 
   /**
    * Lo que se escribe: la pista de tu turno y lo que dices en el chat.
@@ -249,6 +254,7 @@ export class ImpostorRoom implements OnInit, OnDestroy {
       mia: pista.seatId === this.sala.miAsiento,
       deLaSala: false,
       esPista: true,
+      hora: '',
     }));
     const mensajes: LineaDeCharla[] = this.chat().map((entrada) => ({
       clave: `chat-${entrada.seq}`,
@@ -258,6 +264,7 @@ export class ImpostorRoom implements OnInit, OnDestroy {
       mia: this.esMio(entrada),
       deLaSala: entrada.kind === 'system',
       esPista: false,
+      hora: horaDe(entrada.at),
     }));
     return [...pistas, ...mensajes];
   }
@@ -424,12 +431,42 @@ export class ImpostorRoom implements OnInit, OnDestroy {
         fuera: vista.eliminados.includes(asiento.id),
         eraImpostor: vista.impostores?.includes(asiento.id) ?? false,
         puntos: vista.marcador[asiento.id] ?? 0,
+        bocadillo: this.bocadilloDe(asiento.id),
       };
     });
 
     if (vista.orden.length === 0) return puestos;
     return puestos.sort((uno, otro) => sitio(vista.orden, uno) - sitio(vista.orden, otro));
   }
+
+  /**
+   * Lo último que ha dicho este asiento, si fue hace un momento.
+   *
+   * El historial está en el panel; encima de la cara solo vive lo reciente,
+   * como en una mesa de verdad.
+   */
+  private bocadilloDe(seatId: string): string {
+    const ahora = this.ahora();
+    let ultimo = '';
+    for (const entrada of this.chat()) {
+      if (entrada.kind === 'system') continue;
+      if (entrada.authorId !== seatId) continue;
+      if (ahora - entrada.at > BOCADILLO_MS) continue;
+      ultimo = entrada.text;
+    }
+    return ultimo;
+  }
+}
+
+/** Cuánto se queda un bocadillo encima de la cara. */
+const BOCADILLO_MS = 7000;
+
+function horaDe(at: number): string {
+  if (!at) return '';
+  const cuando = new Date(at);
+  const horas = String(cuando.getHours()).padStart(2, '0');
+  const minutos = String(cuando.getMinutes()).padStart(2, '0');
+  return `${horas}:${minutos}`;
 }
 
 function pistasDe(pistas: readonly Pista[], seatId: string): string[] {

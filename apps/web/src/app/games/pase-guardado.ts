@@ -47,3 +47,24 @@ export function olvidarPase(roomId: string): void {
     // Si no se puede borrar, el pase caduca solo cuando la sala se borra.
   }
 }
+
+/**
+ * Los pases que este dispositivo todavía tiene.
+ *
+ * Sirve para retomar una mesa viva sin volver a elegir cara: el pase es lo que
+ * demuestra el asiento, y si está aquí, esa persona ya se sentó.
+ */
+export function pasesGuardados(): readonly PaseDeSala[] {
+  const vistos = new Map<string, PaseDeSala>();
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      if (!clave?.startsWith(`${CLAVE}:`)) continue;
+      const pase = paseDe(clave.slice(CLAVE.length + 1));
+      if (pase) vistos.set(pase.roomId, pase);
+    }
+  } catch {
+    return [];
+  }
+  return [...vistos.values()];
+}

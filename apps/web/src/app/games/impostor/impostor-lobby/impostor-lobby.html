@@ -13,6 +13,18 @@
       <p class="aviso">{{ error() }}</p>
     }
 
+    @if (!invitacion() && partidasAbiertas().length > 0) {
+      <section class="panel">
+        <h2>Mesas vivas en este dispositivo</h2>
+        <p class="explicacion">Ya te sentaste. Entras al mismo asiento, con la misma cara.</p>
+        <div class="vivas">
+          @for (pase of partidasAbiertas(); track pase.roomId) {
+            <button type="button" class="accion" (click)="seguir(pase)">Seguir jugando</button>
+          }
+        </div>
+      </section>
+    }
+
     @if (invitacion()) {
       <section class="panel">
         <h2>Te han invitado a la mesa</h2>
