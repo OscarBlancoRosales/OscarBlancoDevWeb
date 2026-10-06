@@ -217,7 +217,8 @@ export class MesaPoker implements OnInit, OnDestroy {
 
     const cuenta = new Map<string, number>();
     for (const voto of Object.values(vista.votos)) {
-      const clave = voto.tipo === 'numero' ? String(voto.valor) : voto.tipo === 'cafe' ? '☕' : '🚬';
+      const clave =
+        voto.tipo === 'numero' ? String(voto.valor) : voto.tipo === 'cafe' ? '☕' : '🚬';
       cuenta.set(clave, (cuenta.get(clave) ?? 0) + 1);
     }
 
@@ -330,22 +331,38 @@ export class MesaPoker implements OnInit, OnDestroy {
   }
 
   /**
-   * Cambia lo que se está estimando sin tocar los votos.
+   * Cambia lo que se está estimando. Solo con Enter.
    *
-   * Se manda como ronda nueva porque es lo único que el juego sabe hacer con
-   * el asunto; si ya hay votos echados, se avisa antes de borrarlos.
+   * Cambiar el asunto es empezar una ronda nueva -es lo único que el juego
+   * sabe hacer con el asunto-, así que tiene que pedirse a propósito. Antes
+   * también se mandaba al **salir** del campo, y eso es una trampa: pinchabas
+   * ahí para escribir lo siguiente, te ibas a otro sitio y la ronda se
+   * reiniciaba sin que nadie hubiera dicho que sí.
    */
   ponerAsunto(evento: Event): void {
-    const escrito = (evento.target as HTMLInputElement).value.trim();
+    const campo = evento.target as HTMLInputElement;
+    const escrito = campo.value.trim();
     const vista = this.vista();
     if (!vista || escrito === vista.asunto) return;
 
     const hayVotos = vista.hanVotado.length > 0;
     if (hayVotos && !confirm('Cambiar el asunto empieza una ronda nueva. ¿Seguimos?')) {
-      (evento.target as HTMLInputElement).value = vista.asunto;
+      campo.value = vista.asunto;
       return;
     }
     this.sala.nuevaRonda(escrito);
+    campo.blur();
+  }
+
+  /**
+   * Al salir del campo sin confirmar, vuelve a poner lo que hay de verdad.
+   *
+   * Dejarlo con el texto a medias es peor que borrarlo: el campo diría que se
+   * está estimando una cosa y la mesa estaría votando otra.
+   */
+  olvidarAsunto(evento: Event): void {
+    const vista = this.vista();
+    if (vista) (evento.target as HTMLInputElement).value = vista.asunto;
   }
 
   hablar(): void {

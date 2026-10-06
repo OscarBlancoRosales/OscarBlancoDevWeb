@@ -39,6 +39,15 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
   nombreJugador = '';
   avatar = AVATARES[0].id;
 
+  /**
+   * Si la cara que hay puesta la has elegido tú o es la que venía de serie.
+   *
+   * Hace falta porque mirar quién hay en la mesa es una petición que tarda: si
+   * resuelve después de que hayas elegido, pisarte la elección es cambiarte la
+   * cara sin que hayas tocado nada, que es justo lo que no puede pasar.
+   */
+  private haElegido = false;
+
   private sesion?: Subscription;
 
   constructor(
@@ -77,10 +86,18 @@ export class EntrarEnLaMesa implements OnInit, OnDestroy {
         .map((asiento) => asiento.meta?.['avatar'])
         .filter((avatar): avatar is string => typeof avatar === 'string');
       this.cogidos.set(puestos);
-      if (puestos.includes(this.avatar)) this.avatar = this.primeroLibre();
+      // Solo se mueve la que venía de serie. Si ya elegiste, se queda: la
+      // verás marcada como cogida y decides tú.
+      if (!this.haElegido && puestos.includes(this.avatar)) this.avatar = this.primeroLibre();
     } catch {
       // Si no se puede mirar, se elige a ciegas y el reparto lo arregla luego.
     }
+  }
+
+  /** Eliges una cara. A partir de aquí no te la mueve nadie. */
+  elegir(id: string): void {
+    this.avatar = id;
+    this.haElegido = true;
   }
 
   estaCogido(id: string): boolean {

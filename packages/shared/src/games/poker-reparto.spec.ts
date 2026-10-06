@@ -103,6 +103,61 @@ describe('repartir las caras de la mesa', () => {
     expect(caras['b']).not.toBe('turing');
   });
 
+  /**
+   * Lo que de verdad no puede pasar.
+   *
+   * La cara que eliges es tuya y está guardada en tu asiento. Que te la cambie
+   * lo que haga otra persona es lo que hace que el juego parezca que revienta
+   * por un clic: tú no has tocado nada y de pronto eres otro.
+   */
+  it('a quien eligió no le cambia la cara porque entre alguien después', () => {
+    const solo = repartirAvatares([{ id: 'a', avatar: 'turing' }]);
+    const acompanyado = repartirAvatares([
+      { id: 'a', avatar: 'turing' },
+      { id: 'b', avatar: 'linus' },
+      { id: 'c' },
+    ]);
+
+    expect(acompanyado['a']).toBe(solo['a']);
+  });
+
+  it('ni porque alguien que llegó antes pidiera la suya', () => {
+    // Pasa de verdad: dos pestañas, una reconexión con asiento nuevo, o dos
+    // personas eligiendo a la vez. Al que pierde el desempate se le daba una
+    // cara sacada del hash de su identificador, o sea una cualquiera. Ahora se
+    // le da la de al lado, que es lo más parecido a la que quería.
+    const caras = repartirAvatares([
+      { id: 'vieja', avatar: 'turing' },
+      { id: 'mia', avatar: 'turing' },
+    ]);
+    const vecina = repartirAvatares([{ id: 'mia', avatar: 'hopper' }]);
+
+    expect(caras['mia']).toBe(vecina['mia']);
+  });
+
+  it('y a quien perdió el desempate no se le da una cara de otro grupo', () => {
+    // Elegiste una leyenda: que te salga un disquete no es «la siguiente
+    // libre», es otra cosa.
+    const caras = repartirAvatares([
+      { id: 'a', avatar: 'turing' },
+      { id: 'b', avatar: 'turing' },
+    ]);
+
+    expect(avatarPorId(caras['b'])?.grupo).toBe('leyendas');
+  });
+
+  it('a quien no eligió sí se le puede mover, que para eso no eligió', () => {
+    // Su cara sale del hash de su asiento, así que puede chocar con la que
+    // alguien eligió de verdad. Ahí manda la elegida.
+    const caras = repartirAvatares([
+      { id: 'sin-elegir', avatar: undefined },
+      { id: 'elige', avatar: avatarPorDefecto('sin-elegir').id },
+    ]);
+
+    expect(caras['elige']).toBe(avatarPorDefecto('sin-elegir').id);
+    expect(caras['sin-elegir']).not.toBe(caras['elige']);
+  });
+
   it('todos salen con uno del catálogo de verdad', () => {
     const caras = repartirAvatares([{ id: 'a' }, { id: 'b', avatar: 'inventado' }]);
     for (const [quien, cara] of Object.entries(caras)) {

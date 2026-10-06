@@ -17,9 +17,33 @@ import type { ScrumView, ScrumVote } from '@devweb/shared/games/scrum';
  */
 
 const ASIENTOS: SeatInfo[] = [
-  { id: 'yo', displayName: 'Óscar', isBot: false, connected: true, isOwner: true, order: 0, meta: { avatar: 'turing' } },
-  { id: 'bea', displayName: 'Bea', isBot: false, connected: true, isOwner: false, order: 1, meta: { avatar: 'hopper' } },
-  { id: 'eva', displayName: 'Eva', isBot: false, connected: true, isOwner: false, order: 2, meta: { avatar: 'linus' } },
+  {
+    id: 'yo',
+    displayName: 'Óscar',
+    isBot: false,
+    connected: true,
+    isOwner: true,
+    order: 0,
+    meta: { avatar: 'turing' },
+  },
+  {
+    id: 'bea',
+    displayName: 'Bea',
+    isBot: false,
+    connected: true,
+    isOwner: false,
+    order: 1,
+    meta: { avatar: 'hopper' },
+  },
+  {
+    id: 'eva',
+    displayName: 'Eva',
+    isBot: false,
+    connected: true,
+    isOwner: false,
+    order: 2,
+    meta: { avatar: 'linus' },
+  },
 ];
 
 const BASE: ScrumView = {
@@ -52,14 +76,16 @@ function salaFalsa() {
     >([]),
     miAsiento: 'yo',
     nombreDe: (seatId: string) => ASIENTOS.find((uno) => uno.id === seatId)?.displayName ?? '',
-    avatarDe: (seatId: string) =>
-      ({ yo: 'turing', bea: 'hopper', eva: 'linus' })[seatId] ?? 'anon',
+    avatarDe: (seatId: string) => ({ yo: 'turing', bea: 'hopper', eva: 'linus' })[seatId] ?? 'anon',
     reconectar: () => undefined,
     desconectar: () => undefined,
     votar: (_voto: ScrumVote) => undefined,
     retirarVoto: () => undefined,
     revelar: () => undefined,
-    nuevaRonda: () => undefined,
+    rondasPedidas: [] as (string | undefined)[],
+    nuevaRonda(asunto?: string) {
+      this.rondasPedidas.push(asunto);
+    },
     decir: () => undefined,
   };
 }
@@ -487,6 +513,59 @@ describe('la mesa de poker', () => {
       ]);
       fixture.detectChanges();
       expect(dom().querySelectorAll('.dicho.mio')).toHaveLength(1);
+    });
+  });
+
+  /**
+   * El campo de arriba, el de lo que se estima.
+   *
+   * Cambiar el asunto es empezar una ronda nueva, porque es lo único que el
+   * juego sabe hacer con el asunto. Y por eso tiene que pedirse a propósito:
+   * antes se mandaba también al **salir** del campo, así que pinchabas ahí
+   * para escribir lo siguiente, te ibas a otro sitio y la ronda se reiniciaba
+   * sin que nadie hubiera dicho que sí.
+   */
+  describe('cambiar lo que se estima', () => {
+    function campo(): HTMLInputElement {
+      const encontrado = dom().querySelector<HTMLInputElement>('.asunto input');
+      if (!encontrado) throw new Error('no hay campo de asunto');
+      return encontrado;
+    }
+
+    it('con Enter, empieza la ronda nueva', () => {
+      pinta({ asunto: 'Lo de antes', hanVotado: [] });
+      const suyo = campo();
+      suyo.value = 'Lo siguiente';
+      suyo.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+      expect(sala.rondasPedidas).toEqual(['Lo siguiente']);
+    });
+
+    it('pero al salir del campo no pasa nada', () => {
+      pinta({ asunto: 'Lo de antes', hanVotado: [] });
+      const suyo = campo();
+      suyo.value = 'A medio escribir';
+      suyo.dispatchEvent(new Event('blur'));
+
+      expect(sala.rondasPedidas).toEqual([]);
+    });
+
+    it('y lo escrito a medias se descarta, que si no el campo miente', () => {
+      // El campo diría que se está estimando una cosa y la mesa estaría
+      // votando otra.
+      pinta({ asunto: 'Lo de antes', hanVotado: [] });
+      const suyo = campo();
+      suyo.value = 'A medio escribir';
+      suyo.dispatchEvent(new Event('blur'));
+
+      expect(suyo.value).toBe('Lo de antes');
+    });
+
+    it('y pulsar Enter sin cambiar nada tampoco reinicia la ronda', () => {
+      pinta({ asunto: 'Lo de antes', hanVotado: ['yo'] });
+      campo().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+      expect(sala.rondasPedidas).toEqual([]);
     });
   });
 });

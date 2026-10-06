@@ -117,6 +117,52 @@ describe('elegir cara antes de sentarse', () => {
   });
 });
 
+/**
+ * La carrera entre tu dedo y la petición.
+ *
+ * Mirar quién hay en la mesa tarda. Si la respuesta llega después de que hayas
+ * elegido y te pisa la elección, te ha cambiado la cara sin que hayas tocado
+ * nada, y eso es inaceptable aunque la cara nueva sea mejor.
+ */
+describe('si eliges antes de que se sepa quién hay', () => {
+  it('no te la cambia nadie', async () => {
+    let contestar: () => void = () => undefined;
+    const esperando = new Promise<RoomInfo>((resolver) => {
+      contestar = (): void => {
+        resolver(sala([asiento('a', 'turing'), asiento('b', 'wizard')]));
+      };
+    });
+
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [EntrarEnLaMesa],
+      providers: [
+        provideRouter([]),
+        { provide: MesaService, useValue: { crear: () => undefined, unirse: () => undefined } },
+        { provide: AuthApiService, useValue: { settledUser$: of(null) } },
+        { provide: RoomsApiService, useValue: { info: () => esperando } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap({ sala: 'sala-1' }) } },
+        },
+      ],
+    }).compileComponents();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    const fixture = TestBed.createComponent(EntrarEnLaMesa);
+    fixture.detectChanges();
+
+    // Eliges «el mago» mientras la petición sigue en el aire. Y resulta que
+    // está cogido, así que antes se te movía la elección por detrás.
+    fixture.componentInstance.elegir('wizard');
+    contestar();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(fixture.componentInstance.avatar).toBe('wizard');
+  });
+});
+
 describe('cuando no hay mesa que mirar', () => {
   it('sin invitación no hay ninguna cogida', async () => {
     const fixture = await montar([], '');
@@ -186,9 +232,9 @@ describe('la cuenta hace falta para abrir, no para sentarse', () => {
   }
 
   function botones(fixture: ComponentFixture<EntrarEnLaMesa>): string[] {
-    return Array.from(
-      (fixture.nativeElement as HTMLElement).querySelectorAll('button.accion'),
-    ).map((b) => b.textContent.trim());
+    return Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button.accion')).map(
+      (b) => b.textContent.trim(),
+    );
   }
 
   it('sin sesión y sin invitación, lleva al login y vuelve aquí', async () => {

@@ -1,7 +1,11 @@
-import { Injectable, NgZone, signal } from '@angular/core';
+import { Injectable, NgZone, computed, signal } from '@angular/core';
 import { RoomSocket } from '../api/room-socket';
 import { RoomsApiService } from '../api/rooms-api.service';
-import { avatarPorDefecto, repartirAvatares } from '@devweb/shared/games/poker-reparto';
+import {
+  avatarPorDefecto,
+  avatarPorId,
+  repartirAvatares,
+} from '@devweb/shared/games/poker-reparto';
 import type { Signal } from '@angular/core';
 import type { ChatEntry, SeatInfo, ServerMessage } from '@devweb/shared/contracts/rooms';
 import type { ScrumView, ScrumVote } from '@devweb/shared/games/scrum';
@@ -130,20 +134,30 @@ export class MesaService {
   }
 
   /**
+   * Las caras de la mesa, repartidas **una sola vez** por composición.
+   *
+   * Antes esto se calculaba dentro de `avatarDe`, o sea una vez por cada
+   * pregunta: dos por jugador en cada repintado, y la pantalla se repinta cada
+   * segundo para que caigan los bocadillos. Que la identidad de alguien se
+   * vuelva a decidir cada vez que se pinta es justo lo que hace que parezca
+   * que un clic lo cambia todo.
+   */
+  private readonly caras = computed(() => carasDeLaMesa(this._mesa()));
+
+  /**
    * El avatar de cada asiento, repartido sin repetir.
    *
-   * Se calcula sobre la mesa entera y no asiento a asiento: dos personas con
+   * Se reparte sobre la mesa entera y no asiento a asiento: dos personas con
    * la misma cara alrededor de una mesa de poker no se distinguen, y el
    * crupier acabaría pidiéndole cuentas a quien no era.
+   *
+   * Y si por lo que sea no hay reparto para ese asiento, manda **lo que eligió**,
+   * que está guardado en su asiento desde que se sentó. Lo de antes era
+   * inventarle una cara con el hash de su identificador, y así es como a quien
+   * sí había elegido le salía de pronto otra sin haber tocado nada.
    */
   avatarDe(seatId: string): string {
-    const caras = repartirAvatares(
-      this._mesa().map((uno) => ({
-        id: uno.id,
-        avatar: typeof uno.meta?.['avatar'] === 'string' ? uno.meta['avatar'] : undefined,
-      })),
-    );
-    return caras[seatId] ?? avatarPorDefecto(seatId).id;
+    return this.caras()[seatId] ?? caraSuelta(this._mesa(), seatId);
   }
 
   /**
@@ -180,9 +194,7 @@ export class MesaService {
       // historial entero, y sumarlo al que ya había repetía cada frase.
       const porSeq = new Map(this._chat().map((entrada) => [entrada.seq, entrada]));
       for (const entrada of mensaje.entradas) porSeq.set(entrada.seq, entrada);
-      this._chat.set(
-        [...porSeq.values()].sort((uno, otro) => uno.seq - otro.seq).slice(-80),
-      );
+      this._chat.set([...porSeq.values()].sort((uno, otro) => uno.seq - otro.seq).slice(-80));
       return;
     }
     if (mensaje.tipo === 'rechazada') {
@@ -194,4 +206,34 @@ export class MesaService {
     this._mesa.set(mensaje.seats);
     if (mensaje.vista) this._vista.set(mensaje.vista as ScrumView);
   }
+}
+
+/** La cara que eligió ese asiento, si eligió alguna. */
+function elegido(asiento: SeatInfo | undefined): string | undefined {
+  const avatar = asiento?.meta?.['avatar'];
+  return typeof avatar === 'string' ? avatar : undefined;
+}
+
+/**
+ * Las caras de toda la mesa, repartidas sin que se repita ninguna.
+ *
+ * Está aquí fuera y exportada porque es la regla, no un detalle del servicio:
+ * los juegos se prueban contra un doble de `MesaService`, y un doble que
+ * devuelve la cara correcta no prueba nada de esto. Así hay dónde atornillarla.
+ */
+export function carasDeLaMesa(mesa: readonly SeatInfo[]): Record<string, string> {
+  return repartirAvatares(mesa.map((uno) => ({ id: uno.id, avatar: elegido(uno) })));
+}
+
+/**
+ * La cara de alguien que no sale en el reparto.
+ *
+ * Pasa mientras la mesa todavía no ha llegado del servidor. Manda lo que
+ * eligió, que viaja en su asiento desde que se sentó: inventarle una con el
+ * hash de su identificador es exactamente cómo a quien sí había elegido le
+ * aparecía otra cara sin haber tocado nada.
+ */
+export function caraSuelta(mesa: readonly SeatInfo[], seatId: string): string {
+  const suyo = mesa.find((uno) => uno.id === seatId);
+  return avatarPorId(elegido(suyo))?.id ?? avatarPorDefecto(seatId).id;
 }

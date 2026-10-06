@@ -3,9 +3,8 @@
     <header class="cabecera">
       <h1><span class="prompt">&gt;</span> A la mesa</h1>
       <p class="subtitulo">
-        El mismo planning poker de siempre —los mismos votos, las mismas
-        desviaciones— pero sentados a una mesa, con chat y con un crupier que
-        opina de todo. Elige tu cara antes de sentarte.
+        El mismo planning poker de siempre —los mismos votos, las mismas desviaciones— pero sentados
+        a una mesa, con chat y con un crupier que opina de todo. Elige tu cara antes de sentarte.
       </p>
     </header>
 
@@ -38,7 +37,7 @@
               [disabled]="estaCogido(uno.id)"
               [attr.aria-pressed]="avatar === uno.id"
               [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
-              (click)="avatar = uno.id"
+              (click)="elegir(uno.id)"
             >
               <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
               <span>{{ uno.nombre }}</span>
@@ -57,7 +56,7 @@
               [disabled]="estaCogido(uno.id)"
               [attr.aria-pressed]="avatar === uno.id"
               [title]="estaCogido(uno.id) ? uno.nombre + ' ya está en la mesa' : uno.nombre"
-              (click)="avatar = uno.id"
+              (click)="elegir(uno.id)"
             >
               <img [src]="fotoDe(uno.id)" [alt]="uno.nombre" loading="lazy" />
               <span>{{ uno.nombre }}</span>
@@ -80,14 +79,12 @@
         </button>
       } @else if (sesionResuelta()) {
         <p class="pie">
-          Para abrir una mesa hace falta cuenta, porque alguien tiene que ser su
-          dueño. Para sentarte en una a la que te inviten, no.
+          Para abrir una mesa hace falta cuenta, porque alguien tiene que ser su dueño. Para
+          sentarte en una a la que te inviten, no.
         </p>
         <!-- Con el botón, y no solo con el aviso: si la sesión se cae estando
              aquí, la pantalla se quedaba sin nada que pulsar. -->
-        <button type="button" class="accion" (click)="identificarse()">
-          Entrar con mi cuenta
-        </button>
+        <button type="button" class="accion" (click)="identificarse()">Entrar con mi cuenta</button>
       }
 
       <button type="button" class="volver" (click)="volver()">Volver a elegir versión</button>

@@ -171,21 +171,41 @@ export interface AsientoDeMesa {
 /**
  * Reparte las caras de la mesa sin que se repita ninguna.
  *
- * Lo que cada uno eligió manda; al resto se le da el suyo por defecto y, si ya
- * está cogido, el siguiente libre. Dos personas con la misma cara alrededor de
- * una mesa de poker no se distinguen, y el dealer acabaría pidiéndole cuentas
- * a quien no era.
+ * Tres pasadas, y el orden es la regla entera:
+ *
+ * 1. Quien eligió se lleva lo que eligió. Si está cogido, espera.
+ * 2. Quien eligió y perdió el desempate se lleva **la de al lado de la que
+ *    quiso**. Antes se le daba la que salía del hash de su identificador, o
+ *    sea una cualquiera: elegías Turing y aparecías de disquete, sin haber
+ *    tocado nada. Que te cambie la cara lo que haga otro ya es bastante malo;
+ *    que encima te la cambie por algo que no tiene nada que ver, peor.
+ * 3. Quien no eligió se lleva la suya por defecto, y si está cogida, la
+ *    siguiente libre. A este sí se le puede mover: no eligió.
+ *
+ * Dos personas con la misma cara alrededor de una mesa de poker no se
+ * distinguen, y el dealer acabaría pidiéndole cuentas a quien no era.
  */
 export function repartirAvatares(asientos: readonly AsientoDeMesa[]): Record<string, string> {
   const dadas = new Map<string, string>();
   const cogidas = new Set<string>();
 
-  for (const asiento of asientos) {
+  const eligieron = asientos.filter((asiento) => avatarPorId(asiento.avatar) !== null);
+
+  for (const asiento of eligieron) {
     const suyo = avatarPorId(asiento.avatar);
     if (suyo && !cogidas.has(suyo.id)) {
       dadas.set(asiento.id, suyo.id);
       cogidas.add(suyo.id);
     }
+  }
+
+  for (const asiento of eligieron) {
+    if (dadas.has(asiento.id)) continue;
+    const queria = avatarPorId(asiento.avatar);
+    if (!queria) continue;
+    const elegido = primeroLibreDesde(queria, cogidas);
+    dadas.set(asiento.id, elegido.id);
+    cogidas.add(elegido.id);
   }
 
   for (const asiento of asientos) {

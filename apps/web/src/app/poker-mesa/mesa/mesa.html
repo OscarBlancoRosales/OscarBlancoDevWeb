@@ -11,7 +11,7 @@
             [value]="v.asunto"
             placeholder="¿Qué estamos estimando?"
             (keydown.enter)="ponerAsunto($event)"
-            (blur)="ponerAsunto($event)"
+            (blur)="olvidarAsunto($event)"
           />
         </label>
 
@@ -78,86 +78,97 @@
 
           <!-- ===== EL TAPETE ===== -->
           <div class="mesa-hueco">
-          <div class="tapete">
-            <div class="fieltro">
-              <div class="linea"></div>
-            </div>
+            <div class="tapete">
+              <div class="fieltro">
+                <div class="linea"></div>
+              </div>
 
-            <!-- En el centro: el bote mientras se vota, las cuentas al destapar -->
-            <div class="centro">
-              @if (v.revelado && estadistica.votantes > 0) {
-                <p class="acuerdo" [class]="estadistica.acuerdo">{{ estadistica.acuerdo }}</p>
-                <div class="numeros">
-                  <span class="numero"
-                    ><strong>{{ estadistica.media }}</strong><i>media</i></span
+              <!-- En el centro: el bote mientras se vota, las cuentas al destapar -->
+              <div class="centro">
+                @if (v.revelado && estadistica.votantes > 0) {
+                  <p class="acuerdo" [class]="estadistica.acuerdo">{{ estadistica.acuerdo }}</p>
+                  <div class="numeros">
+                    <span class="numero"
+                      ><strong>{{ estadistica.media }}</strong
+                      ><i>media</i></span
+                    >
+                    <span class="numero"
+                      ><strong>{{ estadistica.mediana }}</strong
+                      ><i>mediana</i></span
+                    >
+                    <span class="numero"
+                      ><strong>{{ estadistica.minimo }}–{{ estadistica.maximo }}</strong
+                      ><i>rango</i></span
+                    >
+                    <span class="numero"
+                      ><strong>{{ estadistica.desviacion }}</strong
+                      ><i>σ</i></span
+                    >
+                  </div>
+                } @else {
+                  <span class="bote" aria-hidden="true">
+                    @for (puesta of hanPuesto; track $index) {
+                      <i></i>
+                    }
+                  </span>
+                  <p class="esperando">
+                    @if (todosHanVotado) {
+                      Todos han puesto
+                    } @else {
+                      Faltan {{ faltan }}
+                    }
+                  </p>
+                }
+              </div>
+
+              <!-- ===== LOS SITIOS ===== -->
+              @for (quien of sentados; track quien.seatId) {
+                <div class="sitio" [style.left.%]="quien.x" [style.top.%]="quien.y">
+                  @if (quien.bocadillo) {
+                    <p class="bocadillo">{{ quien.bocadillo }}</p>
+                  }
+
+                  <div
+                    class="placa"
+                    [class.tu]="quien.eresTu"
+                    [class.ha-votado]="quien.haVotado"
+                    [class.fuera]="!quien.conectado"
+                    [class.grave]="esGrave(quien.desvio)"
+                    [class.leve]="esLeve(quien.desvio)"
                   >
-                  <span class="numero"
-                    ><strong>{{ estadistica.mediana }}</strong><i>mediana</i></span
-                  >
-                  <span class="numero"
-                    ><strong>{{ estadistica.minimo }}–{{ estadistica.maximo }}</strong
-                    ><i>rango</i></span
-                  >
-                  <span class="numero"
-                    ><strong>{{ estadistica.desviacion }}</strong><i>σ</i></span
-                  >
+                    <span class="retrato">
+                      <span class="hueco">
+                        <img
+                          [src]="quien.foto"
+                          [alt]="nombreDelAvatar(quien.seatId)"
+                          loading="lazy"
+                        />
+                      </span>
+                      @if (quien.esAnfitrion) {
+                        <span class="boton-de-banca" title="Lleva la ronda">D</span>
+                      }
+                    </span>
+
+                    <span class="quien">
+                      <span class="nombre">{{ quien.nombre }}</span>
+                      <span class="estado">{{ quien.estado }}</span>
+                    </span>
+
+                    <span
+                      class="carta"
+                      [class.tapada]="quien.tapada"
+                      [class.vacia]="!quien.haVotado"
+                    >
+                      @if (quien.tapada && quien.haVotado) {
+                        <span class="dorso"></span>
+                      } @else if (quien.haVotado) {
+                        {{ quien.carta }}
+                      }
+                    </span>
+                  </div>
                 </div>
-              } @else {
-                <span class="bote" aria-hidden="true">
-                  @for (puesta of hanPuesto; track $index) {
-                    <i></i>
-                  }
-                </span>
-                <p class="esperando">
-                  @if (todosHanVotado) {
-                    Todos han puesto
-                  } @else {
-                    Faltan {{ faltan }}
-                  }
-                </p>
               }
             </div>
-
-            <!-- ===== LOS SITIOS ===== -->
-            @for (quien of sentados; track quien.seatId) {
-              <div class="sitio" [style.left.%]="quien.x" [style.top.%]="quien.y">
-                @if (quien.bocadillo) {
-                  <p class="bocadillo">{{ quien.bocadillo }}</p>
-                }
-
-                <div
-                  class="placa"
-                  [class.tu]="quien.eresTu"
-                  [class.ha-votado]="quien.haVotado"
-                  [class.fuera]="!quien.conectado"
-                  [class.grave]="esGrave(quien.desvio)"
-                  [class.leve]="esLeve(quien.desvio)"
-                >
-                  <span class="retrato">
-                    <span class="hueco">
-                      <img [src]="quien.foto" [alt]="nombreDelAvatar(quien.seatId)" loading="lazy" />
-                    </span>
-                    @if (quien.esAnfitrion) {
-                      <span class="boton-de-banca" title="Lleva la ronda">D</span>
-                    }
-                  </span>
-
-                  <span class="quien">
-                    <span class="nombre">{{ quien.nombre }}</span>
-                    <span class="estado">{{ quien.estado }}</span>
-                  </span>
-
-                  <span class="carta" [class.tapada]="quien.tapada" [class.vacia]="!quien.haVotado">
-                    @if (quien.tapada && quien.haVotado) {
-                      <span class="dorso"></span>
-                    } @else if (quien.haVotado) {
-                      {{ quien.carta }}
-                    }
-                  </span>
-                </div>
-              </div>
-            }
-          </div>
           </div>
         </section>
 
