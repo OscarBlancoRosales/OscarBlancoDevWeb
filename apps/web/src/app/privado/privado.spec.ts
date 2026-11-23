@@ -25,7 +25,11 @@ const DOCS: DocumentoPrivado[] = [
 function apiDePrueba(): Partial<PrivadoApiService> {
   return {
     lista: vi.fn().mockResolvedValue(DOCS),
-    documento: vi.fn().mockImplementation((ruta: string) => Promise.resolve(`<h1>${ruta}</h1>`)),
+    documento: vi
+      .fn()
+      .mockImplementation((ruta: string) =>
+        Promise.resolve(`<style>h1{color:teal}</style><h1>${ruta}</h1><script>window.x=1</script>`),
+      ),
     invitar: vi
       .fn()
       .mockResolvedValue({ id: 'i1', codigo: 'abc123def456', caduca: Date.now() + 3_600_000 }),
@@ -85,7 +89,11 @@ describe('lo privado', () => {
     const visor = raiz(f).querySelector('iframe');
     expect(visor).toBeInstanceOf(HTMLIFrameElement);
     expect(visor?.getAttribute('sandbox')).toBe('allow-scripts allow-popups');
-    expect(visor?.getAttribute('srcdoc')).toContain('<h1>documentos/00-indice.html</h1>');
+    const doc = visor?.getAttribute('srcdoc') ?? '';
+    expect(doc).toContain('<h1>documentos/00-indice.html</h1>');
+    // El diseño de cada documento va dentro: si se pierde, solo queda texto sobre blanco.
+    expect(doc).toContain('<style>h1{color:teal}</style>');
+    expect(doc).toContain('<script>window.x=1</script>');
     f.destroy();
   });
 

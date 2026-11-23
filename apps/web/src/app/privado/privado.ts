@@ -1,5 +1,6 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { ApiError } from '../api/api-client';
 import { AuthApiService } from '../api/auth-api.service';
@@ -49,7 +50,7 @@ export class Privado implements OnInit, OnDestroy {
   readonly pase = signal<string | null>(null);
   readonly documentos = signal<readonly DocumentoPrivado[]>([]);
   readonly abierto = signal<DocumentoPrivado | null>(null);
-  readonly html = signal('');
+  readonly html = signal<SafeHtml>('');
   readonly error = signal('');
   readonly invitacion = signal<InvitacionPrivada | null>(null);
   readonly copiado = signal(false);
@@ -84,6 +85,7 @@ export class Privado implements OnInit, OnDestroy {
 
   constructor(
     private readonly privado: PrivadoApiService,
+    private readonly desinfectante: DomSanitizer,
     private readonly auth: AuthApiService,
     private readonly ruta: ActivatedRoute,
     public i18n: I18nService,
@@ -126,7 +128,10 @@ export class Privado implements OnInit, OnDestroy {
     await this.intentar(async () => {
       const html = await this.privado.documento(documento.ruta, this.paseParaPedir());
       this.abierto.set(documento);
-      this.html.set(html + ENLACES);
+      // Sin esto Angular le quita al documento su <style> y su <script>, y solo
+      // queda el texto sobre blanco. Se puede: va en un iframe sin allow-same-origin,
+      // así que su código no alcanza nada de la web, y viene de nuestro servidor.
+      this.html.set(this.desinfectante.bypassSecurityTrustHtml(html + ENLACES));
     });
   }
 
