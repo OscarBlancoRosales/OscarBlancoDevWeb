@@ -320,6 +320,22 @@ const TRANSLATIONS: Record<string, Record<Lang, string>> = {
     en: 'For now you can only sign up with an invitation. If you have one, open it from its link.',
   },
 
+  // === LO PRIVADO ===
+  'privado.title': { es: 'Privado', en: 'Private' },
+  'privado.codeLabel': { es: 'Código de invitación', en: 'Invitation code' },
+  'privado.codePh': { es: 'El código que te han pasado', en: 'The code you were given' },
+  'privado.enter': { es: 'Entrar', en: 'Enter' },
+  'privado.empty': { es: 'Aún no hay nada subido.', en: 'Nothing uploaded yet.' },
+  'privado.invite': { es: 'Invitar a verlo', en: 'Invite someone' },
+  'privado.inviteValid': {
+    es: 'Vale una vez, hasta las {hora}. Pásale el enlace o el código:',
+    en: 'Good once, until {hora}. Share the link or the code:',
+  },
+  'privado.copyLink': { es: 'Copiar el enlace', en: 'Copy the link' },
+  'privado.copied': { es: 'Copiado', en: 'Copied' },
+  'privado.fullscreen': { es: 'Pantalla completa', en: 'Full screen' },
+  'privado.error': { es: 'No se ha podido abrir.', en: 'Could not open it.' },
+
   // === PANEL DE ADMINISTRACIÓN ===
   'admin.title': { es: 'Administración', en: 'Administration' },
   'admin.loading': { es: 'Cargando…', en: 'Loading…' },

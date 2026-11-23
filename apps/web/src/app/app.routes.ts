@@ -6,6 +6,7 @@ import { Verificar } from './auth/verificar/verificar';
 import { Olvide } from './auth/olvide/olvide';
 import { NuevaContrasena } from './auth/nueva-contrasena/nueva-contrasena';
 import { Admin } from './admin/admin';
+import { Privado } from './privado/privado';
 import { NameScreen } from './name-screen/name-screen';
 import { ScrumPoker } from './scrum-poker/scrum-poker';
 import { DniGenerator } from './dni-generator/dni-generator';
@@ -73,6 +74,8 @@ const SECCIONES: Routes = [
   // El panel se defiende solo: sin rol de administrador enseña un 404 y el
   // servidor contesta lo mismo a cada una de sus rutas.
   { path: 'admin', component: Admin, data: { win: 'admin', title: 'admin' } },
+  // Igual que el panel: a quien no manda ni trae pase le pide un código y nada más.
+  { path: 'privado', component: Privado, data: { win: 'privado', titleKey: 'privado.title' } },
   { path: 'dni-generator', component: DniGenerator, data: { win: 'dni' } },
   { path: 'qr-generator', component: QrGenerator, data: { win: 'qr' } },
   { path: 'decoder', component: Decoder, data: { win: 'base64' } },
