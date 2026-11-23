@@ -7,6 +7,7 @@ import { sql as chatPrivado } from './migrations/003-chat-privado';
 import { sql as adminEInvitaciones } from './migrations/004-admin-e-invitaciones';
 import { sql as accesos } from './migrations/005-accesos';
 import { sql as privado } from './migrations/006-privado';
+import { sql as privadoGrupo } from './migrations/007-privado-grupo';
 
 export type Db = Database.Database;
 
@@ -18,6 +19,7 @@ const MIGRATIONS: readonly { readonly name: string; readonly sql: string }[] = [
   { name: '004-admin-e-invitaciones', sql: adminEInvitaciones },
   { name: '005-accesos', sql: accesos },
   { name: '006-privado', sql: privado },
+  { name: '007-privado-grupo', sql: privadoGrupo },
 ];
 
 /**

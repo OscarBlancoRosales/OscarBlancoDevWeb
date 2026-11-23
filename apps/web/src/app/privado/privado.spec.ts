@@ -26,7 +26,11 @@ function apiDePrueba(): Partial<PrivadoApiService> {
   return {
     lista: vi.fn().mockResolvedValue(DOCS),
     documento: vi.fn().mockImplementation((ruta: string) => Promise.resolve(`<h1>${ruta}</h1>`)),
-    invitar: vi.fn().mockResolvedValue({ codigo: 'abc123def456', caduca: Date.now() + 3_600_000 }),
+    invitar: vi
+      .fn()
+      .mockResolvedValue({ id: 'i1', codigo: 'abc123def456', caduca: Date.now() + 3_600_000 }),
+    invitaciones: vi.fn().mockResolvedValue([]),
+    revocar: vi.fn().mockResolvedValue(undefined),
     canjear: vi.fn().mockResolvedValue({ pase: 'pase-firmado', caduca: Date.now() + 3_600_000 }),
   };
 }
@@ -92,6 +96,35 @@ describe('lo privado', () => {
     f.detectChanges();
     expect(raiz(f).querySelector('.privado-codigo-hecho')?.textContent).toBe('abc123def456');
     expect(f.componentInstance.enlace()).toContain('/privado?codigo=abc123def456');
+    f.destroy();
+  });
+
+  it('el enlace de la familia dura 7 días, se ve con sus entradas y se quita', async () => {
+    const api = apiDePrueba();
+    const vivo = {
+      id: 'g1',
+      tipo: 'grupo' as const,
+      nota: 'Familia',
+      creada: Date.now(),
+      caduca: Date.now() + 7 * 86_400_000,
+      canjes: 3,
+      revocada: false,
+    };
+    api.invitaciones = vi.fn().mockResolvedValue([vivo]);
+    const f = await montar(JEFE, api);
+    await f.componentInstance.invitar({ dias: 7, nota: 'Familia' });
+    f.detectChanges();
+    expect(api.invitar).toHaveBeenCalledWith({ dias: 7, nota: 'Familia' });
+    const fila = raiz(f).querySelector('.privado-enlaces li');
+    expect(fila).toBeInstanceOf(HTMLLIElement);
+    expect(fila?.textContent).toContain('Familia');
+    expect(fila?.textContent).toContain('3 entradas');
+
+    api.invitaciones = vi.fn().mockResolvedValue([{ ...vivo, revocada: true }]);
+    await f.componentInstance.revocar('g1');
+    f.detectChanges();
+    expect(api.revocar).toHaveBeenCalledWith('g1');
+    expect(raiz(f).querySelector('.privado-enlaces')).toBeNull();
     f.destroy();
   });
 

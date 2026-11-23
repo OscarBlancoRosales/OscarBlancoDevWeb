@@ -34,12 +34,42 @@ export const PedirDocumento = Type.Object({
   ruta: Type.String({ pattern: RUTA_PRIVADA, maxLength: 200 }),
 });
 
+/**
+ * Una invitación vale una vez durante una hora, o es de grupo: la usan varios
+ * durante unos días (como mucho 30) hasta que caduca o quien manda la revoca.
+ */
+export const TipoInvitacion = Type.Union([Type.Literal('una'), Type.Literal('grupo')]);
+export const DIAS_MAXIMOS_GRUPO = 30;
+
+export const CrearInvitacionPrivada = Type.Object({
+  tipo: Type.Optional(TipoInvitacion),
+  dias: Type.Optional(Type.Integer({ minimum: 1, maximum: DIAS_MAXIMOS_GRUPO })),
+  nota: Type.Optional(Type.String({ maxLength: 80 })),
+});
+
 /** Una invitación recién hecha: el código solo se ve aquí, una vez. */
 export const InvitacionPrivada = Type.Object({
+  id: Type.String(),
   codigo: Type.String(),
   caduca: Type.Integer(),
 });
 export type InvitacionPrivada = Static<typeof InvitacionPrivada>;
+
+/** Lo que se ve de cada invitación en la lista: nunca su código. */
+export const InvitacionPrivadaVista = Type.Object({
+  id: Type.String(),
+  tipo: TipoInvitacion,
+  nota: Type.String(),
+  creada: Type.Integer(),
+  caduca: Type.Integer(),
+  canjes: Type.Integer(),
+  revocada: Type.Boolean(),
+});
+export type InvitacionPrivadaVista = Static<typeof InvitacionPrivadaVista>;
+
+export const ListaInvitacionesPrivadas = Type.Object({
+  invitaciones: Type.Array(InvitacionPrivadaVista),
+});
 
 export const CanjearCodigo = Type.Object({
   codigo: Type.String({ minLength: 6, maxLength: 64 }),

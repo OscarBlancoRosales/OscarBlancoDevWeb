@@ -3,6 +3,7 @@ import { ApiClient } from './api-client';
 import type {
   DocumentoPrivado,
   InvitacionPrivada,
+  InvitacionPrivadaVista,
   ListaPrivada,
   PasePrivado,
 } from '@devweb/shared/contracts/privado';
@@ -34,8 +35,25 @@ export class PrivadoApiService {
     });
   }
 
-  invitar(): Promise<InvitacionPrivada> {
-    return this.api.request<InvitacionPrivada>({ method: 'POST', path: '/privado/invitaciones' });
+  /** Sin nada, una que vale una vez durante una hora; de grupo, la usan varios unos días. */
+  invitar(grupo?: { dias: number; nota: string }): Promise<InvitacionPrivada> {
+    return this.api.request<InvitacionPrivada>({
+      method: 'POST',
+      path: '/privado/invitaciones',
+      body: grupo ? { tipo: 'grupo', ...grupo } : {},
+    });
+  }
+
+  async invitaciones(): Promise<readonly InvitacionPrivadaVista[]> {
+    const r = await this.api.request<{ invitaciones: InvitacionPrivadaVista[] }>({
+      method: 'GET',
+      path: '/privado/invitaciones',
+    });
+    return r.invitaciones;
+  }
+
+  async revocar(id: string): Promise<void> {
+    await this.api.request({ method: 'DELETE', path: `/privado/invitaciones/${encodeURIComponent(id)}` });
   }
 
   canjear(codigo: string): Promise<PasePrivado> {

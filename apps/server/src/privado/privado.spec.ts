@@ -39,7 +39,12 @@ describe('lo privado', () => {
   const como = (token: string) => ({ authorization: `Bearer ${token}` });
 
   async function invitar(): Promise<string> {
-    const r = await app.inject({ method: 'POST', url: '/privado/invitaciones', headers: como(jefe) });
+    const r = await app.inject({
+      method: 'POST',
+      url: '/privado/invitaciones',
+      headers: como(jefe),
+      payload: {},
+    });
     return r.json<{ codigo: string }>().codigo;
   }
 
@@ -132,6 +137,57 @@ describe('lo privado', () => {
       headers: { 'x-pase-privado': pase },
     });
     expect(invitarConPase.statusCode).toBe(401);
+  });
+
+  async function invitarGrupo(dias: number): Promise<{ id: string; codigo: string }> {
+    const r = await app.inject({
+      method: 'POST',
+      url: '/privado/invitaciones',
+      headers: como(jefe),
+      payload: { tipo: 'grupo', dias, nota: 'Familia' },
+    });
+    return r.json<{ id: string; codigo: string }>();
+  }
+
+  it('un enlace de grupo vale para varios hasta que caduca, y se cuenta cada entrada', async () => {
+    const { codigo, id } = await invitarGrupo(7);
+    for (let i = 0; i < 3; i++) {
+      const canje = await app.inject({ method: 'POST', url: '/privado/canjear', payload: { codigo } });
+      expect(canje.statusCode).toBe(200);
+    }
+    const lista = await app.inject({ url: '/privado/invitaciones', headers: como(jefe) });
+    const inv = lista
+      .json<{ invitaciones: { id: string; canjes: number; nota: string; tipo: string }[] }>()
+      .invitaciones.find((i) => i.id === id);
+    expect(inv).toMatchObject({ canjes: 3, nota: 'Familia', tipo: 'grupo' });
+  });
+
+  it('revocar un enlace echa en el acto a quien entró con él', async () => {
+    const { codigo, id } = await invitarGrupo(7);
+    const canje = await app.inject({ method: 'POST', url: '/privado/canjear', payload: { codigo } });
+    const { pase } = canje.json<{ pase: string }>();
+    expect((await app.inject({ url: '/privado', headers: { 'x-pase-privado': pase } })).statusCode).toBe(200);
+
+    const fuera = await app.inject({
+      method: 'DELETE',
+      url: `/privado/invitaciones/${id}`,
+      headers: como(jefe),
+    });
+    expect(fuera.statusCode).toBe(200);
+    expect((await app.inject({ url: '/privado', headers: { 'x-pase-privado': pase } })).statusCode).toBe(401);
+    const otraVez = await app.inject({ method: 'POST', url: '/privado/canjear', payload: { codigo } });
+    expect(otraVez.statusCode).toBe(403);
+  });
+
+  it('un enlace de grupo no pasa de 30 días, y la lista y revocar son solo del administrador', async () => {
+    const largo = await app.inject({
+      method: 'POST',
+      url: '/privado/invitaciones',
+      headers: como(jefe),
+      payload: { tipo: 'grupo', dias: 365 },
+    });
+    expect(largo.statusCode).toBe(400);
+    expect((await app.inject({ url: '/privado/invitaciones', headers: como(otra) })).statusCode).toBe(404);
   });
 
   it('un código caducado no se canjea, y un pase manipulado no entra', async () => {
