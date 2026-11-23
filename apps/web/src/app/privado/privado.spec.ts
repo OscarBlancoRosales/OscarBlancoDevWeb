@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Privado, capturarEnlaces } from './privado';
+import { Privado, capturarEnlaces, prepararDocumento, protegerHistoria } from './privado';
 import { AuthApiService } from '../api/auth-api.service';
 import { PrivadoApiService } from '../api/privado-api.service';
 import { I18nService } from '../services/i18n.service';
@@ -212,5 +212,39 @@ describe('los enlaces dentro de un documento', () => {
     expect(doc.getElementById('f')?.getAttribute('target')).toBe('_blank');
     expect(pulsar(doc, '#r').defaultPrevented).toBe(true);
     expect(padre.postMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('la historia dentro del visor', () => {
+  /**
+   * Los paneles cambian el #ancla con history.replaceState al pulsar el menú.
+   * En un iframe aislado el navegador lo prohíbe, y el error cortaba la pantalla
+   * antes de pintarla: Conocimiento, Mi espacio y Mejora semanal salían vacías.
+   */
+  it('si el navegador prohíbe cambiar la dirección, no rompe a quien la cambia', () => {
+    const prohibido = (): never => {
+      throw new DOMException('origin null', 'SecurityError');
+    };
+    const historia = { replaceState: prohibido, pushState: prohibido } as unknown as History;
+    protegerHistoria(historia);
+    expect(() => {
+      historia.replaceState(null, '', '#mejora');
+    }).not.toThrow();
+    expect(() => {
+      historia.pushState(null, '', '#mejora');
+    }).not.toThrow();
+  });
+
+  it('se pone antes que los scripts del documento, sin romper su doctype', () => {
+    const doc = prepararDocumento('<!doctype html><html><head><script>panel()</script></head><body></body></html>');
+    expect(doc.startsWith('<!doctype html>')).toBe(true);
+    expect(doc.indexOf('protegerHistoria') + 1).toBeGreaterThan(0);
+    expect(doc.indexOf('protegerHistoria')).toBeLessThan(doc.indexOf('panel()'));
+    expect(doc).toContain('privadoAbrir');
+  });
+
+  it('un documento sin <head> también la lleva al principio', () => {
+    const doc = prepararDocumento('<p>hola</p><script>panel()</script>');
+    expect(doc.indexOf('protegerHistoria')).toBeLessThan(doc.indexOf('panel()'));
   });
 });
