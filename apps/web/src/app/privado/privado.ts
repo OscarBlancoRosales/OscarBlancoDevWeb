@@ -16,12 +16,38 @@ import type {
 const CLAVE_PASE = 'devweb.pase-privado';
 
 /**
- * Los enlaces de un documento a otro («02-til.html») no funcionan dentro de un
- * `srcdoc`: este trozo los intercepta y le pide a la página que abra el otro.
- * El documento va en un iframe sin `allow-same-origin`, así que no puede tocar
- * nada de la web: solo mandar este mensaje.
+ * Dentro de un `srcdoc` los enlaces relativos se resuelven contra la dirección
+ * de la web, no contra el documento: «02-til.html» o «#n2» cargaban la web
+ * entera dentro del visor. Esto los intercepta: un ancla baja hasta su sección,
+ * otro documento se le pide a la página, y uno de fuera se abre aparte.
+ *
+ * Corre dentro del iframe (se inyecta como texto), así que no puede usar nada
+ * de fuera de sí misma. Sin `allow-same-origin` no alcanza la web: solo puede
+ * mandar este mensaje.
  */
-const ENLACES = `<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';if(/^[^:?#]+\\.html(#.*)?$/.test(h)){e.preventDefault();parent.postMessage({privadoAbrir:h.split('#')[0]},'*');}},true);</script>`;
+export function capturarEnlaces(doc: Document, padre: Pick<Window, 'postMessage'>): void {
+  doc.addEventListener(
+    'click',
+    (e) => {
+      const a = (e.target as Element | null)?.closest('a[href]');
+      if (!a) return;
+      const h = a.getAttribute('href') ?? '';
+      if (/^(https?:|mailto:|tel:)/.test(h)) {
+        a.setAttribute('target', '_blank');
+        return;
+      }
+      e.preventDefault();
+      if (h.startsWith('#')) {
+        doc.getElementById(decodeURIComponent(h.slice(1)))?.scrollIntoView({ behavior: 'smooth' });
+      } else if (/^[^:?#]+\.html(#.*)?$/.test(h)) {
+        padre.postMessage({ privadoAbrir: h.split('#')[0] }, '*');
+      }
+    },
+    true,
+  );
+}
+
+const ENLACES = `<script>(${capturarEnlaces.toString()})(document, parent);</script>`;
 
 interface Grupo {
   readonly nombre: string;
