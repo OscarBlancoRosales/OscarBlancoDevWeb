@@ -23,6 +23,7 @@ import { ajustesDeIa } from './games/trivial/presentador';
 import { roomSocket } from './rooms/ws';
 import { kvRoutes } from './kv/routes';
 import { healthRoutes } from './health/routes';
+import { privadoRoutes } from './privado/routes';
 
 export interface BuildOptions {
   readonly config: Config;
@@ -109,6 +110,11 @@ export async function buildApp({ config, db }: BuildOptions): Promise<FastifyIns
   await app.register(roomRoutes({ service: rooms, jwtSecret: config.JWT_SECRET }));
   await app.register(roomSocket(rooms));
   await app.register(kvRoutes(db, config.JWT_SECRET));
+  if (config.PRIVADO_DIR !== '') {
+    await app.register(
+      privadoRoutes({ db, carpeta: config.PRIVADO_DIR, secreto: config.JWT_SECRET }),
+    );
+  }
 
   return app;
 }
