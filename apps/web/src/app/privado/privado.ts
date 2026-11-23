@@ -47,7 +47,42 @@ export function capturarEnlaces(doc: Document, padre: Pick<Window, 'postMessage'
   );
 }
 
+/**
+ * Los paneles apuntan su pantalla en el #ancla con `history.replaceState`. En un
+ * iframe sin `allow-same-origin` el navegador lo prohíbe con un SecurityError, y
+ * ese error cortaba la pantalla antes de pintarla. Aquí solo se pierde el ancla.
+ *
+ * Como `capturarEnlaces`, corre dentro del iframe y no usa nada de fuera.
+ */
+export function protegerHistoria(historia: History): void {
+  for (const metodo of ['replaceState', 'pushState'] as const) {
+    const original = historia[metodo].bind(historia);
+    historia[metodo] = (...args: Parameters<History['replaceState']>): void => {
+      try {
+        original(...args);
+      } catch {
+        // Prohibido en el visor: la pantalla sigue, sin ancla.
+      }
+    };
+  }
+}
+
+const HISTORIA = `<script>(${protegerHistoria.toString()})(history);</script>`;
 const ENLACES = `<script>(${capturarEnlaces.toString()})(document, parent);</script>`;
+
+/**
+ * El documento listo para el visor: la historia protegida antes que cualquier
+ * script suyo, y los enlaces al final. Va dentro de `<head>` y no delante del
+ * doctype, que lo pasaría al modo «quirks» y le cambiaría el diseño.
+ */
+export function prepararDocumento(html: string): string {
+  const head = /<head[^>]*>/i.exec(html);
+  const conHistoria =
+    head === null
+      ? HISTORIA + html
+      : html.slice(0, head.index + head[0].length) + HISTORIA + html.slice(head.index + head[0].length);
+  return conHistoria + ENLACES;
+}
 
 interface Grupo {
   readonly nombre: string;
@@ -157,7 +192,7 @@ export class Privado implements OnInit, OnDestroy {
       // Sin esto Angular le quita al documento su <style> y su <script>, y solo
       // queda el texto sobre blanco. Se puede: va en un iframe sin allow-same-origin,
       // así que su código no alcanza nada de la web, y viene de nuestro servidor.
-      this.html.set(this.desinfectante.bypassSecurityTrustHtml(html + ENLACES));
+      this.html.set(this.desinfectante.bypassSecurityTrustHtml(prepararDocumento(html)));
     });
   }
 
