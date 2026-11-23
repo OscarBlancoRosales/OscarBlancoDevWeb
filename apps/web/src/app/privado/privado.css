@@ -106,3 +106,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+.privado-invitar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.privado-enlaces {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: 0.85rem;
+}
+
+.privado-enlaces li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-2);
+}

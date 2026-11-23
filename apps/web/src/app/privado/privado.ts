@@ -1,22 +1,53 @@
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { ApiError } from '../api/api-client';
 import { AuthApiService } from '../api/auth-api.service';
 import { PrivadoApiService } from '../api/privado-api.service';
 import { I18nService } from '../services/i18n.service';
 import { TerminalLayout } from '../shared/terminal-layout/terminal-layout';
-import type { DocumentoPrivado, InvitacionPrivada } from '@devweb/shared/contracts/privado';
+import type {
+  DocumentoPrivado,
+  InvitacionPrivada,
+  InvitacionPrivadaVista,
+} from '@devweb/shared/contracts/privado';
 
 const CLAVE_PASE = 'devweb.pase-privado';
 
 /**
- * Los enlaces de un documento a otro («02-til.html») no funcionan dentro de un
- * `srcdoc`: este trozo los intercepta y le pide a la página que abra el otro.
- * El documento va en un iframe sin `allow-same-origin`, así que no puede tocar
- * nada de la web: solo mandar este mensaje.
+ * Dentro de un `srcdoc` los enlaces relativos se resuelven contra la dirección
+ * de la web, no contra el documento: «02-til.html» o «#n2» cargaban la web
+ * entera dentro del visor. Esto los intercepta: un ancla baja hasta su sección,
+ * otro documento se le pide a la página, y uno de fuera se abre aparte.
+ *
+ * Corre dentro del iframe (se inyecta como texto), así que no puede usar nada
+ * de fuera de sí misma. Sin `allow-same-origin` no alcanza la web: solo puede
+ * mandar este mensaje.
  */
-const ENLACES = `<script>document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;var h=a.getAttribute('href')||'';if(/^[^:?#]+\\.html(#.*)?$/.test(h)){e.preventDefault();parent.postMessage({privadoAbrir:h.split('#')[0]},'*');}},true);</script>`;
+export function capturarEnlaces(doc: Document, padre: Pick<Window, 'postMessage'>): void {
+  doc.addEventListener(
+    'click',
+    (e) => {
+      const a = (e.target as Element | null)?.closest('a[href]');
+      if (!a) return;
+      const h = a.getAttribute('href') ?? '';
+      if (/^(https?:|mailto:|tel:)/.test(h)) {
+        a.setAttribute('target', '_blank');
+        return;
+      }
+      e.preventDefault();
+      if (h.startsWith('#')) {
+        doc.getElementById(decodeURIComponent(h.slice(1)))?.scrollIntoView({ behavior: 'smooth' });
+      } else if (/^[^:?#]+\.html(#.*)?$/.test(h)) {
+        padre.postMessage({ privadoAbrir: h.split('#')[0] }, '*');
+      }
+    },
+    true,
+  );
+}
+
+const ENLACES = `<script>(${capturarEnlaces.toString()})(document, parent);</script>`;
 
 interface Grupo {
   readonly nombre: string;
@@ -45,10 +76,14 @@ export class Privado implements OnInit, OnDestroy {
   readonly pase = signal<string | null>(null);
   readonly documentos = signal<readonly DocumentoPrivado[]>([]);
   readonly abierto = signal<DocumentoPrivado | null>(null);
-  readonly html = signal('');
+  readonly html = signal<SafeHtml>('');
   readonly error = signal('');
   readonly invitacion = signal<InvitacionPrivada | null>(null);
   readonly copiado = signal(false);
+  readonly enlaces = signal<readonly InvitacionPrivadaVista[]>([]);
+  readonly vivos = computed(() =>
+    this.enlaces().filter((i) => !i.revocada && i.caduca > Date.now()),
+  );
   codigo = '';
 
   readonly dentro = computed(() => this.mando() || this.pase() !== null);
@@ -76,6 +111,7 @@ export class Privado implements OnInit, OnDestroy {
 
   constructor(
     private readonly privado: PrivadoApiService,
+    private readonly desinfectante: DomSanitizer,
     private readonly auth: AuthApiService,
     private readonly ruta: ActivatedRoute,
     public i18n: I18nService,
@@ -101,6 +137,7 @@ export class Privado implements OnInit, OnDestroy {
     } else if (this.dentro()) {
       await this.cargarLista();
     }
+    if (this.mando()) await this.intentar(() => this.cargarEnlaces());
     this.cargando.set(false);
   }
 
@@ -117,15 +154,32 @@ export class Privado implements OnInit, OnDestroy {
     await this.intentar(async () => {
       const html = await this.privado.documento(documento.ruta, this.paseParaPedir());
       this.abierto.set(documento);
-      this.html.set(html + ENLACES);
+      // Sin esto Angular le quita al documento su <style> y su <script>, y solo
+      // queda el texto sobre blanco. Se puede: va en un iframe sin allow-same-origin,
+      // así que su código no alcanza nada de la web, y viene de nuestro servidor.
+      this.html.set(this.desinfectante.bypassSecurityTrustHtml(html + ENLACES));
     });
   }
 
-  async invitar(): Promise<void> {
+  /** Sin argumentos, para una persona y una hora; con ellos, un enlace que comparten varios. */
+  async invitar(grupo?: { dias: number; nota: string }): Promise<void> {
     await this.intentar(async () => {
       this.copiado.set(false);
-      this.invitacion.set(await this.privado.invitar());
+      this.invitacion.set(await this.privado.invitar(grupo));
+      await this.cargarEnlaces();
     });
+  }
+
+  async revocar(id: string): Promise<void> {
+    await this.intentar(async () => {
+      await this.privado.revocar(id);
+      if (this.invitacion()?.id === id) this.invitacion.set(null);
+      await this.cargarEnlaces();
+    });
+  }
+
+  private async cargarEnlaces(): Promise<void> {
+    this.enlaces.set(await this.privado.invitaciones());
   }
 
   async copiar(): Promise<void> {
@@ -135,6 +189,15 @@ export class Privado implements OnInit, OnDestroy {
 
   pantallaCompleta(): void {
     void this.marco?.nativeElement.requestFullscreen();
+  }
+
+  dia(ms: number): string {
+    return new Date(ms).toLocaleString(this.i18n.lang === 'en' ? 'en-GB' : 'es-ES', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   hora(ms: number): string {

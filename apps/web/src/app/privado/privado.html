@@ -43,15 +43,35 @@
 
         @if (mando()) {
           <section class="privado-invitar">
-            <button type="button" (click)="invitar()">{{ i18n.t('privado.invite') }}</button>
+            <button type="button" (click)="invitar({ dias: 7, nota: i18n.t('privado.family') })">
+              {{ i18n.t('privado.inviteGroup') }}
+            </button>
+            <button type="button" class="privado-secundario" (click)="invitar()">
+              {{ i18n.t('privado.invite') }}
+            </button>
             @if (invitacion(); as inv) {
-              <p class="privado-nota">
-                {{ i18n.t('privado.inviteValid', { hora: hora(inv.caduca) }) }}
-              </p>
+              <p class="privado-nota">{{ i18n.t('privado.inviteValid', { hora: dia(inv.caduca) }) }}</p>
               <code class="privado-codigo-hecho">{{ inv.codigo }}</code>
               <button type="button" class="privado-secundario" (click)="copiar()">
                 {{ copiado() ? i18n.t('privado.copied') : i18n.t('privado.copyLink') }}
               </button>
+            }
+            @if (vivos().length > 0) {
+              <h3>{{ i18n.t('privado.links') }}</h3>
+              <ul class="privado-enlaces">
+                @for (e of vivos(); track e.id) {
+                  <li>
+                    <span>
+                      {{ e.nota || i18n.t('privado.oneUse') }} ·
+                      {{ i18n.t('privado.until', { cuando: dia(e.caduca) }) }} ·
+                      {{ i18n.t('privado.entries', { n: e.canjes }) }}
+                    </span>
+                    <button type="button" class="privado-secundario" (click)="revocar(e.id)">
+                      {{ i18n.t('privado.revoke') }}
+                    </button>
+                  </li>
+                }
+              </ul>
             }
           </section>
         }

@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Privado } from './privado';
+import { Privado, capturarEnlaces } from './privado';
 import { AuthApiService } from '../api/auth-api.service';
 import { PrivadoApiService } from '../api/privado-api.service';
 import { I18nService } from '../services/i18n.service';
@@ -25,8 +25,16 @@ const DOCS: DocumentoPrivado[] = [
 function apiDePrueba(): Partial<PrivadoApiService> {
   return {
     lista: vi.fn().mockResolvedValue(DOCS),
-    documento: vi.fn().mockImplementation((ruta: string) => Promise.resolve(`<h1>${ruta}</h1>`)),
-    invitar: vi.fn().mockResolvedValue({ codigo: 'abc123def456', caduca: Date.now() + 3_600_000 }),
+    documento: vi
+      .fn()
+      .mockImplementation((ruta: string) =>
+        Promise.resolve(`<style>h1{color:teal}</style><h1>${ruta}</h1><script>window.x=1</script>`),
+      ),
+    invitar: vi
+      .fn()
+      .mockResolvedValue({ id: 'i1', codigo: 'abc123def456', caduca: Date.now() + 3_600_000 }),
+    invitaciones: vi.fn().mockResolvedValue([]),
+    revocar: vi.fn().mockResolvedValue(undefined),
     canjear: vi.fn().mockResolvedValue({ pase: 'pase-firmado', caduca: Date.now() + 3_600_000 }),
   };
 }
@@ -81,7 +89,11 @@ describe('lo privado', () => {
     const visor = raiz(f).querySelector('iframe');
     expect(visor).toBeInstanceOf(HTMLIFrameElement);
     expect(visor?.getAttribute('sandbox')).toBe('allow-scripts allow-popups');
-    expect(visor?.getAttribute('srcdoc')).toContain('<h1>documentos/00-indice.html</h1>');
+    const doc = visor?.getAttribute('srcdoc') ?? '';
+    expect(doc).toContain('<h1>documentos/00-indice.html</h1>');
+    // El diseño de cada documento va dentro: si se pierde, solo queda texto sobre blanco.
+    expect(doc).toContain('<style>h1{color:teal}</style>');
+    expect(doc).toContain('<script>window.x=1</script>');
     f.destroy();
   });
 
@@ -92,6 +104,35 @@ describe('lo privado', () => {
     f.detectChanges();
     expect(raiz(f).querySelector('.privado-codigo-hecho')?.textContent).toBe('abc123def456');
     expect(f.componentInstance.enlace()).toContain('/privado?codigo=abc123def456');
+    f.destroy();
+  });
+
+  it('el enlace de la familia dura 7 días, se ve con sus entradas y se quita', async () => {
+    const api = apiDePrueba();
+    const vivo = {
+      id: 'g1',
+      tipo: 'grupo' as const,
+      nota: 'Familia',
+      creada: Date.now(),
+      caduca: Date.now() + 7 * 86_400_000,
+      canjes: 3,
+      revocada: false,
+    };
+    api.invitaciones = vi.fn().mockResolvedValue([vivo]);
+    const f = await montar(JEFE, api);
+    await f.componentInstance.invitar({ dias: 7, nota: 'Familia' });
+    f.detectChanges();
+    expect(api.invitar).toHaveBeenCalledWith({ dias: 7, nota: 'Familia' });
+    const fila = raiz(f).querySelector('.privado-enlaces li');
+    expect(fila).toBeInstanceOf(HTMLLIElement);
+    expect(fila?.textContent).toContain('Familia');
+    expect(fila?.textContent).toContain('3 entradas');
+
+    api.invitaciones = vi.fn().mockResolvedValue([{ ...vivo, revocada: true }]);
+    await f.componentInstance.revocar('g1');
+    f.detectChanges();
+    expect(api.revocar).toHaveBeenCalledWith('g1');
+    expect(raiz(f).querySelector('.privado-enlaces')).toBeNull();
     f.destroy();
   });
 
@@ -130,5 +171,46 @@ describe('lo privado', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(api.documento).toHaveBeenCalledTimes(2);
     f.destroy();
+  });
+});
+
+describe('los enlaces dentro de un documento', () => {
+  function documento(html: string): { doc: Document; padre: { postMessage: ReturnType<typeof vi.fn> } } {
+    const doc = document.implementation.createHTMLDocument('x');
+    doc.body.innerHTML = html;
+    const padre = { postMessage: vi.fn() };
+    capturarEnlaces(doc, padre);
+    return { doc, padre };
+  }
+
+  const pulsar = (doc: Document, sel: string): MouseEvent => {
+    const e = new MouseEvent('click', { bubbles: true, cancelable: true });
+    doc.querySelector(sel)?.dispatchEvent(e);
+    return e;
+  };
+
+  it('un ancla baja a su sección y no carga la web dentro', () => {
+    const { doc, padre } = documento('<a id="a" href="#n2">ir</a><h2 id="n2">Dos</h2>');
+    const destino = doc.getElementById('n2');
+    if (!destino) throw new Error('sin sección');
+    const bajar = vi.fn();
+    destino.scrollIntoView = bajar;
+    expect(pulsar(doc, '#a').defaultPrevented).toBe(true);
+    expect(bajar).toHaveBeenCalled();
+    expect(padre.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('otro documento se le pide a la página, sin el ancla', () => {
+    const { doc, padre } = documento('<a id="a" href="03-costes.html#til">ir</a>');
+    expect(pulsar(doc, '#a').defaultPrevented).toBe(true);
+    expect(padre.postMessage).toHaveBeenCalledWith({ privadoAbrir: '03-costes.html' }, '*');
+  });
+
+  it('uno de fuera se abre aparte, y cualquier otra ruta relativa no hace nada', () => {
+    const { doc, padre } = documento('<a id="f" href="https://ejemplo.com">f</a><a id="r" href="/admin">r</a>');
+    expect(pulsar(doc, '#f').defaultPrevented).toBe(false);
+    expect(doc.getElementById('f')?.getAttribute('target')).toBe('_blank');
+    expect(pulsar(doc, '#r').defaultPrevented).toBe(true);
+    expect(padre.postMessage).not.toHaveBeenCalled();
   });
 });
