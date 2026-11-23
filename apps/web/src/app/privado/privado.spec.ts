@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Privado } from './privado';
+import { Privado, capturarEnlaces } from './privado';
 import { AuthApiService } from '../api/auth-api.service';
 import { PrivadoApiService } from '../api/privado-api.service';
 import { I18nService } from '../services/i18n.service';
@@ -134,5 +134,46 @@ describe('lo privado', () => {
     await new Promise((r) => setTimeout(r, 20));
     expect(api.documento).toHaveBeenCalledTimes(2);
     f.destroy();
+  });
+});
+
+describe('los enlaces dentro de un documento', () => {
+  function documento(html: string): { doc: Document; padre: { postMessage: ReturnType<typeof vi.fn> } } {
+    const doc = document.implementation.createHTMLDocument('x');
+    doc.body.innerHTML = html;
+    const padre = { postMessage: vi.fn() };
+    capturarEnlaces(doc, padre);
+    return { doc, padre };
+  }
+
+  const pulsar = (doc: Document, sel: string): MouseEvent => {
+    const e = new MouseEvent('click', { bubbles: true, cancelable: true });
+    doc.querySelector(sel)?.dispatchEvent(e);
+    return e;
+  };
+
+  it('un ancla baja a su sección y no carga la web dentro', () => {
+    const { doc, padre } = documento('<a id="a" href="#n2">ir</a><h2 id="n2">Dos</h2>');
+    const destino = doc.getElementById('n2');
+    if (!destino) throw new Error('sin sección');
+    const bajar = vi.fn();
+    destino.scrollIntoView = bajar;
+    expect(pulsar(doc, '#a').defaultPrevented).toBe(true);
+    expect(bajar).toHaveBeenCalled();
+    expect(padre.postMessage).not.toHaveBeenCalled();
+  });
+
+  it('otro documento se le pide a la página, sin el ancla', () => {
+    const { doc, padre } = documento('<a id="a" href="03-costes.html#til">ir</a>');
+    expect(pulsar(doc, '#a').defaultPrevented).toBe(true);
+    expect(padre.postMessage).toHaveBeenCalledWith({ privadoAbrir: '03-costes.html' }, '*');
+  });
+
+  it('uno de fuera se abre aparte, y cualquier otra ruta relativa no hace nada', () => {
+    const { doc, padre } = documento('<a id="f" href="https://ejemplo.com">f</a><a id="r" href="/admin">r</a>');
+    expect(pulsar(doc, '#f').defaultPrevented).toBe(false);
+    expect(doc.getElementById('f')?.getAttribute('target')).toBe('_blank');
+    expect(pulsar(doc, '#r').defaultPrevented).toBe(true);
+    expect(padre.postMessage).not.toHaveBeenCalled();
   });
 });
