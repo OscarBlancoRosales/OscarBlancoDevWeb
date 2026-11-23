@@ -49,6 +49,9 @@ describe('registro de comandos', () => {
     // El panel no se anuncia: para quien no administra contesta un 404, y un
     // comando en la consola sería justo el cartel que ese 404 evita poner.
     'admin',
+    // Lo privado tampoco: se llega con la sesión de quien manda o con el enlace
+    // de una invitación, nunca buscándolo.
+    'privado',
   ]);
 
   /**

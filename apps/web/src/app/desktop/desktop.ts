@@ -58,6 +58,7 @@ const CONTENT: Record<string, (() => Promise<Type<unknown>>) | undefined> = {
   uuid: () => import('../uuid-generator/uuid-generator').then((m) => m.UuidGenerator),
   iconos: () => import('../icon-generator/icon-generator').then((m) => m.IconGenerator),
   admin: () => import('../admin/admin').then((m) => m.Admin),
+  privado: () => import('../privado/privado').then((m) => m.Privado),
 };
 
 /** Por debajo de esto no hay sitio para ventanas sueltas: se usan a pantalla completa. */

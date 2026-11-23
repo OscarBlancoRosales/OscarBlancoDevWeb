@@ -51,6 +51,14 @@ const ConfigSchema = Type.Object({
    */
   ADMIN_EMAILS: Type.String({ default: '' }),
 
+  /**
+   * La carpeta de lo privado en la máquina. Vacía, la sección no existe.
+   *
+   * Los documentos no van en el repositorio, que es público, ni en la web
+   * publicada: se suben a esta carpeta aparte y solo salen por `/privado`.
+   */
+  PRIVADO_DIR: Type.String({ default: '' }),
+
   AI_KEY: Type.String({ default: '' }),
   AI_PROVIDER: Type.String({ default: 'openrouter' }),
   AI_MODEL: Type.String({ default: '' }),

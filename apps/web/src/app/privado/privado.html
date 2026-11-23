@@ -1,0 +1,80 @@
+<app-terminal-layout [title]="i18n.t('privado.title')" [showStatusBar]="false">
+  <div class="privado">
+    @if (cargando()) {
+      <p class="privado-nota">{{ i18n.t('admin.loading') }}</p>
+    } @else if (!dentro()) {
+      <form class="privado-codigo" (ngSubmit)="canjear()">
+        <label for="privado-codigo">{{ i18n.t('privado.codeLabel') }}</label>
+        <div class="privado-fila">
+          <input
+            id="privado-codigo"
+            name="codigo"
+            autocomplete="off"
+            [(ngModel)]="codigo"
+            [placeholder]="i18n.t('privado.codePh')" />
+          <button type="submit" [disabled]="codigo.trim().length < 6">
+            {{ i18n.t('privado.enter') }}
+          </button>
+        </div>
+        @if (error()) {
+          <p class="privado-error" role="alert">{{ error() }}</p>
+        }
+      </form>
+    } @else {
+      <aside class="privado-lista">
+        @for (g of grupos(); track g.nombre) {
+          <section>
+            @if (g.nombre) {
+              <h3>{{ g.nombre }}</h3>
+            }
+            @for (d of g.documentos; track d.ruta) {
+              <button
+                type="button"
+                class="privado-doc"
+                [class.activo]="abierto()?.ruta === d.ruta"
+                (click)="abrir(d)">
+                {{ d.titulo }}
+              </button>
+            }
+          </section>
+        } @empty {
+          <p class="privado-nota">{{ i18n.t('privado.empty') }}</p>
+        }
+
+        @if (mando()) {
+          <section class="privado-invitar">
+            <button type="button" (click)="invitar()">{{ i18n.t('privado.invite') }}</button>
+            @if (invitacion(); as inv) {
+              <p class="privado-nota">
+                {{ i18n.t('privado.inviteValid', { hora: hora(inv.caduca) }) }}
+              </p>
+              <code class="privado-codigo-hecho">{{ inv.codigo }}</code>
+              <button type="button" class="privado-secundario" (click)="copiar()">
+                {{ copiado() ? i18n.t('privado.copied') : i18n.t('privado.copyLink') }}
+              </button>
+            }
+          </section>
+        }
+      </aside>
+
+      <div class="privado-visor" #marco>
+        @if (abierto(); as d) {
+          <div class="privado-barra">
+            <span>{{ d.titulo }}</span>
+            <button type="button" class="privado-secundario" (click)="pantallaCompleta()">
+              {{ i18n.t('privado.fullscreen') }}
+            </button>
+          </div>
+          <iframe
+            #visor
+            [title]="d.titulo"
+            sandbox="allow-scripts allow-popups"
+            [srcdoc]="html()"></iframe>
+        }
+        @if (error()) {
+          <p class="privado-error" role="alert">{{ error() }}</p>
+        }
+      </div>
+    }
+  </div>
+</app-terminal-layout>

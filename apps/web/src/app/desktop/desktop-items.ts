@@ -112,6 +112,17 @@ export const DESKTOP_ITEMS: DesktopItem[] = [
     width: 980,
     height: 640,
   },
+  {
+    id: 'privado',
+    group: 'sistema',
+    labelKey: 'privado.title',
+    glyph: '◈',
+    kind: 'section',
+    route: '/privado',
+    soloAdmin: true,
+    width: 1280,
+    height: 820,
+  },
 ];
 
 /** Lo que puede ver quien está mirando, administre o no. */

@@ -1,0 +1,108 @@
+/*
+  Lista a la izquierda y el documento ocupando todo lo demás: lo que se viene a
+  hacer aquí es leer o presentar, así que el visor se lleva el sitio.
+*/
+.privado {
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+  gap: var(--sp-4);
+  height: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--sp-4);
+}
+
+.privado-lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.privado-lista h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.privado-doc {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  background: none;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.privado-doc.activo {
+  border-color: currentColor;
+}
+
+.privado-visor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg, #000);
+}
+
+.privado-barra {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+
+.privado-visor iframe {
+  flex: 1;
+  width: 100%;
+  min-height: 60vh;
+  border: 0;
+  background: #fff;
+}
+
+.privado-visor:fullscreen iframe {
+  min-height: 0;
+}
+
+.privado-codigo {
+  grid-column: 1 / -1;
+  max-width: 28rem;
+}
+
+.privado-fila {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.privado-fila input {
+  flex: 1;
+}
+
+.privado-codigo-hecho {
+  display: block;
+  margin: var(--sp-2) 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.05em;
+  word-break: break-all;
+}
+
+.privado-error {
+  color: var(--danger, #f66);
+}
+
+.privado-nota {
+  opacity: 0.8;
+}
+
+@container (max-width: 640px) {
+  .privado {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { CABECERA_PASE } from '@devweb/shared/contracts/privado';
 import { apiBaseUrl } from './api.config';
 
 export interface ApiErrorBody {
@@ -29,6 +30,8 @@ interface Peticion {
    * dominio no sabe distinguirlas.
    */
   readonly seatToken?: string;
+  /** El pase de un invitado a lo privado: solo sirve para leer esa carpeta. */
+  readonly pasePrivado?: string;
   /** Para las llamadas que no deben intentar renovar sesión: el propio refresco. */
   readonly sinRenovar?: boolean;
 }
@@ -74,6 +77,16 @@ export class ApiClient {
     return this.leer<T>(respuesta);
   }
 
+  /** Lo mismo, pero la respuesta es un documento y no JSON (lo privado). */
+  async requestTexto(peticion: Peticion): Promise<string> {
+    let respuesta = await this.enviar(peticion);
+    if (respuesta.status === 401 && !peticion.pasePrivado && (await this.renovar())) {
+      respuesta = await this.enviar(peticion);
+    }
+    if (!respuesta.ok) return this.leer<never>(respuesta);
+    return respuesta.text();
+  }
+
   /**
    * Pide un token nuevo con la cookie de refresco.
    *
@@ -108,6 +121,7 @@ export class ApiClient {
     if (peticion.body !== undefined) headers['Content-Type'] = 'application/json';
     if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
     if (peticion.seatToken) headers['X-Seat-Token'] = peticion.seatToken;
+    if (peticion.pasePrivado) headers[CABECERA_PASE] = peticion.pasePrivado;
 
     return fetch(`${this.base}${peticion.path}`, {
       method: peticion.method,
